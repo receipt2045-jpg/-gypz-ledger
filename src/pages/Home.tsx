@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
-import { ChevronRight, TrendingUp } from 'lucide-react'
+import { Check, ChevronRight, TrendingUp } from 'lucide-react'
 import Card from '../components/Card'
 import ProgressBar from '../components/ProgressBar'
 import { useLedgerStore } from '../lib/store'
@@ -35,6 +35,9 @@ export default function Home() {
   const delta = signedAbbrev(netWorth - prev)
 
   const targetRatio = profile.targetNetWorth > 0 ? netWorth / profile.targetNetWorth : 0
+
+  const settledMembers = ledger.settledMembers ?? []
+  const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
 
   return (
     <>
@@ -146,6 +149,22 @@ export default function Home() {
 
     {/* 하단 고정 CTA — 애니메이션(transform) 컨테이너 밖에 두어야 fixed가 뷰포트 기준으로 동작 */}
     <div className="pointer-events-none fixed bottom-[70px] left-1/2 z-20 w-full max-w-app -translate-x-1/2 px-5">
+      <div className="pointer-events-auto mb-2 flex justify-center gap-2">
+        {([1, 2] as const).map((m) => {
+          const done = settledMembers.includes(m)
+          return (
+            <span
+              key={m}
+              className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold shadow-card ${
+                done ? 'bg-brand text-white' : 'bg-white text-sub'
+              }`}
+            >
+              {done && <Check size={13} />}
+              {memberNames[m - 1]} {done ? '완료' : '대기'}
+            </span>
+          )
+        })}
+      </div>
       <button
         onClick={() => navigate('/checkup')}
         className="pointer-events-auto h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta transition-colors active:bg-brand-dark"

@@ -21,7 +21,8 @@ export interface BudgetItem {
 export interface MonthlyLedger {
   ym: string // "2026-07"
   items: BudgetItem[]
-  closed: boolean // 결산 완료 여부
+  closed: boolean // 결산 완료 여부 (두 구성원 모두 정산하면 true)
+  settledMembers?: (1 | 2)[] // 정산을 마친 구성원
 }
 
 export type AssetGroup = 'cash' | 'stock' | 'realestate' | 'pension' | 'consumable'

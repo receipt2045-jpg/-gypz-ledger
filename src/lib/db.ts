@@ -1,0 +1,171 @@
+import { supabase } from './supabase'
+import type {
+  AppData,
+  AssetSnapshot,
+  Categories,
+  MonthlyLedger,
+  OccasionEntry,
+  Profile,
+} from '../types'
+
+// ── 멤버십 / 가구 ─────────────────────────────
+
+export interface Membership {
+  householdId: string
+  memberNo: 1 | 2
+}
+
+export async function getMyMembership(): Promise<Membership | null> {
+  const { data, error } = await supabase
+    .from('household_members')
+    .select('household_id, member_no')
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return { householdId: data.household_id, memberNo: data.member_no as 1 | 2 }
+}
+
+export async function createHousehold(): Promise<Membership> {
+  const { data, error } = await supabase.rpc('create_household')
+  if (error) throw error
+  return { householdId: data.id, memberNo: 1 }
+}
+
+export async function joinHousehold(code: string): Promise<Membership> {
+  const { data, error } = await supabase.rpc('join_household', { code })
+  if (error) throw error
+  return { householdId: data.id, memberNo: 2 }
+}
+
+// ── 전체 데이터 로드 ──────────────────────────
+
+export interface HouseholdData extends AppData {
+  inviteCode: string
+}
+
+export async function fetchHouseholdData(householdId: string): Promise<HouseholdData> {
+  const [hh, lg, sn, oc] = await Promise.all([
+    supabase.from('households').select('*').eq('id', householdId).single(),
+    supabase.from('ledgers').select('*').eq('household_id', householdId).order('ym'),
+    supabase.from('snapshots').select('*').eq('household_id', householdId).order('ym'),
+    supabase.from('occasions').select('*').eq('household_id', householdId).order('date', { ascending: false }),
+  ])
+  const firstError = hh.error || lg.error || sn.error || oc.error
+  if (firstError) throw firstError
+
+  const h = hh.data
+  const profile: Profile = {
+    member1Name: h.member1_name,
+    member2Name: h.member2_name,
+    targetNetWorth: Number(h.target_net_worth),
+    startYear: h.start_year,
+  }
+  const ledgers: MonthlyLedger[] = (lg.data ?? []).map((r) => ({
+    ym: r.ym,
+    items: r.items,
+    closed: r.closed,
+    settledMembers: r.settled_members,
+  }))
+  const snapshots: AssetSnapshot[] = (sn.data ?? []).map((r) => ({ ym: r.ym, items: r.items }))
+  const occasions: OccasionEntry[] = (oc.data ?? []).map((r) => ({
+    id: r.id,
+    date: r.date,
+    category: r.category,
+    title: r.title,
+    amount: Number(r.amount),
+  }))
+
+  return {
+    profile,
+    ledgers,
+    snapshots,
+    occasions,
+    categories: h.categories as Categories,
+    inviteCode: h.invite_code,
+  }
+}
+
+// ── 저장 (각 스토어 액션과 1:1 대응) ──────────
+
+export async function pushLedger(householdId: string, ledger: MonthlyLedger) {
+  const { error } = await supabase.from('ledgers').upsert({
+    household_id: householdId,
+    ym: ledger.ym,
+    items: ledger.items,
+    closed: ledger.closed,
+    settled_members: ledger.settledMembers ?? [],
+    updated_at: new Date().toISOString(),
+  })
+  if (error) throw error
+}
+
+export async function pushSnapshot(householdId: string, snapshot: AssetSnapshot) {
+  const { error } = await supabase.from('snapshots').upsert({
+    household_id: householdId,
+    ym: snapshot.ym,
+    items: snapshot.items,
+    updated_at: new Date().toISOString(),
+  })
+  if (error) throw error
+}
+
+export async function pushOccasion(householdId: string, entry: OccasionEntry) {
+  const { error } = await supabase.from('occasions').insert({
+    id: entry.id,
+    household_id: householdId,
+    date: entry.date,
+    category: entry.category,
+    title: entry.title,
+    amount: entry.amount,
+  })
+  if (error) throw error
+}
+
+export async function deleteOccasion(id: string) {
+  const { error } = await supabase.from('occasions').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function pushProfile(householdId: string, profile: Profile) {
+  const { error } = await supabase
+    .from('households')
+    .update({
+      member1_name: profile.member1Name,
+      member2_name: profile.member2Name,
+      target_net_worth: profile.targetNetWorth,
+      start_year: profile.startYear,
+    })
+    .eq('id', householdId)
+  if (error) throw error
+}
+
+export async function pushCategories(householdId: string, categories: Categories) {
+  const { error } = await supabase
+    .from('households')
+    .update({ categories })
+    .eq('id', householdId)
+  if (error) throw error
+}
+
+/** 모든 기록 삭제 (가구/멤버십은 유지) */
+export async function clearHouseholdRecords(householdId: string) {
+  const results = await Promise.all([
+    supabase.from('ledgers').delete().eq('household_id', householdId),
+    supabase.from('snapshots').delete().eq('household_id', householdId),
+    supabase.from('occasions').delete().eq('household_id', householdId),
+  ])
+  const err = results.find((r) => r.error)?.error
+  if (err) throw err
+}
+
+/** JSON 가져오기: 기존 기록을 지우고 통째로 교체 */
+export async function replaceAllData(householdId: string, data: AppData) {
+  await clearHouseholdRecords(householdId)
+  await Promise.all([
+    pushProfile(householdId, data.profile),
+    pushCategories(householdId, data.categories),
+    ...data.ledgers.map((l) => pushLedger(householdId, l)),
+    ...data.snapshots.map((s) => pushSnapshot(householdId, s)),
+    ...data.occasions.map((o) => pushOccasion(householdId, o)),
+  ])
+}

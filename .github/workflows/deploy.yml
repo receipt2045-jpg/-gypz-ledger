@@ -25,6 +25,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # anon key는 공개되어도 안전한 클라이언트용 키 (데이터 접근은 RLS가 통제)
+          VITE_SUPABASE_URL: https://sygmpteafxlrhfbipkep.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_gGbVf_OUf8fmPRGoVdCYMw_UgHFbK16
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

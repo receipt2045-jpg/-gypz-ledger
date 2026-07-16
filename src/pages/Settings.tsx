@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
-import { Download, Upload, RotateCcw, X, Plus } from 'lucide-react'
+import { Copy, Check, Download, LogOut, Upload, RotateCcw, X, Plus } from 'lucide-react'
 import Card from '../components/Card'
 import AmountInput from '../components/AmountInput'
 import { useLedgerStore } from '../lib/store'
+import { supabase } from '../lib/supabase'
 import { abbreviateKRW } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import type { AppData, CategoryGroup } from '../types'
@@ -11,6 +12,8 @@ export default function Settings() {
   const {
     profile,
     categories,
+    inviteCode,
+    memberNo,
     updateProfile,
     addCategory,
     removeCategory,
@@ -19,6 +22,18 @@ export default function Settings() {
     exportData,
   } = useLedgerStore()
   const fileRef = useRef<HTMLInputElement>(null)
+  const [copied, setCopied] = useState(false)
+
+  const copyInvite = async () => {
+    if (!inviteCode) return
+    try {
+      await navigator.clipboard.writeText(inviteCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      alert(`초대 코드: ${inviteCode}`)
+    }
+  }
   const [newCat, setNewCat] = useState<Record<CategoryGroup, string>>({
     income: '',
     saving: '',
@@ -57,7 +72,7 @@ export default function Settings() {
   }
 
   const handleReset = () => {
-    if (confirm('모든 데이터를 초기화하고 예시 데이터로 되돌릴까요?')) {
+    if (confirm('모든 가계부 기록을 삭제할까요? 되돌릴 수 없어요.')) {
       resetData()
       alert('초기화되었어요.')
     }
@@ -68,6 +83,27 @@ export default function Settings() {
       <header className="px-1 pt-2">
         <h1 className="text-[18px] font-bold text-ink">설정</h1>
       </header>
+
+      {/* 부부 연결 */}
+      <Card>
+        <h2 className="mb-1 text-[15px] font-bold text-ink">부부 연결</h2>
+        <p className="text-[13px] text-sub">
+          {memberNo ? `내 계정은 구성원 ${memberNo}(${memberNo === 1 ? profile.member1Name : profile.member2Name})이에요. ` : ''}
+          배우자에게 아래 초대 코드를 알려주면 함께 쓸 수 있어요.
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <span className="tnum flex-1 rounded-btn bg-bg px-4 py-3 text-center text-[18px] font-extrabold tracking-[0.25em] text-ink">
+            {inviteCode ?? '—'}
+          </span>
+          <button
+            onClick={copyInvite}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-btn bg-brand text-white active:bg-brand-dark"
+            aria-label="초대 코드 복사"
+          >
+            {copied ? <Check size={19} /> : <Copy size={19} />}
+          </button>
+        </div>
+      </Card>
 
       {/* 프로필 */}
       <Card>
@@ -182,7 +218,20 @@ export default function Settings() {
         </div>
       </Card>
 
-      <p className="pb-2 text-center text-[12px] text-cap">우리집 가계부 · 프로토타입 v0.1</p>
+      {/* 계정 */}
+      <Card>
+        <h2 className="mb-3 text-[15px] font-bold text-ink">계정</h2>
+        <button
+          onClick={() => {
+            if (confirm('로그아웃할까요?')) supabase.auth.signOut()
+          }}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
+        >
+          <LogOut size={18} /> 로그아웃
+        </button>
+      </Card>
+
+      <p className="pb-2 text-center text-[12px] text-cap">우리집 가계부 · v0.2</p>
     </div>
   )
 }

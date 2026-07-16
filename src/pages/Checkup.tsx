@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, X, Plus, PartyPopper } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, X, Plus, PartyPopper, UserRound } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
+import AssetIcon from '../components/AssetIcon'
 import StepProgress from '../components/StepProgress'
 import { useLedgerStore } from '../lib/store'
 import {
@@ -41,22 +42,21 @@ const STEPS: StepDef[] = [
   { title: '고정지출', subtitle: '매달 비슷하게 나가는 돈이에요', groups: ['fixed'], sameAsLast: true },
   { title: '변동지출', subtitle: '이번 달 실제 쓴 금액을 입력해요', groups: ['variable'], sameAsLast: false },
 ]
-const TOTAL_STEPS = STEPS.length + 1 // + 자산 업데이트
-const ASSET_STEP = STEPS.length // index 4
-const DONE_STEP = TOTAL_STEPS // index 5
+const MEMBER_STEP = 0 // 남편/아내 선택
+const TOTAL_STEPS = STEPS.length + 2 // 선택 + 금액 스텝들 + 자산 업데이트
+const ASSET_STEP = STEPS.length + 1 // index 5
+const DONE_STEP = TOTAL_STEPS // index 6
 
 export default function Checkup() {
   const navigate = useNavigate()
-  const { ledgers, snapshots, categories, profile, saveLedger, saveSnapshot } = useLedgerStore()
+  const { ledgers, snapshots, categories, profile, memberNo, saveLedger, saveSnapshot } =
+    useLedgerStore()
 
-  const ym = useMemo(() => activeYm(ledgers), [ledgers])
+  // 정산 대상 월은 진입 시점에 고정 (정산 완료 후 activeYm이 다음 달로 넘어가도 유지)
+  const [ym] = useState(() => activeYm(ledgers))
 
-  // 드래프트 초기화 (변동지출은 계획값을 시작점으로)
   const [items, setItems] = useState<BudgetItem[]>(() =>
-    resolveLedger(ledgers, ym).items.map((it) => ({
-      ...it,
-      actual: it.actual || it.planned,
-    })),
+    resolveLedger(ledgers, ym).items.map((it) => ({ ...it })),
   )
   const [assets, setAssets] = useState<AssetItem[]>(
     () => resolveSnapshot(snapshots, ym).items.map((it) => ({ ...it })),
@@ -67,12 +67,29 @@ export default function Checkup() {
     [snapshots, ym],
   )
 
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(MEMBER_STEP)
+  const [member, setMember] = useState<1 | 2 | null>(null)
+
+  const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
+  const memberName = member ? memberNames[member - 1] : ''
+  const partnerName = member ? memberNames[member === 1 ? 1 : 0] : ''
+  const settledMembers = resolveLedger(ledgers, ym).settledMembers ?? []
+
+  const selectMember = (m: 1 | 2) => {
+    setMember(m)
+    // 선택한 사람의 항목만 결산 시작값(actual = planned)으로 채움
+    setItems((prev) =>
+      prev.map((it) => (it.member === m ? { ...it, actual: it.actual || it.planned } : it)),
+    )
+    setStep(1)
+  }
 
   const setActual = (id: string, actual: number) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, actual } : it)))
-  const addItem = (group: CategoryGroup, category: string, member: 1 | 2) =>
+  const addItem = (group: CategoryGroup, category: string) => {
+    if (!member) return
     setItems((prev) => [...prev, { ...emptyItem(group, category, member), actual: 0 }])
+  }
   const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id))
 
   const setAssetAmount = (id: string, amount: number) =>
@@ -82,19 +99,81 @@ export default function Checkup() {
   const removeAsset = (id: string) => setAssets((prev) => prev.filter((it) => it.id !== id))
 
   const commit = () => {
-    saveLedger({ ym, items, closed: true })
+    if (!member) return
+    const merged = Array.from(new Set([...settledMembers, member])) as (1 | 2)[]
+    const closed = merged.includes(1) && merged.includes(2)
+    saveLedger({ ym, items, closed, settledMembers: merged })
     saveSnapshot({ ym, items: assets })
     setStep(DONE_STEP)
   }
 
   const goBack = () => {
-    if (step === 0) navigate('/')
+    if (step === MEMBER_STEP) navigate('/')
+    else if (step === 1) setStep(MEMBER_STEP)
     else if (step < DONE_STEP) setStep((s) => s - 1)
   }
   const next = () => setStep((s) => s + 1)
 
+  // ── 구성원 선택 스텝 ──────────────────────
+  if (step === MEMBER_STEP) {
+    return (
+      <Frame>
+        <Header
+          step={step}
+          onBack={goBack}
+          title="누가 정산하나요?"
+          subtitle="각자 자기 항목만 입력하면 돼요"
+        />
+        <div className="flex-1 space-y-3 px-5 pt-4">
+          {([1, 2] as const).map((m) => {
+            const done = settledMembers.includes(m)
+            return (
+              <button
+                key={m}
+                onClick={() => selectMember(m)}
+                className="flex w-full items-center gap-4 rounded-card bg-card px-5 py-5 text-left shadow-card transition-transform active:scale-[0.98]"
+              >
+                <div
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
+                    m === 1 ? 'bg-brand/10 text-brand' : 'bg-pink-50 text-pink-500'
+                  }`}
+                >
+                  <UserRound size={24} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[17px] font-bold text-ink">
+                    {memberNames[m - 1]}
+                    {memberNo === m && (
+                      <span className="ml-1.5 rounded-full bg-bg px-2 py-0.5 text-[11px] font-semibold text-sub">
+                        나
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-[13px] text-sub">
+                    {done ? '정산을 마쳤어요 · 다시 수정할 수 있어요' : '아직 정산 전이에요'}
+                  </p>
+                </div>
+                {done ? (
+                  <span className="flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-[12px] font-bold text-brand">
+                    <Check size={13} /> 완료
+                  </span>
+                ) : (
+                  <ChevronRight size={20} className="text-cap" />
+                )}
+              </button>
+            )
+          })}
+          <p className="px-1 pt-2 text-[12px] leading-relaxed text-cap">
+            두 사람 모두 정산을 마치면 {formatMonthKorean(ym)} 결산이 확정돼요.
+          </p>
+        </div>
+      </Frame>
+    )
+  }
+
   // ── 완료 화면 ─────────────────────────────
   if (step === DONE_STEP) {
+    const bothDone = settledMembers.includes(1) && settledMembers.includes(2)
     const s = summarize({ ym, items, closed: true })
     const newNetWorth = netWorthOf({ ym, items: assets })
     const nwDelta = newNetWorth - prevNetWorth
@@ -105,9 +184,15 @@ export default function Checkup() {
             <PartyPopper size={40} className="text-brand" />
           </div>
           <h1 className="text-[24px] font-extrabold text-ink">
-            {formatMonthKorean(ym)} 정산 완료 🎉
+            {bothDone
+              ? `${formatMonthKorean(ym)} 정산 완료 🎉`
+              : `${memberName} 정산 완료 🙌`}
           </h1>
-          <p className="mt-2 text-[14px] text-sub">한 달 수고했어요. 이번 달 성적표예요.</p>
+          <p className="mt-2 text-[14px] text-sub">
+            {bothDone
+              ? '한 달 수고했어요. 이번 달 성적표예요.'
+              : `${partnerName}님이 정산하면 ${formatMonthKorean(ym)} 결산이 확정돼요.`}
+          </p>
 
           <div className="mt-7 w-full space-y-2.5 rounded-card bg-card p-5 text-left shadow-card">
             <ResultRow label="저축·투자율" value={formatPercent(s.savingInvestRate)} accent />
@@ -122,6 +207,11 @@ export default function Checkup() {
               accent={nwDelta >= 0}
               danger={nwDelta < 0}
             />
+            {!bothDone && (
+              <p className="pt-1 text-[11px] text-cap">
+                우리집 전체 기준 · {partnerName} 정산 전 예상치예요
+              </p>
+            )}
           </div>
         </div>
         <BottomBar>
@@ -138,12 +228,23 @@ export default function Checkup() {
 
   // ── 자산 업데이트 스텝 ────────────────────
   if (step === ASSET_STEP) {
+    // 본인 소유 + 공동 계좌만 갱신 대상으로 노출
+    const visibleAssets = assets.filter(
+      (a) => !a.owner || a.owner === '공동' || a.owner === memberName,
+    )
     return (
       <Frame>
-        <Header step={step} onBack={goBack} title="자산 업데이트" subtitle="계좌별 현재 잔액을 갱신해요" />
+        <Header
+          step={step}
+          onBack={goBack}
+          title="자산 업데이트"
+          subtitle={`${memberName} · 내 계좌와 공동 계좌 잔액을 갱신해요`}
+        />
         <div className="flex-1 px-5 pb-32">
           <AssetStep
-            assets={assets}
+            assets={visibleAssets}
+            memberNames={memberNames}
+            defaultOwner={memberName}
             onChange={setAssetAmount}
             onAdd={addAsset}
             onRemove={removeAsset}
@@ -162,18 +263,22 @@ export default function Checkup() {
   }
 
   // ── 금액 입력 스텝 (수입/저축·투자/고정/변동) ──
-  const def = STEPS[step]
-  const stepItems = items.filter((it) => def.groups.includes(it.group))
+  const def = STEPS[step - 1]
+  const stepItems = items.filter((it) => def.groups.includes(it.group) && it.member === member)
 
   return (
     <Frame>
-      <Header step={step} onBack={goBack} title={def.title} subtitle={def.subtitle} />
+      <Header
+        step={step}
+        onBack={goBack}
+        title={def.title}
+        subtitle={`${memberName} · ${def.subtitle}`}
+      />
       <div className="flex-1 px-5 pb-32">
         <MoneyStep
           groups={def.groups}
           items={stepItems}
           categories={categories}
-          memberNames={[profile.member1Name, profile.member2Name]}
           onChange={setActual}
           onAdd={addItem}
           onRemove={removeItem}
@@ -278,7 +383,6 @@ function MoneyStep({
   groups,
   items,
   categories,
-  memberNames,
   onChange,
   onAdd,
   onRemove,
@@ -286,19 +390,17 @@ function MoneyStep({
   groups: CategoryGroup[]
   items: BudgetItem[]
   categories: Record<CategoryGroup, string[]>
-  memberNames: [string, string]
   onChange: (id: string, v: number) => void
-  onAdd: (g: CategoryGroup, c: string, m: 1 | 2) => void
+  onAdd: (g: CategoryGroup, c: string) => void
   onRemove: (id: string) => void
 }) {
   const [adding, setAdding] = useState(false)
   const [g, setG] = useState<CategoryGroup>(groups[0])
   const [cat, setCat] = useState(categories[groups[0]][0])
-  const [mem, setMem] = useState<1 | 2>(1)
 
   const submitAdd = () => {
     if (!cat) return
-    onAdd(g, cat, mem)
+    onAdd(g, cat)
     setAdding(false)
   }
 
@@ -314,10 +416,9 @@ function MoneyStep({
         >
           <div className="w-[76px] shrink-0">
             <p className="truncate text-[15px] font-semibold text-ink">{it.category}</p>
-            <p className="mt-0.5 truncate text-[11px] text-cap">
-              {memberNames[it.member - 1]}
-              {groups.length > 1 ? ` · ${GROUP_LABEL[it.group]}` : ''}
-            </p>
+            {groups.length > 1 && (
+              <p className="mt-0.5 truncate text-[11px] text-cap">{GROUP_LABEL[it.group]}</p>
+            )}
           </div>
           <AmountInput className="flex-1" value={it.actual} onChange={(v) => onChange(it.id, v)} />
           <button
@@ -361,19 +462,6 @@ function MoneyStep({
             ))}
           </select>
           <div className="flex gap-2">
-            {([1, 2] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMem(m)}
-                className={`flex-1 rounded-btn py-2.5 text-[14px] font-semibold ${
-                  mem === m ? 'bg-brand text-white' : 'bg-bg text-sub'
-                }`}
-              >
-                구성원 {m}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2">
             <button
               onClick={() => setAdding(false)}
               className="h-11 flex-1 rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
@@ -407,11 +495,15 @@ function MoneyStep({
 // ── 자산 업데이트 스텝 ─────────────────────────
 function AssetStep({
   assets,
+  memberNames,
+  defaultOwner,
   onChange,
   onAdd,
   onRemove,
 }: {
   assets: AssetItem[]
+  memberNames: [string, string]
+  defaultOwner: string
   onChange: (id: string, v: number) => void
   onAdd: (a: Omit<AssetItem, 'id'>) => void
   onRemove: (id: string) => void
@@ -420,7 +512,7 @@ function AssetStep({
   const [kind, setKind] = useState<'asset' | 'debt'>('asset')
   const [group, setGroup] = useState<AssetGroup>('cash')
   const [name, setName] = useState('')
-  const [owner, setOwner] = useState('공동')
+  const [owner, setOwner] = useState(defaultOwner)
   const [amount, setAmount] = useState(0)
 
   const submit = () => {
@@ -488,7 +580,7 @@ function AssetStep({
             onChange={(e) => setOwner(e.target.value)}
             className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
           >
-            {['공동', '남편', '아내'].map((o) => (
+            {['공동', ...memberNames].map((o) => (
               <option key={o} value={o}>
                 {o}
               </option>
@@ -535,7 +627,8 @@ function AssetRow({
 }) {
   return (
     <div className="flex items-center gap-2.5 rounded-card bg-card px-4 py-3 shadow-card">
-      <div className="w-[88px] shrink-0">
+      <AssetIcon group={item.group} kind={item.kind} size={34} />
+      <div className="w-[76px] shrink-0">
         <p className="truncate text-[14px] font-semibold text-ink">{item.name}</p>
         <p className="mt-0.5 text-[11px] text-cap">
           {debt ? '부채' : ASSET_GROUP_LABEL[item.group]}

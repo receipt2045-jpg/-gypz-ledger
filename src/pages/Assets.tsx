@@ -1,5 +1,6 @@
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
+import AssetIcon from '../components/AssetIcon'
 import Card from '../components/Card'
 import ProgressBar from '../components/ProgressBar'
 import { useLedgerStore } from '../lib/store'
@@ -119,32 +120,24 @@ export default function Assets() {
         </div>
       </Card>
 
-      {/* 자산 그룹별 리스트 */}
+      {/* 자산 그룹별 계좌 카드 그리드 */}
       {groupsWithItems.map(({ group, items }) => (
-        <AssetGroupCard key={group} group={group} items={items} />
+        <AssetGroupSection key={group} group={group} items={items} />
       ))}
 
       {/* 부채 */}
       {debtItems.length > 0 && (
-        <div className="rounded-card bg-card px-5 py-4 shadow-card">
-          <div className="mb-1 flex items-center justify-between">
+        <section>
+          <div className="mb-2 flex items-center justify-between px-1">
             <h3 className="text-[15px] font-bold text-danger">부채</h3>
-            <span className="tnum text-[15px] font-bold text-danger">−{formatWon(debts)}</span>
+            <span className="tnum text-[14px] font-bold text-danger">−{abbreviateKRW(debts)}</span>
           </div>
-          <div className="divide-y divide-line/70">
+          <div className="grid grid-cols-2 gap-2.5">
             {debtItems.map((it) => (
-              <div key={it.id} className="flex items-center justify-between py-3">
-                <div>
-                  <p className="text-[15px] font-medium text-ink">{it.name}</p>
-                  {it.owner && <p className="mt-0.5 text-[12px] text-cap">{it.owner}</p>}
-                </div>
-                <span className="tnum text-[15px] font-semibold text-danger">
-                  −{formatWon(it.amount)}
-                </span>
-              </div>
+              <AccountCard key={it.id} item={it} debt />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {/* 10년 목표 */}
@@ -163,31 +156,57 @@ export default function Assets() {
   )
 }
 
-function AssetGroupCard({
+function AssetGroupSection({
   group,
   items,
 }: {
   group: AssetGroup
-  items: { id: string; name: string; amount: number; owner?: string }[]
+  items: AssetItemLike[]
 }) {
   const subtotal = items.reduce((acc, it) => acc + it.amount, 0)
   return (
-    <div className="rounded-card bg-card px-5 py-4 shadow-card">
-      <div className="mb-1 flex items-center justify-between">
+    <section>
+      <div className="mb-2 flex items-center justify-between px-1">
         <h3 className="text-[15px] font-bold text-ink">{ASSET_GROUP_LABEL[group]}</h3>
-        <span className="tnum text-[15px] font-bold text-ink">{formatWon(subtotal)}</span>
+        <span className="tnum text-[14px] font-bold text-sub">{abbreviateKRW(subtotal)}</span>
       </div>
-      <div className="divide-y divide-line/70">
+      <div className="grid grid-cols-2 gap-2.5">
         {items.map((it) => (
-          <div key={it.id} className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-[15px] font-medium text-ink">{it.name}</p>
-              {it.owner && <p className="mt-0.5 text-[12px] text-cap">{it.owner}</p>}
-            </div>
-            <span className="tnum text-[15px] font-semibold text-ink">{formatWon(it.amount)}</span>
-          </div>
+          <AccountCard key={it.id} item={it} />
         ))}
       </div>
+    </section>
+  )
+}
+
+interface AssetItemLike {
+  id: string
+  group: AssetGroup
+  kind: 'asset' | 'debt'
+  name: string
+  amount: number
+  owner?: string
+}
+
+// 계좌 하나 = 카드 하나: 아이콘 + 이름 + 소유자 + 잔액
+function AccountCard({ item, debt }: { item: AssetItemLike; debt?: boolean }) {
+  return (
+    <div className="rounded-card bg-card p-4 shadow-card">
+      <div className="flex items-start justify-between">
+        <AssetIcon group={item.group} kind={item.kind} size={38} />
+        {item.owner && (
+          <span className="rounded-full bg-bg px-2 py-0.5 text-[11px] font-semibold text-sub">
+            {item.owner}
+          </span>
+        )}
+      </div>
+      <p className="mt-3 truncate text-[13px] font-semibold text-sub">{item.name}</p>
+      <p
+        className={`tnum mt-0.5 truncate text-[17px] font-extrabold ${debt ? 'text-danger' : 'text-ink'}`}
+      >
+        {debt ? '−' : ''}
+        {abbreviateKRW(item.amount)}
+      </p>
     </div>
   )
 }
