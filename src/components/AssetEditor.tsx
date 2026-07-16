@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, StickyNote, X } from 'lucide-react'
+import { Pencil, Plus, StickyNote, X } from 'lucide-react'
 import AmountInput from './AmountInput'
 import AssetIcon from './AssetIcon'
 import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER } from '../lib/constants'
@@ -12,6 +12,7 @@ export default function AssetEditor({
   defaultOwner,
   onChange,
   onNote,
+  onUpdate,
   onAdd,
   onRemove,
 }: {
@@ -20,6 +21,7 @@ export default function AssetEditor({
   defaultOwner: string
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
+  onUpdate: (id: string, patch: Partial<Omit<AssetItem, 'id'>>) => void
   onAdd: (a: Omit<AssetItem, 'id'>) => void
   onRemove: (id: string) => void
 }) {
@@ -49,7 +51,15 @@ export default function AssetEditor({
         </p>
       )}
       {assetItems.map((it) => (
-        <AssetRow key={it.id} item={it} onChange={onChange} onNote={onNote} onRemove={onRemove} />
+        <AssetRow
+          key={it.id}
+          item={it}
+          memberNames={memberNames}
+          onChange={onChange}
+          onNote={onNote}
+          onUpdate={onUpdate}
+          onRemove={onRemove}
+        />
       ))}
       {debtItems.length > 0 && (
         <p className="px-1 pt-2 text-[13px] font-bold text-danger">부채</p>
@@ -58,8 +68,10 @@ export default function AssetEditor({
         <AssetRow
           key={it.id}
           item={it}
+          memberNames={memberNames}
           onChange={onChange}
           onNote={onNote}
+          onUpdate={onUpdate}
           onRemove={onRemove}
           debt
         />
@@ -143,31 +155,130 @@ export default function AssetEditor({
 
 function AssetRow({
   item,
+  memberNames,
   onChange,
   onNote,
+  onUpdate,
   onRemove,
   debt,
 }: {
   item: AssetItem
+  memberNames: [string, string]
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
+  onUpdate: (id: string, patch: Partial<Omit<AssetItem, 'id'>>) => void
   onRemove: (id: string) => void
   debt?: boolean
 }) {
   const [memoOpen, setMemoOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  // 수정 폼 임시값
+  const [eKind, setEKind] = useState<'asset' | 'debt'>(item.kind)
+  const [eGroup, setEGroup] = useState<AssetGroup>(item.group)
+  const [eName, setEName] = useState(item.name)
+  const [eOwner, setEOwner] = useState(item.owner ?? '공동')
   const memoVisible = memoOpen || !!item.note
+
+  const startEdit = () => {
+    setEKind(item.kind)
+    setEGroup(item.group)
+    setEName(item.name)
+    setEOwner(item.owner ?? '공동')
+    setEditing(true)
+  }
+  const confirmEdit = () => {
+    if (!eName.trim()) return
+    onUpdate(item.id, { kind: eKind, group: eGroup, name: eName.trim(), owner: eOwner })
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-2 rounded-card bg-card p-4 shadow-card">
+        <div className="flex gap-2">
+          {(['asset', 'debt'] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setEKind(k)}
+              className={`flex-1 rounded-btn py-2.5 text-[14px] font-semibold ${
+                eKind === k
+                  ? k === 'debt'
+                    ? 'bg-danger text-white'
+                    : 'bg-brand text-white'
+                  : 'bg-bg text-sub'
+              }`}
+            >
+              {k === 'asset' ? '자산' : '부채'}
+            </button>
+          ))}
+        </div>
+        <select
+          value={eGroup}
+          onChange={(e) => setEGroup(e.target.value as AssetGroup)}
+          className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+        >
+          {ASSET_GROUP_ORDER.map((gr) => (
+            <option key={gr} value={gr}>
+              {ASSET_GROUP_LABEL[gr]}
+            </option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={eName}
+          onChange={(e) => setEName(e.target.value)}
+          placeholder="이름"
+          className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
+        />
+        <select
+          value={eOwner}
+          onChange={(e) => setEOwner(e.target.value)}
+          className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+        >
+          {['공동', ...memberNames].map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setEditing(false)}
+            className="h-11 flex-1 rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
+          >
+            취소
+          </button>
+          <button
+            onClick={confirmEdit}
+            disabled={!eName.trim()}
+            className="h-11 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark disabled:opacity-40"
+          >
+            확인
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-card bg-card px-4 py-3 shadow-card">
       <div className="flex items-center gap-2.5">
         <AssetIcon group={item.group} kind={item.kind} size={34} />
-        <div className="w-[76px] shrink-0">
+        <button onClick={startEdit} className="w-[76px] shrink-0 text-left" aria-label="항목 수정">
           <p className="truncate text-[14px] font-semibold text-ink">{item.name}</p>
           <p className="mt-0.5 text-[11px] text-cap">
             {debt ? '부채' : ASSET_GROUP_LABEL[item.group]}
             {item.owner ? ` · ${item.owner}` : ''}
           </p>
-        </div>
+        </button>
         <AmountInput className="flex-1" value={item.amount} onChange={(v) => onChange(item.id, v)} />
+        <button
+          onClick={startEdit}
+          className="shrink-0 text-cap active:text-brand"
+          aria-label="항목 수정"
+        >
+          <Pencil size={15} />
+        </button>
         <button
           onClick={() => setMemoOpen((v) => !v)}
           className={`shrink-0 ${memoVisible ? 'text-brand' : 'text-cap'} active:text-brand`}

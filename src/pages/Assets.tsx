@@ -47,6 +47,24 @@ export default function Assets() {
   const assetItems = snapshot.items.filter((it) => it.kind === 'asset')
   const debtItems = snapshot.items.filter((it) => it.kind === 'debt')
 
+  // 소유자별 배지 색: 구성원1 파랑 · 구성원2 핑크 · 공동 중립
+  const ownerBadgeClass = (owner?: string) =>
+    owner === profile.member1Name
+      ? 'bg-brand/10 text-brand'
+      : owner === profile.member2Name
+        ? 'bg-pink-50 text-pink-500'
+        : 'bg-bg text-sub'
+
+  // 구성원별 자산 합계 (자산만, 부채 제외)
+  const ownerTotals = [profile.member1Name, profile.member2Name, '공동'].map((name) => ({
+    name,
+    total: assetItems
+      .filter((it) =>
+        name === '공동' ? !it.owner || it.owner === '공동' : it.owner === name,
+      )
+      .reduce((acc, it) => acc + it.amount, 0),
+  }))
+
   const groupsWithItems = ASSET_GROUP_ORDER.map((g) => ({
     group: g,
     items: assetItems.filter((it) => it.group === g),
@@ -142,9 +160,29 @@ export default function Assets() {
         </div>
       </Card>
 
+      {/* 구성원별 자산 합계 */}
+      {snapshot.items.length > 0 && (
+        <div className="grid grid-cols-3 gap-2.5">
+          {ownerTotals.map(({ name, total }) => (
+            <div key={name} className="rounded-card bg-card px-2 py-3 text-center shadow-card">
+              <span
+                className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${ownerBadgeClass(
+                  name === '공동' ? undefined : name,
+                )}`}
+              >
+                {name}
+              </span>
+              <p className="tnum mt-1.5 text-[14px] font-extrabold text-ink">
+                {abbreviateKRW(total)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* 자산 그룹별 계좌 카드 그리드 */}
       {groupsWithItems.map(({ group, items }) => (
-        <AssetGroupSection key={group} group={group} items={items} />
+        <AssetGroupSection key={group} group={group} items={items} badgeClass={ownerBadgeClass} />
       ))}
 
       {/* 부채 */}
@@ -156,7 +194,7 @@ export default function Assets() {
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {debtItems.map((it) => (
-              <AccountCard key={it.id} item={it} debt />
+              <AccountCard key={it.id} item={it} badgeClass={ownerBadgeClass(it.owner)} debt />
             ))}
           </div>
         </section>
@@ -184,9 +222,11 @@ export default function Assets() {
 function AssetGroupSection({
   group,
   items,
+  badgeClass,
 }: {
   group: AssetGroup
   items: AssetItemLike[]
+  badgeClass: (owner?: string) => string
 }) {
   const subtotal = items.reduce((acc, it) => acc + it.amount, 0)
   return (
@@ -200,7 +240,7 @@ function AssetGroupSection({
       </div>
       <div className="grid grid-cols-2 gap-2.5">
         {items.map((it) => (
-          <AccountCard key={it.id} item={it} />
+          <AccountCard key={it.id} item={it} badgeClass={badgeClass(it.owner)} />
         ))}
       </div>
     </section>
@@ -216,14 +256,22 @@ interface AssetItemLike {
   owner?: string
 }
 
-// 계좌 하나 = 카드 하나: 아이콘 + 이름 + 소유자 + 잔액
-function AccountCard({ item, debt }: { item: AssetItemLike; debt?: boolean }) {
+// 계좌 하나 = 카드 하나: 아이콘 + 이름 + 소유자(색 구분) + 잔액
+function AccountCard({
+  item,
+  badgeClass,
+  debt,
+}: {
+  item: AssetItemLike
+  badgeClass: string
+  debt?: boolean
+}) {
   return (
     <div className="rounded-card bg-card p-4 shadow-card">
       <div className="flex items-start justify-between">
         <AssetIcon group={item.group} kind={item.kind} size={38} />
         {item.owner && (
-          <span className="rounded-full bg-bg px-2 py-0.5 text-[11px] font-semibold text-sub">
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${badgeClass}`}>
             {item.owner}
           </span>
         )}

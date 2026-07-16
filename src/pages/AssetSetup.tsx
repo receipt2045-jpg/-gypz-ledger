@@ -30,6 +30,8 @@ export default function AssetSetup() {
     setAssets((prev) =>
       prev.map((it) => (it.id === id ? { ...it, note: note.trim() || undefined } : it)),
     )
+  const updateAsset = (id: string, patch: Partial<Omit<AssetItem, 'id'>>) =>
+    setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
   const addAsset = (asset: Omit<AssetItem, 'id'>) =>
     setAssets((prev) => [...prev, { ...asset, id: genId() }])
   const removeAsset = (id: string) => setAssets((prev) => prev.filter((it) => it.id !== id))
@@ -107,6 +109,7 @@ export default function AssetSetup() {
           defaultOwner={memberName}
           onChange={setAmount}
           onNote={setNote}
+          onUpdate={updateAsset}
           onAdd={addAsset}
           onRemove={removeAsset}
         />
