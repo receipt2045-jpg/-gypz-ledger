@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
+import { Baby, ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
 import AssetEditor from '../components/AssetEditor'
 import { useLedgerStore } from '../lib/store'
 import { activeYm, genId, netWorthOf, resolveSnapshot } from '../lib/carryover'
@@ -19,11 +19,12 @@ export default function AssetSetup() {
   const [assets, setAssets] = useState<AssetItem[]>(
     () => resolveSnapshot(snapshots, ym).items.map((it) => ({ ...it })),
   )
-  const [member, setMember] = useState<1 | 2 | null>(null)
+  // 선택된 소유자 이름 (부부 또는 자녀)
+  const [selName, setSelName] = useState<string | null>(null)
 
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
   const childNames = profile.childNames ?? []
-  const memberName = member ? memberNames[member - 1] : ''
+  const isChild = selName ? childNames.includes(selName) : false
 
   const setAmount = (id: string, amount: number) =>
     setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, amount } : it)))
@@ -42,24 +43,20 @@ export default function AssetSetup() {
     navigate('/assets')
   }
 
-  // ── 구성원 선택 ───────────────────────────
-  if (!member) {
+  // ── 구성원 선택 (부부 + 자녀) ─────────────
+  if (!selName) {
     return (
       <Frame>
         <Header onBack={() => navigate(-1)} title="자산 등록" subtitle="어떤 통장에 얼마 있는지 확인해 봐요" />
         <div className="flex-1 space-y-3 px-5 pt-4">
           {([1, 2] as const).map((m) => {
             const count = assets.filter(
-              (a) =>
-                a.owner === memberNames[m - 1] ||
-                a.owner === '공동' ||
-                !a.owner ||
-                childNames.includes(a.owner ?? ''),
+              (a) => a.owner === memberNames[m - 1] || a.owner === '공동' || !a.owner,
             ).length
             return (
               <button
                 key={m}
-                onClick={() => setMember(m)}
+                onClick={() => setSelName(memberNames[m - 1])}
                 className="flex w-full items-center gap-4 rounded-card bg-card px-5 py-5 text-left shadow-card transition-transform active:scale-[0.98]"
               >
                 <div
@@ -86,8 +83,34 @@ export default function AssetSetup() {
               </button>
             )
           })}
+
+          {/* 자녀 카드 — 설정 > 부부 정보에서 자녀를 추가하면 나타나요 */}
+          {childNames.map((c) => {
+            const count = assets.filter((a) => a.owner === c).length
+            return (
+              <button
+                key={c}
+                onClick={() => setSelName(c)}
+                className="flex w-full items-center gap-4 rounded-card bg-card px-5 py-5 text-left shadow-card transition-transform active:scale-[0.98]"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                  <Baby size={24} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[17px] font-bold text-ink">{c}</p>
+                  <p className="mt-0.5 text-[13px] text-sub">
+                    {count > 0 ? `등록된 계좌 ${count}개 · 수정할 수 있어요` : '아직 등록한 계좌가 없어요'}
+                  </p>
+                </div>
+                <ChevronRight size={20} className="text-cap" />
+              </button>
+            )
+          })}
+
           <p className="px-1 pt-2 text-[12px] leading-relaxed text-cap">
             각자 자기 통장과 공동 통장을 입력하면 우리집 순자산이 계산돼요.
+            {childNames.length === 0 &&
+              ' 자녀 통장은 설정 > 부부 정보에서 자녀를 추가하면 관리할 수 있어요.'}
           </p>
         </div>
       </Frame>
@@ -95,27 +118,34 @@ export default function AssetSetup() {
   }
 
   // ── 자산 입력 ─────────────────────────────
-  const visibleAssets = assets.filter(
-    (a) =>
-      !a.owner ||
-      a.owner === '공동' ||
-      a.owner === memberName ||
-      childNames.includes(a.owner),
-  )
+  // 부부: 본인 + 공동 + 자녀 계좌 / 자녀 선택 시: 그 자녀 계좌만
+  const visibleAssets = isChild
+    ? assets.filter((a) => a.owner === selName)
+    : assets.filter(
+        (a) =>
+          !a.owner ||
+          a.owner === '공동' ||
+          a.owner === selName ||
+          childNames.includes(a.owner),
+      )
   const netWorth = netWorthOf({ ym, items: assets })
 
   return (
     <Frame>
       <Header
-        onBack={() => setMember(null)}
+        onBack={() => setSelName(null)}
         title="자산 등록"
-        subtitle={`${memberName} · 내 통장과 공동 통장을 입력해요`}
+        subtitle={
+          isChild
+            ? `${selName} · 자녀 앞으로 모아둔 통장을 입력해요`
+            : `${selName} · 내 통장과 공동 통장을 입력해요`
+        }
       />
       <div className="flex-1 px-5 pb-32">
         <AssetEditor
           assets={visibleAssets}
           ownerOptions={['공동', ...memberNames, ...childNames]}
-          defaultOwner={memberName}
+          defaultOwner={selName}
           onChange={setAmount}
           onNote={setNote}
           onUpdate={updateAsset}
