@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Copy, Check, Download, LogOut, Upload, RotateCcw, X, Plus } from 'lucide-react'
+import { Copy, Check, Download, KeyRound, LogOut, Upload, RotateCcw, X, Plus } from 'lucide-react'
 import Card from '../components/Card'
 import AmountInput from '../components/AmountInput'
 import { useLedgerStore } from '../lib/store'
@@ -221,14 +221,31 @@ export default function Settings() {
       {/* 계정 */}
       <Card>
         <h2 className="mb-3 text-[15px] font-bold text-ink">계정</h2>
-        <button
-          onClick={() => {
-            if (confirm('로그아웃할까요?')) supabase.auth.signOut()
-          }}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
-        >
-          <LogOut size={18} /> 로그아웃
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={async () => {
+              const pw = prompt('새 비밀번호를 입력하세요 (6자 이상)')
+              if (!pw) return
+              if (pw.length < 6) {
+                alert('비밀번호는 6자 이상이어야 해요.')
+                return
+              }
+              const { error } = await supabase.auth.updateUser({ password: pw })
+              alert(error ? `실패: ${error.message}` : '비밀번호가 설정됐어요. 다음 로그인부터 사용하세요!')
+            }}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
+          >
+            <KeyRound size={18} /> 비밀번호 설정·변경
+          </button>
+          <button
+            onClick={() => {
+              if (confirm('로그아웃할까요?')) supabase.auth.signOut()
+            }}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
+          >
+            <LogOut size={18} /> 로그아웃
+          </button>
+        </div>
       </Card>
 
       <p className="pb-2 text-center text-[12px] text-cap">우리집 가계부 · v0.2</p>
