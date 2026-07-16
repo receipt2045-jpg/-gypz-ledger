@@ -2,6 +2,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import AssetIcon from '../components/AssetIcon'
 import Card from '../components/Card'
+import InfoTip from '../components/InfoTip'
 import ProgressBar from '../components/ProgressBar'
 import { useLedgerStore } from '../lib/store'
 import {
@@ -18,7 +19,7 @@ import {
   formatPercent,
   formatWon,
 } from '../lib/format'
-import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER } from '../lib/constants'
+import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER, TERM_TIP } from '../lib/constants'
 import type { AssetGroup } from '../types'
 
 export default function Assets() {
@@ -57,7 +58,10 @@ export default function Assets() {
 
       {/* 순자산 요약 */}
       <Card>
-        <p className="text-[13px] font-medium text-cap">순자산</p>
+        <p className="text-[13px] font-medium text-cap">
+          순자산
+          <InfoTip text={TERM_TIP.netWorth} />
+        </p>
         <p className="tnum mt-1 text-[30px] font-extrabold tracking-tight text-ink">
           {abbreviateKRW(netWorth)}
         </p>
@@ -167,7 +171,10 @@ function AssetGroupSection({
   return (
     <section>
       <div className="mb-2 flex items-center justify-between px-1">
-        <h3 className="text-[15px] font-bold text-ink">{ASSET_GROUP_LABEL[group]}</h3>
+        <h3 className="flex items-center text-[15px] font-bold text-ink">
+          {ASSET_GROUP_LABEL[group]}
+          {group === 'cash' && <InfoTip text={TERM_TIP.cash} />}
+        </h3>
         <span className="tnum text-[14px] font-bold text-sub">{abbreviateKRW(subtotal)}</span>
       </div>
       <div className="grid grid-cols-2 gap-2.5">

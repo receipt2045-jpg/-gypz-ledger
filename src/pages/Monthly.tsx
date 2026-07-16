@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import InfoTip from '../components/InfoTip'
 import SectionList from '../components/SectionList'
 import { useLedgerStore } from '../lib/store'
 import { activeYm, resolveLedger, summarize } from '../lib/carryover'
 import { formatWon, formatYmKorean, shiftYm } from '../lib/format'
-import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
+import { GROUP_LABEL, GROUP_ORDER, TERM_TIP } from '../lib/constants'
 import type { CategoryGroup } from '../types'
 
 type MemberFilter = 0 | 1 | 2 // 0 = 함께
@@ -115,7 +116,10 @@ export default function Monthly() {
       {/* 잉여현금 */}
       <div className="rounded-card bg-ink px-5 py-4 text-white">
         <div className="flex items-center justify-between">
-          <span className="text-[15px] font-semibold text-white/80">잉여현금</span>
+          <span className="flex items-center text-[15px] font-semibold text-white/80">
+            잉여현금
+            <InfoTip text={TERM_TIP.surplus} />
+          </span>
           <span className={`tnum text-[20px] font-extrabold ${s.surplus < 0 ? 'text-[#FF8A93]' : 'text-white'}`}>
             {formatWon(s.surplus)}
           </span>

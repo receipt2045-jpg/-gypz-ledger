@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { Check, ChevronRight, TrendingUp } from 'lucide-react'
 import Card from '../components/Card'
+import InfoTip from '../components/InfoTip'
 import ProgressBar from '../components/ProgressBar'
 import { useLedgerStore } from '../lib/store'
 import {
@@ -19,6 +20,7 @@ import {
   formatWon,
   signedAbbrev,
 } from '../lib/format'
+import { TERM_TIP } from '../lib/constants'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -47,7 +49,10 @@ export default function Home() {
         <p className="text-[15px] font-semibold text-sub">
           {formatMonthKorean(ym)} 우리집 돈 흐름
         </p>
-        <p className="mt-1 text-[13px] text-cap">이번 달 순자산</p>
+        <p className="mt-1 text-[13px] text-cap">
+          이번 달 순자산
+          <InfoTip text={TERM_TIP.netWorth} />
+        </p>
         <h1 className="tnum mt-1 text-[34px] font-extrabold leading-tight tracking-tight text-ink">
           {abbreviateKRW(netWorth)}
         </h1>
@@ -60,8 +65,9 @@ export default function Home() {
       <Card>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[16px] font-bold text-ink">{formatMonthKorean(ym)} 요약</h2>
-          <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[12px] font-bold text-brand">
+          <span className="flex items-center rounded-full bg-brand/10 px-2.5 py-1 text-[12px] font-bold text-brand">
             저축·투자율 {formatPercent(s.savingInvestRate)}
+            <InfoTip text={TERM_TIP.savingRate} />
           </span>
         </div>
         <div className="space-y-2.5">
@@ -76,7 +82,10 @@ export default function Home() {
       <Card>
         {ledger.closed ? (
           <>
-            <p className="text-[13px] font-medium text-cap">이번 달 잉여현금</p>
+            <p className="text-[13px] font-medium text-cap">
+              이번 달 잉여현금
+              <InfoTip text={TERM_TIP.surplus} />
+            </p>
             <p
               className={`tnum mt-1 text-[24px] font-extrabold ${s.surplus < 0 ? 'text-danger' : 'text-ink'}`}
             >

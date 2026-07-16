@@ -49,7 +49,7 @@ const DONE_STEP = TOTAL_STEPS // index 6
 
 export default function Checkup() {
   const navigate = useNavigate()
-  const { ledgers, snapshots, categories, profile, memberNo, saveLedger, saveSnapshot } =
+  const { ledgers, snapshots, categories, profile, memberNo, saveLedger, saveSnapshot, addCategory } =
     useLedgerStore()
 
   // 정산 대상 월은 진입 시점에 고정 (정산 완료 후 activeYm이 다음 달로 넘어가도 유지)
@@ -69,6 +69,7 @@ export default function Checkup() {
 
   const [step, setStep] = useState(MEMBER_STEP)
   const [member, setMember] = useState<1 | 2 | null>(null)
+  const [showErrors, setShowErrors] = useState(false) // 금액 검증 (브리프 P1 2.2)
 
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
   const memberName = member ? memberNames[member - 1] : ''
@@ -108,6 +109,7 @@ export default function Checkup() {
   }
 
   const goBack = () => {
+    setShowErrors(false)
     if (step === MEMBER_STEP) navigate('/')
     else if (step === 1) setStep(MEMBER_STEP)
     else if (step < DONE_STEP) setStep((s) => s - 1)
@@ -266,6 +268,17 @@ export default function Checkup() {
   const def = STEPS[step - 1]
   const stepItems = items.filter((it) => def.groups.includes(it.group) && it.member === member)
 
+  // 빈값·0원 항목이 있으면 다음 단계로 못 넘어감 (삭제하거나 금액 입력)
+  const stepInvalid = stepItems.some((it) => !it.actual || it.actual <= 0)
+  const tryNext = () => {
+    if (stepInvalid) {
+      setShowErrors(true)
+      return
+    }
+    setShowErrors(false)
+    next()
+  }
+
   return (
     <Frame>
       <Header
@@ -279,22 +292,24 @@ export default function Checkup() {
           groups={def.groups}
           items={stepItems}
           categories={categories}
+          showErrors={showErrors}
           onChange={setActual}
           onAdd={addItem}
           onRemove={removeItem}
+          onCreateCategory={addCategory}
         />
       </div>
       <BottomBar>
         <div className="space-y-2">
           <button
-            onClick={next}
+            onClick={tryNext}
             className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark"
           >
             다음
           </button>
           {def.sameAsLast && (
             <button
-              onClick={next}
+              onClick={tryNext}
               className="h-11 w-full rounded-btn bg-white text-[14px] font-semibold text-sub active:bg-line"
             >
               지난달과 같아요
@@ -379,28 +394,46 @@ function ResultRow({
 }
 
 // ── 금액 입력 스텝 ─────────────────────────────
+const NEW_CAT = '__new__' // '+ 새 카테고리' 옵션 값
+
 function MoneyStep({
   groups,
   items,
   categories,
+  showErrors,
   onChange,
   onAdd,
   onRemove,
+  onCreateCategory,
 }: {
   groups: CategoryGroup[]
   items: BudgetItem[]
   categories: Record<CategoryGroup, string[]>
+  showErrors: boolean
   onChange: (id: string, v: number) => void
   onAdd: (g: CategoryGroup, c: string) => void
   onRemove: (id: string) => void
+  onCreateCategory: (g: CategoryGroup, name: string) => void
 }) {
   const [adding, setAdding] = useState(false)
   const [g, setG] = useState<CategoryGroup>(groups[0])
   const [cat, setCat] = useState(categories[groups[0]][0])
+  const [newCatName, setNewCatName] = useState('')
+
+  // '기타'가 없는 기존 데이터에도 항상 노출 (브리프 P1 2.1)
+  const catOptions = categories[g].includes('기타') ? categories[g] : [...categories[g], '기타']
 
   const submitAdd = () => {
-    if (!cat) return
-    onAdd(g, cat)
+    if (cat === NEW_CAT) {
+      const name = newCatName.trim()
+      if (!name) return
+      onCreateCategory(g, name) // 설정의 카테고리 목록에도 저장
+      onAdd(g, name)
+    } else {
+      if (!cat) return
+      onAdd(g, cat)
+    }
+    setNewCatName('')
     setAdding(false)
   }
 
@@ -409,68 +442,99 @@ function MoneyStep({
       {items.length === 0 && (
         <p className="py-6 text-center text-[13px] text-cap">항목을 추가해 주세요</p>
       )}
-      {items.map((it) => (
-        <div
-          key={it.id}
-          className="flex items-center gap-2.5 rounded-card bg-card px-4 py-3 shadow-card"
-        >
-          <div className="w-[76px] shrink-0">
-            <p className="truncate text-[15px] font-semibold text-ink">{it.category}</p>
-            {groups.length > 1 && (
-              <p className="mt-0.5 truncate text-[11px] text-cap">{GROUP_LABEL[it.group]}</p>
+      {items.map((it) => {
+        const invalid = showErrors && (!it.actual || it.actual <= 0)
+        return (
+          <div key={it.id} className="rounded-card bg-card px-4 py-3 shadow-card">
+            <div className="flex items-center gap-2.5">
+              <div className="w-[76px] shrink-0">
+                <p className="truncate text-[15px] font-semibold text-ink">{it.category}</p>
+                {groups.length > 1 && (
+                  <p className="mt-0.5 truncate text-[11px] text-cap">{GROUP_LABEL[it.group]}</p>
+                )}
+              </div>
+              <AmountInput
+                className="flex-1"
+                value={it.actual}
+                error={invalid}
+                onChange={(v) => onChange(it.id, v)}
+              />
+              <button
+                onClick={() => onRemove(it.id)}
+                className="shrink-0 text-cap active:text-danger"
+                aria-label="삭제"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {invalid && (
+              <p className="mt-1.5 text-right text-[12px] font-medium text-danger">
+                금액을 입력해 주세요 ❗️
+              </p>
             )}
           </div>
-          <AmountInput className="flex-1" value={it.actual} onChange={(v) => onChange(it.id, v)} />
-          <button
-            onClick={() => onRemove(it.id)}
-            className="shrink-0 text-cap active:text-danger"
-            aria-label="삭제"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      ))}
+        )
+      })}
 
       {adding ? (
         <div className="space-y-2 rounded-card bg-card p-4 shadow-card">
-          {groups.length > 1 && (
+          {/* 드롭다운 가로 배치: '추가' 버튼 위치가 흔들리지 않게 고정 (브리프 P1 2.3) */}
+          <div className="flex gap-2">
+            {groups.length > 1 && (
+              <select
+                value={g}
+                onChange={(e) => {
+                  const ng = e.target.value as CategoryGroup
+                  setG(ng)
+                  setCat(categories[ng][0])
+                }}
+                className="min-w-0 flex-1 rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+              >
+                {groups.map((gr) => (
+                  <option key={gr} value={gr}>
+                    {GROUP_LABEL[gr]}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
-              value={g}
-              onChange={(e) => {
-                const ng = e.target.value as CategoryGroup
-                setG(ng)
-                setCat(categories[ng][0])
-              }}
-              className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+              value={cat}
+              onChange={(e) => setCat(e.target.value)}
+              className="min-w-0 flex-1 rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
             >
-              {groups.map((gr) => (
-                <option key={gr} value={gr}>
-                  {GROUP_LABEL[gr]}
+              {catOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
                 </option>
               ))}
+              <option value={NEW_CAT}>+ 새 카테고리</option>
             </select>
+          </div>
+          {cat === NEW_CAT && (
+            <input
+              type="text"
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitAdd()}
+              placeholder="새 카테고리 이름"
+              autoFocus
+              className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
+            />
           )}
-          <select
-            value={cat}
-            onChange={(e) => setCat(e.target.value)}
-            className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
-          >
-            {categories[g].map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-1">
             <button
-              onClick={() => setAdding(false)}
+              onClick={() => {
+                setAdding(false)
+                setNewCatName('')
+              }}
               className="h-11 flex-1 rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
             >
               취소
             </button>
             <button
               onClick={submitAdd}
-              className="h-11 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark"
+              disabled={cat === NEW_CAT && !newCatName.trim()}
+              className="h-11 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark disabled:opacity-40"
             >
               추가
             </button>

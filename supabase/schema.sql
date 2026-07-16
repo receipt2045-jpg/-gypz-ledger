@@ -12,11 +12,11 @@ create table public.households (
   target_net_worth bigint not null default 1000000000,
   start_year int not null default date_part('year', now()),
   categories jsonb not null default '{
-    "income": ["주수입", "부수입", "투자수익"],
-    "saving": ["주택청약", "예금", "적금", "연금", "목적저금"],
-    "investment": ["주식", "부동산", "코인"],
-    "fixed": ["보험", "통신", "용돈", "주거", "구독"],
-    "variable": ["식비", "생활용품", "건강", "육아", "꾸밈", "자기계발", "여행", "자동차", "문화생활", "세금", "반려견", "경조사"]
+    "income": ["주수입", "부수입", "투자수익", "기타"],
+    "saving": ["주택청약", "예금", "적금", "연금", "목적저금", "기타"],
+    "investment": ["주식", "부동산", "코인", "기타"],
+    "fixed": ["보험", "통신", "용돈", "주거", "구독", "기타"],
+    "variable": ["식비", "생활용품", "건강", "육아", "꾸밈", "자기계발", "여행", "자동차", "문화생활", "세금", "반려견", "경조사", "기타"]
   }'::jsonb,
   created_at timestamptz not null default now()
 );
