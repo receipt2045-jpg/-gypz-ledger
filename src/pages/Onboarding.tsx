@@ -1,24 +1,50 @@
 import { useState } from 'react'
-import { Heart, KeyRound, Plus } from 'lucide-react'
+import { Heart, KeyRound, Plus, Target } from 'lucide-react'
+import AmountInput from '../components/AmountInput'
 import { supabase } from '../lib/supabase'
-import { createHousehold, joinHousehold, type Membership } from '../lib/db'
+import { createHousehold, joinHousehold, pushProfile, type Membership } from '../lib/db'
+import { abbreviateKRW } from '../lib/format'
 
 export default function Onboarding({ onDone }: { onDone: (m: Membership) => void }) {
-  const [mode, setMode] = useState<'choose' | 'join'>('choose')
+  const [mode, setMode] = useState<'choose' | 'join' | 'profile'>('choose')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // 가구 생성 직후 이름·목표 설정 (브리프 P2 3.2)
+  const [membership, setMembership] = useState<Membership | null>(null)
+  const [name1, setName1] = useState('남편')
+  const [name2, setName2] = useState('아내')
+  const [target, setTarget] = useState(1_000_000_000)
 
   const handleCreate = async () => {
     if (busy) return
     setBusy(true)
     setError('')
     try {
-      onDone(await createHousehold())
+      const m = await createHousehold()
+      setMembership(m)
+      setBusy(false)
+      setMode('profile')
     } catch (err) {
       setError(err instanceof Error ? err.message : '가계부를 만들지 못했어요')
       setBusy(false)
     }
+  }
+
+  const saveProfile = async () => {
+    if (!membership || busy) return
+    setBusy(true)
+    try {
+      await pushProfile(membership.householdId, {
+        member1Name: name1.trim() || '남편',
+        member2Name: name2.trim() || '아내',
+        targetNetWorth: target > 0 ? target : 1_000_000_000,
+        startYear: new Date().getFullYear(),
+      })
+    } catch (err) {
+      console.error(err) // 저장 실패해도 기본값으로 진행 (설정에서 수정 가능)
+    }
+    onDone(membership)
   }
 
   const handleJoin = async () => {
@@ -38,18 +64,75 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
       <div className="flex min-h-screen w-full max-w-app flex-col justify-center bg-bg px-6 shadow-[0_0_60px_rgba(0,0,0,0.06)]">
         <div className="animate-fade-up">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/10">
-            <Heart size={30} className="text-brand" />
+            {mode === 'profile' ? (
+              <Target size={30} className="text-brand" />
+            ) : (
+              <Heart size={30} className="text-brand" />
+            )}
           </div>
           <h1 className="text-[26px] font-extrabold leading-snug text-ink">
-            거의 다 됐어요!
+            {mode === 'profile' ? '우리 부부를 알려주세요' : '거의 다 됐어요!'}
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-sub">
-            부부가 함께 쓰는 가계부예요.
-            <br />
-            새로 만들거나, 배우자의 초대 코드로 참여하세요.
+            {mode === 'profile' ? (
+              <>
+                호칭과 10년 목표 순자산을 정해요.
+                <br />
+                나중에 설정에서 언제든 바꿀 수 있어요.
+              </>
+            ) : (
+              <>
+                부부가 함께 쓰는 가계부예요.
+                <br />
+                새로 만들거나, 배우자의 초대 코드로 참여하세요.
+              </>
+            )}
           </p>
 
-          {mode === 'choose' ? (
+          {mode === 'profile' ? (
+            <div className="mt-8 space-y-3">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="mb-1.5 block text-[13px] font-medium text-sub">나 (구성원 1)</label>
+                  <input
+                    type="text"
+                    value={name1}
+                    onChange={(e) => setName1(e.target.value)}
+                    className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-center text-[15px] font-semibold text-ink outline-none focus:border-brand"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="mb-1.5 block text-[13px] font-medium text-sub">배우자 (구성원 2)</label>
+                  <input
+                    type="text"
+                    value={name2}
+                    onChange={(e) => setName2(e.target.value)}
+                    className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-center text-[15px] font-semibold text-ink outline-none focus:border-brand"
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-[13px] font-medium text-sub">10년 목표 순자산</label>
+                  <span className="text-[12px] text-cap">{abbreviateKRW(target)}</span>
+                </div>
+                <AmountInput value={target} onChange={setTarget} />
+              </div>
+              <button
+                onClick={saveProfile}
+                disabled={busy}
+                className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
+              >
+                {busy ? '저장 중…' : '시작하기'}
+              </button>
+              <button
+                onClick={() => membership && onDone(membership)}
+                className="h-11 w-full rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
+              >
+                건너뛰기 (기본값 사용)
+              </button>
+            </div>
+          ) : mode === 'choose' ? (
             <div className="mt-8 space-y-3">
               <button
                 onClick={handleCreate}
@@ -118,12 +201,14 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
 
           {error && <p className="mt-3 text-[13px] text-danger">{error}</p>}
 
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="mt-8 w-full text-center text-[13px] text-cap underline"
-          >
-            다른 계정으로 로그인
-          </button>
+          {mode !== 'profile' && (
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="mt-8 w-full text-center text-[13px] text-cap underline"
+            >
+              다른 계정으로 로그인
+            </button>
+          )}
         </div>
       </div>
     </div>

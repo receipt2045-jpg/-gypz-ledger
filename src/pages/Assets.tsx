@@ -1,5 +1,6 @@
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowDownRight, ArrowUpRight, ChevronRight } from 'lucide-react'
 import AssetIcon from '../components/AssetIcon'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
@@ -23,6 +24,7 @@ import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER, TERM_TIP } from '../lib/constants
 import type { AssetGroup } from '../types'
 
 export default function Assets() {
+  const navigate = useNavigate()
   const { snapshots, profile } = useLedgerStore()
   // 최신 스냅샷 기준
   const latestYm = snapshots.length ? snapshots[snapshots.length - 1].ym : currentYm()
@@ -144,11 +146,14 @@ export default function Assets() {
         </section>
       )}
 
-      {/* 10년 목표 */}
-      <Card>
+      {/* 10년 목표 — 탭하면 설정에서 바로 수정 (브리프 P2 3.2) */}
+      <Card onClick={() => navigate('/settings')}>
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[15px] font-bold text-ink">10년 목표 순자산</p>
-          <span className="tnum text-[14px] font-bold text-brand">{formatPercent(targetRatio)}</span>
+          <span className="flex items-center gap-0.5 text-[14px] font-bold text-brand">
+            <span className="tnum">{formatPercent(targetRatio)}</span>
+            <ChevronRight size={16} className="text-cap" />
+          </span>
         </div>
         <ProgressBar ratio={targetRatio} className="mb-2" />
         <div className="flex justify-between text-[13px] text-sub">

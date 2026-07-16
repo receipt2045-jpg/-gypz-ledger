@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, X, Plus, PartyPopper, UserRound } from 'lucide-react'
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Plus,
+  PartyPopper,
+  StickyNote,
+  UserRound,
+} from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import AssetIcon from '../components/AssetIcon'
 import StepProgress from '../components/StepProgress'
@@ -19,6 +28,7 @@ import {
   formatMonthKorean,
   formatPercent,
   formatWon,
+  formatYmKorean,
   shiftYm,
 } from '../lib/format'
 import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER, GROUP_LABEL } from '../lib/constants'
@@ -75,6 +85,8 @@ export default function Checkup() {
   const memberName = member ? memberNames[member - 1] : ''
   const partnerName = member ? memberNames[member === 1 ? 1 : 0] : ''
   const settledMembers = resolveLedger(ledgers, ym).settledMembers ?? []
+  // '지난달과 같아요'는 직전 정산 기록이 있을 때만 활성 (브리프 P2 3.3)
+  const hasPrevLedger = ledgers.some((l) => l.ym < ym && l.items.length > 0)
 
   const selectMember = (m: 1 | 2) => {
     setMember(m)
@@ -87,6 +99,10 @@ export default function Checkup() {
 
   const setActual = (id: string, actual: number) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, actual } : it)))
+  const setNote = (id: string, note: string) =>
+    setItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, note: note.trim() || undefined } : it)),
+    )
   const addItem = (group: CategoryGroup, category: string) => {
     if (!member) return
     setItems((prev) => [...prev, { ...emptyItem(group, category, member), actual: 0 }])
@@ -95,6 +111,10 @@ export default function Checkup() {
 
   const setAssetAmount = (id: string, amount: number) =>
     setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, amount } : it)))
+  const setAssetNote = (id: string, note: string) =>
+    setAssets((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, note: note.trim() || undefined } : it)),
+    )
   const addAsset = (asset: Omit<AssetItem, 'id'>) =>
     setAssets((prev) => [...prev, { ...asset, id: genId() }])
   const removeAsset = (id: string) => setAssets((prev) => prev.filter((it) => it.id !== id))
@@ -241,6 +261,7 @@ export default function Checkup() {
           onBack={goBack}
           title="자산 업데이트"
           subtitle={`${memberName} · 내 계좌와 공동 계좌 잔액을 갱신해요`}
+          caption={`${formatYmKorean(ym)} 정산`}
         />
         <div className="flex-1 px-5 pb-32">
           <AssetStep
@@ -248,6 +269,7 @@ export default function Checkup() {
             memberNames={memberNames}
             defaultOwner={memberName}
             onChange={setAssetAmount}
+            onNote={setAssetNote}
             onAdd={addAsset}
             onRemove={removeAsset}
           />
@@ -286,6 +308,7 @@ export default function Checkup() {
         onBack={goBack}
         title={def.title}
         subtitle={`${memberName} · ${def.subtitle}`}
+        caption={`${formatYmKorean(ym)} 정산`}
       />
       <div className="flex-1 px-5 pb-32">
         <MoneyStep
@@ -294,6 +317,7 @@ export default function Checkup() {
           categories={categories}
           showErrors={showErrors}
           onChange={setActual}
+          onNote={setNote}
           onAdd={addItem}
           onRemove={removeItem}
           onCreateCategory={addCategory}
@@ -307,14 +331,23 @@ export default function Checkup() {
           >
             다음
           </button>
-          {def.sameAsLast && (
-            <button
-              onClick={tryNext}
-              className="h-11 w-full rounded-btn bg-white text-[14px] font-semibold text-sub active:bg-line"
-            >
-              지난달과 같아요
-            </button>
-          )}
+          {def.sameAsLast &&
+            (hasPrevLedger ? (
+              <button
+                onClick={tryNext}
+                className="h-11 w-full rounded-btn bg-white text-[14px] font-semibold text-sub active:bg-line"
+              >
+                지난달과 같아요
+              </button>
+            ) : (
+              // 첫 정산엔 지난달 데이터가 없어 비활성 + 안내 (브리프 P2 3.3)
+              <button
+                disabled
+                className="h-11 w-full rounded-btn bg-white text-[13px] font-medium text-cap"
+              >
+                지난달 정산 기록이 있으면 그대로 불러옵니다
+              </button>
+            ))}
         </div>
       </BottomBar>
     </Frame>
@@ -337,11 +370,13 @@ function Header({
   onBack,
   title,
   subtitle,
+  caption,
 }: {
   step: number
   onBack: () => void
   title: string
   subtitle: string
+  caption?: string // 정산 월 표기 (브리프 P2 3.1)
 }) {
   return (
     <div className="sticky top-0 z-20 bg-bg px-5 pb-4 pt-4">
@@ -356,6 +391,7 @@ function Header({
           {step + 1}/{TOTAL_STEPS}
         </span>
       </div>
+      {caption && <p className="mb-0.5 text-[13px] font-semibold text-brand">{caption}</p>}
       <h1 className="text-[24px] font-extrabold text-ink">{title}</h1>
       <p className="mt-1 text-[14px] text-sub">{subtitle}</p>
     </div>
@@ -402,6 +438,7 @@ function MoneyStep({
   categories,
   showErrors,
   onChange,
+  onNote,
   onAdd,
   onRemove,
   onCreateCategory,
@@ -411,6 +448,7 @@ function MoneyStep({
   categories: Record<CategoryGroup, string[]>
   showErrors: boolean
   onChange: (id: string, v: number) => void
+  onNote: (id: string, note: string) => void
   onAdd: (g: CategoryGroup, c: string) => void
   onRemove: (id: string) => void
   onCreateCategory: (g: CategoryGroup, name: string) => void
@@ -419,6 +457,7 @@ function MoneyStep({
   const [g, setG] = useState<CategoryGroup>(groups[0])
   const [cat, setCat] = useState(categories[groups[0]][0])
   const [newCatName, setNewCatName] = useState('')
+  const [memoOpen, setMemoOpen] = useState<string | null>(null)
 
   // '기타'가 없는 기존 데이터에도 항상 노출 (브리프 P1 2.1)
   const catOptions = categories[g].includes('기타') ? categories[g] : [...categories[g], '기타']
@@ -444,6 +483,7 @@ function MoneyStep({
       )}
       {items.map((it) => {
         const invalid = showErrors && (!it.actual || it.actual <= 0)
+        const memoVisible = memoOpen === it.id || !!it.note
         return (
           <div key={it.id} className="rounded-card bg-card px-4 py-3 shadow-card">
             <div className="flex items-center gap-2.5">
@@ -460,6 +500,13 @@ function MoneyStep({
                 onChange={(v) => onChange(it.id, v)}
               />
               <button
+                onClick={() => setMemoOpen(memoOpen === it.id ? null : it.id)}
+                className={`shrink-0 ${memoVisible ? 'text-brand' : 'text-cap'} active:text-brand`}
+                aria-label="메모"
+              >
+                <StickyNote size={16} />
+              </button>
+              <button
                 onClick={() => onRemove(it.id)}
                 className="shrink-0 text-cap active:text-danger"
                 aria-label="삭제"
@@ -467,6 +514,15 @@ function MoneyStep({
                 <X size={18} />
               </button>
             </div>
+            {memoVisible && (
+              <input
+                type="text"
+                value={it.note ?? ''}
+                onChange={(e) => onNote(it.id, e.target.value)}
+                placeholder="메모 (선택)"
+                className="mt-2 w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
+              />
+            )}
             {invalid && (
               <p className="mt-1.5 text-right text-[12px] font-medium text-danger">
                 금액을 입력해 주세요 ❗️
@@ -562,6 +618,7 @@ function AssetStep({
   memberNames,
   defaultOwner,
   onChange,
+  onNote,
   onAdd,
   onRemove,
 }: {
@@ -569,6 +626,7 @@ function AssetStep({
   memberNames: [string, string]
   defaultOwner: string
   onChange: (id: string, v: number) => void
+  onNote: (id: string, note: string) => void
   onAdd: (a: Omit<AssetItem, 'id'>) => void
   onRemove: (id: string) => void
 }) {
@@ -593,13 +651,20 @@ function AssetStep({
   return (
     <div className="space-y-3">
       {assetItems.map((it) => (
-        <AssetRow key={it.id} item={it} onChange={onChange} onRemove={onRemove} />
+        <AssetRow key={it.id} item={it} onChange={onChange} onNote={onNote} onRemove={onRemove} />
       ))}
       {debtItems.length > 0 && (
         <p className="px-1 pt-2 text-[13px] font-bold text-danger">부채</p>
       )}
       {debtItems.map((it) => (
-        <AssetRow key={it.id} item={it} onChange={onChange} onRemove={onRemove} debt />
+        <AssetRow
+          key={it.id}
+          item={it}
+          onChange={onChange}
+          onNote={onNote}
+          onRemove={onRemove}
+          debt
+        />
       ))}
 
       {adding ? (
@@ -681,32 +746,54 @@ function AssetStep({
 function AssetRow({
   item,
   onChange,
+  onNote,
   onRemove,
   debt,
 }: {
   item: AssetItem
   onChange: (id: string, v: number) => void
+  onNote: (id: string, note: string) => void
   onRemove: (id: string) => void
   debt?: boolean
 }) {
+  const [memoOpen, setMemoOpen] = useState(false)
+  const memoVisible = memoOpen || !!item.note
   return (
-    <div className="flex items-center gap-2.5 rounded-card bg-card px-4 py-3 shadow-card">
-      <AssetIcon group={item.group} kind={item.kind} size={34} />
-      <div className="w-[76px] shrink-0">
-        <p className="truncate text-[14px] font-semibold text-ink">{item.name}</p>
-        <p className="mt-0.5 text-[11px] text-cap">
-          {debt ? '부채' : ASSET_GROUP_LABEL[item.group]}
-          {item.owner ? ` · ${item.owner}` : ''}
-        </p>
+    <div className="rounded-card bg-card px-4 py-3 shadow-card">
+      <div className="flex items-center gap-2.5">
+        <AssetIcon group={item.group} kind={item.kind} size={34} />
+        <div className="w-[76px] shrink-0">
+          <p className="truncate text-[14px] font-semibold text-ink">{item.name}</p>
+          <p className="mt-0.5 text-[11px] text-cap">
+            {debt ? '부채' : ASSET_GROUP_LABEL[item.group]}
+            {item.owner ? ` · ${item.owner}` : ''}
+          </p>
+        </div>
+        <AmountInput className="flex-1" value={item.amount} onChange={(v) => onChange(item.id, v)} />
+        <button
+          onClick={() => setMemoOpen((v) => !v)}
+          className={`shrink-0 ${memoVisible ? 'text-brand' : 'text-cap'} active:text-brand`}
+          aria-label="메모"
+        >
+          <StickyNote size={16} />
+        </button>
+        <button
+          onClick={() => onRemove(item.id)}
+          className="shrink-0 text-cap active:text-danger"
+          aria-label="삭제"
+        >
+          <X size={18} />
+        </button>
       </div>
-      <AmountInput className="flex-1" value={item.amount} onChange={(v) => onChange(item.id, v)} />
-      <button
-        onClick={() => onRemove(item.id)}
-        className="shrink-0 text-cap active:text-danger"
-        aria-label="삭제"
-      >
-        <X size={18} />
-      </button>
+      {memoVisible && (
+        <input
+          type="text"
+          value={item.note ?? ''}
+          onChange={(e) => onNote(item.id, e.target.value)}
+          placeholder="메모 (선택)"
+          className="mt-2 w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
+        />
+      )}
     </div>
   )
 }

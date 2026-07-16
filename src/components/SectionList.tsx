@@ -37,7 +37,10 @@ export default function SectionList({
             <div key={it.id} className="flex items-center justify-between py-3">
               <div className="min-w-0">
                 <p className="truncate text-[15px] font-medium text-ink">{it.category}</p>
-                <p className="mt-0.5 text-[12px] text-cap">{memberNames[it.member - 1]}</p>
+                <p className="mt-0.5 truncate text-[12px] text-cap">
+                  {memberNames[it.member - 1]}
+                  {it.note ? ` · ${it.note}` : ''}
+                </p>
               </div>
               <div className="shrink-0 text-right">
                 <p className="tnum text-[15px] font-semibold text-ink">{formatComma(main)}원</p>
