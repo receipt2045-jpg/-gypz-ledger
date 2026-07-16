@@ -61,6 +61,21 @@ export default function Home() {
         </p>
       </header>
 
+      {/* 자산이 하나도 없으면 자산 등록부터 안내 */}
+      {snapshot.items.length === 0 && (
+        <Card onClick={() => navigate('/asset-setup')}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[15px] font-bold text-ink">먼저 우리집 자산을 등록해 보세요</p>
+              <p className="mt-1 text-[13px] text-sub">
+                어떤 통장에 얼마 있는지 넣으면 순자산이 보여요
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-cap" />
+          </div>
+        </Card>
+      )}
+
       {/* 카드 1 — 이번 달 요약 */}
       <Card>
         <div className="mb-3 flex items-center justify-between">

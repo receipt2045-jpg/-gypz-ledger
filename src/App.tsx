@@ -11,6 +11,7 @@ import Assets from './pages/Assets'
 import Yearly from './pages/Yearly'
 import Settings from './pages/Settings'
 import Checkup from './pages/Checkup'
+import AssetSetup from './pages/AssetSetup'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import IntroSlides from './pages/IntroSlides'
@@ -93,6 +94,7 @@ function AppRoutes() {
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="/checkup" element={<Checkup />} />
+      <Route path="/asset-setup" element={<AssetSetup />} />
     </Routes>
   )
 }

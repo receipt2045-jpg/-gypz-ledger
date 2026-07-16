@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Check,
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import AiCoachCard from '../components/AiCoachCard'
 import AmountInput from '../components/AmountInput'
-import AssetIcon from '../components/AssetIcon'
+import AssetEditor from '../components/AssetEditor'
 import StepProgress from '../components/StepProgress'
 import { buildSummary } from '../lib/aiCoach'
 import { useLedgerStore } from '../lib/store'
@@ -33,8 +33,8 @@ import {
   formatYmKorean,
   shiftYm,
 } from '../lib/format'
-import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER, GROUP_LABEL } from '../lib/constants'
-import type { AssetGroup, AssetItem, BudgetItem, CategoryGroup } from '../types'
+import { GROUP_LABEL } from '../lib/constants'
+import type { AssetItem, BudgetItem, CategoryGroup } from '../types'
 
 interface StepDef {
   title: string
@@ -64,8 +64,9 @@ export default function Checkup() {
   const { ledgers, snapshots, categories, profile, memberNo, saveLedger, saveSnapshot, addCategory } =
     useLedgerStore()
 
-  // 정산 대상 월은 진입 시점에 고정 (정산 완료 후 activeYm이 다음 달로 넘어가도 유지)
-  const [ym] = useState(() => activeYm(ledgers))
+  // 정산 대상 월 — 첫 화면에서 지난 달로 변경 가능, 이후 스텝에선 고정
+  const [ym, setYm] = useState(() => activeYm(ledgers))
+  const latestYm = activeYm(ledgers) // 이보다 미래 달은 선택 불가
 
   const [items, setItems] = useState<BudgetItem[]>(() =>
     resolveLedger(ledgers, ym).items.map((it) => ({ ...it })),
@@ -89,6 +90,15 @@ export default function Checkup() {
   const settledMembers = resolveLedger(ledgers, ym).settledMembers ?? []
   // '지난달과 같아요'는 직전 정산 기록이 있을 때만 활성 (브리프 P2 3.3)
   const hasPrevLedger = ledgers.some((l) => l.ym < ym && l.items.length > 0)
+
+  // 정산할 달 변경: 해당 월 데이터로 입력 초안을 다시 만든다 (첫 화면에서만 노출)
+  const changeYm = (delta: number) => {
+    const ny = shiftYm(ym, delta)
+    if (ny > latestYm) return
+    setYm(ny)
+    setItems(resolveLedger(ledgers, ny).items.map((it) => ({ ...it })))
+    setAssets(resolveSnapshot(snapshots, ny).items.map((it) => ({ ...it })))
+  }
 
   const selectMember = (m: 1 | 2) => {
     setMember(m)
@@ -149,6 +159,28 @@ export default function Checkup() {
           subtitle="각자 자기 항목만 입력하면 돼요"
         />
         <div className="flex-1 space-y-3 px-5 pt-4">
+          {/* 정산할 달 선택 — 지난 달 정산·수정 가능 */}
+          <div className="flex items-center justify-center gap-2 pb-1">
+            <button
+              onClick={() => changeYm(-1)}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-sub active:bg-line"
+              aria-label="이전 달"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="min-w-[130px] text-center">
+              <p className="text-[16px] font-bold text-ink">{formatYmKorean(ym)}</p>
+              <p className="text-[11px] text-cap">정산할 달</p>
+            </div>
+            <button
+              onClick={() => changeYm(1)}
+              disabled={ym >= latestYm}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-sub active:bg-line disabled:opacity-25"
+              aria-label="다음 달"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
           {([1, 2] as const).map((m) => {
             const done = settledMembers.includes(m)
             return (
@@ -269,7 +301,7 @@ export default function Checkup() {
           caption={`${formatYmKorean(ym)} 정산`}
         />
         <div className="flex-1 px-5 pb-32">
-          <AssetStep
+          <AssetEditor
             assets={visibleAssets}
             memberNames={memberNames}
             defaultOwner={memberName}
@@ -612,192 +644,6 @@ function MoneyStep({
         >
           <Plus size={17} /> 항목 추가
         </button>
-      )}
-    </div>
-  )
-}
-
-// ── 자산 업데이트 스텝 ─────────────────────────
-function AssetStep({
-  assets,
-  memberNames,
-  defaultOwner,
-  onChange,
-  onNote,
-  onAdd,
-  onRemove,
-}: {
-  assets: AssetItem[]
-  memberNames: [string, string]
-  defaultOwner: string
-  onChange: (id: string, v: number) => void
-  onNote: (id: string, note: string) => void
-  onAdd: (a: Omit<AssetItem, 'id'>) => void
-  onRemove: (id: string) => void
-}) {
-  const [adding, setAdding] = useState(false)
-  const [kind, setKind] = useState<'asset' | 'debt'>('asset')
-  const [group, setGroup] = useState<AssetGroup>('cash')
-  const [name, setName] = useState('')
-  const [owner, setOwner] = useState(defaultOwner)
-  const [amount, setAmount] = useState(0)
-
-  const submit = () => {
-    if (!name.trim() || amount <= 0) return
-    onAdd({ kind, group, name: name.trim(), owner, amount })
-    setName('')
-    setAmount(0)
-    setAdding(false)
-  }
-
-  const assetItems = assets.filter((it) => it.kind === 'asset')
-  const debtItems = assets.filter((it) => it.kind === 'debt')
-
-  return (
-    <div className="space-y-3">
-      {assetItems.map((it) => (
-        <AssetRow key={it.id} item={it} onChange={onChange} onNote={onNote} onRemove={onRemove} />
-      ))}
-      {debtItems.length > 0 && (
-        <p className="px-1 pt-2 text-[13px] font-bold text-danger">부채</p>
-      )}
-      {debtItems.map((it) => (
-        <AssetRow
-          key={it.id}
-          item={it}
-          onChange={onChange}
-          onNote={onNote}
-          onRemove={onRemove}
-          debt
-        />
-      ))}
-
-      {adding ? (
-        <div className="space-y-2 rounded-card bg-card p-4 shadow-card">
-          <div className="flex gap-2">
-            {(['asset', 'debt'] as const).map((k) => (
-              <button
-                key={k}
-                onClick={() => setKind(k)}
-                className={`flex-1 rounded-btn py-2.5 text-[14px] font-semibold ${
-                  kind === k
-                    ? k === 'debt'
-                      ? 'bg-danger text-white'
-                      : 'bg-brand text-white'
-                    : 'bg-bg text-sub'
-                }`}
-              >
-                {k === 'asset' ? '자산' : '부채'}
-              </button>
-            ))}
-          </div>
-          <select
-            value={group}
-            onChange={(e) => setGroup(e.target.value as AssetGroup)}
-            className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
-          >
-            {ASSET_GROUP_ORDER.map((gr) => (
-              <option key={gr} value={gr}>
-                {ASSET_GROUP_LABEL[gr]}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="이름 (예: 토스 비상금)"
-            className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
-          />
-          <select
-            value={owner}
-            onChange={(e) => setOwner(e.target.value)}
-            className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
-          >
-            {['공동', ...memberNames].map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-          <AmountInput value={amount} onChange={setAmount} placeholder="현재 잔액" />
-          <div className="flex gap-2">
-            <button
-              onClick={() => setAdding(false)}
-              className="h-11 flex-1 rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
-            >
-              취소
-            </button>
-            <button
-              onClick={submit}
-              className="h-11 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark"
-            >
-              추가
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => setAdding(true)}
-          className="flex h-12 w-full items-center justify-center gap-1.5 rounded-card border border-dashed border-line bg-transparent text-[14px] font-semibold text-sub active:bg-white"
-        >
-          <Plus size={17} /> 자산·부채 추가
-        </button>
-      )}
-    </div>
-  )
-}
-
-function AssetRow({
-  item,
-  onChange,
-  onNote,
-  onRemove,
-  debt,
-}: {
-  item: AssetItem
-  onChange: (id: string, v: number) => void
-  onNote: (id: string, note: string) => void
-  onRemove: (id: string) => void
-  debt?: boolean
-}) {
-  const [memoOpen, setMemoOpen] = useState(false)
-  const memoVisible = memoOpen || !!item.note
-  return (
-    <div className="rounded-card bg-card px-4 py-3 shadow-card">
-      <div className="flex items-center gap-2.5">
-        <AssetIcon group={item.group} kind={item.kind} size={34} />
-        <div className="w-[76px] shrink-0">
-          <p className="truncate text-[14px] font-semibold text-ink">{item.name}</p>
-          <p className="mt-0.5 text-[11px] text-cap">
-            {debt ? '부채' : ASSET_GROUP_LABEL[item.group]}
-            {item.owner ? ` · ${item.owner}` : ''}
-          </p>
-        </div>
-        <AmountInput className="flex-1" value={item.amount} onChange={(v) => onChange(item.id, v)} />
-        <button
-          onClick={() => setMemoOpen((v) => !v)}
-          className={`shrink-0 ${memoVisible ? 'text-brand' : 'text-cap'} active:text-brand`}
-          aria-label="메모"
-        >
-          <StickyNote size={16} />
-        </button>
-        <button
-          onClick={() => onRemove(item.id)}
-          className="shrink-0 text-cap active:text-danger"
-          aria-label="삭제"
-        >
-          <X size={18} />
-        </button>
-      </div>
-      {memoVisible && (
-        <input
-          type="text"
-          value={item.note ?? ''}
-          onChange={(e) => onNote(item.id, e.target.value)}
-          placeholder="메모 (선택)"
-          className="mt-2 w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
-        />
       )}
     </div>
   )

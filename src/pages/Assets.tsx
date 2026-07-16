@@ -1,6 +1,6 @@
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useNavigate } from 'react-router-dom'
-import { ArrowDownRight, ArrowUpRight, ChevronRight } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, ChevronRight, Pencil } from 'lucide-react'
 import AssetIcon from '../components/AssetIcon'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
@@ -54,9 +54,25 @@ export default function Assets() {
 
   return (
     <div className="animate-fade-up space-y-4">
-      <header className="px-1 pt-2">
+      <header className="flex items-center justify-between px-1 pt-2">
         <h1 className="text-[18px] font-bold text-ink">자산</h1>
+        <button
+          onClick={() => navigate('/asset-setup')}
+          className="flex items-center gap-1 rounded-full bg-brand/10 px-3 py-1.5 text-[12px] font-bold text-brand active:bg-brand/20"
+        >
+          <Pencil size={12} /> 등록·수정
+        </button>
       </header>
+
+      {/* 자산이 없으면 등록 안내 */}
+      {snapshot.items.length === 0 && (
+        <Card onClick={() => navigate('/asset-setup')}>
+          <p className="text-[15px] font-bold text-ink">아직 등록된 자산이 없어요</p>
+          <p className="mt-1 text-[13px] text-sub">
+            어떤 통장에 얼마 있는지 남편·아내 각자 등록해 보세요
+          </p>
+        </Card>
+      )}
 
       {/* 순자산 요약 */}
       <Card>
