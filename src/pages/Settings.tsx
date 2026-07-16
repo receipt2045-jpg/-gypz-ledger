@@ -222,25 +222,9 @@ export default function Settings() {
       <Card>
         <h2 className="mb-3 text-[15px] font-bold text-ink">계정</h2>
         <div className="space-y-2">
+          <PasswordForm />
           <button
-            onClick={async () => {
-              const pw = prompt('새 비밀번호를 입력하세요 (6자 이상)')
-              if (!pw) return
-              if (pw.length < 6) {
-                alert('비밀번호는 6자 이상이어야 해요.')
-                return
-              }
-              const { error } = await supabase.auth.updateUser({ password: pw })
-              alert(error ? `실패: ${error.message}` : '비밀번호가 설정됐어요. 다음 로그인부터 사용하세요!')
-            }}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
-          >
-            <KeyRound size={18} /> 비밀번호 설정·변경
-          </button>
-          <button
-            onClick={() => {
-              if (confirm('로그아웃할까요?')) supabase.auth.signOut()
-            }}
+            onClick={() => supabase.auth.signOut()}
             className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
           >
             <LogOut size={18} /> 로그아웃
@@ -249,6 +233,85 @@ export default function Settings() {
       </Card>
 
       <p className="pb-2 text-center text-[12px] text-cap">우리집 가계부 · v0.2</p>
+    </div>
+  )
+}
+
+// 팝업(prompt) 없이 화면 안에서 비밀번호를 설정하는 폼
+function PasswordForm() {
+  const [open, setOpen] = useState(false)
+  const [pw, setPw] = useState('')
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const save = async () => {
+    if (busy) return
+    if (pw.length < 6) {
+      setMsg({ text: '비밀번호는 6자 이상이어야 해요.', ok: false })
+      return
+    }
+    setBusy(true)
+    const { error } = await supabase.auth.updateUser({ password: pw })
+    setBusy(false)
+    if (error) {
+      const text = error.message.includes('different from the old')
+        ? '기존과 같은 비밀번호예요. 다른 걸로 정해주세요.'
+        : `실패: ${error.message}`
+      setMsg({ text, ok: false })
+    } else {
+      setMsg({ text: '✅ 비밀번호가 설정됐어요. 이제 어디서든 이메일+비밀번호로 로그인하세요!', ok: true })
+      setPw('')
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {open ? (
+        <div className="space-y-2 rounded-btn bg-bg p-3">
+          <input
+            type="password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && save()}
+            placeholder="새 비밀번호 (6자 이상)"
+            autoComplete="new-password"
+            className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setOpen(false)
+                setPw('')
+                setMsg(null)
+              }}
+              className="h-11 flex-1 rounded-btn bg-white text-[14px] font-semibold text-sub active:bg-line"
+            >
+              취소
+            </button>
+            <button
+              onClick={save}
+              disabled={busy || pw.length < 6}
+              className="h-11 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark disabled:opacity-40"
+            >
+              {busy ? '저장 중…' : '저장'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => {
+            setOpen(true)
+            setMsg(null)
+          }}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
+        >
+          <KeyRound size={18} /> 비밀번호 설정·변경
+        </button>
+      )}
+      {msg && (
+        <p className={`text-[13px] ${msg.ok ? 'text-brand' : 'text-danger'}`}>{msg.text}</p>
+      )}
     </div>
   )
 }
