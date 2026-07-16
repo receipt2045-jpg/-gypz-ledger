@@ -9,6 +9,7 @@ import type {
 } from '../types'
 import { DEFAULT_CATEGORIES } from './constants'
 import { genId } from './carryover'
+import { buildSeed } from '../seed'
 import * as db from './db'
 
 // 저장 실패를 사용자에게 조용히 알리기 위한 핸들러 (App에서 토스트 등으로 교체 가능)
@@ -41,7 +42,9 @@ interface LedgerState extends AppData {
   householdId: string | null
   memberNo: 1 | 2 | null // 로그인한 사용자가 구성원 1(남편)인지 2(아내)인지
   inviteCode: string | null
+  sample: boolean // 샘플 둘러보기 모드 (householdId가 없어 DB 저장은 자동으로 건너뜀)
   init: (membership: db.Membership) => Promise<void>
+  loadSample: () => void
   clear: () => void
   // 프로필
   updateProfile: (patch: Partial<Profile>) => void
@@ -67,9 +70,10 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
   householdId: null,
   memberNo: null,
   inviteCode: null,
+  sample: false,
 
   init: async ({ householdId, memberNo }) => {
-    set({ status: 'loading', householdId, memberNo })
+    set({ status: 'loading', householdId, memberNo, sample: false })
     try {
       const { inviteCode, ...data } = await db.fetchHouseholdData(householdId)
       set({ ...data, inviteCode, status: 'ready' })
@@ -79,8 +83,27 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     }
   },
 
+  // 샘플 둘러보기: 시드(예시) 데이터를 로컬에서만 보여줌.
+  // householdId가 null이므로 아래 액션들의 DB 저장은 모두 건너뛰어짐.
+  loadSample: () =>
+    set({
+      ...buildSeed(),
+      status: 'ready',
+      householdId: null,
+      memberNo: 1,
+      inviteCode: null,
+      sample: true,
+    }),
+
   clear: () =>
-    set({ ...EMPTY, status: 'idle', householdId: null, memberNo: null, inviteCode: null }),
+    set({
+      ...EMPTY,
+      status: 'idle',
+      householdId: null,
+      memberNo: null,
+      inviteCode: null,
+      sample: false,
+    }),
 
   updateProfile: (patch) => {
     const profile = { ...get().profile, ...patch }

@@ -72,21 +72,32 @@ export default function Home() {
         </div>
       </Card>
 
-      {/* 카드 2 — 잉여현금 */}
+      {/* 카드 2 — 잉여현금 (미정산이면 칭찬 대신 시작 안내 — 브리프 P0 1.3) */}
       <Card>
-        <p className="text-[13px] font-medium text-cap">이번 달 잉여현금</p>
-        <p
-          className={`tnum mt-1 text-[24px] font-extrabold ${s.surplus < 0 ? 'text-danger' : 'text-ink'}`}
-        >
-          {formatWon(s.surplus)}
-        </p>
-        <p className="mt-1.5 text-[14px] font-medium text-sub">
-          {s.surplus === 0
-            ? '완벽해요 👏 한 푼도 남김없이 계획됐어요'
-            : s.surplus > 0
-              ? `아직 ${formatWon(s.surplus)}이 계획되지 않았어요`
-              : `${formatWon(-s.surplus)}만큼 초과 지출됐어요`}
-        </p>
+        {ledger.closed ? (
+          <>
+            <p className="text-[13px] font-medium text-cap">이번 달 잉여현금</p>
+            <p
+              className={`tnum mt-1 text-[24px] font-extrabold ${s.surplus < 0 ? 'text-danger' : 'text-ink'}`}
+            >
+              {formatWon(s.surplus)}
+            </p>
+            <p className="mt-1.5 text-[14px] font-medium text-sub">
+              {s.surplus === 0
+                ? '완벽해요 👏 한 푼도 남김없이 계획됐어요'
+                : s.surplus > 0
+                  ? `아직 ${formatWon(s.surplus)}이 계획되지 않았어요`
+                  : `${formatWon(-s.surplus)}만큼 초과 지출됐어요`}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-[15px] font-bold text-ink">아직 이번 달 정산 전입니다</p>
+            <p className="mt-1.5 text-[14px] font-medium text-sub">
+              '이번 달 정산하기'로 시작하실 분! 🤍
+            </p>
+          </>
+        )}
       </Card>
 
       {/* 카드 3 — 순자산 추이 미니 차트 */}

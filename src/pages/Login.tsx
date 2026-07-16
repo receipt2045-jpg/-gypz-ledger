@@ -93,13 +93,14 @@ export default function Login() {
             <Wallet size={30} className="text-brand" />
           </div>
           <h1 className="text-[26px] font-extrabold leading-snug text-ink">우리집 가계부</h1>
+          <p className="mt-2 text-[15px] font-medium leading-relaxed text-sub">
+            매달 한 번, 부부가 함께 순자산을 키우는 가계부입니다 🤍
+          </p>
 
           {mode === 'password' ? (
             <>
-              <p className="mt-3 text-[15px] leading-relaxed text-sub">
-                처음이면 이메일과 비밀번호를 정해서
-                <br />
-                <b className="text-ink">회원가입</b>을 눌러주세요.
+              <p className="mt-4 text-[13px] leading-relaxed text-cap">
+                처음이면 이메일과 비밀번호를 정해서 <b className="text-sub">회원가입</b>을 눌러주세요.
               </p>
               <div className="mt-7 space-y-2.5">
                 <input
@@ -133,6 +134,11 @@ export default function Login() {
                 >
                   회원가입
                 </button>
+                {password.length > 0 && password.length < 6 && (
+                  <p className="text-[13px] text-cap">
+                    비밀번호를 6자 이상 입력하면 버튼이 활성화돼요
+                  </p>
+                )}
                 {error && <p className="text-[13px] text-danger">{error}</p>}
                 {notice && <p className="text-[13px] text-brand">{notice}</p>}
               </div>
