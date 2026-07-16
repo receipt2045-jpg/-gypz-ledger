@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
+          # 저장소 이름이 바뀌어도 base 경로가 자동으로 따라감
+          VITE_BASE: /${{ github.event.repository.name }}/
           # anon key는 공개되어도 안전한 클라이언트용 키 (데이터 접근은 RLS가 통제)
           VITE_SUPABASE_URL: https://sygmpteafxlrhfbipkep.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_gGbVf_OUf8fmPRGoVdCYMw_UgHFbK16
