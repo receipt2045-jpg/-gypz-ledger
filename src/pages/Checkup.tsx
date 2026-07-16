@@ -10,9 +10,11 @@ import {
   StickyNote,
   UserRound,
 } from 'lucide-react'
+import AiCoachCard from '../components/AiCoachCard'
 import AmountInput from '../components/AmountInput'
 import AssetIcon from '../components/AssetIcon'
 import StepProgress from '../components/StepProgress'
+import { buildSummary } from '../lib/aiCoach'
 import { useLedgerStore } from '../lib/store'
 import {
   activeYm,
@@ -201,7 +203,7 @@ export default function Checkup() {
     const nwDelta = newNetWorth - prevNetWorth
     return (
       <Frame>
-        <div className="flex flex-1 flex-col items-center justify-center px-6 text-center animate-fade-up">
+        <div className="flex flex-1 flex-col items-center px-6 pb-28 pt-14 text-center animate-fade-up">
           <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-brand/10">
             <PartyPopper size={40} className="text-brand" />
           </div>
@@ -235,6 +237,9 @@ export default function Checkup() {
               </p>
             )}
           </div>
+
+          {/* AI 코치 진단 (브리프 P3 4.1) */}
+          <AiCoachCard summary={buildSummary(ym, items)} />
         </div>
         <BottomBar>
           <button
