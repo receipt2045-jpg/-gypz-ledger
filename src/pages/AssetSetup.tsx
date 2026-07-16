@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Baby, ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
 import AssetEditor from '../components/AssetEditor'
@@ -30,7 +30,7 @@ export default function AssetSetup() {
     setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, amount } : it)))
   const setNote = (id: string, note: string) =>
     setAssets((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, note: note.trim() || undefined } : it)),
+      prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)),
     )
   const updateAsset = (id: string, patch: Partial<Omit<AssetItem, 'id'>>) =>
     setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))

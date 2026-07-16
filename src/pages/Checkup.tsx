@@ -113,7 +113,7 @@ export default function Checkup() {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, actual } : it)))
   const setNote = (id: string, note: string) =>
     setItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, note: note.trim() || undefined } : it)),
+      prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)),
     )
   const addItem = (group: CategoryGroup, category: string) => {
     if (!member) return
@@ -125,7 +125,7 @@ export default function Checkup() {
     setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, amount } : it)))
   const setAssetNote = (id: string, note: string) =>
     setAssets((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, note: note.trim() || undefined } : it)),
+      prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)),
     )
   const updateAsset = (id: string, patch: Partial<Omit<AssetItem, 'id'>>) =>
     setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
