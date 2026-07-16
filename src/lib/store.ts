@@ -21,6 +21,7 @@ const EMPTY: AppData = {
   profile: {
     member1Name: '남편',
     member2Name: '아내',
+    childNames: [],
     targetNetWorth: 1_000_000_000,
     startYear: new Date().getFullYear(),
   },

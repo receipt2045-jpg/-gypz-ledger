@@ -47,23 +47,28 @@ export default function Assets() {
   const assetItems = snapshot.items.filter((it) => it.kind === 'asset')
   const debtItems = snapshot.items.filter((it) => it.kind === 'debt')
 
-  // 소유자별 배지 색: 구성원1 파랑 · 구성원2 핑크 · 공동 중립
+  // 소유자별 배지 색: 구성원1 파랑 · 구성원2 핑크 · 자녀 노랑 · 공동 중립
+  const childNames = profile.childNames ?? []
   const ownerBadgeClass = (owner?: string) =>
     owner === profile.member1Name
       ? 'bg-brand/10 text-brand'
       : owner === profile.member2Name
         ? 'bg-pink-50 text-pink-500'
-        : 'bg-bg text-sub'
+        : owner && childNames.includes(owner)
+          ? 'bg-amber-50 text-amber-600'
+          : 'bg-bg text-sub'
 
-  // 구성원별 자산 합계 (자산만, 부채 제외)
-  const ownerTotals = [profile.member1Name, profile.member2Name, '공동'].map((name) => ({
-    name,
-    total: assetItems
-      .filter((it) =>
-        name === '공동' ? !it.owner || it.owner === '공동' : it.owner === name,
-      )
-      .reduce((acc, it) => acc + it.amount, 0),
-  }))
+  // 구성원별 자산 합계 (자산만, 부채 제외) — 자녀 포함
+  const ownerTotals = [profile.member1Name, profile.member2Name, '공동', ...childNames].map(
+    (name) => ({
+      name,
+      total: assetItems
+        .filter((it) =>
+          name === '공동' ? !it.owner || it.owner === '공동' : it.owner === name,
+        )
+        .reduce((acc, it) => acc + it.amount, 0),
+    }),
+  )
 
   const groupsWithItems = ASSET_GROUP_ORDER.map((g) => ({
     group: g,

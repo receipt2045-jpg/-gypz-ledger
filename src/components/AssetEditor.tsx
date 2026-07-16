@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Pencil, Plus, StickyNote, X } from 'lucide-react'
 import AmountInput from './AmountInput'
 import AssetIcon from './AssetIcon'
@@ -8,7 +8,7 @@ import type { AssetGroup, AssetItem } from '../types'
 /** 자산·부채 목록 편집기 — 정산의 자산 스텝과 자산 등록 플로우에서 공용 */
 export default function AssetEditor({
   assets,
-  memberNames,
+  ownerOptions,
   defaultOwner,
   onChange,
   onNote,
@@ -17,7 +17,7 @@ export default function AssetEditor({
   onRemove,
 }: {
   assets: AssetItem[]
-  memberNames: [string, string]
+  ownerOptions: string[] // 소유자 선택지 (공동·부부·자녀)
   defaultOwner: string
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
@@ -54,7 +54,7 @@ export default function AssetEditor({
         <AssetRow
           key={it.id}
           item={it}
-          memberNames={memberNames}
+          ownerOptions={ownerOptions}
           onChange={onChange}
           onNote={onNote}
           onUpdate={onUpdate}
@@ -68,7 +68,7 @@ export default function AssetEditor({
         <AssetRow
           key={it.id}
           item={it}
-          memberNames={memberNames}
+          ownerOptions={ownerOptions}
           onChange={onChange}
           onNote={onNote}
           onUpdate={onUpdate}
@@ -119,7 +119,7 @@ export default function AssetEditor({
             onChange={(e) => setOwner(e.target.value)}
             className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
           >
-            {['공동', ...memberNames].map((o) => (
+            {ownerOptions.map((o) => (
               <option key={o} value={o}>
                 {o}
               </option>
@@ -155,7 +155,7 @@ export default function AssetEditor({
 
 function AssetRow({
   item,
-  memberNames,
+  ownerOptions,
   onChange,
   onNote,
   onUpdate,
@@ -163,7 +163,7 @@ function AssetRow({
   debt,
 }: {
   item: AssetItem
-  memberNames: [string, string]
+  ownerOptions: string[] // 소유자 선택지 (공동·부부·자녀)
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
   onUpdate: (id: string, patch: Partial<Omit<AssetItem, 'id'>>) => void
@@ -235,7 +235,7 @@ function AssetRow({
           onChange={(e) => setEOwner(e.target.value)}
           className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
         >
-          {['공동', ...memberNames].map((o) => (
+          {ownerOptions.map((o) => (
             <option key={o} value={o}>
               {o}
             </option>

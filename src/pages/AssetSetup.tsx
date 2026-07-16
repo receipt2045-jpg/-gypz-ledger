@@ -22,6 +22,7 @@ export default function AssetSetup() {
   const [member, setMember] = useState<1 | 2 | null>(null)
 
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
+  const childNames = profile.childNames ?? []
   const memberName = member ? memberNames[member - 1] : ''
 
   const setAmount = (id: string, amount: number) =>
@@ -49,7 +50,11 @@ export default function AssetSetup() {
         <div className="flex-1 space-y-3 px-5 pt-4">
           {([1, 2] as const).map((m) => {
             const count = assets.filter(
-              (a) => a.owner === memberNames[m - 1] || a.owner === '공동' || !a.owner,
+              (a) =>
+                a.owner === memberNames[m - 1] ||
+                a.owner === '공동' ||
+                !a.owner ||
+                childNames.includes(a.owner ?? ''),
             ).length
             return (
               <button
@@ -91,7 +96,11 @@ export default function AssetSetup() {
 
   // ── 자산 입력 ─────────────────────────────
   const visibleAssets = assets.filter(
-    (a) => !a.owner || a.owner === '공동' || a.owner === memberName,
+    (a) =>
+      !a.owner ||
+      a.owner === '공동' ||
+      a.owner === memberName ||
+      childNames.includes(a.owner),
   )
   const netWorth = netWorthOf({ ym, items: assets })
 
@@ -105,7 +114,7 @@ export default function AssetSetup() {
       <div className="flex-1 px-5 pb-32">
         <AssetEditor
           assets={visibleAssets}
-          memberNames={memberNames}
+          ownerOptions={['공동', ...memberNames, ...childNames]}
           defaultOwner={memberName}
           onChange={setAmount}
           onNote={setNote}

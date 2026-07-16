@@ -23,6 +23,17 @@ export default function Settings() {
   } = useLedgerStore()
   const fileRef = useRef<HTMLInputElement>(null)
   const [copied, setCopied] = useState(false)
+  const [newChild, setNewChild] = useState('')
+
+  const childNames = profile.childNames ?? []
+  const addChild = () => {
+    const name = newChild.trim()
+    if (!name || childNames.includes(name)) return
+    updateProfile({ childNames: [...childNames, name] })
+    setNewChild('')
+  }
+  const removeChild = (name: string) =>
+    updateProfile({ childNames: childNames.filter((c) => c !== name) })
 
   const copyInvite = async () => {
     if (!inviteCode) return
@@ -130,6 +141,40 @@ export default function Settings() {
               value={profile.targetNetWorth}
               onChange={(n) => updateProfile({ targetNetWorth: n })}
             />
+          </Field>
+          <Field label="자녀" hint="자산 소유자로 쓸 수 있어요">
+            {childNames.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {childNames.map((c) => (
+                  <span
+                    key={c}
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-[13px] font-medium text-amber-600"
+                  >
+                    {c}
+                    <button onClick={() => removeChild(c)} aria-label={`${c} 삭제`}>
+                      <X size={13} className="text-amber-400" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                value={newChild}
+                onChange={(e) => setNewChild(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addChild()}
+                placeholder="자녀 이름 (예: 첫째, 자녀1)"
+                className="flex-1 rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
+              />
+              <button
+                onClick={addChild}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-brand text-white active:bg-brand-dark"
+                aria-label="자녀 추가"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
           </Field>
         </div>
       </Card>

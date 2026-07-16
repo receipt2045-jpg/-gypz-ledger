@@ -289,9 +289,14 @@ export default function Checkup() {
 
   // ── 자산 업데이트 스텝 ────────────────────
   if (step === ASSET_STEP) {
-    // 본인 소유 + 공동 계좌만 갱신 대상으로 노출
+    // 본인 소유 + 공동 + 자녀 계좌를 갱신 대상으로 노출 (자녀 계좌는 부모 둘 다 관리)
+    const childNames = profile.childNames ?? []
     const visibleAssets = assets.filter(
-      (a) => !a.owner || a.owner === '공동' || a.owner === memberName,
+      (a) =>
+        !a.owner ||
+        a.owner === '공동' ||
+        a.owner === memberName ||
+        childNames.includes(a.owner),
     )
     return (
       <Frame>
@@ -305,7 +310,7 @@ export default function Checkup() {
         <div className="flex-1 px-5 pb-32">
           <AssetEditor
             assets={visibleAssets}
-            memberNames={memberNames}
+            ownerOptions={['공동', ...memberNames, ...childNames]}
             defaultOwner={memberName}
             onChange={setAssetAmount}
             onNote={setAssetNote}
