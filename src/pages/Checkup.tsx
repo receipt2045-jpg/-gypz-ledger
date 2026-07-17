@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Check,
   ChevronLeft,
@@ -59,12 +59,22 @@ const DONE_STEP = TOTAL_STEPS // 완료 화면
 
 export default function Checkup() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { ledgers, snapshots, categories, profile, memberNo, saveLedger, saveSnapshot, addCategory } =
     useLedgerStore()
 
-  // 정산 대상 월 — 첫 화면에서 지난 달로 변경 가능, 이후 스텝에선 고정
-  const [ym, setYm] = useState(() => activeYm(ledgers))
-  const latestYm = activeYm(ledgers) // 이보다 미래 달은 선택 불가
+  // 모드: 'budget'(예산 세우기, 계획 금액) / 'settle'(정산하기, 실제 금액)
+  const nav = (location.state as { ym?: string; mode?: 'budget' | 'settle' } | null) ?? null
+  const mode: 'budget' | 'settle' = nav?.mode ?? 'settle'
+  const isBudget = mode === 'budget'
+  const field: 'planned' | 'actual' = isBudget ? 'planned' : 'actual'
+  const modeLabel = isBudget ? '예산 세우기' : '정산'
+
+  // 대상 월 — 홈에서 넘어온 달로 시작, 첫 화면에서 변경 가능
+  const [ym, setYm] = useState(() => nav?.ym ?? activeYm(ledgers))
+  // 미래 달 상한: 최신 가계부 다음 달까지 허용(다음 달 예산 미리 세우기)
+  const latestLedgerYm = ledgers.length ? ledgers[ledgers.length - 1].ym : ym
+  const maxYm = shiftYm(latestLedgerYm, 1) > activeYm(ledgers) ? shiftYm(latestLedgerYm, 1) : activeYm(ledgers)
 
   const [items, setItems] = useState<BudgetItem[]>(() =>
     resolveLedger(ledgers, ym).items.map((it) => ({ ...it })),
@@ -89,10 +99,10 @@ export default function Checkup() {
   // '지난달과 같아요'는 직전 정산 기록이 있을 때만 활성 (브리프 P2 3.3)
   const hasPrevLedger = ledgers.some((l) => l.ym < ym && l.items.length > 0)
 
-  // 정산할 달 변경: 해당 월 데이터로 입력 초안을 다시 만든다 (첫 화면에서만 노출)
+  // 대상 달 변경: 해당 월 데이터로 입력 초안을 다시 만든다 (첫 화면에서만 노출)
   const changeYm = (delta: number) => {
     const ny = shiftYm(ym, delta)
-    if (ny > latestYm) return
+    if (ny > maxYm) return
     setYm(ny)
     setItems(resolveLedger(ledgers, ny).items.map((it) => ({ ...it })))
     setAssets(resolveSnapshot(snapshots, ny).items.map((it) => ({ ...it })))
@@ -100,32 +110,46 @@ export default function Checkup() {
 
   const selectMember = (m: 1 | 2) => {
     setMember(m)
-    // 선택한 사람의 항목만 결산 시작값(actual = planned)으로 채움
-    setItems((prev) =>
-      prev.map((it) => (it.member === m ? { ...it, actual: it.actual || it.planned } : it)),
-    )
+    // 정산(결산) 모드는 실제값 시작점을 계획값으로 채움. 예산 모드는 계획값 그대로 편집.
+    if (!isBudget) {
+      setItems((prev) =>
+        prev.map((it) => (it.member === m ? { ...it, actual: it.actual || it.planned } : it)),
+      )
+    }
     setStep(1)
   }
 
-  const setActual = (id: string, actual: number) =>
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, actual } : it)))
+  // 금액 입력: 모드에 따라 planned 또는 actual 필드에 씀
+  const setAmount = (id: string, v: number) =>
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: v } : it)))
   const setNote = (id: string, note: string) =>
     setItems((prev) =>
       prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)),
     )
   const addItem = (group: CategoryGroup, category: string) => {
     if (!member) return
-    setItems((prev) => [...prev, { ...emptyItem(group, category, member), actual: 0 }])
+    setItems((prev) => [...prev, { ...emptyItem(group, category, member), planned: 0, actual: 0 }])
   }
   const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id))
 
   const commit = () => {
     if (!member) return
-    const merged = Array.from(new Set([...settledMembers, member])) as (1 | 2)[]
-    const closed = merged.includes(1) && merged.includes(2)
-    saveLedger({ ym, items, closed, settledMembers: merged })
-    // 자산은 자산 탭에서 관리하지만, 이 달의 순자산 스냅샷은 이어지도록 저장
-    saveSnapshot({ ym, items: assets })
+    const existing = resolveLedger(ledgers, ym)
+    if (isBudget) {
+      // 예산 세우기: 계획값만 저장, 정산 상태(closed·settledMembers)는 건드리지 않음
+      saveLedger({
+        ym,
+        items,
+        closed: existing.closed,
+        settledMembers: existing.settledMembers ?? [],
+      })
+    } else {
+      const merged = Array.from(new Set([...settledMembers, member])) as (1 | 2)[]
+      const closed = merged.includes(1) && merged.includes(2)
+      saveLedger({ ym, items, closed, settledMembers: merged })
+      // 자산은 자산 탭에서 관리하지만, 이 달의 순자산 스냅샷은 이어지도록 저장
+      saveSnapshot({ ym, items: assets })
+    }
     setStep(DONE_STEP)
   }
 
@@ -144,11 +168,11 @@ export default function Checkup() {
         <Header
           step={step}
           onBack={goBack}
-          title="누가 정산하나요?"
+          title={isBudget ? '누가 예산을 세우나요?' : '누가 정산하나요?'}
           subtitle="각자 자기 항목만 입력하면 돼요"
         />
         <div className="flex-1 space-y-3 px-5 pt-4">
-          {/* 정산할 달 선택 — 지난 달 정산·수정 가능 */}
+          {/* 대상 달 선택 — 지난 달·다음 달 이동 가능 */}
           <div className="flex items-center justify-center gap-2 pb-1">
             <button
               onClick={() => changeYm(-1)}
@@ -159,11 +183,11 @@ export default function Checkup() {
             </button>
             <div className="min-w-[130px] text-center">
               <p className="text-[16px] font-bold text-ink">{formatYmKorean(ym)}</p>
-              <p className="text-[11px] text-cap">정산할 달</p>
+              <p className="text-[11px] text-cap">{isBudget ? '예산 세울 달' : '정산할 달'}</p>
             </div>
             <button
               onClick={() => changeYm(1)}
-              disabled={ym >= latestYm}
+              disabled={ym >= maxYm}
               className="flex h-9 w-9 items-center justify-center rounded-full text-sub active:bg-line disabled:opacity-25"
               aria-label="다음 달"
             >
@@ -195,10 +219,14 @@ export default function Checkup() {
                     )}
                   </p>
                   <p className="mt-0.5 text-[13px] text-sub">
-                    {done ? '정산을 마쳤어요 · 다시 수정할 수 있어요' : '아직 정산 전이에요'}
+                    {isBudget
+                      ? '이번 달 예산을 정해요'
+                      : done
+                        ? '정산을 마쳤어요 · 다시 수정할 수 있어요'
+                        : '아직 정산 전이에요'}
                   </p>
                 </div>
-                {done ? (
+                {!isBudget && done ? (
                   <span className="flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-[12px] font-bold text-brand">
                     <Check size={13} /> 완료
                   </span>
@@ -209,7 +237,9 @@ export default function Checkup() {
             )
           })}
           <p className="px-1 pt-2 text-[12px] leading-relaxed text-cap">
-            두 사람 모두 정산을 마치면 {formatMonthKorean(ym)} 결산이 확정돼요.
+            {isBudget
+              ? `${formatMonthKorean(ym)} 예산을 미리 정해두면, 월말에 정산할 때 계획과 실제를 비교할 수 있어요.`
+              : `두 사람 모두 정산을 마치면 ${formatMonthKorean(ym)} 결산이 확정돼요.`}
           </p>
         </div>
       </Frame>
@@ -218,6 +248,44 @@ export default function Checkup() {
 
   // ── 완료 화면 ─────────────────────────────
   if (step === DONE_STEP) {
+    // 예산 세우기 완료 화면 (간단 버전)
+    if (isBudget) {
+      const planned = summarize({ ym, items, closed: false })
+      return (
+        <Frame>
+          <div className="flex flex-1 flex-col items-center justify-center px-6 text-center animate-fade-up">
+            <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-brand/10">
+              <PartyPopper size={40} className="text-brand" />
+            </div>
+            <h1 className="text-[24px] font-extrabold text-ink">
+              {formatMonthKorean(ym)} 예산 완료 📝
+            </h1>
+            <p className="mt-2 text-[14px] text-sub">
+              월말에 정산하면 계획과 실제를 비교해 볼 수 있어요.
+            </p>
+            <div className="mt-7 w-full space-y-2.5 rounded-card bg-card p-5 text-left shadow-card">
+              <ResultRow label="계획 수입" value={formatWon(planned.income)} accent />
+              <ResultRow label="계획 저축·투자" value={formatWon(planned.saving + planned.investment)} />
+              <ResultRow label="계획 지출" value={formatWon(planned.expense)} />
+              <ResultRow
+                label="예상 잉여현금"
+                value={formatWon(planned.surplus)}
+                danger={planned.surplus < 0}
+              />
+            </div>
+          </div>
+          <BottomBar>
+            <button
+              onClick={() => navigate('/')}
+              className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark"
+            >
+              홈으로
+            </button>
+          </BottomBar>
+        </Frame>
+      )
+    }
+
     const bothDone = settledMembers.includes(1) && settledMembers.includes(2)
     const s = summarize({ ym, items, closed: true })
     const newNetWorth = netWorthOf({ ym, items: assets })
@@ -279,12 +347,12 @@ export default function Checkup() {
   const stepItems = items.filter((it) => def.groups.includes(it.group) && it.member === member)
   const isLastStep = step === LAST_MONEY_STEP
 
-  // 잉여현금 (수입 − 저축 − 투자 − 지출) — 지금 정산 중인 사람 기준, 입력하는 대로 실시간 반영
+  // 잉여현금(예산 모드는 예상) — 지금 입력 중인 사람 기준, 입력하는 대로 실시간 반영
   const myItems = items.filter((it) => it.member === member)
-  const liveSurplus = summarize({ ym, items: myItems, closed: true }).surplus
+  const liveSurplus = summarize({ ym, items: myItems, closed: !isBudget }).surplus
 
   // 빈값·0원 항목이 있으면 다음 단계로 못 넘어감 (삭제하거나 금액 입력)
-  const stepInvalid = stepItems.some((it) => !it.actual || it.actual <= 0)
+  const stepInvalid = stepItems.some((it) => !it[field] || it[field] <= 0)
   const proceed = () => {
     if (stepInvalid) {
       setShowErrors(true)
@@ -295,22 +363,27 @@ export default function Checkup() {
     else next()
   }
 
+  const stepSubtitle = isBudget
+    ? { 수입: '이번 달 예상 수입', 저축·투자: '이번 달 계획한 저축·투자', 고정지출: '매달 나가는 고정지출', 변동지출: '이번 달 예상 지출' }[def.title] ?? '이번 달 예산'
+    : def.subtitle
+
   return (
     <Frame>
       <Header
         step={step}
         onBack={goBack}
         title={def.title}
-        subtitle={`${memberName} · ${def.subtitle}`}
-        caption={`${formatYmKorean(ym)} 정산`}
+        subtitle={`${memberName} · ${stepSubtitle}`}
+        caption={`${formatYmKorean(ym)} ${modeLabel}`}
       />
       <div className="flex-1 px-5 pb-40">
         <MoneyStep
           groups={def.groups}
           items={stepItems}
+          valueField={field}
           categories={categories}
           showErrors={showErrors}
-          onChange={setActual}
+          onChange={setAmount}
           onNote={setNote}
           onAdd={addItem}
           onRemove={removeItem}
@@ -318,9 +391,11 @@ export default function Checkup() {
         />
       </div>
       <BottomBar>
-        {/* 잉여현금 실시간 표시 (수입 입력 후 저축·투자·지출 단계에서 확인) */}
+        {/* 잉여현금 실시간 표시 */}
         <div className="mb-2 flex items-center justify-between rounded-btn bg-ink px-4 py-2.5">
-          <span className="text-[13px] font-semibold text-white/80">{memberName} 잉여현금</span>
+          <span className="text-[13px] font-semibold text-white/80">
+            {memberName} {isBudget ? '예상 잉여현금' : '잉여현금'}
+          </span>
           <span
             className={`tnum text-[16px] font-extrabold ${liveSurplus < 0 ? 'text-[#FF8A93]' : 'text-white'}`}
           >
@@ -332,7 +407,7 @@ export default function Checkup() {
             onClick={proceed}
             className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark"
           >
-            {isLastStep ? '정산 완료하기' : '다음'}
+            {isLastStep ? (isBudget ? '예산 세우기 완료' : '정산 완료하기') : '다음'}
           </button>
           {def.sameAsLast &&
             (hasPrevLedger ? (
@@ -438,6 +513,7 @@ const NEW_CAT = '__new__' // '+ 새 카테고리' 옵션 값
 function MoneyStep({
   groups,
   items,
+  valueField,
   categories,
   showErrors,
   onChange,
@@ -448,6 +524,7 @@ function MoneyStep({
 }: {
   groups: CategoryGroup[]
   items: BudgetItem[]
+  valueField: 'planned' | 'actual'
   categories: Record<CategoryGroup, string[]>
   showErrors: boolean
   onChange: (id: string, v: number) => void
@@ -485,7 +562,7 @@ function MoneyStep({
         <p className="py-6 text-center text-[13px] text-cap">항목을 추가해 주세요</p>
       )}
       {items.map((it) => {
-        const invalid = showErrors && (!it.actual || it.actual <= 0)
+        const invalid = showErrors && (!it[valueField] || it[valueField] <= 0)
         const memoVisible = memoOpen === it.id || !!it.note
         return (
           <div key={it.id} className="rounded-card bg-card px-4 py-3 shadow-card">
@@ -498,7 +575,7 @@ function MoneyStep({
               </div>
               <AmountInput
                 className="flex-1"
-                value={it.actual}
+                value={it[valueField]}
                 error={invalid}
                 onChange={(v) => onChange(it.id, v)}
               />

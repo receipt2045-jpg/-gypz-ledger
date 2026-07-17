@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
-import { Check, ChevronRight, TrendingUp } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import ProgressBar from '../components/ProgressBar'
@@ -18,6 +19,8 @@ import {
   formatMonthKorean,
   formatPercent,
   formatWon,
+  formatYmKorean,
+  shiftYm,
   signedAbbrev,
 } from '../lib/format'
 import { TERM_TIP } from '../lib/constants'
@@ -26,7 +29,12 @@ export default function Home() {
   const navigate = useNavigate()
   const { ledgers, snapshots, profile } = useLedgerStore()
 
-  const ym = activeYm(ledgers)
+  // 보고 있는 달 — 정산해도 자동으로 넘어가지 않고, ◀▶로 직접 선택
+  const latestLedgerYm = ledgers.length ? ledgers[ledgers.length - 1].ym : activeYm(ledgers)
+  const [ym, setYm] = useState(latestLedgerYm)
+  // 다음 달 하나까지 이동 허용(미리 예산 세우기)
+  const maxYm = shiftYm(latestLedgerYm, 1)
+
   const ledger = resolveLedger(ledgers, ym)
   const s = summarize(ledger)
 
@@ -44,13 +52,35 @@ export default function Home() {
   return (
     <>
     <div className="animate-fade-up space-y-4 pb-24">
+      {/* 달 선택 */}
+      <div className="flex items-center justify-center gap-3 pt-2">
+        <button
+          onClick={() => setYm(shiftYm(ym, -1))}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-sub active:bg-line"
+          aria-label="이전 달"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <span className="min-w-[110px] text-center text-[16px] font-bold text-ink">
+          {formatYmKorean(ym)}
+        </span>
+        <button
+          onClick={() => setYm(shiftYm(ym, 1))}
+          disabled={ym >= maxYm}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-sub active:bg-line disabled:opacity-25"
+          aria-label="다음 달"
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+
       {/* 헤더 + 순자산 큰 숫자 */}
-      <header className="px-1 pt-2">
+      <header className="px-1">
         <p className="text-[15px] font-semibold text-sub">
           {formatMonthKorean(ym)} 우리집 돈 흐름
         </p>
         <p className="mt-1 text-[13px] text-cap">
-          이번 달 순자산
+          {formatMonthKorean(ym)} 순자산
           <InfoTip text={TERM_TIP.netWorth} />
         </p>
         <h1 className="tnum mt-1 text-[34px] font-extrabold leading-tight tracking-tight text-ink">
@@ -98,7 +128,7 @@ export default function Home() {
         {ledger.closed ? (
           <>
             <p className="text-[13px] font-medium text-cap">
-              이번 달 잉여현금
+              {formatMonthKorean(ym)} 잉여현금
               <InfoTip text={TERM_TIP.surplus} />
             </p>
             <p
@@ -116,9 +146,11 @@ export default function Home() {
           </>
         ) : (
           <>
-            <p className="text-[15px] font-bold text-ink">아직 이번 달 정산 전입니다</p>
+            <p className="text-[15px] font-bold text-ink">
+              아직 {formatMonthKorean(ym)} 정산 전입니다
+            </p>
             <p className="mt-1.5 text-[14px] font-medium text-sub">
-              '이번 달 정산하기'로 시작하실 분! 🤍
+              아래 '{formatMonthKorean(ym)} 정산하기'로 시작하실 분! 🤍
             </p>
           </>
         )}
@@ -200,12 +232,21 @@ export default function Home() {
           )
         })}
       </div>
-      <button
-        onClick={() => navigate('/checkup')}
-        className="pointer-events-auto h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta transition-colors active:bg-brand-dark"
-      >
-        이번 달 정산하기
-      </button>
+      {/* 예산 세우는 날 / 정산하는 날 — 선택한 달 기준 */}
+      <div className="pointer-events-auto flex gap-2">
+        <button
+          onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
+          className="h-14 flex-1 rounded-btn bg-white text-[15px] font-bold text-ink shadow-cta transition-colors active:bg-line"
+        >
+          예산 세우기
+        </button>
+        <button
+          onClick={() => navigate('/checkup', { state: { ym, mode: 'settle' } })}
+          className="h-14 flex-[1.3] rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta transition-colors active:bg-brand-dark"
+        >
+          {formatMonthKorean(ym)} 정산하기
+        </button>
+      </div>
     </div>
     </>
   )
