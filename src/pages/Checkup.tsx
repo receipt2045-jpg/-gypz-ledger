@@ -279,8 +279,9 @@ export default function Checkup() {
   const stepItems = items.filter((it) => def.groups.includes(it.group) && it.member === member)
   const isLastStep = step === LAST_MONEY_STEP
 
-  // 우리집 잉여현금 (수입 − 저축 − 투자 − 지출) — 입력하는 대로 실시간 반영
-  const liveSurplus = summarize({ ym, items, closed: true }).surplus
+  // 잉여현금 (수입 − 저축 − 투자 − 지출) — 지금 정산 중인 사람 기준, 입력하는 대로 실시간 반영
+  const myItems = items.filter((it) => it.member === member)
+  const liveSurplus = summarize({ ym, items: myItems, closed: true }).surplus
 
   // 빈값·0원 항목이 있으면 다음 단계로 못 넘어감 (삭제하거나 금액 입력)
   const stepInvalid = stepItems.some((it) => !it.actual || it.actual <= 0)
@@ -319,7 +320,7 @@ export default function Checkup() {
       <BottomBar>
         {/* 잉여현금 실시간 표시 (수입 입력 후 저축·투자·지출 단계에서 확인) */}
         <div className="mb-2 flex items-center justify-between rounded-btn bg-ink px-4 py-2.5">
-          <span className="text-[13px] font-semibold text-white/80">잉여현금</span>
+          <span className="text-[13px] font-semibold text-white/80">{memberName} 잉여현금</span>
           <span
             className={`tnum text-[16px] font-extrabold ${liveSurplus < 0 ? 'text-[#FF8A93]' : 'text-white'}`}
           >
