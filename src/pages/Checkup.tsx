@@ -12,14 +12,12 @@ import {
 } from 'lucide-react'
 import AiCoachCard from '../components/AiCoachCard'
 import AmountInput from '../components/AmountInput'
-import AssetEditor from '../components/AssetEditor'
 import StepProgress from '../components/StepProgress'
 import { buildSummary } from '../lib/aiCoach'
 import { useLedgerStore } from '../lib/store'
 import {
   activeYm,
   emptyItem,
-  genId,
   netWorthOf,
   resolveLedger,
   resolveSnapshot,
@@ -55,9 +53,9 @@ const STEPS: StepDef[] = [
   { title: '변동지출', subtitle: '이번 달 실제 쓴 금액을 입력해요', groups: ['variable'], sameAsLast: false },
 ]
 const MEMBER_STEP = 0 // 남편/아내 선택
-const TOTAL_STEPS = STEPS.length + 2 // 선택 + 금액 스텝들 + 자산 업데이트
-const ASSET_STEP = STEPS.length + 1 // index 5
-const DONE_STEP = TOTAL_STEPS // index 6
+const TOTAL_STEPS = STEPS.length + 1 // 선택 + 금액 스텝들 (자산은 자산 탭에서 별도 관리)
+const LAST_MONEY_STEP = STEPS.length // 변동지출 (마지막 입력 스텝)
+const DONE_STEP = TOTAL_STEPS // 완료 화면
 
 export default function Checkup() {
   const navigate = useNavigate()
@@ -121,23 +119,12 @@ export default function Checkup() {
   }
   const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id))
 
-  const setAssetAmount = (id: string, amount: number) =>
-    setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, amount } : it)))
-  const setAssetNote = (id: string, note: string) =>
-    setAssets((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)),
-    )
-  const updateAsset = (id: string, patch: Partial<Omit<AssetItem, 'id'>>) =>
-    setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
-  const addAsset = (asset: Omit<AssetItem, 'id'>) =>
-    setAssets((prev) => [...prev, { ...asset, id: genId() }])
-  const removeAsset = (id: string) => setAssets((prev) => prev.filter((it) => it.id !== id))
-
   const commit = () => {
     if (!member) return
     const merged = Array.from(new Set([...settledMembers, member])) as (1 | 2)[]
     const closed = merged.includes(1) && merged.includes(2)
     saveLedger({ ym, items, closed, settledMembers: merged })
+    // 자산은 자산 탭에서 관리하지만, 이 달의 순자산 스냅샷은 이어지도록 저장
     saveSnapshot({ ym, items: assets })
     setStep(DONE_STEP)
   }
@@ -287,63 +274,24 @@ export default function Checkup() {
     )
   }
 
-  // ── 자산 업데이트 스텝 ────────────────────
-  if (step === ASSET_STEP) {
-    // 본인 소유 + 공동 + 자녀 계좌를 갱신 대상으로 노출 (자녀 계좌는 부모 둘 다 관리)
-    const childNames = profile.childNames ?? []
-    const visibleAssets = assets.filter(
-      (a) =>
-        !a.owner ||
-        a.owner === '공동' ||
-        a.owner === memberName ||
-        childNames.includes(a.owner),
-    )
-    return (
-      <Frame>
-        <Header
-          step={step}
-          onBack={goBack}
-          title="자산 업데이트"
-          subtitle={`${memberName} · 내 계좌와 공동 계좌 잔액을 갱신해요`}
-          caption={`${formatYmKorean(ym)} 정산`}
-        />
-        <div className="flex-1 px-5 pb-32">
-          <AssetEditor
-            assets={visibleAssets}
-            ownerOptions={['공동', ...memberNames, ...childNames]}
-            defaultOwner={memberName}
-            onChange={setAssetAmount}
-            onNote={setAssetNote}
-            onUpdate={updateAsset}
-            onAdd={addAsset}
-            onRemove={removeAsset}
-          />
-        </div>
-        <BottomBar>
-          <button
-            onClick={commit}
-            className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark"
-          >
-            정산 완료하기
-          </button>
-        </BottomBar>
-      </Frame>
-    )
-  }
-
   // ── 금액 입력 스텝 (수입/저축·투자/고정/변동) ──
   const def = STEPS[step - 1]
   const stepItems = items.filter((it) => def.groups.includes(it.group) && it.member === member)
+  const isLastStep = step === LAST_MONEY_STEP
+
+  // 우리집 잉여현금 (수입 − 저축 − 투자 − 지출) — 입력하는 대로 실시간 반영
+  const liveSurplus = summarize({ ym, items, closed: true }).surplus
 
   // 빈값·0원 항목이 있으면 다음 단계로 못 넘어감 (삭제하거나 금액 입력)
   const stepInvalid = stepItems.some((it) => !it.actual || it.actual <= 0)
-  const tryNext = () => {
+  const proceed = () => {
     if (stepInvalid) {
       setShowErrors(true)
       return
     }
     setShowErrors(false)
-    next()
+    if (isLastStep) commit()
+    else next()
   }
 
   return (
@@ -355,7 +303,7 @@ export default function Checkup() {
         subtitle={`${memberName} · ${def.subtitle}`}
         caption={`${formatYmKorean(ym)} 정산`}
       />
-      <div className="flex-1 px-5 pb-32">
+      <div className="flex-1 px-5 pb-40">
         <MoneyStep
           groups={def.groups}
           items={stepItems}
@@ -369,17 +317,26 @@ export default function Checkup() {
         />
       </div>
       <BottomBar>
+        {/* 잉여현금 실시간 표시 (수입 입력 후 저축·투자·지출 단계에서 확인) */}
+        <div className="mb-2 flex items-center justify-between rounded-btn bg-ink px-4 py-2.5">
+          <span className="text-[13px] font-semibold text-white/80">잉여현금</span>
+          <span
+            className={`tnum text-[16px] font-extrabold ${liveSurplus < 0 ? 'text-[#FF8A93]' : 'text-white'}`}
+          >
+            {formatWon(liveSurplus)}
+          </span>
+        </div>
         <div className="space-y-2">
           <button
-            onClick={tryNext}
+            onClick={proceed}
             className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark"
           >
-            다음
+            {isLastStep ? '정산 완료하기' : '다음'}
           </button>
           {def.sameAsLast &&
             (hasPrevLedger ? (
               <button
-                onClick={tryNext}
+                onClick={proceed}
                 className="h-11 w-full rounded-btn bg-white text-[14px] font-semibold text-sub active:bg-line"
               >
                 지난달과 같아요

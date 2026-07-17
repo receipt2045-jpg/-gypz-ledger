@@ -75,6 +75,10 @@ export default function Assets() {
     items: assetItems.filter((it) => it.group === g),
   })).filter((x) => x.items.length > 0)
 
+  // 카드 탭 → 해당 소유자의 자산 수정 화면으로 바로 이동
+  const editOwner = (owner?: string) =>
+    navigate('/asset-setup', { state: { owner: owner ?? '공동' } })
+
   return (
     <div className="animate-fade-up space-y-4">
       <header className="flex items-center justify-between px-1 pt-2">
@@ -187,7 +191,13 @@ export default function Assets() {
 
       {/* 자산 그룹별 계좌 카드 그리드 */}
       {groupsWithItems.map(({ group, items }) => (
-        <AssetGroupSection key={group} group={group} items={items} badgeClass={ownerBadgeClass} />
+        <AssetGroupSection
+          key={group}
+          group={group}
+          items={items}
+          badgeClass={ownerBadgeClass}
+          onEdit={editOwner}
+        />
       ))}
 
       {/* 부채 */}
@@ -199,7 +209,13 @@ export default function Assets() {
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {debtItems.map((it) => (
-              <AccountCard key={it.id} item={it} badgeClass={ownerBadgeClass(it.owner)} debt />
+              <AccountCard
+                key={it.id}
+                item={it}
+                badgeClass={ownerBadgeClass(it.owner)}
+                onEdit={() => editOwner(it.owner)}
+                debt
+              />
             ))}
           </div>
         </section>
@@ -228,10 +244,12 @@ function AssetGroupSection({
   group,
   items,
   badgeClass,
+  onEdit,
 }: {
   group: AssetGroup
   items: AssetItemLike[]
   badgeClass: (owner?: string) => string
+  onEdit: (owner?: string) => void
 }) {
   const subtotal = items.reduce((acc, it) => acc + it.amount, 0)
   return (
@@ -245,7 +263,12 @@ function AssetGroupSection({
       </div>
       <div className="grid grid-cols-2 gap-2.5">
         {items.map((it) => (
-          <AccountCard key={it.id} item={it} badgeClass={badgeClass(it.owner)} />
+          <AccountCard
+            key={it.id}
+            item={it}
+            badgeClass={badgeClass(it.owner)}
+            onEdit={() => onEdit(it.owner)}
+          />
         ))}
       </div>
     </section>
@@ -261,18 +284,23 @@ interface AssetItemLike {
   owner?: string
 }
 
-// 계좌 하나 = 카드 하나: 아이콘 + 이름 + 소유자(색 구분) + 잔액
+// 계좌 하나 = 카드 하나: 아이콘 + 이름 + 소유자(색 구분) + 잔액. 탭하면 수정.
 function AccountCard({
   item,
   badgeClass,
+  onEdit,
   debt,
 }: {
   item: AssetItemLike
   badgeClass: string
+  onEdit: () => void
   debt?: boolean
 }) {
   return (
-    <div className="rounded-card bg-card p-4 shadow-card">
+    <button
+      onClick={onEdit}
+      className="rounded-card bg-card p-4 text-left shadow-card transition-transform active:scale-[0.97]"
+    >
       <div className="flex items-start justify-between">
         <AssetIcon group={item.group} kind={item.kind} size={38} />
         {item.owner && (
@@ -288,6 +316,6 @@ function AccountCard({
         {debt ? '−' : ''}
         {abbreviateKRW(item.amount)}
       </p>
-    </div>
+    </button>
   )
 }

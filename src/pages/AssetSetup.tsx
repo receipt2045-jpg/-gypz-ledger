@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Baby, ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
 import AssetEditor from '../components/AssetEditor'
 import { useLedgerStore } from '../lib/store'
@@ -13,17 +13,26 @@ import type { AssetItem } from '../types'
  */
 export default function AssetSetup() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { ledgers, snapshots, profile, memberNo, saveSnapshot } = useLedgerStore()
 
   const [ym] = useState(() => activeYm(ledgers))
   const [assets, setAssets] = useState<AssetItem[]>(
     () => resolveSnapshot(snapshots, ym).items.map((it) => ({ ...it })),
   )
-  // 선택된 소유자 이름 (부부 또는 자녀)
-  const [selName, setSelName] = useState<string | null>(null)
 
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
   const childNames = profile.childNames ?? []
+
+  // 자산 탭 카드에서 넘어온 경우 그 소유자를 바로 선택 (공동은 로그인 구성원 편집기로)
+  const initSel = () => {
+    const owner = (location.state as { owner?: string } | null)?.owner
+    if (!owner) return null
+    if (owner === '공동') return memberNames[(memberNo ?? 1) - 1]
+    return owner // 부부 또는 자녀 이름
+  }
+  // 선택된 소유자 이름 (부부 또는 자녀)
+  const [selName, setSelName] = useState<string | null>(initSel)
   const isChild = selName ? childNames.includes(selName) : false
 
   const setAmount = (id: string, amount: number) =>
