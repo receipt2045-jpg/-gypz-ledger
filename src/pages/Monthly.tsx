@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import BudgetBars from '../components/BudgetBars'
 import InfoTip from '../components/InfoTip'
 import SectionList from '../components/SectionList'
 import { useLedgerStore } from '../lib/store'
@@ -13,6 +15,7 @@ type MemberFilter = 0 | 1 | 2 // 0 = 함께
 const BANNER_KEY = 'gypz-concept-banner-closed'
 
 export default function Monthly() {
+  const navigate = useNavigate()
   const { ledgers, profile } = useLedgerStore()
   const [ym, setYm] = useState(() => activeYm(ledgers))
   const [member, setMember] = useState<MemberFilter>(0)
@@ -83,6 +86,28 @@ export default function Monthly() {
           아직 정산 전이에요 · 계획 금액 기준
         </p>
       )}
+
+      {/* 기록하기 — 예산 세우기(월초) / 정산하기(월말) */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
+          className="h-12 flex-1 rounded-btn bg-white text-[14px] font-bold text-ink shadow-card active:bg-line"
+        >
+          📝 예산 세우기
+        </button>
+        <button
+          onClick={() => navigate('/checkup', { state: { ym, mode: 'settle' } })}
+          className="h-12 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white shadow-cta active:bg-brand-dark"
+        >
+          ✅ {formatYmKorean(ym).split(' ')[1]} 정산하기
+        </button>
+      </div>
+
+      {/* 예산 대비 지출 */}
+      <div className="rounded-card bg-card px-5 py-4 shadow-card">
+        <h3 className="mb-3 text-[15px] font-bold text-ink">예산 대비 지출</h3>
+        <BudgetBars items={ledger.items} />
+      </div>
 
       {/* 부부 토글 */}
       <div className="flex gap-1 rounded-btn bg-line/60 p-1">

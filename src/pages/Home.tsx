@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
-import AssetDonut from '../components/AssetDonut'
-import BudgetBars from '../components/BudgetBars'
+import { Check, ChevronLeft, ChevronRight, Settings, TrendingUp } from 'lucide-react'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import MonthlyCombo, { type MonthPoint } from '../components/MonthlyCombo'
@@ -16,8 +14,6 @@ import {
   resolveLedger,
   resolveSnapshot,
   summarize,
-  totalAssets,
-  totalDebts,
 } from '../lib/carryover'
 import {
   abbreviateKRW,
@@ -30,6 +26,10 @@ import {
 } from '../lib/format'
 import { TERM_TIP } from '../lib/constants'
 
+/**
+ * 홈 = 대시보드만. 기록(고백·예산·정산·자산 등록)은 각 탭에서:
+ * 고백 → 하단 가운데 탭 / 예산·정산 → 가계부 탭 / 자산 등록 → 자산 탭
+ */
 export default function Home() {
   const navigate = useNavigate()
   const { ledgers, snapshots, profile } = useLedgerStore()
@@ -37,16 +37,13 @@ export default function Home() {
   // 보고 있는 달 — 정산해도 자동으로 넘어가지 않고, ◀▶로 직접 선택
   const latestLedgerYm = ledgers.length ? ledgers[ledgers.length - 1].ym : activeYm(ledgers)
   const [ym, setYm] = useState(latestLedgerYm)
-  // 다음 달 하나까지 이동 허용(미리 예산 세우기)
-  const maxYm = shiftYm(latestLedgerYm, 1)
+  const maxYm = shiftYm(latestLedgerYm, 1) // 다음 달까지(예산 미리보기)
 
   const ledger = resolveLedger(ledgers, ym)
   const s = summarize(ledger)
 
   const snapshot = resolveSnapshot(snapshots, ym)
   const netWorth = netWorthOf(snapshot)
-  const assets = totalAssets(snapshot)
-  const debts = totalDebts(snapshot)
   const series = netWorthSeries(snapshots, ym, 6)
   const prev = series.length >= 2 ? series[series.length - 2].value : netWorth
   const delta = signedAbbrev(netWorth - prev)
@@ -59,15 +56,13 @@ export default function Home() {
   }))
 
   const targetRatio = profile.targetNetWorth > 0 ? netWorth / profile.targetNetWorth : 0
-
   const settledMembers = ledger.settledMembers ?? []
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
 
   return (
-    <>
-    <div className="animate-fade-up space-y-4 pb-44">
-      {/* 달 선택 */}
-      <div className="flex items-center justify-center gap-3 pt-2">
+    <div className="animate-fade-up space-y-4 pb-24">
+      {/* 달 선택 + 설정 */}
+      <div className="relative flex items-center justify-center gap-3 pt-2">
         <button
           onClick={() => setYm(shiftYm(ym, -1))}
           className="flex h-8 w-8 items-center justify-center rounded-full text-sub active:bg-line"
@@ -86,14 +81,18 @@ export default function Home() {
         >
           <ChevronRight size={20} />
         </button>
+        <button
+          onClick={() => navigate('/settings')}
+          className="absolute right-0 flex h-8 w-8 items-center justify-center rounded-full text-cap active:bg-line"
+          aria-label="설정"
+        >
+          <Settings size={20} />
+        </button>
       </div>
 
-      {/* 헤더 + 순자산 큰 숫자 */}
+      {/* 순자산 헤더 */}
       <header className="px-1">
-        <p className="text-[15px] font-semibold text-sub">
-          {formatMonthKorean(ym)} 우리집 돈 흐름
-        </p>
-        <p className="mt-1 text-[13px] text-cap">
+        <p className="text-[13px] text-cap">
           {formatMonthKorean(ym)} 순자산
           <InfoTip text={TERM_TIP.netWorth} />
         </p>
@@ -129,25 +128,8 @@ export default function Home() {
         </Card>
       )}
 
-      {/* 카드 1 — 이번 달 요약 */}
-      <Card>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[16px] font-bold text-ink">{formatMonthKorean(ym)} 요약</h2>
-          <span className="flex items-center rounded-full bg-brand/10 px-2.5 py-1 text-[12px] font-bold text-brand">
-            저축·투자율 {formatPercent(s.savingInvestRate)}
-            <InfoTip text={TERM_TIP.savingRate} />
-          </span>
-        </div>
-        <div className="space-y-2.5">
-          <SummaryRow label="수입" amount={s.income} accent="text-brand" />
-          <SummaryRow label="저축" amount={s.saving} />
-          <SummaryRow label="투자" amount={s.investment} />
-          <SummaryRow label="지출" amount={s.expense} />
-        </div>
-      </Card>
-
-      {/* 카드 2 — 잉여현금 (미정산이면 칭찬 대신 시작 안내 — 브리프 P0 1.3) */}
-      <Card>
+      {/* 잉여현금 + 정산 상태 */}
+      <Card onClick={() => navigate('/monthly')}>
         {ledger.closed ? (
           <>
             <p className="text-[13px] font-medium text-cap">
@@ -169,37 +151,37 @@ export default function Home() {
           </>
         ) : (
           <>
-            <p className="text-[15px] font-bold text-ink">
-              아직 {formatMonthKorean(ym)} 정산 전입니다
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-[15px] font-bold text-ink">
+                아직 {formatMonthKorean(ym)} 정산 전입니다
+              </p>
+              <ChevronRight size={18} className="shrink-0 text-cap" />
+            </div>
             <p className="mt-1.5 text-[14px] font-medium text-sub">
-              아래 '{formatMonthKorean(ym)} 정산하기'로 시작하실 분! 🤍
+              가계부 탭에서 예산을 세우고 정산해 보세요 🤍
             </p>
           </>
         )}
-      </Card>
-
-      {/* 예산 대비 지출 (예산 세우기 ↔ 정산 연동) */}
-      <Card onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[16px] font-bold text-ink">{formatMonthKorean(ym)} 예산 대비 지출</h2>
-          <ChevronRight size={18} className="text-cap" />
+        {/* 부부 정산 상태 */}
+        <div className="mt-3 flex gap-2 border-t border-line pt-3">
+          {([1, 2] as const).map((m) => {
+            const done = settledMembers.includes(m)
+            return (
+              <span
+                key={m}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold ${
+                  done ? 'bg-brand/10 text-brand' : 'bg-bg text-cap'
+                }`}
+              >
+                {done && <Check size={12} />}
+                {memberNames[m - 1]} {done ? '완료' : '대기'}
+              </span>
+            )
+          })}
         </div>
-        <BudgetBars items={ledger.items} />
       </Card>
 
-      {/* 자산 구성 도넛 (총자산·순자산·부채) */}
-      {snapshot.items.length > 0 && (
-        <Card onClick={() => navigate('/assets')}>
-          <div className="mb-1 flex items-center justify-between">
-            <p className="text-[13px] font-medium text-cap">자산 구성</p>
-            <ChevronRight size={16} className="text-cap" />
-          </div>
-          <AssetDonut assets={assets} debts={debts} size={160} />
-        </Card>
-      )}
-
-      {/* 카드 3 — 월별 지출·순자산 콤보 차트 */}
+      {/* 월별 지출·순자산 콤보 차트 */}
       <Card>
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[13px] font-medium text-cap">최근 6개월 지출·순자산</p>
@@ -208,7 +190,7 @@ export default function Home() {
         <MonthlyCombo data={combo} />
       </Card>
 
-      {/* 카드 4 — 10년 목표 진행바 */}
+      {/* 10년 목표 진행바 */}
       <Card onClick={() => navigate('/assets')}>
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[15px] font-bold text-ink">10년 목표 순자산</p>
@@ -223,7 +205,6 @@ export default function Home() {
           </span>
         </div>
         <ProgressBar ratio={targetRatio} />
-        {/* 동기부여 문구 — 목표까지 남은 금액 */}
         {profile.targetNetWorth > netWorth && (
           <p className="mt-2 text-[13px] font-medium text-sub">
             목표까지 <b className="tnum text-brand">{abbreviateKRW(profile.targetNetWorth - netWorth)}</b>{' '}
@@ -234,67 +215,6 @@ export default function Home() {
           <p className="mt-2 text-[13px] font-bold text-brand">🎉 10년 목표를 달성했어요! 대단해요</p>
         )}
       </Card>
-
-    </div>
-
-    {/* 하단 고정 CTA — 애니메이션(transform) 컨테이너 밖에 두어야 fixed가 뷰포트 기준으로 동작 */}
-    <div className="pointer-events-none fixed bottom-[70px] left-1/2 z-20 w-full max-w-app -translate-x-1/2 px-5">
-      <div className="pointer-events-auto mb-2 flex justify-center gap-2">
-        {([1, 2] as const).map((m) => {
-          const done = settledMembers.includes(m)
-          return (
-            <span
-              key={m}
-              className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold shadow-card ${
-                done ? 'bg-brand text-white' : 'bg-white text-sub'
-              }`}
-            >
-              {done && <Check size={13} />}
-              {memberNames[m - 1]} {done ? '완료' : '대기'}
-            </span>
-          )
-        })}
-      </div>
-      {/* 일일 고백 — 매일 여는 이유 (원팀가계부 P0) */}
-      <button
-        onClick={() => navigate('/confess')}
-        className="pointer-events-auto mb-2 h-14 w-full rounded-btn bg-ink text-[16px] font-bold text-white shadow-cta transition-colors active:bg-black"
-      >
-        💸 오늘 쓴 돈 고백하기
-      </button>
-      {/* 예산 세우는 날 / 정산하는 날 — 선택한 달 기준 */}
-      <div className="pointer-events-auto flex gap-2">
-        <button
-          onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
-          className="h-12 flex-1 rounded-btn bg-white text-[14px] font-bold text-ink shadow-cta transition-colors active:bg-line"
-        >
-          예산 세우기
-        </button>
-        <button
-          onClick={() => navigate('/checkup', { state: { ym, mode: 'settle' } })}
-          className="h-12 flex-[1.3] rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta transition-colors active:bg-brand-dark"
-        >
-          {formatMonthKorean(ym)} 정산하기
-        </button>
-      </div>
-    </div>
-    </>
-  )
-}
-
-function SummaryRow({
-  label,
-  amount,
-  accent = 'text-ink',
-}: {
-  label: string
-  amount: number
-  accent?: string
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[15px] text-sub">{label}</span>
-      <span className={`tnum text-[16px] font-semibold ${accent}`}>{formatWon(amount)}</span>
     </div>
   )
 }
