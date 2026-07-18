@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { Check, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
 import AssetDonut from '../components/AssetDonut'
+import BudgetBars from '../components/BudgetBars'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import ProgressBar from '../components/ProgressBar'
@@ -161,6 +162,15 @@ export default function Home() {
         )}
       </Card>
 
+      {/* 예산 대비 지출 (예산 세우기 ↔ 정산 연동) */}
+      <Card onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[16px] font-bold text-ink">{formatMonthKorean(ym)} 예산 대비 지출</h2>
+          <ChevronRight size={18} className="text-cap" />
+        </div>
+        <BudgetBars items={ledger.items} />
+      </Card>
+
       {/* 자산 구성 도넛 (총자산·순자산·부채) */}
       {snapshot.items.length > 0 && (
         <Card onClick={() => navigate('/assets')}>
@@ -226,6 +236,16 @@ export default function Home() {
           </span>
         </div>
         <ProgressBar ratio={targetRatio} />
+        {/* 동기부여 문구 — 목표까지 남은 금액 */}
+        {profile.targetNetWorth > netWorth && (
+          <p className="mt-2 text-[13px] font-medium text-sub">
+            목표까지 <b className="tnum text-brand">{abbreviateKRW(profile.targetNetWorth - netWorth)}</b>{' '}
+            남았어요. 이 속도라면 곧 도착이에요 💪
+          </p>
+        )}
+        {profile.targetNetWorth > 0 && netWorth >= profile.targetNetWorth && (
+          <p className="mt-2 text-[13px] font-bold text-brand">🎉 10년 목표를 달성했어요! 대단해요</p>
+        )}
       </Card>
 
     </div>
