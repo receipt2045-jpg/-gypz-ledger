@@ -3,6 +3,7 @@ import type {
   AppData,
   AssetSnapshot,
   CategoryGroup,
+  Confession,
   MonthlyLedger,
   OccasionEntry,
   Profile,
@@ -15,6 +16,21 @@ import * as db from './db'
 // 저장 실패를 사용자에게 조용히 알리기 위한 핸들러 (App에서 토스트 등으로 교체 가능)
 function reportSyncError(err: unknown) {
   console.error('[sync] Supabase 저장 실패:', err)
+}
+
+// 일일 고백 오프라인 큐 — 전송 실패분을 보관했다가 다음 접속 때 재전송
+const CONFESS_QUEUE_KEY = 'gypz-confess-queue'
+
+function readConfessQueue(): Confession[] {
+  try {
+    return JSON.parse(localStorage.getItem(CONFESS_QUEUE_KEY) ?? '[]') as Confession[]
+  } catch {
+    return []
+  }
+}
+
+function pushConfessQueue(c: Confession) {
+  localStorage.setItem(CONFESS_QUEUE_KEY, JSON.stringify([...readConfessQueue(), c]))
 }
 
 const EMPTY: AppData = {
@@ -44,9 +60,12 @@ interface LedgerState extends AppData {
   memberNo: 1 | 2 | null // 로그인한 사용자가 구성원 1(남편)인지 2(아내)인지
   inviteCode: string | null
   sample: boolean // 샘플 둘러보기 모드 (householdId가 없어 DB 저장은 자동으로 건너뜀)
+  confessions: Confession[] // 일일 고백 로그 (최근 62일, 정산과 독립)
   init: (membership: db.Membership) => Promise<void>
   loadSample: () => void
   clear: () => void
+  // 일일 고백: 로컬 즉시 반영 → 백그라운드 전송(실패 시 큐)
+  addConfession: (c: Omit<Confession, 'id' | 'createdAt' | 'memberNo'>) => Confession
   // 프로필
   updateProfile: (patch: Partial<Profile>) => void
   // 월간 가계부
@@ -72,6 +91,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
   memberNo: null,
   inviteCode: null,
   sample: false,
+  confessions: [],
 
   init: async ({ householdId, memberNo }) => {
     set({ status: 'loading', householdId, memberNo, sample: false })
@@ -81,6 +101,18 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     } catch (err) {
       console.error('[sync] 데이터 로드 실패:', err)
       set({ status: 'error' })
+      return
+    }
+    // 일일 고백: 오프라인 큐 재전송 → 최근 로그 로드 (실패해도 앱 사용엔 지장 없음)
+    try {
+      const queued = readConfessQueue()
+      for (const c of queued) {
+        await db.insertConfession(householdId, c)
+      }
+      if (queued.length > 0) localStorage.removeItem(CONFESS_QUEUE_KEY)
+      set({ confessions: await db.fetchConfessions(householdId) })
+    } catch (err) {
+      console.error('[sync] 고백 로그 동기화 실패:', err)
     }
   },
 
@@ -94,6 +126,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       memberNo: 1,
       inviteCode: null,
       sample: true,
+      confessions: [],
     }),
 
   clear: () =>
@@ -104,7 +137,28 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       memberNo: null,
       inviteCode: null,
       sample: false,
+      confessions: [],
     }),
+
+  addConfession: (c) => {
+    const s = get()
+    const full: Confession = {
+      ...c,
+      id: genId(),
+      memberNo: s.memberNo ?? 1,
+      createdAt: new Date().toISOString(),
+    }
+    // 1) 로컬 즉시 반영 (반응 0.3초 규칙 — 네트워크를 기다리지 않는다)
+    set({ confessions: [full, ...s.confessions] })
+    // 2) 백그라운드 전송, 실패 시 오프라인 큐
+    if (s.householdId) {
+      db.insertConfession(s.householdId, full).catch((err) => {
+        reportSyncError(err)
+        pushConfessQueue(full)
+      })
+    }
+    return full
+  },
 
   updateProfile: (patch) => {
     const profile = { ...get().profile, ...patch }

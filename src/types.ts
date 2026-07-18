@@ -53,6 +53,16 @@ export interface OccasionEntry {
   amount: number
 }
 
+export interface Confession {
+  // 일일 고백 = 지출/수입 1건. 습관·잔소리용 로그이며 월간 정산과 완전 분리.
+  id: string
+  memberNo: 1 | 2
+  category: string
+  kind: CategoryGroup
+  amount: number // 원
+  createdAt: string // ISO
+}
+
 export type Categories = Record<CategoryGroup, string[]>
 
 export interface AppData {

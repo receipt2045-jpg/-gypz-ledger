@@ -64,6 +64,18 @@ create table public.occasions (
   created_at timestamptz not null default now()
 );
 
+-- 6) 일일 고백 (원팀가계부 — 습관·잔소리용 로그, 월간 정산과 독립)
+create table public.confessions (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  member_no smallint not null check (member_no in (1, 2)),
+  category text not null,
+  kind text not null check (kind in ('income', 'saving', 'investment', 'fixed', 'variable')),
+  amount bigint not null check (amount > 0),
+  created_at timestamptz not null default now()
+);
+create index confessions_household_created on public.confessions (household_id, created_at desc);
+
 -- ============================================================
 -- RLS(행 수준 보안): 자기 가구 데이터만 읽고 쓸 수 있음
 -- ============================================================
@@ -102,6 +114,9 @@ create policy "ledgers_all" on public.ledgers
 create policy "snapshots_all" on public.snapshots
   for all using (public.is_member(household_id)) with check (public.is_member(household_id));
 create policy "occasions_all" on public.occasions
+  for all using (public.is_member(household_id)) with check (public.is_member(household_id));
+alter table public.confessions enable row level security;
+create policy "confessions_all" on public.confessions
   for all using (public.is_member(household_id)) with check (public.is_member(household_id));
 
 -- ============================================================

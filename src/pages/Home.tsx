@@ -65,7 +65,7 @@ export default function Home() {
 
   return (
     <>
-    <div className="animate-fade-up space-y-4 pb-24">
+    <div className="animate-fade-up space-y-4 pb-44">
       {/* 달 선택 */}
       <div className="flex items-center justify-center gap-3 pt-2">
         <button
@@ -255,17 +255,24 @@ export default function Home() {
           )
         })}
       </div>
+      {/* 일일 고백 — 매일 여는 이유 (원팀가계부 P0) */}
+      <button
+        onClick={() => navigate('/confess')}
+        className="pointer-events-auto mb-2 h-14 w-full rounded-btn bg-ink text-[16px] font-bold text-white shadow-cta transition-colors active:bg-black"
+      >
+        💸 오늘 쓴 돈 고백하기
+      </button>
       {/* 예산 세우는 날 / 정산하는 날 — 선택한 달 기준 */}
       <div className="pointer-events-auto flex gap-2">
         <button
           onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
-          className="h-14 flex-1 rounded-btn bg-white text-[15px] font-bold text-ink shadow-cta transition-colors active:bg-line"
+          className="h-12 flex-1 rounded-btn bg-white text-[14px] font-bold text-ink shadow-cta transition-colors active:bg-line"
         >
           예산 세우기
         </button>
         <button
           onClick={() => navigate('/checkup', { state: { ym, mode: 'settle' } })}
-          className="h-14 flex-[1.3] rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta transition-colors active:bg-brand-dark"
+          className="h-12 flex-[1.3] rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta transition-colors active:bg-brand-dark"
         >
           {formatMonthKorean(ym)} 정산하기
         </button>

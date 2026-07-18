@@ -3,6 +3,7 @@ import type {
   AppData,
   AssetSnapshot,
   Categories,
+  Confession,
   MonthlyLedger,
   OccasionEntry,
   Profile,
@@ -146,6 +147,42 @@ export async function pushCategories(householdId: string, categories: Categories
     .from('households')
     .update({ categories })
     .eq('id', householdId)
+  if (error) throw error
+}
+
+// ── 일일 고백 (confessions) ────────────────────
+
+/** 최근 62일 고백 로그 (스트릭 계산 + 월 로그 표시용) */
+export async function fetchConfessions(householdId: string): Promise<Confession[]> {
+  const since = new Date()
+  since.setDate(since.getDate() - 62)
+  const { data, error } = await supabase
+    .from('confessions')
+    .select('*')
+    .eq('household_id', householdId)
+    .gte('created_at', since.toISOString())
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    memberNo: r.member_no as 1 | 2,
+    category: r.category,
+    kind: r.kind,
+    amount: Number(r.amount),
+    createdAt: r.created_at,
+  }))
+}
+
+export async function insertConfession(householdId: string, c: Confession) {
+  const { error } = await supabase.from('confessions').insert({
+    id: c.id,
+    household_id: householdId,
+    member_no: c.memberNo,
+    category: c.category,
+    kind: c.kind,
+    amount: c.amount,
+    created_at: c.createdAt,
+  })
   if (error) throw error
 }
 
