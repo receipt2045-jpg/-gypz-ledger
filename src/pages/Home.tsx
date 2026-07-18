@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { Check, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
 import AssetDonut from '../components/AssetDonut'
 import BudgetBars from '../components/BudgetBars'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
+import MonthlyCombo, { type MonthPoint } from '../components/MonthlyCombo'
 import ProgressBar from '../components/ProgressBar'
+import StatGauges from '../components/StatGauges'
 import { useLedgerStore } from '../lib/store'
 import {
   activeYm,
@@ -49,6 +50,13 @@ export default function Home() {
   const series = netWorthSeries(snapshots, ym, 6)
   const prev = series.length >= 2 ? series[series.length - 2].value : netWorth
   const delta = signedAbbrev(netWorth - prev)
+
+  // 최근 6개월 지출·순자산 콤보 데이터
+  const combo: MonthPoint[] = series.map((pt) => ({
+    label: formatMonthKorean(pt.ym),
+    expense: summarize(resolveLedger(ledgers, pt.ym)).expense,
+    netWorth: pt.value,
+  }))
 
   const targetRatio = profile.targetNetWorth > 0 ? netWorth / profile.targetNetWorth : 0
 
@@ -96,6 +104,15 @@ export default function Home() {
           지난달보다 {delta.zero ? '변동 없음' : delta.text}
         </p>
       </header>
+
+      {/* 미니 게이지 4종 (수입·지출·저축률·순자산) */}
+      <StatGauges
+        income={s.income}
+        expense={s.expense}
+        savingInvestRate={s.savingInvestRate}
+        netWorth={netWorth}
+        targetNetWorth={profile.targetNetWorth}
+      />
 
       {/* 자산이 하나도 없으면 자산 등록부터 안내 */}
       {snapshot.items.length === 0 && (
@@ -182,43 +199,13 @@ export default function Home() {
         </Card>
       )}
 
-      {/* 카드 3 — 순자산 추이 미니 차트 */}
+      {/* 카드 3 — 월별 지출·순자산 콤보 차트 */}
       <Card>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-[13px] font-medium text-cap">최근 6개월 순자산 추이</p>
+          <p className="text-[13px] font-medium text-cap">최근 6개월 지출·순자산</p>
           <TrendingUp size={16} className="text-brand" />
         </div>
-        <div className="h-28 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={series} margin={{ top: 6, right: 4, bottom: 0, left: 4 }}>
-              <defs>
-                <linearGradient id="homeArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3182F6" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="#3182F6" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <Tooltip
-                cursor={{ stroke: '#3182F6', strokeWidth: 1, strokeDasharray: '3 3' }}
-                content={({ active, payload }) =>
-                  active && payload && payload.length ? (
-                    <div className="rounded-lg bg-ink px-2.5 py-1.5 text-[12px] font-semibold text-white shadow-lg">
-                      {abbreviateKRW(Number(payload[0].value))}
-                    </div>
-                  ) : null
-                }
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="#3182F6"
-                strokeWidth={2.5}
-                fill="url(#homeArea)"
-                dot={false}
-                activeDot={{ r: 4, fill: '#3182F6', stroke: '#fff', strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        <MonthlyCombo data={combo} />
       </Card>
 
       {/* 카드 4 — 10년 목표 진행바 */}
