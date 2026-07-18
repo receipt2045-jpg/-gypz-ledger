@@ -1,6 +1,7 @@
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDownRight, ArrowUpRight, ChevronRight, Pencil } from 'lucide-react'
+import AssetDonut from '../components/AssetDonut'
 import AssetIcon from '../components/AssetIcon'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
@@ -13,13 +14,7 @@ import {
   totalAssets,
   totalDebts,
 } from '../lib/carryover'
-import {
-  abbreviateKRW,
-  currentYm,
-  formatMonthKorean,
-  formatPercent,
-  formatWon,
-} from '../lib/format'
+import { abbreviateKRW, currentYm, formatMonthKorean, formatPercent } from '../lib/format'
 import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER, TERM_TIP } from '../lib/constants'
 import type { AssetGroup } from '../types'
 
@@ -159,15 +154,15 @@ export default function Assets() {
           </ResponsiveContainer>
         </div>
 
-        <div className="mt-3 flex justify-between border-t border-line pt-3 text-[13px]">
-          <span className="text-sub">
-            자산 <span className="tnum font-semibold text-ink">{formatWon(assets)}</span>
-          </span>
-          <span className="text-sub">
-            부채 <span className="tnum font-semibold text-danger">{formatWon(debts)}</span>
-          </span>
-        </div>
       </Card>
+
+      {/* 총자산·순자산·부채 도넛 */}
+      {snapshot.items.length > 0 && (
+        <Card>
+          <p className="mb-3 text-[13px] font-medium text-cap">자산 구성</p>
+          <AssetDonut assets={assets} debts={debts} />
+        </Card>
+      )}
 
       {/* 구성원별 자산 합계 */}
       {snapshot.items.length > 0 && (

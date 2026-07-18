@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { Check, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
+import AssetDonut from '../components/AssetDonut'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import ProgressBar from '../components/ProgressBar'
@@ -13,6 +14,8 @@ import {
   resolveLedger,
   resolveSnapshot,
   summarize,
+  totalAssets,
+  totalDebts,
 } from '../lib/carryover'
 import {
   abbreviateKRW,
@@ -40,6 +43,8 @@ export default function Home() {
 
   const snapshot = resolveSnapshot(snapshots, ym)
   const netWorth = netWorthOf(snapshot)
+  const assets = totalAssets(snapshot)
+  const debts = totalDebts(snapshot)
   const series = netWorthSeries(snapshots, ym, 6)
   const prev = series.length >= 2 ? series[series.length - 2].value : netWorth
   const delta = signedAbbrev(netWorth - prev)
@@ -155,6 +160,17 @@ export default function Home() {
           </>
         )}
       </Card>
+
+      {/* 자산 구성 도넛 (총자산·순자산·부채) */}
+      {snapshot.items.length > 0 && (
+        <Card onClick={() => navigate('/assets')}>
+          <div className="mb-1 flex items-center justify-between">
+            <p className="text-[13px] font-medium text-cap">자산 구성</p>
+            <ChevronRight size={16} className="text-cap" />
+          </div>
+          <AssetDonut assets={assets} debts={debts} size={160} />
+        </Card>
+      )}
 
       {/* 카드 3 — 순자산 추이 미니 차트 */}
       <Card>
