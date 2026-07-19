@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, Settings, TrendingUp } from 'lucide-react'
+import { BarChart3, Check, ChevronLeft, ChevronRight, Settings, TrendingUp } from 'lucide-react'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import MonthlyCombo, { type MonthPoint } from '../components/MonthlyCombo'
@@ -81,13 +81,22 @@ export default function Home() {
         >
           <ChevronRight size={20} />
         </button>
-        <button
-          onClick={() => navigate('/settings')}
-          className="absolute right-0 flex h-8 w-8 items-center justify-center rounded-full text-cap active:bg-line"
-          aria-label="설정"
-        >
-          <Settings size={20} />
-        </button>
+        <div className="absolute right-0 flex items-center">
+          <button
+            onClick={() => navigate('/yearly')}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-cap active:bg-line"
+            aria-label="연간 리포트"
+          >
+            <BarChart3 size={19} />
+          </button>
+          <button
+            onClick={() => navigate('/settings')}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-cap active:bg-line"
+            aria-label="설정"
+          >
+            <Settings size={20} />
+          </button>
+        </div>
       </div>
 
       {/* 순자산 헤더 */}

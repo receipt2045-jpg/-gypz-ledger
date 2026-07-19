@@ -12,6 +12,7 @@ import Yearly from './pages/Yearly'
 import Settings from './pages/Settings'
 import Checkup from './pages/Checkup'
 import Confess from './pages/Confess'
+import Roadmap from './pages/Roadmap'
 import AssetSetup from './pages/AssetSetup'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
@@ -100,6 +101,7 @@ function AppRoutes() {
     <Routes>
       <Route element={<AppFrame />}>
         <Route path="/" element={<Home />} />
+        <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/monthly" element={<Monthly />} />
         <Route path="/assets" element={<Assets />} />
         <Route path="/yearly" element={<Yearly />} />

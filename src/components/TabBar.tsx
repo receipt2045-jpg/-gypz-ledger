@@ -1,14 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, BookText, Wallet, BarChart3, HandCoins } from 'lucide-react'
+import { Home, Map, BookText, Wallet, HandCoins } from 'lucide-react'
 
 const LEFT = [
   { to: '/', label: '홈', Icon: Home },
-  { to: '/monthly', label: '가계부', Icon: BookText },
+  { to: '/roadmap', label: '내집마련', Icon: Map },
 ] as const
 
 const RIGHT = [
+  { to: '/monthly', label: '가계부', Icon: BookText },
   { to: '/assets', label: '자산', Icon: Wallet },
-  { to: '/yearly', label: '리포트', Icon: BarChart3 },
 ] as const
 
 function Tab({ to, label, Icon }: { to: string; label: string; Icon: typeof Home }) {
