@@ -17,9 +17,15 @@ export interface Membership {
 }
 
 export async function getMyMembership(): Promise<Membership | null> {
+  // 배우자가 합류하면 가구 멤버가 2명이 되므로, 반드시 내 계정 행만 조회해야 함
+  // (필터 없이 maybeSingle()을 쓰면 2행이 잡혀 에러가 남)
+  const { data: auth } = await supabase.auth.getUser()
+  const uid = auth.user?.id
+  if (!uid) return null
   const { data, error } = await supabase
     .from('household_members')
     .select('household_id, member_no')
+    .eq('user_id', uid)
     .maybeSingle()
   if (error) throw error
   if (!data) return null
