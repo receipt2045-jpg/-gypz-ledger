@@ -101,8 +101,9 @@ export default function Confess() {
   const save = () => {
     if (!sel || amount <= 0) return
     const full = addConfession({ category: sel.category, kind: sel.kind, amount })
-    const reaction = pickReaction(full)
-    const streak = streakOf(useLedgerStore.getState().confessions, memberNo ?? 1)
+    const all = useLedgerStore.getState().confessions
+    const reaction = pickReaction(full, all)
+    const streak = streakOf(all, memberNo ?? 1)
     setResult({ reaction, streak })
   }
 
@@ -160,6 +161,18 @@ export default function Confess() {
               </div>
             ))}
           </div>
+
+          {/* 불리 실행 액션 (면죄부 방지 — 잔소리마다 다음 행동 1개) */}
+          {result.reaction.action && (
+            <button
+              onClick={reset}
+              className="mt-4 flex w-full items-center justify-between rounded-card bg-amber-50 px-4 py-3 text-left active:bg-amber-100"
+            >
+              <span className="text-[14px] font-bold text-amber-700">
+                {result.reaction.action}
+              </span>
+            </button>
+          )}
 
           {/* 스트릭 */}
           <p className="mt-6 text-center text-[14px] font-bold text-ink">

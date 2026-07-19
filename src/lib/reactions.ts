@@ -1,26 +1,42 @@
 // ============================================================
-// 일일 고백 잔소리 판정 엔진 (원팀가계부 브리프 4 · 관점엔진 3분법)
-// 1단 규칙 기반 — 로컬에서 즉시 판정, 네트워크 대기 없음.
-//
-// ⚠️ 대사 풀(POOLS)은 《원팀가계부 캐릭터 대사 세트》 수령 전까지의
-//    임시 문구입니다. 문서를 받으면 이 파일의 풀만 교체하면 됩니다.
-//    (관점엔진 E. 코칭 말투: 따뜻하지만 단호, 완충어, 숫자 설득 준수)
+// 일일 고백 잔소리 판정 엔진 (원팀가계부)
+// 대사: 《원팀가계부 캐릭터 대사 세트》 공식 풀 그대로.
+// 톤: 관점엔진 E(따뜻하지만 단호·완충어·숫자 설득). 캐릭터가 대신 말함.
+// 판정: 3분법 bucket + 강도. reduce 초과는 [티키타카]↔[단위환산] 교차.
+// 치환: {금액}{카테고리}{n}{월합}{연}{10년}{알뜰족}{치킨}{스벅}{항공권}{제주}{소고기}
 // ============================================================
 import type { CategoryGroup, Confession } from '../types'
-import { formatWon } from './format'
+import { abbreviateKRW, formatWon } from './format'
 
-// ── 3분법 버킷 (관점엔진 A-2) ─────────────────
+// ── 3분법 버킷 ────────────────────────────────
 export type Bucket = 'reduce' | 'protect' | 'leverage' | 'grow' | 'income' | 'neutral'
+type ReduceSub = 'sub' | 'telecom' | 'delivery' | 'cafe' | 'taxi' | 'shopping'
 
-const REDUCE = new Set(['통신', '구독'])
 const PROTECT = new Set(['식비', '용돈', '자기계발', '경조사', '육아'])
 const LEVERAGE = new Set(['주거'])
+
+/** reduce(저효용 고정비) 세부 분류 — 기본 통신·구독 + 사용자 커스텀 카테고리 키워드 */
+function reduceSub(kind: CategoryGroup, category: string): ReduceSub | null {
+  if (kind === 'income' || kind === 'saving' || kind === 'investment') return null
+  const c = category
+  if (c.includes('구독') || c.includes('OTT') || c.includes('넷플')) return 'sub'
+  if (c.includes('통신') || c.includes('폰')) return 'telecom'
+  if (c.includes('배달') || c.includes('외식')) return 'delivery'
+  if (c.includes('카페') || c.includes('커피')) return 'cafe'
+  if (c.includes('택시')) return 'taxi'
+  if (c.includes('쇼핑') || c.includes('충동') || c.includes('꾸밈')) return 'shopping'
+  return null
+}
+
+function isDate(category: string): boolean {
+  return category.includes('데이트')
+}
 
 export function bucketOf(kind: CategoryGroup, category: string): Bucket {
   if (kind === 'income') return 'income'
   if (kind === 'saving' || kind === 'investment') return 'grow'
-  if (REDUCE.has(category)) return 'reduce'
-  if (PROTECT.has(category)) return 'protect'
+  if (reduceSub(kind, category)) return 'reduce'
+  if (PROTECT.has(category) || isDate(category)) return 'protect'
   if (LEVERAGE.has(category)) return 'leverage'
   return 'neutral'
 }
@@ -30,95 +46,178 @@ export interface Bubble {
   who: '모아' | '불리'
   text: string
 }
-
 export interface Reaction {
   bubbles: Bubble[]
-  style?: 'tikitaka' | 'unit' // reduce 전용 (교차 출력 확인용)
+  action?: string // 불리 실행 액션 (면죄부 방지, 버튼)
+  style?: 'tikitaka' | 'unit'
 }
 
-// ── 단위환산 드립 (브리프 4 재미 규칙) ────────
-function unitDrip(amount: number): string {
-  if (amount < 10_000) {
-    const cups = Math.max(1, Math.round(amount / 4_500))
-    return `아메리카노 ${cups}잔`
+// ── 대사 풀 (공식) ────────────────────────────
+type Line = { who: '모아' | '불리'; text: string }
+
+const ROAST: Record<ReduceSub, string[]> = {
+  sub: [
+    '또 구독이요…? 🙄 넷플릭스 볼 시간에 릴스 하나 더 기획하는 게 남는 장사예요.',
+    '이거 1년이면 {연}이에요. 10년이면 {10년}이고요. OTT는 딱 하나만 남기실 분!',
+    "자기계발 구독은 지켜요. 근데 이건 '소비용'이잖아요… 정리하실 분! ❗️",
+  ],
+  delivery: [
+    '이번 달 배달 {n}번째예요 ㅠㅠ 집밥이 통장을 지켜줘요…!',
+    '{금액}이면 장 봐서 3일은 먹어요. 손가락이 너무 빨라요!',
+  ],
+  cafe: ['오늘도 카페…☕ 한 잔 {금액} × 한 달이면 {월합}이에요. 텀블러 각!'],
+  taxi: ['택시요…? 🚕 그 {금액}, 10년이면 {10년}이에요. 한 정거장은 걸어요!'],
+  shopping: [
+    '이거… 진짜 필요했어요? 🫣 장바구니에 하루만 재워두실 분!',
+    '지금 이거 사면 이번 달 잉여현금이 사라져요. 다시 한 번만 생각해요!',
+  ],
+  telecom: [
+    '통신비 이렇게 나오면 안 돼요…! 약정 끝났으면 알뜰폰, 지금 바로요. 알뜰족은 {알뜰족}이에요.',
+  ],
+}
+
+// 8-A 티키타카 (모아·불리 만담)
+const TIKITAKA: Partial<Record<ReduceSub, Line[][]>> = {
+  delivery: [
+    [
+      { who: '모아', text: '또 배달?! 이번 달 {n}번째예요 🙄' },
+      { who: '불리', text: '에이 모아야~ 오늘 야근했대.' },
+      { who: '모아', text: '불리 너까지 편들면 어떡해!! 😤' },
+      { who: '불리', text: '알겠어알겠어 ㅋㅋ 대신 주말은 집밥 콜?' },
+    ],
+  ],
+  cafe: [
+    [
+      { who: '모아', text: '오늘도 카페 출근 도장이네요 ☕' },
+      { who: '불리', text: '커피가 있어야 일하지~' },
+      { who: '모아', text: '텀블러가 있어야 통장이 살지!' },
+      { who: '불리', text: '…맞말이라 할 말 없다.' },
+    ],
+  ],
+  shopping: [
+    [
+      { who: '모아', text: '이거 진짜 필요했어요? 🫤' },
+      { who: '불리', text: '예쁘긴 하더라…' },
+      { who: '모아', text: '불리!!' },
+      { who: '불리', text: '아 미안 미안 ㅋㅋ 하루만 재워두자' },
+    ],
+  ],
+  taxi: [
+    [
+      { who: '모아', text: '택시요…? 🚕' },
+      { who: '불리', text: '늦었다잖아~ 한 번쯤은' },
+      { who: '모아', text: '그 돈이면 10년 뒤 유럽인데!' },
+      { who: '불리', text: '…다음엔 버스 콜.' },
+    ],
+  ],
+  sub: [
+    [
+      { who: '모아', text: '구독 또 늘었어요?!' },
+      { who: '불리', text: '볼 게 많긴 해…' },
+      { who: '모아', text: '볼 시간에 릴스나 만들자!' },
+      { who: '불리', text: '모아 오늘 팩폭 지린다 ㅋㅋ' },
+    ],
+  ],
+}
+
+// 8-B 단위환산 드립 (금액에서 개수 계산)
+function unitLine(sub: ReduceSub, amount: number, monthSum: number): string | null {
+  const cnt = (unit: number) => Math.max(1, Math.round(amount / unit))
+  switch (sub) {
+    case 'delivery':
+      return `배달 {금액} = 치킨 ${cnt(23000)}마리예요 🍗 (참으면 더 대단!)`
+    case 'cafe':
+      return `카페값 {금액} = 스벅 ${cnt(4900)}잔. 텀블러 각!`
+    case 'taxi':
+      return amount >= 30000
+        ? '택시 {금액}… 10년이면 유럽 왕복 항공권이에요 ✈️'
+        : `택시 {금액} = 버스 ${cnt(1500)}번이에요 🚌`
+    case 'sub':
+      return `구독료 1년 {연} = 제주도 ${Math.max(1, Math.round((monthSum * 12) / 80000))}번 갈 돈 🏝`
+    case 'shopping':
+      return `이번에 쓴 {금액} = 소고기 ${cnt(50000)}근 🥩`
+    case 'telecom':
+      return null
   }
-  if (amount < 100_000) {
-    const chickens = Math.round((amount / 23_000) * 10) / 10
-    return `치킨 ${chickens}마리`
+}
+
+// 4) 불리 실행 액션 (면죄부 방지)
+const ACTIONS: Record<ReduceSub | 'default', string> = {
+  sub: '지금 바로 OTT 하나 해지하러 갈래요? 👉',
+  delivery: '이번 주 배달 앱 잠깐 지워보기, 같이 할까요? 👉',
+  cafe: '이 카테고리, 다음 달 한도 정해둘까요? 👉',
+  taxi: '이 카테고리, 다음 달 한도 정해둘까요? 👉',
+  shopping: '장바구니에 하루만 재워두기, 어때요? 👉',
+  telecom: '약정 끝났으면 알뜰폰 요금제 비교해 볼까요? 👉',
+  default: '남는 {금액}, 지금 적금으로 옮겨둘까요? 👉',
+}
+
+// 2) protect
+const PROTECT_SOFT = {
+  식비: '먹는 건 지켜야죠 🤍 근데 이번 주는 살짝 과했어요. 다음 한 끼만 집밥 어때요?',
+  데이트: '데이트는 소중해요 🤍 근데 한 번에 {금액}이면… 다음엔 소소한 데이트도 좋아요!',
+  기본: '{카테고리} {금액}, 지킬 지출이지만 혹시 조금만 조정해 볼 수 있을까요? 말씀만 드려봅니다.',
+}
+const PROTECT_OK = ['이건 지켜도 되는 지출이에요. 잘 쓰고 있어요 😉', '{카테고리}는 잔소리 안 할게요. 대신 통신·구독은 제가 지켜보고 있습니다 😉']
+
+// 3) grow
+const GROW = [
+  '오 저축 기록! 👏 이 {금액}이 10년 뒤엔 {10년}이 돼요. 잘하고 있어요 🤍',
+  '투자 들어갔네요! 불리가 제일 좋아하는 그림이에요. 계속 가요 🤍',
+  '{금액} 저축 고백 접수! 미래의 두 분이 지금의 두 분에게 감사할 거예요 🤍',
+]
+// leverage(내집마련 대출 등) — 줄이라 하지 않음 (관점엔진 A-2 ③)
+const LEVERAGE_LINE = [
+  '{카테고리} {금액} — 이건 자산을 만드는 지출이에요. 감당선 안에서는 줄이라고 안 할게요 👍',
+]
+const INCOME = ['수입 {금액} 축하해요 🎉 모으고 불릴 준비 완료!']
+
+// 6) 접수 (소액·중립)
+const RECEIPT = ['기록 완료! 🤍 잘 던졌어요.', '오케이, 접수! 다음 고백도 기다릴게요 😉']
+const NEUTRAL_MID = ['{카테고리} {금액}, 요 정도는 봐드릴게요. 오늘도 고백해 줘서 고마워요 😉']
+const NEUTRAL_HIGH: Line[][] = [
+  [
+    { who: '모아', text: '{카테고리} {금액}?! 큰 지출은 고백해 준 것만으로도 반은 성공이에요.' },
+    { who: '불리', text: '계획에 있던 지출이면 통과! 아니면 다음 달 예산에 꼭 넣어봐요 😉' },
+  ],
+]
+
+// ── 치환 ──────────────────────────────────────
+function makeVars(
+  c: { category: string; amount: number },
+  monthCount: number,
+  monthSum: number,
+) {
+  return {
+    '{금액}': formatWon(c.amount),
+    '{카테고리}': c.category,
+    '{n}': String(monthCount),
+    '{월합}': formatWon(monthSum),
+    '{연}': abbreviateKRW(monthSum * 12),
+    '{10년}': abbreviateKRW(monthSum * 120),
+    '{알뜰족}': '월 3만 원',
+  } as Record<string, string>
+}
+function fill(text: string, vars: Record<string, string>): string {
+  let out = text
+  for (const k of Object.keys(vars)) out = out.split(k).join(vars[k])
+  return out
+}
+
+// ── 순환/교차 상태 (연속 같은 것 방지) ─────────
+function noRepeat<T>(arr: readonly T[], key: string, idOf: (t: T) => string): T {
+  const lastKey = `gypz-last-${key}`
+  const last = localStorage.getItem(lastKey)
+  let pick = arr[Math.floor(Math.random() * arr.length)]
+  if (arr.length > 1 && idOf(pick) === last) {
+    pick = arr[(arr.indexOf(pick) + 1) % arr.length]
   }
-  const flights = Math.round((amount / 80_000) * 10) / 10
-  return `제주행 항공권 ${flights}장`
+  localStorage.setItem(lastKey, idOf(pick))
+  return pick
 }
-
-// 10년 환산 (관점엔진 A.4 — 매달 나가는 고정비 기준)
-function tenYears(amount: number): string {
-  const total = amount * 12 * 10
-  if (total >= 100_000_000) return `${Math.round(total / 10_000_000) / 10}억원`
-  return `${Math.round(total / 10_000)}만원`
-}
-
-// ── 임시 대사 풀 (교체 예정) ──────────────────
-// {amt}=금액, {cat}=카테고리, {unit}=단위환산, {ten}=10년 환산
-const POOLS = {
-  reduceUnit: [
-    [
-      { who: '모아', text: '잔소리 좀 드려도 될까요? {cat}에 {amt}… 그 돈이면 {unit}이에요 ㅠㅠ' },
-      { who: '모아', text: '매달 이러면 10년이면 {ten}입니다. 많이 많이 줄이셔야 해요!!' },
-    ],
-    [
-      { who: '모아', text: '{cat} {amt} 고백 접수… 죄송하지만 이건 {unit} 값이에요!!' },
-      { who: '모아', text: '혹시 약정·구성부터 조금이라도 점검해 보실래요? 10년이면 {ten}이에요.' },
-    ],
-  ],
-  reduceTikitaka: [
-    [
-      { who: '모아', text: '{cat}에 {amt}?! 이건 말이 안 됩니다!! 허리띠 졸라매야 해요!!' },
-      { who: '불리', text: '모아야 진정해… 그래도 오늘 고백은 하셨잖아. 다음 달엔 같이 줄여봐요 😉' },
-    ],
-    [
-      { who: '모아', text: '또 {cat}이에요?? 매달 새는 돈이 제일 무섭습니다 ㅠㅠ' },
-      { who: '불리', text: '대신 이 {amt}만큼 다음 달 저축을 늘리면… 그건 제가 응원할게요!' },
-    ],
-  ],
-  protectOk: [
-    [{ who: '불리', text: '{cat} {amt}, 이건 지킬 지출이에요. 먹고 싶은 건 먹어야죠 🤍' }],
-    [{ who: '모아', text: '{cat}은 잔소리 안 할게요. 대신 통신비·구독은 제가 지켜보고 있습니다 😉' }],
-  ],
-  protectHigh: [
-    [
-      { who: '모아', text: '{cat} {amt}… 지킬 지출이지만, 혹시 조금만 조정해 볼 수 있을까요? 말씀만 드려봅니다.' },
-      { who: '불리', text: '적정선은 부부마다 달라요. 두 분이 정한 선 안이면 괜찮아요 🤍' },
-    ],
-  ],
-  leverage: [
-    [{ who: '불리', text: '{cat} {amt} — 이건 자산을 만드는 지출이에요. 감당선 안에서는 줄이라고 안 할게요 👍' }],
-  ],
-  grow: [
-    [{ who: '불리', text: '{cat}에 {amt}!! 오늘도 불렸네요 🎉 이 맛에 돈 모으는 거죠!' }],
-    [{ who: '불리', text: '{amt} 저축 고백 접수! 미래의 두 분이 지금의 두 분에게 감사할 거예요 🤍' }],
-  ],
-  income: [
-    [{ who: '불리', text: '수입 {amt} 축하해요 🎉 모으고 불릴 준비 완료!' }],
-  ],
-  neutralLight: [
-    [{ who: '모아', text: '{cat} {amt}, 요 정도는 봐드릴게요. 오늘도 고백해 줘서 고마워요 😉' }],
-  ],
-  neutralMid: [
-    [
-      { who: '모아', text: '{cat}에 {amt}… 흠, {unit} 값이네요. 필요한 지출이었길 바랍니다!' },
-    ],
-  ],
-  neutralHigh: [
-    [
-      { who: '모아', text: '{cat} {amt}?! 큰 지출은 고백해 준 것만으로도 반은 성공이에요.' },
-      { who: '불리', text: '혹시 계획에 있던 지출이면 통과! 아니면… 다음 달 예산에 꼭 넣어봐요 😉' },
-    ],
-  ],
-} as const
-
-// ── 교차 규칙: reduce 반응은 티키타카 ↔ 단위환산 번갈아 ──
+const asStr = (s: string) => s
+const firstText = (b: Line[]) => b[0].text
 const STYLE_KEY = 'gypz-last-reduce-style'
-
 function nextReduceStyle(): 'tikitaka' | 'unit' {
   const last = localStorage.getItem(STYLE_KEY)
   const next = last === 'tikitaka' ? 'unit' : 'tikitaka'
@@ -126,62 +225,75 @@ function nextReduceStyle(): 'tikitaka' | 'unit' {
   return next
 }
 
-// ── 메인: 고백 1건 → 반응 ─────────────────────
-function pick<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]
-}
-
-function fill(text: string, c: { category: string; amount: number }): string {
-  return text
-    .split('{cat}').join(c.category)
-    .split('{amt}').join(formatWon(c.amount))
-    .split('{unit}').join(unitDrip(c.amount))
-    .split('{ten}').join(tenYears(c.amount))
-}
-
-export function pickReaction(c: Pick<Confession, 'category' | 'kind' | 'amount'>): Reaction {
+// ── 메인 ──────────────────────────────────────
+export function pickReaction(
+  c: Pick<Confession, 'category' | 'kind' | 'amount'>,
+  all: Confession[] = [],
+): Reaction {
   const bucket = bucketOf(c.kind, c.category)
+  const ym = new Date().toISOString().slice(0, 7)
+  const same = all.filter((x) => x.category === c.category && x.createdAt.slice(0, 7) === ym)
+  const monthCount = Math.max(1, same.length)
+  const monthSum = same.reduce((s, x) => s + x.amount, 0) || c.amount
+  const vars = makeVars(c, monthCount, monthSum)
+  const f = (t: string) => fill(t, vars)
 
-  let pool: readonly (readonly { who: '모아' | '불리'; text: string }[])[]
-  let style: Reaction['style']
+  if (bucket === 'reduce') {
+    const sub = reduceSub(c.kind, c.category)!
+    let style = nextReduceStyle()
+    if (style === 'tikitaka' && !TIKITAKA[sub]) style = 'unit' // 티키타카 없으면 단위환산
 
-  switch (bucket) {
-    case 'reduce': {
-      style = nextReduceStyle()
-      pool = style === 'tikitaka' ? POOLS.reduceTikitaka : POOLS.reduceUnit
-      break
+    let bubbles: Bubble[]
+    if (style === 'tikitaka') {
+      bubbles = noRepeat(TIKITAKA[sub]!, `tk-${sub}`, firstText).map((b) => ({
+        who: b.who,
+        text: f(b.text),
+      }))
+    } else {
+      const roast = f(noRepeat(ROAST[sub], `roast-${sub}`, asStr))
+      const unit = unitLine(sub, c.amount, monthSum)
+      bubbles = [{ who: '모아', text: roast }]
+      if (unit) bubbles.push({ who: '모아', text: f(unit) })
     }
-    case 'protect':
-      pool = c.amount >= 100_000 ? POOLS.protectHigh : POOLS.protectOk
-      break
-    case 'leverage':
-      pool = POOLS.leverage
-      break
-    case 'grow':
-      pool = POOLS.grow
-      break
-    case 'income':
-      pool = POOLS.income
-      break
-    default:
-      pool =
-        c.amount < 30_000
-          ? POOLS.neutralLight
-          : c.amount < 100_000
-            ? POOLS.neutralMid
-            : POOLS.neutralHigh
+    return { bubbles, action: f(ACTIONS[sub] ?? ACTIONS.default), style }
   }
 
-  const bubbles = pick(pool).map((b) => ({ who: b.who, text: fill(b.text, c) }))
-  return { bubbles, style }
+  if (bucket === 'protect') {
+    if (c.amount >= 100_000) {
+      const key = c.category.includes('식비') ? '식비' : isDate(c.category) ? '데이트' : '기본'
+      return { bubbles: [{ who: '모아', text: f(PROTECT_SOFT[key]) }] }
+    }
+    return { bubbles: [{ who: '불리', text: f(noRepeat(PROTECT_OK, 'protectok', asStr)) }] }
+  }
+
+  if (bucket === 'grow') {
+    return { bubbles: [{ who: '불리', text: f(noRepeat(GROW, 'grow', asStr)) }] }
+  }
+
+  if (bucket === 'leverage') {
+    return { bubbles: [{ who: '불리', text: f(noRepeat(LEVERAGE_LINE, 'lev', asStr)) }] }
+  }
+
+  if (bucket === 'income') {
+    return { bubbles: [{ who: '불리', text: f(noRepeat(INCOME, 'income', asStr)) }] }
+  }
+
+  // neutral (기타·세금 등)
+  if (c.amount < 30_000) {
+    return { bubbles: [{ who: '모아', text: f(noRepeat(RECEIPT, 'receipt', asStr)) }] }
+  }
+  if (c.amount < 100_000) {
+    return { bubbles: [{ who: '모아', text: f(noRepeat(NEUTRAL_MID, 'nmid', asStr)) }] }
+  }
+  return { bubbles: NEUTRAL_HIGH[0].map((b) => ({ who: b.who, text: f(b.text) })) }
 }
 
-// ── 스트릭: 오늘까지 연속 고백 일수 (구성원 기준) ──
+// ── 스트릭 ────────────────────────────────────
 export function streakOf(confessions: Confession[], memberNo: 1 | 2): number {
   const days = new Set(
     confessions
       .filter((c) => c.memberNo === memberNo)
-      .map((c) => new Date(c.createdAt).toLocaleDateString('sv-SE')), // YYYY-MM-DD (로컬)
+      .map((c) => new Date(c.createdAt).toLocaleDateString('sv-SE')),
   )
   let streak = 0
   const d = new Date()
