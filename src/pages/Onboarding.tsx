@@ -132,8 +132,9 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
                 건너뛰기 (기본값 사용)
               </button>
             </div>
-          ) : mode === 'choose' ? (
+          ) : (
             <div className="mt-8 space-y-3">
+              {/* 새로 만들기 */}
               <button
                 onClick={handleCreate}
                 disabled={busy}
@@ -151,51 +152,36 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
                   </p>
                 </div>
               </button>
-              <button
-                onClick={() => {
-                  setMode('join')
-                  setError('')
-                }}
-                className="flex w-full items-center gap-4 rounded-card bg-card px-5 py-5 text-left shadow-card transition-transform active:scale-[0.98]"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pink-50 text-pink-500">
-                  <KeyRound size={22} />
+
+              <div className="flex items-center gap-3 py-1">
+                <div className="h-px flex-1 bg-line" />
+                <span className="text-[12px] text-cap">또는</span>
+                <div className="h-px flex-1 bg-line" />
+              </div>
+
+              {/* 초대 코드 입력 — 바로 노출 */}
+              <div className="rounded-card bg-card p-4 shadow-card">
+                <div className="mb-2 flex items-center gap-2">
+                  <KeyRound size={18} className="text-pink-500" />
+                  <p className="text-[15px] font-bold text-ink">배우자 초대 코드 입력</p>
                 </div>
-                <div>
-                  <p className="text-[16px] font-bold text-ink">초대 코드로 참여하기</p>
-                  <p className="mt-0.5 text-[13px] text-sub">
-                    배우자에게 받은 8자리 코드를 입력해요
-                  </p>
-                </div>
-              </button>
-            </div>
-          ) : (
-            <div className="mt-8 space-y-2.5">
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                placeholder="초대 코드 (예: 3F2A9C1B)"
-                maxLength={8}
-                className="w-full rounded-btn border border-line bg-white px-4 py-3.5 text-center text-[18px] font-bold tracking-[0.3em] text-ink outline-none focus:border-brand placeholder:text-[14px] placeholder:font-normal placeholder:tracking-normal placeholder:text-cap"
-              />
-              <button
-                onClick={handleJoin}
-                disabled={busy || code.trim().length < 8}
-                className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
-              >
-                {busy ? '연결 중…' : '참여하기'}
-              </button>
-              <button
-                onClick={() => {
-                  setMode('choose')
-                  setError('')
-                }}
-                className="h-11 w-full rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
-              >
-                뒤로
-              </button>
+                <input
+                  type="text"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+                  placeholder="8자리 코드 (예: 3F2A9C1B)"
+                  maxLength={8}
+                  className="w-full rounded-btn border border-line bg-white px-4 py-3.5 text-center text-[18px] font-bold tracking-[0.3em] text-ink outline-none focus:border-brand placeholder:text-[14px] placeholder:font-normal placeholder:tracking-normal placeholder:text-cap"
+                />
+                <button
+                  onClick={handleJoin}
+                  disabled={busy || code.trim().length < 8}
+                  className="mt-2 h-12 w-full rounded-btn bg-pink-500 text-[15px] font-bold text-white shadow-cta active:bg-pink-600 disabled:opacity-40"
+                >
+                  {busy ? '연결 중…' : '참여하기'}
+                </button>
+              </div>
             </div>
           )}
 

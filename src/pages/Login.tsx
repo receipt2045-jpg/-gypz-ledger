@@ -1,17 +1,8 @@
 import { useState } from 'react'
-import { KeyRound, Send, Wallet } from 'lucide-react'
+import { Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-// 나중에 카카오/구글을 켜려면 이 배열에 추가만 하면 됨: ['kakao', 'google']
-// (Supabase 대시보드 Authentication → Providers에서 해당 provider 설정 필요)
-const ENABLED_OAUTH: ('kakao' | 'google')[] = []
-
-const OAUTH_LABEL: Record<'kakao' | 'google', string> = {
-  kakao: '카카오로 계속하기',
-  google: '구글로 계속하기',
-}
-
-// 매직링크 클릭 후 돌아올 주소 (배포 주소가 바뀌어도 자동 대응)
+// OAuth 로그인 후 돌아올 주소 (배포 주소가 바뀌어도 자동 대응)
 const redirectTo = window.location.origin + import.meta.env.BASE_URL
 
 // Supabase 에러 메시지 → 한국어
@@ -26,10 +17,8 @@ function koError(message: string): string {
 }
 
 export default function Login() {
-  const [mode, setMode] = useState<'password' | 'magic'>('password')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [sent, setSent] = useState(false)
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -68,22 +57,15 @@ export default function Login() {
     }
   }
 
-  const sendMagicLink = async () => {
-    const trimmed = email.trim()
-    if (!trimmed || busy) return
-    setBusy(true)
+  const loginWithGoogle = async () => {
     setError('')
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: { emailRedirectTo: redirectTo },
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
     })
-    setBusy(false)
     if (err) setError(koError(err.message))
-    else setSent(true)
+    // 성공하면 구글 로그인 페이지로 리디렉션됨
   }
-
-  const loginWithProvider = (provider: 'kakao' | 'google') =>
-    supabase.auth.signInWithOAuth({ provider, options: { redirectTo } })
 
   return (
     <div className="flex min-h-screen justify-center bg-[#e6e9ed]">
@@ -97,142 +79,85 @@ export default function Login() {
             매달 한 번, 부부가 함께 순자산을 키우는 가계부입니다 🤍
           </p>
 
-          {mode === 'password' ? (
-            <>
-              <p className="mt-4 text-[13px] leading-relaxed text-cap">
-                처음이면 이메일과 비밀번호를 정해서 <b className="text-sub">회원가입</b>을 눌러주세요.
-              </p>
-              <div className="mt-7 space-y-2.5">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="이메일 주소"
-                  autoComplete="email"
-                  className="w-full rounded-btn border border-line bg-white px-4 py-3.5 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
-                />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && signIn()}
-                  placeholder="비밀번호 (6자 이상)"
-                  autoComplete="current-password"
-                  className="w-full rounded-btn border border-line bg-white px-4 py-3.5 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
-                />
-                <button
-                  onClick={signIn}
-                  disabled={!canSubmit}
-                  className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
-                >
-                  {busy ? '잠시만요…' : '로그인'}
-                </button>
-                <button
-                  onClick={signUp}
-                  disabled={!canSubmit}
-                  className="h-12 w-full rounded-btn bg-white text-[14px] font-semibold text-ink shadow-card active:bg-line disabled:opacity-40"
-                >
-                  회원가입
-                </button>
-                {password.length > 0 && password.length < 6 && (
-                  <p className="text-[13px] text-cap">
-                    비밀번호를 6자 이상 입력하면 버튼이 활성화돼요
-                  </p>
-                )}
-                {error && <p className="text-[13px] text-danger">{error}</p>}
-                {notice && <p className="text-[13px] text-brand">{notice}</p>}
-              </div>
-              <button
-                onClick={() => {
-                  setMode('magic')
-                  setError('')
-                }}
-                className="mt-6 flex w-full items-center justify-center gap-1.5 text-[13px] text-cap underline"
-              >
-                <KeyRound size={13} /> 비밀번호 대신 이메일 링크로 로그인
-              </button>
-            </>
-          ) : (
-            <>
-              {sent ? (
-                <>
-                  <p className="mt-3 text-[15px] leading-relaxed text-sub">
-                    <b className="text-ink">{email.trim()}</b> 으로
-                    <br />
-                    로그인 링크를 보냈어요. 메일함을 확인해 주세요!
-                  </p>
-                  <p className="mt-2 text-[13px] text-cap">
-                    메일이 안 보이면 스팸함도 확인해 보세요.
-                  </p>
-                  <button
-                    onClick={() => setSent(false)}
-                    className="mt-6 h-12 w-full rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
-                  >
-                    다시 보내기
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="mt-3 text-[15px] leading-relaxed text-sub">
-                    이메일로 로그인 링크를 보내드려요.
-                    <br />
-                    (발송량 제한이 있어 메일이 늦을 수 있어요)
-                  </p>
-                  <div className="mt-7 space-y-2.5">
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && sendMagicLink()}
-                      placeholder="이메일 주소"
-                      autoComplete="email"
-                      className="w-full rounded-btn border border-line bg-white px-4 py-3.5 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
-                    />
-                    <button
-                      onClick={sendMagicLink}
-                      disabled={busy || !email.trim()}
-                      className="flex h-14 w-full items-center justify-center gap-2 rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
-                    >
-                      <Send size={17} />
-                      {busy ? '보내는 중…' : '로그인 링크 받기'}
-                    </button>
-                    {error && <p className="text-[13px] text-danger">{error}</p>}
-                  </div>
-                </>
-              )}
-              <button
-                onClick={() => {
-                  setMode('password')
-                  setSent(false)
-                  setError('')
-                }}
-                className="mt-6 w-full text-center text-[13px] text-cap underline"
-              >
-                비밀번호로 로그인
-              </button>
-            </>
-          )}
+          {/* 구글 로그인 */}
+          <button
+            onClick={loginWithGoogle}
+            className="mt-7 flex h-13 w-full items-center justify-center gap-2.5 rounded-btn border border-line bg-white py-3.5 text-[15px] font-bold text-ink shadow-card active:bg-line"
+          >
+            <GoogleIcon />
+            구글로 계속하기
+          </button>
 
-          {ENABLED_OAUTH.length > 0 && (
-            <div className="mt-6 space-y-2">
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-line" />
-                <span className="text-[12px] text-cap">또는</span>
-                <div className="h-px flex-1 bg-line" />
-              </div>
-              {ENABLED_OAUTH.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => loginWithProvider(p)}
-                  className="h-12 w-full rounded-btn bg-white text-[14px] font-semibold text-ink shadow-card active:bg-line"
-                >
-                  {OAUTH_LABEL[p]}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-line" />
+            <span className="text-[12px] text-cap">또는 이메일로</span>
+            <div className="h-px flex-1 bg-line" />
+          </div>
+
+          {/* 이메일 + 비밀번호 */}
+          <div className="space-y-2.5">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="이메일 주소"
+              autoComplete="email"
+              className="w-full rounded-btn border border-line bg-white px-4 py-3.5 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && signIn()}
+              placeholder="비밀번호 (6자 이상)"
+              autoComplete="current-password"
+              className="w-full rounded-btn border border-line bg-white px-4 py-3.5 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
+            />
+            <button
+              onClick={signIn}
+              disabled={!canSubmit}
+              className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
+            >
+              {busy ? '잠시만요…' : '로그인'}
+            </button>
+            <button
+              onClick={signUp}
+              disabled={!canSubmit}
+              className="h-12 w-full rounded-btn bg-white text-[14px] font-semibold text-ink shadow-card active:bg-line disabled:opacity-40"
+            >
+              회원가입
+            </button>
+            {password.length > 0 && password.length < 6 && (
+              <p className="text-[13px] text-cap">비밀번호를 6자 이상 입력하면 버튼이 활성화돼요</p>
+            )}
+            {error && <p className="text-[13px] text-danger">{error}</p>}
+            {notice && <p className="text-[13px] text-brand">{notice}</p>}
+          </div>
         </div>
       </div>
     </div>
+  )
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+    </svg>
   )
 }
