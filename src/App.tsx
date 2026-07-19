@@ -16,8 +16,19 @@ import AssetSetup from './pages/AssetSetup'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import IntroSlides from './pages/IntroSlides'
+import Legal from './pages/Legal'
 
 export default function App() {
+  return (
+    <Routes>
+      {/* 방침·약관은 로그인 전에도 열람 가능 */}
+      <Route path="/legal/:doc" element={<Legal />} />
+      <Route path="*" element={<AuthGate />} />
+    </Routes>
+  )
+}
+
+function AuthGate() {
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(false)
 

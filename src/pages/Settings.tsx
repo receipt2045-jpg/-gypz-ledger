@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
-import { Copy, Check, Download, KeyRound, LogOut, Upload, RotateCcw, X, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Copy, Check, ChevronRight, Download, KeyRound, LogOut, Upload, RotateCcw, Trash2, X, Plus } from 'lucide-react'
 import Card from '../components/Card'
 import AmountInput from '../components/AmountInput'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
+import { deleteMyAccount } from '../lib/db'
 import { abbreviateKRW } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import type { AppData, CategoryGroup } from '../types'
@@ -21,9 +23,29 @@ export default function Settings() {
     importData,
     exportData,
   } = useLedgerStore()
+  const navigate = useNavigate()
   const fileRef = useRef<HTMLInputElement>(null)
   const [copied, setCopied] = useState(false)
   const [newChild, setNewChild] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  const withdraw = async () => {
+    if (
+      !confirm(
+        '정말 탈퇴할까요? 내 계정과 모든 가계부·자산·고백 데이터가 삭제되며 되돌릴 수 없어요.\n\n(배우자가 함께 쓰고 있다면, 배우자 데이터는 유지됩니다)',
+      )
+    )
+      return
+    setDeleting(true)
+    try {
+      await deleteMyAccount()
+      await supabase.auth.signOut()
+      alert('탈퇴가 완료됐어요. 그동안 함께해 주셔서 고마웠어요 🤍')
+    } catch (err) {
+      setDeleting(false)
+      alert(`탈퇴에 실패했어요: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   const childNames = profile.childNames ?? []
   const addChild = () => {
@@ -274,10 +296,37 @@ export default function Settings() {
           >
             <LogOut size={18} /> 로그아웃
           </button>
+          <button
+            onClick={withdraw}
+            disabled={deleting}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-danger/10 text-[15px] font-semibold text-danger active:bg-danger/20 disabled:opacity-50"
+          >
+            <Trash2 size={18} /> {deleting ? '탈퇴 처리 중…' : '회원 탈퇴'}
+          </button>
         </div>
       </Card>
 
-      <p className="pb-2 text-center text-[12px] text-cap">우리집 가계부 · v0.2</p>
+      {/* 약관·정책 */}
+      <Card>
+        <h2 className="mb-3 text-[15px] font-bold text-ink">약관·정책</h2>
+        <div className="divide-y divide-line/70">
+          {[
+            { label: '개인정보처리방침', to: '/legal/privacy' },
+            { label: '이용약관', to: '/legal/terms' },
+          ].map((it) => (
+            <button
+              key={it.to}
+              onClick={() => navigate(it.to)}
+              className="flex w-full items-center justify-between py-3 text-left active:opacity-60"
+            >
+              <span className="text-[15px] text-ink">{it.label}</span>
+              <ChevronRight size={18} className="text-cap" />
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      <p className="pb-2 text-center text-[12px] text-cap">모아불리 · v1.0</p>
     </div>
   )
 }

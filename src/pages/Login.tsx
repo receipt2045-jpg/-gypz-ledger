@@ -22,6 +22,7 @@ export default function Login() {
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [agreed, setAgreed] = useState(false)
 
   const canSubmit = email.trim() && password.length >= 6 && !busy
 
@@ -40,6 +41,10 @@ export default function Login() {
 
   const signUp = async () => {
     if (!canSubmit) return
+    if (!agreed) {
+      setError('개인정보처리방침과 이용약관에 동의해 주세요.')
+      return
+    }
     setBusy(true)
     setError('')
     setNotice('')
@@ -132,6 +137,27 @@ export default function Login() {
             )}
             {error && <p className="text-[13px] text-danger">{error}</p>}
             {notice && <p className="text-[13px] text-brand">{notice}</p>}
+
+            {/* 회원가입 동의 */}
+            <label className="flex items-start gap-2 pt-1 text-[12px] leading-relaxed text-sub">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
+              />
+              <span>
+                회원가입 시{' '}
+                <a href="#/legal/privacy" className="text-brand underline">
+                  개인정보처리방침
+                </a>
+                과{' '}
+                <a href="#/legal/terms" className="text-brand underline">
+                  이용약관
+                </a>
+                에 동의합니다. (구글 로그인 포함)
+              </span>
+            </label>
           </div>
         </div>
       </div>

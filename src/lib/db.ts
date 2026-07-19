@@ -186,6 +186,12 @@ export async function insertConfession(householdId: string, c: Confession) {
   if (error) throw error
 }
 
+/** 회원 탈퇴: 내 가구·모든 데이터 삭제 후 로그아웃 (RPC delete_my_account) */
+export async function deleteMyAccount() {
+  const { error } = await supabase.rpc('delete_my_account')
+  if (error) throw error
+}
+
 /** 모든 기록 삭제 (가구/멤버십은 유지) */
 export async function clearHouseholdRecords(householdId: string) {
   const results = await Promise.all([

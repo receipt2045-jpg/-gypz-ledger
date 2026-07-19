@@ -173,5 +173,30 @@ begin
 end;
 $$;
 
+-- 회원 탈퇴: 내 멤버십 제거 → 혼자 남은 가구는 통째 삭제(연쇄로 모든 데이터 파기)
+create or replace function public.delete_my_account()
+returns void
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  hid uuid;
+  remaining int;
+begin
+  if auth.uid() is null then
+    raise exception '로그인이 필요해요';
+  end if;
+  select household_id into hid from household_members where user_id = auth.uid();
+  if hid is not null then
+    delete from household_members where household_id = hid and user_id = auth.uid();
+    select count(*) into remaining from household_members where household_id = hid;
+    if remaining = 0 then
+      delete from households where id = hid; -- on delete cascade로 전체 데이터 파기
+    end if;
+  end if;
+end;
+$$;
+
 grant execute on function public.create_household() to authenticated;
 grant execute on function public.join_household(text) to authenticated;
+grant execute on function public.delete_my_account() to authenticated;
