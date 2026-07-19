@@ -288,6 +288,24 @@ export function pickReaction(
   return { bubbles: NEUTRAL_HIGH[0].map((b) => ({ who: b.who, text: f(b.text) })) }
 }
 
+// ── 주간 기회비용 (면죄부 방지) ────────────────
+// 이번 주 '줄일 수 있었던' 지출(reduce 버킷)을 모아 적금 기회비용으로 환산.
+export interface WeeklyCost {
+  count: number // 이번 주 reduce 고백 횟수
+  weekSum: number // 이번 주 reduce 합계
+  perYear: number // 매주 이만큼 아끼면 1년
+  tenYears: number // 10년
+}
+
+export function weeklyReduceCost(confessions: Confession[]): WeeklyCost {
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const reduce = confessions.filter(
+    (c) => bucketOf(c.kind, c.category) === 'reduce' && new Date(c.createdAt).getTime() >= weekAgo,
+  )
+  const weekSum = reduce.reduce((s, c) => s + c.amount, 0)
+  return { count: reduce.length, weekSum, perYear: weekSum * 52, tenYears: weekSum * 520 }
+}
+
 // ── 스트릭 ────────────────────────────────────
 export function streakOf(confessions: Confession[], memberNo: 1 | 2): number {
   const days = new Set(

@@ -8,6 +8,7 @@ import {
   Building2,
   Car,
   ChevronLeft,
+  ChevronRight,
   Clapperboard,
   Coins,
   Delete,
@@ -29,6 +30,7 @@ import {
   Utensils,
   Wallet,
 } from 'lucide-react'
+import WeeklyCostCard from '../components/WeeklyCostCard'
 import { useLedgerStore } from '../lib/store'
 import { pickReaction, streakOf, type Reaction } from '../lib/reactions'
 import { formatComma, formatWon } from '../lib/format'
@@ -162,15 +164,16 @@ export default function Confess() {
             ))}
           </div>
 
-          {/* 불리 실행 액션 (면죄부 방지 — 잔소리마다 다음 행동 1개) */}
+          {/* 불리 실행 액션 (면죄부 방지 — 다음 행동으로 연결) */}
           {result.reaction.action && (
             <button
-              onClick={reset}
-              className="mt-4 flex w-full items-center justify-between rounded-card bg-amber-50 px-4 py-3 text-left active:bg-amber-100"
+              onClick={() => navigate('/monthly')}
+              className="mt-4 flex w-full items-center justify-between gap-2 rounded-card bg-amber-50 px-4 py-3 text-left active:bg-amber-100"
             >
               <span className="text-[14px] font-bold text-amber-700">
                 {result.reaction.action}
               </span>
+              <ChevronRight size={18} className="shrink-0 text-amber-500" />
             </button>
           )}
 
@@ -254,6 +257,9 @@ export default function Confess() {
     <Frame>
       <Top onBack={() => navigate('/')} title="무엇에 썼나요?" subtitle="툭 던지면 모아·불리가 바로 반응해요" />
       <div className="flex-1 space-y-5 px-5 pb-10 pt-1">
+        {/* 면죄부 방지 — 이번 주 기회비용 */}
+        <WeeklyCostCard confessions={confessions} />
+
         {groups.map(
           (g) =>
             g.cats.length > 0 && (
