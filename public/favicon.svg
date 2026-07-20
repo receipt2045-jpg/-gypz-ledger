@@ -1,0 +1,17 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#191F28" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <!-- ears -->
+    <path d="M181 196 C150 150 168 120 205 150 C221 163 226 182 219 201" />
+    <path d="M331 196 C362 150 344 120 307 150 C291 163 286 182 293 201" />
+    <!-- head -->
+    <path d="M205 150 C232 140 280 140 307 150 C360 172 388 214 388 270 C388 340 330 388 256 388 C182 388 124 340 124 270 C124 214 152 172 205 150 Z" />
+    <!-- snout -->
+    <ellipse cx="256" cy="312" rx="52" ry="34" />
+  </g>
+  <!-- eyes -->
+  <circle cx="205" cy="250" r="15" fill="#191F28" />
+  <circle cx="307" cy="250" r="15" fill="#191F28" />
+  <!-- nostrils -->
+  <ellipse cx="238" cy="312" rx="6.5" ry="12" fill="#191F28" />
+  <ellipse cx="274" cy="312" rx="6.5" ry="12" fill="#191F28" />
+</svg>
