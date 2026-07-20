@@ -10,7 +10,20 @@ import { abbreviateKRW, formatWon } from './format'
 
 // ── 3분법 버킷 ────────────────────────────────
 export type Bucket = 'reduce' | 'protect' | 'leverage' | 'grow' | 'income' | 'neutral'
-type ReduceSub = 'sub' | 'telecom' | 'delivery' | 'cafe' | 'taxi' | 'shopping' | 'food' | 'beauty'
+type ReduceSub =
+  | 'sub'
+  | 'telecom'
+  | 'delivery'
+  | 'cafe'
+  | 'taxi'
+  | 'shopping'
+  | 'food'
+  | 'beauty'
+  | 'travel'
+  | 'car'
+  | 'culture'
+  | 'pet'
+  | 'booze'
 
 const PROTECT = new Set(['용돈', '자기계발', '경조사', '육아'])
 const LEVERAGE = new Set(['주거'])
@@ -25,6 +38,11 @@ function reduceSub(kind: CategoryGroup, category: string): ReduceSub | null {
   if (c.includes('카페') || c.includes('커피')) return 'cafe'
   if (c.includes('택시')) return 'taxi'
   if (c.includes('꾸밈') || c.includes('미용') || c.includes('화장') || c.includes('네일') || c.includes('헤어')) return 'beauty'
+  if (c.includes('여행') || c.includes('항공') || c.includes('숙박') || c.includes('호텔')) return 'travel'
+  if (c.includes('자동차') || c.includes('주유') || c.includes('기름') || c.includes('주차')) return 'car'
+  if (c.includes('문화') || c.includes('공연') || c.includes('영화') || c.includes('게임') || c.includes('전시') || c.includes('콘서트')) return 'culture'
+  if (c.includes('반려') || c.includes('강아지') || c.includes('고양이') || c.includes('댕댕') || c.includes('냥')) return 'pet'
+  if (c.includes('술') || c.includes('유흥') || c.includes('음주') || c.includes('맥주') || c.includes('소주') || c.includes('와인') || c.includes('회식') || c.includes('파티')) return 'booze'
   if (c.includes('쇼핑') || c.includes('충동')) return 'shopping'
   if (c.includes('식비') || c.includes('식사')) return 'food'
   return null
@@ -93,6 +111,29 @@ const ROAST: Record<ReduceSub, string[]> = {
     '거울 속 나는 셀럽, 통장 속 나는 일반인 💀',
     '예뻐지는 건 좋아. 근데 잔고도 좀 예뻐야지 😮‍💨',
   ],
+  travel: [
+    '떠나는 건 좋은데 통장도 같이 떠났어 ✈️',
+    '추억은 남고 잔고는 안 남는 그 여행… 🫠',
+    '여행 좋지. 근데 카드값은 여행 안 가 💳💀',
+  ],
+  car: [
+    '차는 사는 순간부터 돈 먹는 하마야 🚗💸',
+    '기름값·주차·보험… 차가 월급을 몰고 다녀 😵',
+    '{금액}? 차는 잘 나가는데 통장이 멈췄어 🚗💀',
+  ],
+  culture: [
+    '문화생활은 좋아. 근데 통장은 문화 충격 받았어 🎬💀',
+    '티켓값 {금액}… 감동은 2시간, 카드값은 한 달 🎭',
+  ],
+  pet: [
+    '애기 위해서면 어쩔 수 없지… 근데 통장도 네 새끼야 🐶😭',
+    '얘 미용비가 네 미용비보다 비싼 거… 실화? 🐩💀',
+  ],
+  booze: [
+    '어제의 너, 오늘의 잔고에게 사과해 🍺💀',
+    '술값 {금액}… 필름은 끊겼는데 결제는 안 끊겼어 🍻😵',
+    '취한 김에 안주까지… 통장이 숙취야 🤢',
+  ],
 }
 
 // 불리: 아낀 돈을 현실적 업사이드로 (이 돈 모으면 ~ 되겠다)
@@ -129,6 +170,26 @@ const UPSIDE: Record<ReduceSub | 'default', string[]> = {
     '이거 아끼면 1년에 {연}. 다음 시술은 그 돈으로 하자 💆',
     '꾸밈도 예산 안에서 하면 완벽해. 남는 건 나한테 맡겨 📈',
   ],
+  travel: [
+    '여행 통장 따로 모으면 죄책감 0. 그건 내가 불려줄게 ✈️📈',
+    '이거 미리 모았으면 다음 여행은 업그레이드야 🐷',
+  ],
+  car: [
+    '차 유지비 1년이면 {연}. 알고 타면 덜 아파 📈',
+    '아낀 유지비는 나 줘. 차보다 빨리 불려줄게 🐷',
+  ],
+  culture: [
+    '한 달 모으면 {월합}. VIP석도 그 돈으로 가 🎫',
+    '문화비도 예산 잡으면 맘 편해. 남는 건 나 줘 📈',
+  ],
+  pet: [
+    '반려 통장 따로 만들면 든든해. 불리는 건 내가 🐾📈',
+    '이거 아끼면 1년에 {연}. 병원비 대비도 되고 좋아 🐶',
+  ],
+  booze: [
+    '술값 한 달이면 {월합}. 그걸로 좋은 술 두고두고 마셔 🥃',
+    '아낀 술값은 나 줘. 숙취 없이 불려줄게 📈',
+  ],
   default: [
     '이거 모으면 {월합}, 1년이면 {연}이야 🐷',
     '아낀 돈은 나 불리한테 맡겨. 더 키워줄게 📈',
@@ -145,6 +206,11 @@ const ACTIONS: Record<ReduceSub | 'default', string> = {
   telecom: '약정 끝났으면 알뜰폰 요금제 비교해 볼까요? 👉',
   food: '식비, 다음 달 한도 정해둘까요? 👉',
   beauty: '다음 달 꾸밈 예산, 한번 정해둘까요? 👉',
+  travel: '여행 통장 따로 만들어 둘까요? 👉',
+  car: '자동차 유지비, 한 달 예산 잡아둘까요? 👉',
+  culture: '문화생활 예산, 다음 달 정해둘까요? 👉',
+  pet: '반려 지출도 예산 잡아둘까요? 👉',
+  booze: '술·모임 예산, 한 달 한도 정해둘까요? 👉',
   default: '남는 {금액}, 지금 적금으로 옮겨둘까요? 👉',
 }
 
