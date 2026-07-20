@@ -58,106 +58,70 @@ type Line = { who: '모아' | '불리'; text: string }
 
 const ROAST: Record<ReduceSub, string[]> = {
   sub: [
-    '아니 구독을 또 늘려? 안 보는 거 다 알거든. 오늘 하나 해지해 ❗️',
-    '이거 1년이면 {연}, 10년이면 {10년}이야. 그 돈이 안 아까워?',
-    "자기계발 구독은 봐줘. 근데 이건 그냥 '소비'잖아. 정리 좀 하자.",
+    '구독 또…? 안 보는 거 넷플이 더 잘 알아 💀',
+    '{연}짜리 구독인데, 마지막으로 본 게 언제야 😮‍💨',
+    "'나중에 볼 거'라던 그 구독, 나중은 안 와 🫠",
   ],
   delivery: [
-    '아니 돈 모은다면서 배달을 시켜? 모을 생각이 있긴 한 거야?',
-    '이번 달 배달만 {n}번째… 통장은 대체 언제 챙길 건데?',
-    '{금액}이면 장 봐서 3일은 먹어. 손가락이 아주 부지런해 🙄',
+    '배달 또…? 이번 달 {n}번째. 통장이 손절각 보고 있어 💀',
+    '냉장고는 텅, 배달앱은 풀가동. 이게 맞아…? 😵',
+    '{금액} 중에 음식값이 얼마고 배달비가 얼마게 🫠',
   ],
   cafe: [
-    '카페 또…? 이 {금액} × 한 달이면 {월합}이야. 텀블러 하나가 그렇게 어려워?',
-  ],
-  taxi: ['아니 택시를…? 그 {금액} 10년이면 {10년}이야. 걸을 다린 장식이야?'],
-  shopping: [
-    '이거 진짜 필요해? 아니 진짜로? 하루만 재워두고 다시 봐.',
-    '지금 사면 이번 달 잉여현금 끝이야. 손 떼자 ❗️',
-  ],
-  telecom: [
-    '통신비 이게 실화야…? 약정 끝났으면 알뜰폰 오늘 바로. 알뜰족은 {알뜰족}이면 살아.',
-  ],
-  food: [
-    '아니 돈 모은다면서 식비를 또…? 냉장고에 진짜 아무것도 없어?',
-    '이번 달 식비 {n}번째… {금액}이면 집밥으로 며칠은 버텨.',
-    '식비 아끼는 게 제일 빨라. 오늘 한 끼는 집에서 좀 먹자.',
-  ],
-}
-
-// 8-A 티키타카 (모아·불리 만담)
-const TIKITAKA: Partial<Record<ReduceSub, Line[][]>> = {
-  delivery: [
-    [
-      { who: '모아', text: '아니 또 배달? 이번 달 {n}번째야. 돈 모을 생각 있어? 🙄' },
-      { who: '불리', text: '에이 모아야~ 오늘 야근했대.' },
-      { who: '모아', text: '야근했다고 지갑까지 야근하란 법 있어?!' },
-      { who: '불리', text: '…팩폭 세다. 주말은 집밥 콜.' },
-    ],
-  ],
-  cafe: [
-    [
-      { who: '모아', text: '카페 또…? 커피값만 모았어도 적금 하나 깼어 ☕' },
-      { who: '불리', text: '커피가 있어야 일하지~' },
-      { who: '모아', text: '텀블러가 있어야 통장이 살지!' },
-      { who: '불리', text: '…맞말이라 할 말 없다.' },
-    ],
-  ],
-  shopping: [
-    [
-      { who: '모아', text: '이거 진짜 필요해? 아니 진짜로? 🫤' },
-      { who: '불리', text: '예쁘긴 하더라…' },
-      { who: '모아', text: '예쁜 거랑 필요한 건 다르거든!' },
-      { who: '불리', text: '아 알겠어 ㅋㅋ 하루만 재워두자.' },
-    ],
+    '또 카페? ☕ 텀블러가 서랍에서 울고 있어 😭',
+    '커피값 한 달치 계산해봤어. …안 볼 걸 그랬다 💀',
   ],
   taxi: [
-    [
-      { who: '모아', text: '택시…? 🚕 걸을 다린 장식이야?' },
-      { who: '불리', text: '늦었다잖아~ 한 번쯤은' },
-      { who: '모아', text: '그 돈이면 10년 뒤 유럽이거든!' },
-      { who: '불리', text: '…다음엔 버스 콜.' },
-    ],
+    '택시비 그거… 다리가 공짜라는 거 잊었나 봐 🚕💀',
+    '{금액}? 택시는 편했겠지. 통장은 안 편해 😮‍💨',
   ],
-  sub: [
-    [
-      { who: '모아', text: '구독 또 늘었어?! 안 보는 거 다 알거든.' },
-      { who: '불리', text: '볼 게 많긴 해…' },
-      { who: '모아', text: '볼 시간에 릴스나 만들자!' },
-      { who: '불리', text: '모아 오늘 팩폭 지린다 ㅋㅋ' },
-    ],
+  shopping: [
+    '장바구니 담을 때랑 결제할 때 표정, 다르지? 다 봤어 👀',
+    '이거 진짜 필요해서 사는 거야, 그냥 기분이야? 🫠',
+  ],
+  telecom: [
+    '통신비 이게 실화야…? 알뜰폰이 저기서 손 흔들어 📱💀',
   ],
   food: [
-    [
-      { who: '모아', text: '식비 또? 냉장고에 진짜 아무것도 없어? 🍚' },
-      { who: '불리', text: '먹어야 일하지~' },
-      { who: '모아', text: '집밥이어야 통장이 살지!' },
-      { who: '불리', text: '알겠어알겠어 ㅋㅋ 주말은 집밥 콜.' },
-    ],
+    '식비 또…? 이번 달 {n}번째. 집밥이 삐졌어 🍚😤',
+    '외식 맛있지. 근데 매일이면 그건 그냥… 생활이야 😵',
   ],
 }
 
-// 8-B 단위환산 드립 (금액에서 개수 계산)
-function unitLine(sub: ReduceSub, amount: number, monthSum: number): string | null {
-  const cnt = (unit: number) => Math.max(1, Math.round(amount / unit))
-  switch (sub) {
-    case 'delivery':
-      return `배달 {금액} = 치킨 ${cnt(23000)}마리야 🍗 (참으면 인정!)`
-    case 'cafe':
-      return `카페값 {금액} = 스벅 ${cnt(4900)}잔이야. 텀블러 각.`
-    case 'taxi':
-      return amount >= 30000
-        ? '택시 {금액}… 10년이면 유럽 왕복 항공권이야 ✈️'
-        : `택시 {금액} = 버스 ${cnt(1500)}번이야 🚌`
-    case 'sub':
-      return `구독료 1년 {연} = 제주도 ${Math.max(1, Math.round((monthSum * 12) / 80000))}번 갈 돈 🏝`
-    case 'shopping':
-      return `이번에 쓴 {금액} = 소고기 ${cnt(50000)}근 🥩`
-    case 'food':
-      return `식비 {금액} = 집밥 ${cnt(4000)}끼야 🍚`
-    case 'telecom':
-      return null
-  }
+// 불리: 아낀 돈을 현실적 업사이드로 (이 돈 모으면 ~ 되겠다)
+const UPSIDE: Record<ReduceSub | 'default', string[]> = {
+  sub: [
+    '이 구독료 1년이면 {연}이야. 적금 하나 더 들 돈이지 🐷',
+    '안 보는 거 끊어서 나 줘. {월합}부터 불려볼게 📈',
+  ],
+  delivery: [
+    '한 달만 배달 줄여도 {월합} 굳어. 그게 종잣돈이야 🐷',
+    '이거 안 시키고 1년 모으면 {연}. 여행 하나 나오겠다 ✈️',
+  ],
+  cafe: [
+    '커피값 1년이면 {연}. 좋은 홈카페 장비 사고도 남아 ☕',
+    '이거 모으면 {월합}. 텀블러 값 뽑고 남지 🐷',
+  ],
+  taxi: [
+    '이 {금액} 10년 모으면 {10년}. 그땐 진짜 유럽 가자 ✈️',
+    '택시 대신 걸으면 건강도 벌고 {월합}도 벌어 🚶',
+  ],
+  shopping: [
+    '이거 참으면 {월합}. 진짜 갖고 싶던 거 하나 사겠다',
+    '지금 안 사고 모으면 1년에 {연}. 그게 더 크지 않아? 📈',
+  ],
+  telecom: [
+    '알뜰폰으로 갈면 매달 굳어. 1년이면 목돈이야 🐷',
+    '통신비만 줄여도 {월합}. 자동이체로 적금 돌리자 📈',
+  ],
+  food: [
+    '이 {금액} 집밥으로 돌리면 며칠은 버텨. 남는 돈은 나 줘 📈',
+    '식비 한 달만 잡아도 {월합}. 그게 종잣돈 된다 🐷',
+  ],
+  default: [
+    '이거 모으면 {월합}, 1년이면 {연}이야 🐷',
+    '아낀 돈은 나 불리한테 맡겨. 더 키워줄게 📈',
+  ],
 }
 
 // 4) 불리 실행 액션 (면죄부 방지)
@@ -236,14 +200,6 @@ function noRepeat<T>(arr: readonly T[], key: string, idOf: (t: T) => string): T 
   return pick
 }
 const asStr = (s: string) => s
-const firstText = (b: Line[]) => b[0].text
-const STYLE_KEY = 'gypz-last-reduce-style'
-function nextReduceStyle(): 'tikitaka' | 'unit' {
-  const last = localStorage.getItem(STYLE_KEY)
-  const next = last === 'tikitaka' ? 'unit' : 'tikitaka'
-  localStorage.setItem(STYLE_KEY, next)
-  return next
-}
 
 // ── 메인 ──────────────────────────────────────
 export function pickReaction(
@@ -260,22 +216,16 @@ export function pickReaction(
 
   if (bucket === 'reduce') {
     const sub = reduceSub(c.kind, c.category)!
-    let style = nextReduceStyle()
-    if (style === 'tikitaka' && !TIKITAKA[sub]) style = 'unit' // 티키타카 없으면 단위환산
-
-    let bubbles: Bubble[]
-    if (style === 'tikitaka') {
-      bubbles = noRepeat(TIKITAKA[sub]!, `tk-${sub}`, firstText).map((b) => ({
-        who: b.who,
-        text: f(b.text),
-      }))
-    } else {
-      const roast = f(noRepeat(ROAST[sub], `roast-${sub}`, asStr))
-      const unit = unitLine(sub, c.amount, monthSum)
-      bubbles = [{ who: '모아', text: roast }]
-      if (unit) bubbles.push({ who: '모아', text: f(unit) })
+    // 모아: 웃긴 팩폭(Cleo 톤) → 불리: 현실적 업사이드(이 돈 모으면 ~)
+    const moa = f(noRepeat(ROAST[sub], `roast-${sub}`, asStr))
+    const bulli = f(noRepeat(UPSIDE[sub] ?? UPSIDE.default, `upside-${sub}`, asStr))
+    return {
+      bubbles: [
+        { who: '모아', text: moa },
+        { who: '불리', text: bulli },
+      ],
+      action: f(ACTIONS[sub] ?? ACTIONS.default),
     }
-    return { bubbles, action: f(ACTIONS[sub] ?? ACTIONS.default), style }
   }
 
   if (bucket === 'protect') {
