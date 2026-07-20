@@ -1,0 +1,17 @@
+# Netlify 배포 설정 — moabuli (상업 이용 가능 호스팅)
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # 커스텀 도메인 루트에서 서비스하므로 base 경로는 "/"
+  VITE_BASE = "/"
+  # anon(publishable) 키는 공개되어도 안전 — 데이터 접근은 Supabase RLS가 통제
+  VITE_SUPABASE_URL = "https://sygmpteafxlrhfbipkep.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "sb_publishable_gGbVf_OUf8fmPRGoVdCYMw_UgHFbK16"
+
+# SPA 폴백 (HashRouter라 필수는 아니지만, 직접 URL 접근 대비 안전망)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
