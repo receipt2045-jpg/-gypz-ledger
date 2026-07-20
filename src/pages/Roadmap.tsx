@@ -86,7 +86,7 @@ export default function Roadmap() {
       {/* ── ④ 내집마련 여정 (부드럽게) ─────────── */}
       <div className="px-1 pt-1">
         <p className="mb-1 text-[13px] font-bold text-cap">내집마련 여정</p>
-        <p className="text-[12px] text-cap">우리가 지나온 길과, 앞으로 만날 갈림길이에요</p>
+        <p className="text-[12px] text-cap">지금 우리가 어디쯤인지, 다음은 무엇인지 확인해요.</p>
       </div>
       <div className="space-y-2.5">
         {STAGES.map((stage, i) => {

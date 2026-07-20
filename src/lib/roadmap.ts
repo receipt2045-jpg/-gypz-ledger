@@ -166,12 +166,12 @@ export interface Stage {
 }
 
 export const STAGES: Stage[] = [
-  { key: 'goal', icon: '🎯', title: '목표 세우기', view: '숫자보다 “우리가 살 집의 장면”을 먼저 그려요.', open: '현실적인 목표 금액·시점은 함께 잡아야 정확해요.' },
-  { key: 'coord', icon: '📍', title: '우리 현재 좌표', view: '순자산과 저축률이 출발점이에요. 여긴 다 보여드려요.', open: null },
-  { key: 'seed', icon: '🔥', title: '종잣돈 엔진', view: '절약·절세로 방어하고, 부수입·투자로 공격해요.', open: null },
-  { key: 'fund', icon: '🏦', title: '자금 구조', view: 'LTV·DSR엔 원리가 있어요. 원리는 알려드릴게요.', open: '우리는 얼마까지 대출받아도 되는지 함께 봐요.' },
-  { key: 'fork', icon: '🔀', title: '청약 vs 매매', view: '둘 다 정답이 있어요. 판단 기준이 핵심이에요.', open: '우리에겐 뭐가 맞는지 함께 정해요.' },
-  { key: 'act', icon: '🏠', title: '실행', view: '임장과 타이밍이 마지막 관문이에요.', open: '실제 매물·계약은 코칭이 필요해요.' },
+  { key: 'goal', icon: '🎯', title: '목표 세우기', view: '어떤 집에서 살지부터 그려봐요. 금액은 그다음에 정해도 됩니다 🤍', open: '현실적인 목표 금액·시점은 함께 잡아야 정확해요.' },
+  { key: 'coord', icon: '📍', title: '우리 현재 좌표', view: '지금 우리 순자산과 저축률부터 확인해요. 여긴 숨김없이 다 보여드립니다.', open: null },
+  { key: 'seed', icon: '🔥', title: '종잣돈 엔진', view: '절약·절세로 지키고, 부수입·투자로 키워요. 여기가 제일 공들일 구간입니다.', open: null },
+  { key: 'fund', icon: '🏦', title: '자금 구조', view: '대출은 얼마까지 안전할까요? LTV·DSR부터 같이 계산해요.', open: '우리는 얼마까지 대출받아도 되는지 함께 봐요.' },
+  { key: 'fork', icon: '🔀', title: '청약 vs 매매', view: '청약이냐 매매냐, 우리 상황부터 봐야 답이 나옵니다.', open: '우리에겐 뭐가 맞는지 함께 정해요.' },
+  { key: 'act', icon: '🏠', title: '실행', view: '마지막은 발품이에요. 임장 다니고, 타이밍 잡습니다.', open: '실제 매물·계약은 코칭이 필요해요.' },
 ]
 
 /** 데이터로 현재 단계 추정 */
