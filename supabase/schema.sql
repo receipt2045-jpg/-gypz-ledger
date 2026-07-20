@@ -72,6 +72,7 @@ create table public.confessions (
   category text not null,
   kind text not null check (kind in ('income', 'saving', 'investment', 'fixed', 'variable')),
   amount bigint not null check (amount > 0),
+  note text,
   created_at timestamptz not null default now()
 );
 create index confessions_household_created on public.confessions (household_id, created_at desc);

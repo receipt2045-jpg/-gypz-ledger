@@ -175,6 +175,7 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
     category: r.category,
     kind: r.kind,
     amount: Number(r.amount),
+    note: r.note ?? undefined,
     createdAt: r.created_at,
   }))
 }
@@ -187,6 +188,7 @@ export async function insertConfession(householdId: string, c: Confession) {
     category: c.category,
     kind: c.kind,
     amount: c.amount,
+    note: c.note ?? null,
     created_at: c.createdAt,
   })
   if (error) throw error

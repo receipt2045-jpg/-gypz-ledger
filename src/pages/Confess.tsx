@@ -81,6 +81,7 @@ export default function Confess() {
 
   const [sel, setSel] = useState<{ kind: CategoryGroup; category: string } | null>(null)
   const [amount, setAmount] = useState(0)
+  const [note, setNote] = useState('')
   const [result, setResult] = useState<{ reaction: Reaction; streak: number } | null>(null)
 
   // 자주 쓰는 순 정렬 (최근 고백 횟수 기준, 나머지는 기본 순서)
@@ -102,7 +103,12 @@ export default function Confess() {
 
   const save = () => {
     if (!sel || amount <= 0) return
-    const full = addConfession({ category: sel.category, kind: sel.kind, amount })
+    const full = addConfession({
+      category: sel.category,
+      kind: sel.kind,
+      amount,
+      note: note.trim() || undefined,
+    })
     const all = useLedgerStore.getState().confessions
     const reaction = pickReaction(full, all)
     const streak = streakOf(all, memberNo ?? 1)
@@ -112,6 +118,7 @@ export default function Confess() {
   const reset = () => {
     setSel(null)
     setAmount(0)
+    setNote('')
     setResult(null)
   }
 
@@ -137,6 +144,7 @@ export default function Confess() {
           <div className="mb-5 rounded-card bg-card px-5 py-4 text-center shadow-card">
             <p className="text-[13px] text-sub">{sel.category}</p>
             <p className="tnum text-[26px] font-extrabold text-ink">{formatWon(amount)}</p>
+            {note.trim() && <p className="mt-1.5 text-[14px] font-medium text-sub">“{note.trim()}”</p>}
           </div>
 
           {/* 캐릭터 말풍선 (스티커 슬롯은 추후 이미지 예정 — 지금은 이름표+이모지) */}
@@ -213,6 +221,15 @@ export default function Confess() {
             <span className="ml-1 text-[20px] font-bold text-sub">원</span>
           </p>
 
+          {/* 선택적 한 마디 (숫자만 넣던 걸 보완) */}
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={40}
+            placeholder="한 마디 남기기 (선택)"
+            className="mb-3 w-full rounded-btn border border-line bg-white px-4 py-3 text-center text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
+          />
+
           {/* 퀵칩: 탭 한 번으로 금액 추가 */}
           <div className="mb-3 flex justify-center gap-2">
             {QUICK_CHIPS.map((v) => (
@@ -255,7 +272,7 @@ export default function Confess() {
   // ── 카테고리 선택 (아이콘 그리드) ──────────
   return (
     <Frame>
-      <Top onBack={() => navigate('/')} title="무엇에 썼나요?" subtitle="툭 던지면 모아·불리가 바로 반응해요" />
+      <Top onBack={() => navigate('/')} title="무엇에 썼나요?" subtitle="기록하면 모아·불리가 바로 반응해요" />
       <div className="flex-1 space-y-5 px-5 pb-10 pt-1">
         {/* 면죄부 방지 — 이번 주 기회비용 */}
         <WeeklyCostCard confessions={confessions} />

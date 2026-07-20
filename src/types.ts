@@ -60,6 +60,7 @@ export interface Confession {
   category: string
   kind: CategoryGroup
   amount: number // 원
+  note?: string // 선택적 한 마디 (예: "회식 대신 집밥")
   createdAt: string // ISO
 }
 
