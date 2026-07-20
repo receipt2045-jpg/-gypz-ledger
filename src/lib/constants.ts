@@ -36,6 +36,8 @@ export const DEFAULT_CATEGORIES: Categories = {
   fixed: ['보험', '통신', '용돈', '주거', '구독', '기타'],
   variable: [
     '식비',
+    '배달',
+    '카페',
     '생활용품',
     '건강',
     '육아',
