@@ -69,6 +69,51 @@ const PILLAR_LABEL: Record<keyof Pillars, string> = {
   invest: '투자',
 }
 
+// 초보자 눈높이 설명 (탭하면 펼쳐짐) + 이번 주 해볼 것
+export interface PillarInfo {
+  icon: string
+  label: string
+  team: '방어' | '공격'
+  what: string // 이게 뭐예요
+  why: string // 왜 중요해요
+  action: string // 이번 주 해볼 것
+}
+
+export const PILLAR_INFO: Record<keyof Pillars, PillarInfo> = {
+  reduce: {
+    icon: '🛡',
+    label: '절약',
+    team: '방어',
+    what: '버는 돈보다 덜 쓰는 힘이에요. 변동지출(배달·카페·쇼핑)을 얼마나 통제하는지 봐요.',
+    why: '종잣돈의 8할은 절약에서 나와요. 수입을 늘리는 것보다 새는 걸 막는 게 빨라요.',
+    action: '이번 주, 배달·카페 딱 한 번만 참아보기 🍚',
+  },
+  protect: {
+    icon: '🛡',
+    label: '절세',
+    team: '방어',
+    what: '연금·청약처럼 세금을 돌려받거나 아끼는 저축이에요.',
+    why: '연말정산에서 수십만 원이 왔다 갔다 해요. 안 하면 그냥 손해예요.',
+    action: '청약통장에 매달 자동이체 소액이라도 걸어두기 🏦',
+  },
+  side: {
+    icon: '⚔️',
+    label: '부수입',
+    team: '공격',
+    what: '월급 외에 들어오는 돈이에요. 중고 판매부터 콘텐츠까지 뭐든요.',
+    why: '저축률의 천장을 뚫어줘요. 아무리 아껴도 수입이 늘면 속도가 달라져요.',
+    action: '이번 주, 안 쓰는 물건 1개 중고로 올려보기 📦',
+  },
+  invest: {
+    icon: '⚔️',
+    label: '투자',
+    team: '공격',
+    what: '돈이 돈을 벌게 하는 거예요. 적금을 넘어 굴리는 부분이요.',
+    why: '10년을 굴리면 복리가 일해요. 일찍 시작할수록 눈덩이가 커져요.',
+    action: '소액 적립식 투자 1개, 겁먹지 말고 알아만 보기 📈',
+  },
+}
+
 export function diagnose(p: Pillars): Diagnosis {
   const defense = p.reduce + p.protect
   const offense = p.side + p.invest
