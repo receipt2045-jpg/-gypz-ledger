@@ -151,11 +151,11 @@ export default function Login() {
                 <a href="#/legal/privacy" className="text-brand underline">
                   개인정보처리방침
                 </a>
-                과{' '}
+                ·{' '}
                 <a href="#/legal/terms" className="text-brand underline">
                   이용약관
-                </a>
-                에 동의합니다. (구글 로그인 포함)
+                </a>{' '}
+                및 개인정보의 국외 이전(미국 소재 Supabase·Anthropic)에 동의합니다. (구글 로그인 포함)
               </span>
             </label>
           </div>
