@@ -10,7 +10,7 @@ import { abbreviateKRW, formatWon } from './format'
 
 // ── 3분법 버킷 ────────────────────────────────
 export type Bucket = 'reduce' | 'protect' | 'leverage' | 'grow' | 'income' | 'neutral'
-type ReduceSub = 'sub' | 'telecom' | 'delivery' | 'cafe' | 'taxi' | 'shopping' | 'food'
+type ReduceSub = 'sub' | 'telecom' | 'delivery' | 'cafe' | 'taxi' | 'shopping' | 'food' | 'beauty'
 
 const PROTECT = new Set(['용돈', '자기계발', '경조사', '육아'])
 const LEVERAGE = new Set(['주거'])
@@ -24,7 +24,8 @@ function reduceSub(kind: CategoryGroup, category: string): ReduceSub | null {
   if (c.includes('배달') || c.includes('외식')) return 'delivery'
   if (c.includes('카페') || c.includes('커피')) return 'cafe'
   if (c.includes('택시')) return 'taxi'
-  if (c.includes('쇼핑') || c.includes('충동') || c.includes('꾸밈')) return 'shopping'
+  if (c.includes('꾸밈') || c.includes('미용') || c.includes('화장') || c.includes('네일') || c.includes('헤어')) return 'beauty'
+  if (c.includes('쇼핑') || c.includes('충동')) return 'shopping'
   if (c.includes('식비') || c.includes('식사')) return 'food'
   return null
 }
@@ -87,6 +88,11 @@ const ROAST: Record<ReduceSub, string[]> = {
     '식비 또…? 이번 달 {n}번째. 냉장고가 서운해서 문이 안 닫혀 🍚😤',
     '외식 맛있지. 근데 매일이면 취미가 아니라 지출이야 😵',
   ],
+  beauty: [
+    '머리에 금가루라도 발랐어? {금액}이 순삭이네 💇✨',
+    '거울 속 나는 셀럽, 통장 속 나는 일반인 💀',
+    '예뻐지는 건 좋아. 근데 잔고도 좀 예뻐야지 😮‍💨',
+  ],
 }
 
 // 불리: 아낀 돈을 현실적 업사이드로 (이 돈 모으면 ~ 되겠다)
@@ -119,6 +125,10 @@ const UPSIDE: Record<ReduceSub | 'default', string[]> = {
     '이 {금액} 집밥으로 돌리면 며칠은 버텨. 남는 돈은 나 줘 📈',
     '식비 한 달만 잡아도 {월합}. 그게 종잣돈 된다 🐷',
   ],
+  beauty: [
+    '이거 아끼면 1년에 {연}. 다음 시술은 그 돈으로 하자 💆',
+    '꾸밈도 예산 안에서 하면 완벽해. 남는 건 나한테 맡겨 📈',
+  ],
   default: [
     '이거 모으면 {월합}, 1년이면 {연}이야 🐷',
     '아낀 돈은 나 불리한테 맡겨. 더 키워줄게 📈',
@@ -134,6 +144,7 @@ const ACTIONS: Record<ReduceSub | 'default', string> = {
   shopping: '장바구니에 하루만 재워두기, 어때요? 👉',
   telecom: '약정 끝났으면 알뜰폰 요금제 비교해 볼까요? 👉',
   food: '식비, 다음 달 한도 정해둘까요? 👉',
+  beauty: '다음 달 꾸밈 예산, 한번 정해둘까요? 👉',
   default: '남는 {금액}, 지금 적금으로 옮겨둘까요? 👉',
 }
 
