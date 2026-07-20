@@ -39,7 +39,7 @@ export default function Roadmap() {
           <h1 className="text-[20px] font-extrabold tracking-tight text-ink">우리집까지 가는 길</h1>
         </div>
         <p className="mt-1.5 text-[13.5px] font-medium leading-relaxed text-sub">
-          매일의 작은 선택이 우리집을 앞당겨요. 아래를 직접 움직여 보면서 우리 팀을 점검해요.
+          아래를 직접 움직여 보면서 지금 우리 팀을 점검해요.
         </p>
       </header>
 
@@ -164,7 +164,7 @@ function SavingSimulator({
   return (
     <Card>
       <p className="text-[15px] font-bold text-ink">저축률을 움직여 보세요 🎚</p>
-      <p className="mt-1 text-[12.5px] text-cap">종잣돈은 소득이 아니라 저축률이 만들어요</p>
+      <p className="mt-1 text-[12.5px] text-cap">저축률만 조금 올려도 10년이 크게 달라집니다.</p>
 
       <div className="mt-4 flex items-end justify-between">
         <span className="tnum text-[32px] font-extrabold leading-none text-brand">{rate}%</span>

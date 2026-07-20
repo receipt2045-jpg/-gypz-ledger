@@ -84,8 +84,8 @@ export const PILLAR_INFO: Record<keyof Pillars, PillarInfo> = {
     icon: '🛡',
     label: '절약',
     team: '방어',
-    what: '버는 돈보다 덜 쓰는 힘이에요. 변동지출(배달·카페·쇼핑)을 얼마나 통제하는지 봐요.',
-    why: '종잣돈의 8할은 절약에서 나와요. 수입을 늘리는 것보다 새는 걸 막는 게 빨라요.',
+    what: '변동지출(배달·카페·쇼핑)을 얼마나 잡고 있는지 봐요.',
+    why: '수입을 늘리기보다 새는 돈을 막는 게 빠릅니다.',
     action: '이번 주, 배달·카페 딱 한 번만 참아보기 🍚',
   },
   protect: {
@@ -93,7 +93,7 @@ export const PILLAR_INFO: Record<keyof Pillars, PillarInfo> = {
     label: '절세',
     team: '방어',
     what: '연금·청약처럼 세금을 돌려받거나 아끼는 저축이에요.',
-    why: '연말정산에서 수십만 원이 왔다 갔다 해요. 안 하면 그냥 손해예요.',
+    why: '연말정산에서 수십만 원이 왔다 갔다 합니다. 안 챙기면 손해예요.',
     action: '청약통장에 매달 자동이체 소액이라도 걸어두기 🏦',
   },
   side: {
@@ -101,15 +101,15 @@ export const PILLAR_INFO: Record<keyof Pillars, PillarInfo> = {
     label: '부수입',
     team: '공격',
     what: '월급 외에 들어오는 돈이에요. 중고 판매부터 콘텐츠까지 뭐든요.',
-    why: '저축률의 천장을 뚫어줘요. 아무리 아껴도 수입이 늘면 속도가 달라져요.',
+    why: '아무리 아껴도 한계가 있어요. 수입이 늘면 속도가 달라집니다.',
     action: '이번 주, 안 쓰는 물건 1개 중고로 올려보기 📦',
   },
   invest: {
     icon: '⚔️',
     label: '투자',
     team: '공격',
-    what: '돈이 돈을 벌게 하는 거예요. 적금을 넘어 굴리는 부분이요.',
-    why: '10년을 굴리면 복리가 일해요. 일찍 시작할수록 눈덩이가 커져요.',
+    what: '적금을 넘어 돈을 굴리는 부분이에요.',
+    why: '일찍 시작할수록 복리가 크게 붙습니다.',
     action: '소액 적립식 투자 1개, 겁먹지 말고 알아만 보기 📈',
   },
 }
@@ -122,10 +122,10 @@ export function diagnose(p: Pillars): Diagnosis {
   const offenseGap = offense <= 2 && defense >= offense + 2
 
   let headline: string
-  if (defense + offense === 0) headline = '아직 연료가 비었어요. 첫 예산부터 세워봐요.'
-  else if (offenseGap) headline = '방어는 되는데 공격이 비었어요. 방어만으론 내집마련 속도가 안 나요.'
-  else if (offense >= 6 && defense >= 6) headline = '방어·공격 균형이 좋아요. 이제 실행 타이밍이 관건이에요.'
-  else headline = '종잣돈은 소득이 아니라 저축률이 만들어요. 매일의 고백이 연료예요.'
+  if (defense + offense === 0) headline = '아직 시작 전이에요. 예산부터 세워봐요.'
+  else if (offenseGap) headline = '방어는 잘하고 있어요. 이제 공격(부수입·투자)을 채울 차례입니다.'
+  else if (offense >= 6 && defense >= 6) headline = '방어도 공격도 균형이 좋아요. 이제 타이밍만 남았습니다.'
+  else headline = '꾸준히 모으는 중이에요. 매일 기록이 곧 종잣돈이 됩니다.'
 
   return {
     defense,
