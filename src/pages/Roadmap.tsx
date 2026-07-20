@@ -14,10 +14,6 @@ import {
   type Pillars,
 } from '../lib/roadmap'
 
-// 유료 상품 = 저단가 맞춤 리포트 하나만 (무료 체험 다 하고 맨 끝에)
-const REPORT_URL = 'https://oneteamm.netlify.app/' // TODO: 리포트 상담 구매/신청 링크로 교체
-const REPORT_PRICE = '9,900원' // TODO: 확정 가격으로
-
 export default function Roadmap() {
   const navigate = useNavigate()
   const { ledgers, snapshots, profile } = useLedgerStore()
@@ -127,27 +123,21 @@ export default function Roadmap() {
         })}
       </div>
 
-      {/* ── ⑤ 저단가 리포트 (맨 끝, 부드럽게) ───── */}
+      {/* ── ⑤ 저단가 리포트 (준비 중) ──────────── */}
       {hasIncome && (
         <Card>
-          <p className="text-[15px] font-bold text-ink">여기까지 무료로 잘 왔어요 🤍</p>
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-bg px-2.5 py-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+            <span className="text-[11px] font-bold text-sub">준비 중</span>
+          </div>
+          <p className="text-[15px] font-bold text-ink">우리 부부 맞춤 리포트</p>
           <p className="mt-1.5 text-[13.5px] leading-relaxed text-sub">
-            더 궁금하면, 결영이네가 <b className="text-ink">우리 부부 숫자를 직접 보고</b> 만든 맞춤
-            리포트를 받아볼 수 있어요. 지금 우리에게 뭐가 제일 급한지, 다음 3개월에 뭘 해야 할지
-            콕 짚어드려요.
+            결영이네가 <b className="text-ink">우리 부부 숫자를 직접 보고</b> 만든 맞춤 리포트예요.
+            지금 뭐가 제일 급한지, 다음 3개월에 뭘 해야 할지 콕 짚어드려요. 곧 만나요 🤍
           </p>
-          <a
-            href={REPORT_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 flex h-12 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
-          >
-            우리 부부 맞춤 리포트 받기
-            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[12px]">{REPORT_PRICE}</span>
-          </a>
-          <p className="mt-2 text-center text-[11.5px] text-cap">
-            앱은 관점을, 리포트는 우리만의 다음 한 걸음을 드려요
-          </p>
+          <div className="mt-3 flex h-12 w-full items-center justify-center rounded-btn bg-line/60 text-[15px] font-bold text-cap">
+            곧 열려요
+          </div>
         </Card>
       )}
     </div>
@@ -249,7 +239,7 @@ function PillarItem({ pillarKey, score }: { pillarKey: keyof Pillars; score: num
       </button>
       {open && (
         <div className="space-y-2 border-t border-line px-3 py-3">
-          <InfoLine label="이게 뭐예요" text={info.what} />
+          <InfoLine label="뜻" text={info.what} />
           <InfoLine label="왜 중요해요" text={info.why} />
           <div className="flex items-start gap-1.5 rounded-lg bg-brand/[0.06] px-2.5 py-2">
             <span className="text-[11px] font-bold text-brand">이번 주</span>
