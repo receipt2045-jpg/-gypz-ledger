@@ -10,9 +10,9 @@ import { abbreviateKRW, formatWon } from './format'
 
 // ── 3분법 버킷 ────────────────────────────────
 export type Bucket = 'reduce' | 'protect' | 'leverage' | 'grow' | 'income' | 'neutral'
-type ReduceSub = 'sub' | 'telecom' | 'delivery' | 'cafe' | 'taxi' | 'shopping'
+type ReduceSub = 'sub' | 'telecom' | 'delivery' | 'cafe' | 'taxi' | 'shopping' | 'food'
 
-const PROTECT = new Set(['식비', '용돈', '자기계발', '경조사', '육아'])
+const PROTECT = new Set(['용돈', '자기계발', '경조사', '육아'])
 const LEVERAGE = new Set(['주거'])
 
 /** reduce(저효용 고정비) 세부 분류 — 기본 통신·구독 + 사용자 커스텀 카테고리 키워드 */
@@ -25,6 +25,7 @@ function reduceSub(kind: CategoryGroup, category: string): ReduceSub | null {
   if (c.includes('카페') || c.includes('커피')) return 'cafe'
   if (c.includes('택시')) return 'taxi'
   if (c.includes('쇼핑') || c.includes('충동') || c.includes('꾸밈')) return 'shopping'
+  if (c.includes('식비') || c.includes('식사')) return 'food'
   return null
 }
 
@@ -74,6 +75,11 @@ const ROAST: Record<ReduceSub, string[]> = {
   telecom: [
     '통신비 이렇게 나오면 안 돼요…! 약정 끝났으면 알뜰폰, 지금 바로요. 알뜰족은 {알뜰족}이에요.',
   ],
+  food: [
+    '식비 또 나가네요 🍚 집밥 한 끼가 통장을 지켜줘요.',
+    '이번 달 식비 {n}번째예요. 장 봐서 해 먹는 날도 만들어봐요!',
+    '{금액}이면 집밥으로 며칠은 든든해요. 다음 한 끼는 집에서 어때요?',
+  ],
 }
 
 // 8-A 티키타카 (모아·불리 만담)
@@ -118,6 +124,14 @@ const TIKITAKA: Partial<Record<ReduceSub, Line[][]>> = {
       { who: '불리', text: '모아 오늘 팩폭 지린다 ㅋㅋ' },
     ],
   ],
+  food: [
+    [
+      { who: '모아', text: '식비 또 나갔네요 🍚 이번 달 {n}번째예요.' },
+      { who: '불리', text: '먹어야 일하지~' },
+      { who: '모아', text: '집밥이어야 통장이 살죠!' },
+      { who: '불리', text: '알겠어알겠어 ㅋㅋ 주말은 집밥 콜.' },
+    ],
+  ],
 }
 
 // 8-B 단위환산 드립 (금액에서 개수 계산)
@@ -136,6 +150,8 @@ function unitLine(sub: ReduceSub, amount: number, monthSum: number): string | nu
       return `구독료 1년 {연} = 제주도 ${Math.max(1, Math.round((monthSum * 12) / 80000))}번 갈 돈 🏝`
     case 'shopping':
       return `이번에 쓴 {금액} = 소고기 ${cnt(50000)}근 🥩`
+    case 'food':
+      return `식비 {금액} = 집밥 ${cnt(4000)}끼예요 🍚`
     case 'telecom':
       return null
   }
@@ -149,6 +165,7 @@ const ACTIONS: Record<ReduceSub | 'default', string> = {
   taxi: '이 카테고리, 다음 달 한도 정해둘까요? 👉',
   shopping: '장바구니에 하루만 재워두기, 어때요? 👉',
   telecom: '약정 끝났으면 알뜰폰 요금제 비교해 볼까요? 👉',
+  food: '식비, 다음 달 한도 정해둘까요? 👉',
   default: '남는 {금액}, 지금 적금으로 옮겨둘까요? 👉',
 }
 
