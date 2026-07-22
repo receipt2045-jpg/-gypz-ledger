@@ -32,7 +32,7 @@ import { TERM_TIP } from '../lib/constants'
  */
 export default function Home() {
   const navigate = useNavigate()
-  const { ledgers, snapshots, profile } = useLedgerStore()
+  const { ledgers, snapshots, profile, confessions } = useLedgerStore()
 
   // 보고 있는 달 — 정산해도 자동으로 넘어가지 않고, ◀▶로 직접 선택
   const latestLedgerYm = ledgers.length ? ledgers[ledgers.length - 1].ym : activeYm(ledgers)
@@ -58,6 +58,13 @@ export default function Home() {
   const targetRatio = profile.targetNetWorth > 0 ? netWorth / profile.targetNetWorth : 0
   const settledMembers = ledger.settledMembers ?? []
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
+
+  // 시작 가이드 — 실제 데이터로 자동 체크
+  const hasAssets = snapshot.items.length > 0
+  const hasBudget = ledger.items.length > 0
+  const hasConfession = confessions.length > 0
+  const doneCount = [hasAssets, hasBudget, hasConfession].filter(Boolean).length
+  const startDone = doneCount === 3
 
   return (
     <div className="animate-fade-up space-y-4 pb-24">
@@ -113,6 +120,51 @@ export default function Home() {
         </p>
       </header>
 
+      {/* 바로가기 — 자주 쓰는 3가지 */}
+      <div className="grid grid-cols-3 gap-2">
+        <QuickAction
+          emoji="📝"
+          label="예산 세우기"
+          onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
+        />
+        <QuickAction
+          emoji="✅"
+          label="정산하기"
+          onClick={() => navigate('/checkup', { state: { ym, mode: 'settle' } })}
+        />
+        <QuickAction emoji="🏦" label="자산 입력" onClick={() => navigate('/asset-setup')} />
+      </div>
+
+      {/* 시작 가이드 — 3단계 다 끝나면 자동으로 사라짐 */}
+      {!startDone && (
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[15px] font-bold text-ink">시작 가이드</p>
+            <span className="text-[12px] font-bold text-brand">{doneCount}/3 완료</span>
+          </div>
+          <div className="space-y-1">
+            <GuideStep
+              done={hasAssets}
+              label="우리집 자산 등록하기"
+              hint="어떤 통장에 얼마 있는지 넣으면 순자산이 보여요"
+              onClick={() => navigate('/asset-setup')}
+            />
+            <GuideStep
+              done={hasBudget}
+              label="이번 달 예산 세우기"
+              hint="수입·저축·지출 계획을 한 번만 잡아두면 돼요"
+              onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
+            />
+            <GuideStep
+              done={hasConfession}
+              label="오늘 쓴 돈 고백하기"
+              hint="3번 탭이면 끝. 모아·불리가 바로 반응해요"
+              onClick={() => navigate('/confess')}
+            />
+          </div>
+        </Card>
+      )}
+
       {/* 미니 게이지 4종 (수입·지출·저축률·순자산) */}
       <StatGauges
         income={s.income}
@@ -121,21 +173,6 @@ export default function Home() {
         netWorth={netWorth}
         targetNetWorth={profile.targetNetWorth}
       />
-
-      {/* 자산이 하나도 없으면 자산 등록부터 안내 */}
-      {snapshot.items.length === 0 && (
-        <Card onClick={() => navigate('/asset-setup')}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[15px] font-bold text-ink">먼저 우리집 자산을 등록해 보세요</p>
-              <p className="mt-1 text-[13px] text-sub">
-                어떤 통장에 얼마 있는지 넣으면 순자산이 보여요
-              </p>
-            </div>
-            <ChevronRight size={18} className="shrink-0 text-cap" />
-          </div>
-        </Card>
-      )}
 
       {/* 잉여현금 + 정산 상태 */}
       <Card onClick={() => navigate('/monthly')}>
@@ -225,5 +262,63 @@ export default function Home() {
         )}
       </Card>
     </div>
+  )
+}
+
+/** 홈 상단 바로가기 버튼 */
+function QuickAction({
+  emoji,
+  label,
+  onClick,
+}: {
+  emoji: string
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-1.5 rounded-card bg-card py-3.5 shadow-card transition-transform active:scale-95"
+    >
+      <span className="text-[20px] leading-none">{emoji}</span>
+      <span className="text-[12.5px] font-bold text-ink">{label}</span>
+    </button>
+  )
+}
+
+/** 시작 가이드 한 줄 (데이터로 자동 체크) */
+function GuideStep({
+  done,
+  label,
+  hint,
+  onClick,
+}: {
+  done: boolean
+  label: string
+  hint: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-btn px-1 py-2 text-left active:bg-bg"
+    >
+      <span
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+          done ? 'border-brand bg-brand' : 'border-line'
+        }`}
+      >
+        {done && <Check size={14} className="text-white" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block text-[14px] font-bold ${done ? 'text-cap line-through' : 'text-ink'}`}
+        >
+          {label}
+        </span>
+        {!done && <span className="mt-0.5 block text-[12px] text-sub">{hint}</span>}
+      </span>
+      {!done && <ChevronRight size={16} className="shrink-0 text-cap" />}
+    </button>
   )
 }
