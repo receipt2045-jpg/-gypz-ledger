@@ -8,11 +8,21 @@ import { requestDiagnosis, type CheckupSummary } from '../lib/aiCoach'
  * - 표기: "결영이네가 만든 AI 코치 😉" (AI인데 사람인 척 금지)
  * - 신뢰 메시지·면책 문구 노출, 최초 1회 사용 동의(계정 플래그) 후 진단
  */
+// 기다리는 동안 순서대로 바뀌는 진행 문구 (30초가 덜 지루하게)
+const LOADING_MSGS = [
+  '고정비부터 살펴보는 중…',
+  '저축률을 계산하는 중…',
+  '새는 돈을 찾는 중…',
+  '내집마련 속도를 재는 중…',
+  '결영이네 관점으로 정리하는 중…',
+]
+
 export default function AiCoachCard({ summary }: { summary: CheckupSummary }) {
   const [consented, setConsented] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   const [diagnosis, setDiagnosis] = useState('')
   const [error, setError] = useState('')
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -20,9 +30,17 @@ export default function AiCoachCard({ summary }: { summary: CheckupSummary }) {
     })
   }, [])
 
+  // 진행 문구 회전 — 진단 중일 때만
+  useEffect(() => {
+    if (!loading) return
+    const id = setInterval(() => setTick((t) => t + 1), 4000)
+    return () => clearInterval(id)
+  }, [loading])
+
   const run = async () => {
     if (loading) return
     setLoading(true)
+    setTick(0)
     setError('')
     if (!consented) {
       // 사용 동의는 계정에 1회 저장 (브리프 4.3)
@@ -80,18 +98,28 @@ export default function AiCoachCard({ summary }: { summary: CheckupSummary }) {
             <br />
             입력한 내용만 안전하게 분석해요 🤍
           </p>
-          <button
-            onClick={run}
-            disabled={loading || consented === null}
-            className="mt-3 h-12 w-full rounded-btn bg-brand text-[15px] font-bold text-white active:bg-brand-dark disabled:opacity-50"
-          >
-            {loading
-              ? '결영이네 관점으로 살펴보는 중…'
-              : consented
-                ? 'AI 진단 받기'
-                : '동의하고 진단 받기'}
-          </button>
-          {consented === false && (
+          {loading ? (
+            <div className="mt-3 rounded-btn bg-bg px-4 py-5 text-center">
+              <div className="mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-[3px] border-line border-t-brand" />
+              <p className="text-[14px] font-bold text-ink">
+                {LOADING_MSGS[tick % LOADING_MSGS.length]}
+              </p>
+              <p className="mt-2 text-[12.5px] leading-relaxed text-sub">
+                30초 정도 걸려요.
+                <br />
+                창을 닫지 말고 잠시만 기다려 주세요 🤍
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={run}
+              disabled={consented === null}
+              className="mt-3 h-12 w-full rounded-btn bg-brand text-[15px] font-bold text-white active:bg-brand-dark disabled:opacity-50"
+            >
+              {consented ? 'AI 진단 받기' : '동의하고 진단 받기'}
+            </button>
+          )}
+          {consented === false && !loading && (
             <p className="mt-2 text-[11px] leading-relaxed text-cap">
               이번 정산 요약(금액 집계)을 AI 분석에 사용하는 데 동의하게 됩니다. 동의는 최초
               1회만 받아요.
