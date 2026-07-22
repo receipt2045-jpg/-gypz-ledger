@@ -142,20 +142,22 @@ export default function Settings() {
       <Card>
         <h2 className="mb-3 text-[15px] font-bold text-ink">부부 정보</h2>
         <div className="space-y-3">
-          <Field label="구성원 1">
+          <Field label="구성원 1" hint="예: 남편">
             <input
               type="text"
               value={profile.member1Name}
               onChange={(e) => updateProfile({ member1Name: e.target.value })}
-              className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand"
+              placeholder="남편"
+              className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
             />
           </Field>
-          <Field label="구성원 2">
+          <Field label="구성원 2" hint="예: 아내">
             <input
               type="text"
               value={profile.member2Name}
               onChange={(e) => updateProfile({ member2Name: e.target.value })}
-              className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand"
+              placeholder="아내"
+              className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
             />
           </Field>
           <Field label="10년 목표 순자산" hint={abbreviateKRW(profile.targetNetWorth)}>
