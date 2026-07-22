@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import TrialBadge from './TrialBadge'
 import { requestDiagnosis, type CheckupSummary } from '../lib/aiCoach'
 
 /**
@@ -63,6 +64,7 @@ export default function AiCoachCard({ summary }: { summary: CheckupSummary }) {
           <Sparkles size={16} className="text-brand" />
         </div>
         <p className="text-[14px] font-bold text-ink">결영이네가 만든 AI 코치 😉</p>
+        <TrialBadge />
       </div>
 
       {diagnosis ? (
@@ -97,6 +99,9 @@ export default function AiCoachCard({ summary }: { summary: CheckupSummary }) {
             계좌는 연결하지 않습니다
             <br />
             입력한 내용만 안전하게 분석해요 🤍
+          </p>
+          <p className="mt-2 text-[12px] leading-relaxed text-cap">
+            지금은 체험 기간이라 무료예요. 정식 오픈 후에는 PLUS 기능이 됩니다.
           </p>
           {loading ? (
             <div className="mt-3 rounded-btn bg-bg px-4 py-5 text-center">
