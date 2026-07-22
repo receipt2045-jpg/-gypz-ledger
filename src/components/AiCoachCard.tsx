@@ -56,6 +56,22 @@ export default function AiCoachCard({ summary }: { summary: CheckupSummary }) {
             데이터가 더 모이면 다른 부부와 비교해서 보여드릴게요 🤍
           </p>
           <p className="mt-1 text-[11px] text-cap">참고용 정보이며, 투자·재무 자문은 아닙니다.</p>
+
+          {/* 다음 단계 — 결영이네 1:1 진단 (오픈 준비 중) */}
+          <div className="mt-4 rounded-btn border border-line bg-bg p-4">
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+              <span className="text-[11px] font-bold text-sub">준비 중</span>
+            </div>
+            <p className="text-[14px] font-bold text-ink">다음 단계: 자산 로드맵 1:1 진단</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-sub">
+              여기까지는 AI가 짚어드렸어요. 우리집 숫자로 <b className="text-ink">고정비 줄이기 → SNS
+              부수입 → 주식 → 내집마련</b>까지 한 번에 그리는 건 결영이네가 직접 봐드려요.
+            </p>
+            <div className="mt-3 flex h-11 w-full items-center justify-center rounded-btn bg-line/60 text-[14px] font-bold text-cap">
+              곧 열려요
+            </div>
+          </div>
         </>
       ) : (
         <>
