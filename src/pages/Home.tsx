@@ -17,6 +17,7 @@ import {
 } from '../lib/carryover'
 import {
   abbreviateKRW,
+  currentYm,
   formatMonthKorean,
   formatPercent,
   formatWon,
@@ -65,6 +66,27 @@ export default function Home() {
   const hasConfession = confessions.length > 0
   const doneCount = [hasAssets, hasBudget, hasConfession].filter(Boolean).length
   const startDone = doneCount === 3
+
+  // 이번 달 할 일 — 월초엔 예산, 월말엔 정산 (이번 달 기준)
+  const today = new Date()
+  const day = today.getDate()
+  const thisYm = currentYm()
+  const thisLedger = resolveLedger(ledgers, thisYm)
+  const thisPlanned = thisLedger.items.some((it) => it.planned > 0)
+  const todo: { text: string; cta: string; onClick: () => void } | null =
+    day <= 10 && !thisPlanned
+      ? {
+          text: '이번 달 예산 세울 때예요',
+          cta: '예산 세우기',
+          onClick: () => navigate('/checkup', { state: { ym: thisYm, mode: 'budget' } }),
+        }
+      : day >= 25 && !thisLedger.closed
+        ? {
+            text: '이번 달 정산할 때예요',
+            cta: '정산하기',
+            onClick: () => navigate('/checkup', { state: { ym: thisYm, mode: 'settle' } }),
+          }
+        : null
 
   return (
     <div className="animate-fade-up space-y-4 pb-24">
@@ -119,6 +141,20 @@ export default function Home() {
           지난달보다 {delta.zero ? '변동 없음' : delta.text}
         </p>
       </header>
+
+      {/* 이번 달 할 일 — 월초 예산 / 월말 정산 */}
+      {todo && (
+        <button
+          onClick={todo.onClick}
+          className="flex w-full items-center justify-between gap-3 rounded-card bg-brand/10 px-4 py-3 text-left active:bg-brand/15"
+        >
+          <span className="text-[14px] font-bold text-ink">🔔 {todo.text}</span>
+          <span className="flex shrink-0 items-center gap-0.5 text-[13px] font-bold text-brand">
+            {todo.cta}
+            <ChevronRight size={16} />
+          </span>
+        </button>
+      )}
 
       {/* 바로가기 — 자주 쓰는 3가지 */}
       <div className="grid grid-cols-3 gap-2">

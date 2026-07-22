@@ -46,9 +46,16 @@ export default function AssetEditor({
   return (
     <div className="space-y-3">
       {assets.length === 0 && (
-        <p className="py-6 text-center text-[13px] text-cap">
-          아래 버튼으로 통장·자산을 추가해 주세요
-        </p>
+        <div className="space-y-2 py-6 text-center">
+          <p className="text-[13.5px] font-medium text-sub">아래 버튼으로 통장·자산을 추가해 주세요</p>
+          <p className="text-[12.5px] leading-relaxed text-cap">
+            예: 토스 비상금 300만 원 · 주택청약 500만 원
+            <br />
+            예: 전세보증금 1억 원 · 자동차 1,500만 원
+            <br />
+            빚도 함께 넣어요 — 예: 전세대출 8,000만 원
+          </p>
+        </div>
       )}
       {assetItems.map((it) => (
         <AssetRow

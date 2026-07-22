@@ -52,6 +52,35 @@ const STEPS: StepDef[] = [
   { title: '고정지출', subtitle: '매달 비슷하게 나가는 돈이에요', groups: ['fixed'], sameAsLast: true },
   { title: '변동지출', subtitle: '이번 달 실제 쓴 금액을 입력해요', groups: ['variable'], sameAsLast: false },
 ]
+// 빈 화면에 보여줄 예시 (뭘 넣어야 할지 감 잡게)
+const EXAMPLES: Record<CategoryGroup, string> = {
+  income: '예: 주수입 350만 원, 부수입 20만 원',
+  saving: '예: 적금 50만 원, 주택청약 10만 원',
+  investment: '예: 주식 30만 원',
+  fixed: '예: 주거 60만 원, 통신 12만 원, 보험 20만 원',
+  variable: '예: 식비 50만 원, 배달 15만 원, 생활용품 15만 원',
+}
+
+// '보통 이렇게 씁니다' 초안 — 2인 가구 기준. 채운 뒤 사용자가 고쳐서 씀.
+const PRESET: Partial<Record<CategoryGroup, { category: string; amount: number }[]>> = {
+  income: [{ category: '주수입', amount: 3_500_000 }],
+  saving: [
+    { category: '적금', amount: 500_000 },
+    { category: '주택청약', amount: 100_000 },
+  ],
+  investment: [{ category: '주식', amount: 300_000 }],
+  fixed: [
+    { category: '주거', amount: 600_000 },
+    { category: '통신', amount: 120_000 },
+    { category: '보험', amount: 200_000 },
+  ],
+  variable: [
+    { category: '식비', amount: 500_000 },
+    { category: '배달', amount: 150_000 },
+    { category: '생활용품', amount: 150_000 },
+  ],
+}
+
 const MEMBER_STEP = 0 // 남편/아내 선택
 const TOTAL_STEPS = STEPS.length + 1 // 선택 + 금액 스텝들 (자산은 자산 탭에서 별도 관리)
 const LAST_MONEY_STEP = STEPS.length // 변동지출 (마지막 입력 스텝)
@@ -131,6 +160,19 @@ export default function Checkup() {
     setItems((prev) => [...prev, { ...emptyItem(group, category, member), planned: 0, actual: 0 }])
   }
   const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id))
+
+  // '보통 이렇게 씁니다' — 해당 스텝 그룹에 2인 가구 평균 초안을 채워줌
+  const fillPreset = (groups: CategoryGroup[]) => {
+    if (!member) return
+    const add: BudgetItem[] = []
+    for (const g of groups) {
+      for (const p of PRESET[g] ?? []) {
+        const base = emptyItem(g, p.category, member)
+        add.push(isBudget ? { ...base, planned: p.amount } : { ...base, actual: p.amount })
+      }
+    }
+    if (add.length) setItems((prev) => [...prev, ...add])
+  }
 
   const commit = () => {
     if (!member) return
@@ -383,11 +425,13 @@ export default function Checkup() {
           valueField={field}
           categories={categories}
           showErrors={showErrors}
+          examples={def.groups.map((g) => EXAMPLES[g])}
           onChange={setAmount}
           onNote={setNote}
           onAdd={addItem}
           onRemove={removeItem}
           onCreateCategory={addCategory}
+          onFillPreset={() => fillPreset(def.groups)}
         />
       </div>
       <BottomBar>
@@ -516,22 +560,26 @@ function MoneyStep({
   valueField,
   categories,
   showErrors,
+  examples,
   onChange,
   onNote,
   onAdd,
   onRemove,
   onCreateCategory,
+  onFillPreset,
 }: {
   groups: CategoryGroup[]
   items: BudgetItem[]
   valueField: 'planned' | 'actual'
   categories: Record<CategoryGroup, string[]>
   showErrors: boolean
+  examples: string[]
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
   onAdd: (g: CategoryGroup, c: string) => void
   onRemove: (id: string) => void
   onCreateCategory: (g: CategoryGroup, name: string) => void
+  onFillPreset: () => void
 }) {
   const [adding, setAdding] = useState(false)
   const [g, setG] = useState<CategoryGroup>(groups[0])
@@ -559,7 +607,21 @@ function MoneyStep({
   return (
     <div className="space-y-3">
       {items.length === 0 && (
-        <p className="py-6 text-center text-[13px] text-cap">항목을 추가해 주세요</p>
+        <div className="space-y-3 py-5 text-center">
+          <p className="text-[13.5px] font-medium text-sub">항목을 추가해 주세요</p>
+          {examples.map((ex) => (
+            <p key={ex} className="text-[12.5px] leading-relaxed text-cap">
+              {ex}
+            </p>
+          ))}
+          <button
+            onClick={onFillPreset}
+            className="mt-1 inline-flex h-11 items-center justify-center gap-1.5 rounded-btn bg-white px-4 text-[13.5px] font-bold text-brand shadow-card active:bg-line"
+          >
+            ✨ 보통 이렇게 씁니다 (2인 가구)
+          </button>
+          <p className="text-[11.5px] text-cap">채워진 금액은 우리집에 맞게 고치면 돼요</p>
+        </div>
       )}
       {items.map((it) => {
         const invalid = showErrors && (!it[valueField] || it[valueField] <= 0)
