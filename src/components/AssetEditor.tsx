@@ -3,7 +3,20 @@ import { Pencil, Plus, StickyNote, X } from 'lucide-react'
 import AmountInput from './AmountInput'
 import AssetIcon from './AssetIcon'
 import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER } from '../lib/constants'
+import {
+  CURRENCIES,
+  CURRENCY_LABEL,
+  CURRENCY_SYMBOL,
+  krwOf,
+  useFxRates,
+  type Currency,
+  type Rates,
+} from '../lib/fx'
+import { formatWon } from '../lib/format'
 import type { AssetGroup, AssetItem } from '../types'
+
+// 통화 입력칸의 접미사 (KRW는 '원', 외화는 기호)
+const suffixOf = (c: Currency) => (c === 'KRW' ? '원' : CURRENCY_SYMBOL[c])
 
 /** 자산·부채 목록 편집기 — 정산의 자산 스텝과 자산 등록 플로우에서 공용 */
 export default function AssetEditor({
@@ -25,18 +38,34 @@ export default function AssetEditor({
   onAdd: (a: Omit<AssetItem, 'id'>) => void
   onRemove: (id: string) => void
 }) {
+  const rates = useFxRates()
   const [adding, setAdding] = useState(false)
   const [kind, setKind] = useState<'asset' | 'debt'>('asset')
   const [group, setGroup] = useState<AssetGroup>('cash')
   const [name, setName] = useState('')
   const [owner, setOwner] = useState(defaultOwner)
   const [amount, setAmount] = useState(0)
+  const [currency, setCurrency] = useState<Currency>('KRW')
 
   const submit = () => {
     if (!name.trim() || amount <= 0) return
-    onAdd({ kind, group, name: name.trim(), owner, amount })
+    if (currency === 'KRW') {
+      onAdd({ kind, group, name: name.trim(), owner, amount })
+    } else {
+      // 외화: 원금+통화 저장, 원화 환산액은 현재 환율로 스냅샷
+      onAdd({
+        kind,
+        group,
+        name: name.trim(),
+        owner,
+        currency,
+        fxAmount: amount,
+        amount: krwOf({ amount: 0, currency, fxAmount: amount }, rates),
+      })
+    }
     setName('')
     setAmount(0)
+    setCurrency('KRW')
     setAdding(false)
   }
 
@@ -62,6 +91,7 @@ export default function AssetEditor({
           key={it.id}
           item={it}
           ownerOptions={ownerOptions}
+          rates={rates}
           onChange={onChange}
           onNote={onNote}
           onUpdate={onUpdate}
@@ -76,6 +106,7 @@ export default function AssetEditor({
           key={it.id}
           item={it}
           ownerOptions={ownerOptions}
+          rates={rates}
           onChange={onChange}
           onNote={onNote}
           onUpdate={onUpdate}
@@ -132,7 +163,31 @@ export default function AssetEditor({
               </option>
             ))}
           </select>
-          <AmountInput value={amount} onChange={setAmount} placeholder="현재 잔액" />
+          <div className="flex gap-2">
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as Currency)}
+              className="w-[112px] shrink-0 rounded-btn border border-line bg-white px-2.5 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {CURRENCY_LABEL[c]}
+                </option>
+              ))}
+            </select>
+            <AmountInput
+              className="flex-1"
+              value={amount}
+              onChange={setAmount}
+              placeholder="현재 잔액"
+              suffix={suffixOf(currency)}
+            />
+          </div>
+          {currency !== 'KRW' && amount > 0 && (
+            <p className="px-1 text-right text-[12px] text-cap">
+              실시간 환율 ≈ {formatWon(krwOf({ amount: 0, currency, fxAmount: amount }, rates))}
+            </p>
+          )}
           <div className="flex gap-2">
             <button
               onClick={() => setAdding(false)}
@@ -163,6 +218,7 @@ export default function AssetEditor({
 function AssetRow({
   item,
   ownerOptions,
+  rates,
   onChange,
   onNote,
   onUpdate,
@@ -171,6 +227,7 @@ function AssetRow({
 }: {
   item: AssetItem
   ownerOptions: string[] // 소유자 선택지 (공동·부부·자녀)
+  rates: Rates
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
   onUpdate: (id: string, patch: Partial<Omit<AssetItem, 'id'>>) => void
@@ -185,6 +242,8 @@ function AssetRow({
   const [eName, setEName] = useState(item.name)
   const [eOwner, setEOwner] = useState(item.owner ?? '공동')
   const memoVisible = memoOpen || !!item.note
+  const ccy = (item.currency as Currency) ?? 'KRW'
+  const foreign = ccy !== 'KRW'
 
   const startEdit = () => {
     setEKind(item.kind)
@@ -278,7 +337,21 @@ function AssetRow({
             {item.owner ? ` · ${item.owner}` : ''}
           </p>
         </button>
-        <AmountInput className="flex-1" value={item.amount} onChange={(v) => onChange(item.id, v)} />
+        {foreign ? (
+          <AmountInput
+            className="flex-1"
+            value={item.fxAmount ?? 0}
+            suffix={CURRENCY_SYMBOL[ccy]}
+            onChange={(v) =>
+              onUpdate(item.id, {
+                fxAmount: v,
+                amount: krwOf({ amount: 0, currency: item.currency, fxAmount: v }, rates),
+              })
+            }
+          />
+        ) : (
+          <AmountInput className="flex-1" value={item.amount} onChange={(v) => onChange(item.id, v)} />
+        )}
         <button
           onClick={startEdit}
           className="shrink-0 text-cap active:text-brand"
@@ -301,6 +374,11 @@ function AssetRow({
           <X size={18} />
         </button>
       </div>
+      {foreign && (
+        <p className="mt-1.5 text-right text-[12px] font-medium text-cap">
+          실시간 환율 ≈ {formatWon(krwOf(item, rates))}
+        </p>
+      )}
       {memoVisible && (
         <input
           type="text"

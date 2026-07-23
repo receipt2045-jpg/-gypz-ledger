@@ -15,23 +15,32 @@ import {
   totalDebts,
 } from '../lib/carryover'
 import { ownerBadge } from '../lib/memberColors'
-import { abbreviateKRW, currentYm, formatMonthKorean, formatPercent } from '../lib/format'
+import { CURRENCY_SYMBOL, krwOf, useFxRates, type Currency } from '../lib/fx'
+import { abbreviateKRW, currentYm, formatComma, formatMonthKorean, formatPercent } from '../lib/format'
 import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER, TERM_TIP } from '../lib/constants'
 import type { AssetGroup } from '../types'
 
 export default function Assets() {
   const navigate = useNavigate()
   const { snapshots, profile } = useLedgerStore()
+  const rates = useFxRates()
   // 최신 스냅샷 기준
   const latestYm = snapshots.length ? snapshots[snapshots.length - 1].ym : currentYm()
 
-  const snapshot = resolveSnapshot(snapshots, latestYm)
+  const storedSnapshot = resolveSnapshot(snapshots, latestYm)
+  // 외화 항목을 실시간 환율로 원화 환산한 스냅샷 (현재 화면 기준)
+  const snapshot = {
+    ...storedSnapshot,
+    items: storedSnapshot.items.map((it) => ({ ...it, amount: krwOf(it, rates) })),
+  }
   const netWorth = netWorthOf(snapshot)
   const assets = totalAssets(snapshot)
   const debts = totalDebts(snapshot)
 
-  const series = netWorthSeries(snapshots, latestYm, 6).map((d) => ({
+  const series = netWorthSeries(snapshots, latestYm, 6).map((d, i, arr) => ({
     ...d,
+    // 마지막(현재) 점은 실시간 환율 반영값으로 맞춰 헤더와 일치시킴
+    value: i === arr.length - 1 ? netWorth : d.value,
     label: formatMonthKorean(d.ym),
   }))
   const prev = series.length >= 2 ? series[series.length - 2].value : netWorth
@@ -269,7 +278,9 @@ interface AssetItemLike {
   group: AssetGroup
   kind: 'asset' | 'debt'
   name: string
-  amount: number
+  amount: number // 실시간 환율로 환산된 원화
+  currency?: string
+  fxAmount?: number
   owner?: string
 }
 
@@ -305,6 +316,12 @@ function AccountCard({
         {debt ? '−' : ''}
         {abbreviateKRW(item.amount)}
       </p>
+      {item.currency && item.currency !== 'KRW' && item.fxAmount != null && (
+        <p className="tnum mt-0.5 truncate text-[12px] font-medium text-cap">
+          {CURRENCY_SYMBOL[item.currency as Currency]}
+          {formatComma(item.fxAmount)}
+        </p>
+      )}
     </button>
   )
 }

@@ -36,7 +36,9 @@ export interface AssetItem {
   kind: 'asset' | 'debt'
   group: AssetGroup
   name: string // 예: 토스 비상금, 신한 청약
-  amount: number // 원
+  amount: number // 원화 환산액(원). 외화 항목은 마지막 계산 시점 값(폴백용)
+  currency?: string // 통화 코드 (없으면 KRW). USD/EUR/JPY = 외화
+  fxAmount?: number // 외화 원금 (currency가 외화일 때). 원화 환산은 실시간 환율로 계산
   owner?: string // 남편/아내/공동
   note?: string
 }
