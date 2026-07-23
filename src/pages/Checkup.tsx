@@ -32,6 +32,7 @@ import {
   shiftYm,
 } from '../lib/format'
 import { GROUP_LABEL } from '../lib/constants'
+import { memberStyle } from '../lib/memberColors'
 import type { AssetItem, BudgetItem, CategoryGroup } from '../types'
 
 interface StepDef {
@@ -246,7 +247,7 @@ export default function Checkup() {
               >
                 <div
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
-                    m === 1 ? 'bg-brand/10 text-brand' : 'bg-pink-50 text-pink-500'
+                    memberStyle(m, profile).avatar
                   }`}
                 >
                   <UserRound size={24} />

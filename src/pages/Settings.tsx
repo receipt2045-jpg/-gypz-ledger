@@ -6,6 +6,7 @@ import AmountInput from '../components/AmountInput'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { deleteMyAccount } from '../lib/db'
+import { COLOR_STYLE, MEMBER_COLORS, memberColor, type MemberColor } from '../lib/memberColors'
 import { abbreviateKRW } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import type { AppData, CategoryGroup } from '../types'
@@ -150,6 +151,10 @@ export default function Settings() {
               placeholder="남편"
               className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
             />
+            <ColorSwatches
+              current={memberColor(1, profile)}
+              onPick={(c) => updateProfile({ member1Color: c })}
+            />
           </Field>
           <Field label="구성원 2" hint="예: 아내">
             <input
@@ -158,6 +163,10 @@ export default function Settings() {
               onChange={(e) => updateProfile({ member2Name: e.target.value })}
               placeholder="아내"
               className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
+            />
+            <ColorSwatches
+              current={memberColor(2, profile)}
+              onPick={(c) => updateProfile({ member2Color: c })}
             />
           </Field>
           <Field label="10년 목표 순자산" hint={abbreviateKRW(profile.targetNetWorth)}>
@@ -428,6 +437,30 @@ function Field({
         {hint && <span className="text-[12px] text-cap">{hint}</span>}
       </div>
       {children}
+    </div>
+  )
+}
+
+/** 아바타 색상 선택 (6색 스와치) */
+function ColorSwatches({
+  current,
+  onPick,
+}: {
+  current: MemberColor
+  onPick: (c: MemberColor) => void
+}) {
+  return (
+    <div className="mt-2 flex gap-2">
+      {MEMBER_COLORS.map((c) => (
+        <button
+          key={c}
+          onClick={() => onPick(c)}
+          aria-label={`색상 ${c}`}
+          className={`h-7 w-7 rounded-full ${COLOR_STYLE[c].dot} transition-transform active:scale-90 ${
+            current === c ? 'ring-2 ring-ink ring-offset-2' : ''
+          }`}
+        />
+      ))}
     </div>
   )
 }

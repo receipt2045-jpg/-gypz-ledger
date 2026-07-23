@@ -9,6 +9,8 @@ create table public.households (
   invite_code text not null unique default upper(encode(gen_random_bytes(4), 'hex')),
   member1_name text not null default '남편',
   member2_name text not null default '아내',
+  member1_color text,
+  member2_color text,
   child_names jsonb not null default '[]'::jsonb,
   target_net_worth bigint not null default 1000000000,
   start_year int not null default date_part('year', now()),

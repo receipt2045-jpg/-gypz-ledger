@@ -4,6 +4,8 @@ export type CategoryGroup = 'income' | 'saving' | 'investment' | 'fixed' | 'vari
 export interface Profile {
   member1Name: string // 기본 "남편"
   member2Name: string // 기본 "아내"
+  member1Color?: string // 아바타 색상 키 (없으면 blue) — lib/memberColors
+  member2Color?: string // 아바타 색상 키 (없으면 pink)
   childNames?: string[] // 자녀 (자산 소유자로 사용, 예: "첫째", "자녀1")
   targetNetWorth: number // 10년 목표 순자산(원)
   startYear: number

@@ -4,6 +4,7 @@ import { Baby, ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
 import AssetEditor from '../components/AssetEditor'
 import { useLedgerStore } from '../lib/store'
 import { activeYm, genId, netWorthOf, resolveSnapshot } from '../lib/carryover'
+import { memberStyle } from '../lib/memberColors'
 import { abbreviateKRW } from '../lib/format'
 import type { AssetItem } from '../types'
 
@@ -70,7 +71,7 @@ export default function AssetSetup() {
               >
                 <div
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
-                    m === 1 ? 'bg-brand/10 text-brand' : 'bg-pink-50 text-pink-500'
+                    memberStyle(m, profile).avatar
                   }`}
                 >
                   <UserRound size={24} />

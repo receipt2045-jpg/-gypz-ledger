@@ -64,6 +64,8 @@ export async function fetchHouseholdData(householdId: string): Promise<Household
   const profile: Profile = {
     member1Name: h.member1_name,
     member2Name: h.member2_name,
+    member1Color: h.member1_color ?? undefined,
+    member2Color: h.member2_color ?? undefined,
     childNames: (h.child_names as string[] | null) ?? [],
     targetNetWorth: Number(h.target_net_worth),
     startYear: h.start_year,
@@ -140,6 +142,8 @@ export async function pushProfile(householdId: string, profile: Profile) {
     .update({
       member1_name: profile.member1Name,
       member2_name: profile.member2Name,
+      member1_color: profile.member1Color ?? null,
+      member2_color: profile.member2Color ?? null,
       child_names: profile.childNames ?? [],
       target_net_worth: profile.targetNetWorth,
       start_year: profile.startYear,
