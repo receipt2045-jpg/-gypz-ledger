@@ -19,3 +19,6 @@ dist-ssr
 
 # OMC state
 .omc
+
+# AI 리뷰 결과물
+review/
