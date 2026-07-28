@@ -1,7 +1,6 @@
 // 사용자 의견 분석 — Supabase Edge Function (운영자 전용)
-// feedback 테이블을 service_role로 읽어 Claude로 감정·주제·요약 분석해 돌려준다.
+// feedback 테이블을 service_role로 읽어 Hugging Face 추론으로 감정·주제·요약 분석해 돌려준다.
 // 호출자는 반드시 ADMIN_EMAIL 계정이어야 한다(그 외에는 403).
-import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "npm:@supabase/supabase-js";
 
 const corsHeaders = {
@@ -9,6 +8,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+// Hugging Face Inference Providers (OpenAI 호환 라우터)
+const HF_URL = "https://router.huggingface.co/v1/chat/completions";
+// 한국어 성능 좋고 저렴한 기본값. HF_MODEL 시크릿으로 교체 가능.
+const DEFAULT_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507";
 
 const SYSTEM_PROMPT = `너는 모아불리(부부 가계부 앱) 운영자를 돕는 제품 분석가다.
 사용자들이 남긴 의견을 읽고, 운영자가 다음에 뭘 고쳐야 할지 판단할 수 있게 정리한다.
@@ -21,13 +25,18 @@ const SYSTEM_PROMPT = `너는 모아불리(부부 가계부 앱) 운영자를 �
 - 운영자가 바로 실행할 수 있는 형태로 쓴다(모호한 제안 금지).
 
 [말투]
-간결한 존댓말. 군더더기 없이 사실 위주로.`;
+간결한 존댓말. 군더더기 없이 사실 위주로. 반드시 한국어로 답한다.`;
 
 interface FeedbackRow {
   rating: number | null;
   message: string;
   screen: string | null;
   created_at: string;
+}
+
+/** 일부 모델이 붙이는 사고 과정 태그 제거 */
+function cleanOutput(s: string): string {
+  return s.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
 Deno.serve(async (req) => {
@@ -80,7 +89,7 @@ Deno.serve(async (req) => {
       ? Math.round((rated.reduce((s, r) => s + (r.rating ?? 0), 0) / rated.length) * 10) / 10
       : null;
 
-    // 3) Claude 분석
+    // 3) Hugging Face 추론
     const list = rows
       .map((r, i) => `${i + 1}. [${r.rating ?? "-"}점] ${r.message.replace(/\s+/g, " ").slice(0, 300)}`)
       .join("\n");
@@ -105,21 +114,43 @@ ${list}
 
 지켜볼 것: (아직 1~2명만 말했지만 커질 수 있는 신호 1개)`;
 
-    const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
-    const response = await client.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 2048,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "low" },
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userPrompt }],
+    const hfToken = Deno.env.get("HF_TOKEN");
+    if (!hfToken) throw new Error("HF_TOKEN이 설정되지 않았어요");
+
+    const hfRes = await fetch(HF_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${hfToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: Deno.env.get("HF_MODEL") ?? DEFAULT_MODEL,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 1200,
+        temperature: 0.3,
+      }),
     });
 
-    const text = response.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim();
+    if (!hfRes.ok) {
+      const detail = await hfRes.text();
+      console.error("HF error", hfRes.status, detail);
+      const msg = hfRes.status === 401
+        ? "허깅페이스 토큰이 올바르지 않아요."
+        : hfRes.status === 402
+        ? "허깅페이스 크레딧이 부족해요."
+        : "허깅페이스 응답에 문제가 있어요.";
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const hf = await hfRes.json();
+    const text = cleanOutput(hf?.choices?.[0]?.message?.content ?? "");
+    if (!text) throw new Error("빈 응답");
 
     return new Response(
       JSON.stringify({ count: rows.length, avgRating, text, items: rows.slice(0, 50) }),
