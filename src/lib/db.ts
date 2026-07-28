@@ -198,6 +198,24 @@ export async function insertConfession(householdId: string, c: Confession) {
   if (error) throw error
 }
 
+// ── 사용자 의견 (feedback) ─────────────────────
+// 운영자만 읽을 수 있고, 사용자는 자기 의견만 남길 수 있음(RLS).
+export async function sendFeedback(input: {
+  rating: number | null // 1~5 (선택)
+  message: string
+  screen?: string // 어느 화면에서 보냈는지
+}) {
+  const { data: auth } = await supabase.auth.getUser()
+  const { error } = await supabase.from('feedback').insert({
+    user_id: auth.user?.id ?? null,
+    rating: input.rating,
+    message: input.message,
+    screen: input.screen ?? null,
+    app_version: 'v1.0',
+  })
+  if (error) throw error
+}
+
 /** 회원 탈퇴: 내 가구·모든 데이터 삭제 후 로그아웃 (RPC delete_my_account) */
 export async function deleteMyAccount() {
   const { error } = await supabase.rpc('delete_my_account')

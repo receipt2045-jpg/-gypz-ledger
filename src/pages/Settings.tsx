@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Copy, Check, ChevronRight, Download, KeyRound, LogOut, Upload, RotateCcw, Trash2, X, Plus } from 'lucide-react'
 import Card from '../components/Card'
 import AmountInput from '../components/AmountInput'
+import FeedbackCard from '../components/FeedbackCard'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { deleteMyAccount } from '../lib/db'
@@ -316,6 +317,9 @@ export default function Settings() {
           </button>
         </div>
       </Card>
+
+      {/* 의견 보내기 */}
+      <FeedbackCard screen="settings" />
 
       {/* 약관·정책 */}
       <Card>

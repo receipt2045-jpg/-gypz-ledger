@@ -79,6 +79,18 @@ create table public.confessions (
 );
 create index confessions_household_created on public.confessions (household_id, created_at desc);
 
+-- 7) 사용자 의견 (운영자 전용 열람 — 가구 데이터와 무관)
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  rating smallint check (rating between 1 and 5),
+  message text not null,
+  screen text,
+  app_version text,
+  created_at timestamptz not null default now()
+);
+create index if not exists feedback_created on public.feedback (created_at desc);
+
 -- ============================================================
 -- RLS(행 수준 보안): 자기 가구 데이터만 읽고 쓸 수 있음
 -- ============================================================
@@ -121,6 +133,13 @@ create policy "occasions_all" on public.occasions
 alter table public.confessions enable row level security;
 create policy "confessions_all" on public.confessions
   for all using (public.is_member(household_id)) with check (public.is_member(household_id));
+
+-- feedback: 로그인 사용자는 '보내기'만 가능. 읽기 정책이 없으므로
+-- 앱에서는 아무도 조회할 수 없고, 운영자는 대시보드(service_role)로만 확인.
+alter table public.feedback enable row level security;
+drop policy if exists "feedback_insert" on public.feedback;
+create policy "feedback_insert" on public.feedback
+  for insert to authenticated with check (auth.uid() = user_id);
 
 -- ============================================================
 -- RPC 함수: 가구 만들기 / 초대 코드로 참여하기
