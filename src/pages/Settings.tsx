@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Copy, Check, ChevronRight, Download, KeyRound, LogOut, Upload, RotateCcw, Trash2, X, Plus } from 'lucide-react'
 import Card from '../components/Card'
@@ -11,6 +11,8 @@ import { COLOR_STYLE, MEMBER_COLORS, memberColor, type MemberColor } from '../li
 import { abbreviateKRW } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import type { AppData, CategoryGroup } from '../types'
+
+const ADMIN_EMAIL = 'receipt2045@gmail.com'
 
 export default function Settings() {
   const {
@@ -30,6 +32,13 @@ export default function Settings() {
   const [copied, setCopied] = useState(false)
   const [newChild, setNewChild] = useState('')
   const [deleting, setDeleting] = useState(false)
+  // 운영자 메뉴는 운영자 계정에만 노출 (실제 권한 검증은 서버에서)
+  const [isAdmin, setIsAdmin] = useState(false)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setIsAdmin(data.user?.email?.toLowerCase() === ADMIN_EMAIL)
+    })
+  }, [])
 
   const withdraw = async () => {
     if (
@@ -320,6 +329,19 @@ export default function Settings() {
 
       {/* 의견 보내기 */}
       <FeedbackCard screen="settings" />
+
+      {/* 운영자 전용 — 받은 의견 분석 */}
+      {isAdmin && (
+        <Card onClick={() => navigate('/admin/feedback')}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[15px] font-bold text-ink">받은 의견 분석 🔒</p>
+              <p className="mt-1 text-[13px] text-sub">사용자 의견을 AI로 정리해서 봐요</p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-cap" />
+          </div>
+        </Card>
+      )}
 
       {/* 약관·정책 */}
       <Card>

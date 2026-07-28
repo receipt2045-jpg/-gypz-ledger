@@ -13,6 +13,7 @@ import Settings from './pages/Settings'
 import Checkup from './pages/Checkup'
 import Confess from './pages/Confess'
 import Roadmap from './pages/Roadmap'
+import AdminFeedback from './pages/AdminFeedback'
 import AssetSetup from './pages/AssetSetup'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
@@ -107,6 +108,7 @@ function AppRoutes() {
         <Route path="/yearly" element={<Yearly />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
+      <Route path="/admin/feedback" element={<AdminFeedback />} />
       <Route path="/checkup" element={<Checkup />} />
       <Route path="/confess" element={<Confess />} />
       <Route path="/asset-setup" element={<AssetSetup />} />
