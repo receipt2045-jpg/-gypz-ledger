@@ -139,6 +139,14 @@ export default function Checkup() {
   const [member, setMember] = useState<1 | 2 | null>(null)
   const [showErrors, setShowErrors] = useState(false) // 금액 검증 (브리프 P1 2.2)
 
+  // 고백은 했는데 정산 목록엔 아직 없는 항목 — 빠뜨리지 않도록 해당 스텝에서 제안한다.
+  // 훅은 조기 return(구성원 선택·완료 화면)보다 반드시 위에 있어야 한다.
+  const stepDef = STEPS[step - 1] // 금액 스텝이 아닐 땐 undefined
+  const missingConfessed = useMemo(
+    () => (member && stepDef ? missingConfessedItems(confessHints, member, stepDef.groups, items) : []),
+    [confessHints, member, stepDef, items],
+  )
+
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
   const memberName = member ? memberNames[member - 1] : ''
   const partnerName = member ? memberNames[member === 1 ? 1 : 0] : ''
@@ -441,12 +449,6 @@ export default function Checkup() {
   const def = STEPS[step - 1]
   const stepItems = items.filter((it) => def.groups.includes(it.group) && it.member === member)
   const isLastStep = step === LAST_MONEY_STEP
-
-  // 고백은 했는데 정산 목록엔 아직 없는 항목 — 빠뜨리지 않도록 이 스텝에서 제안한다
-  const missingConfessed = useMemo(
-    () => (member ? missingConfessedItems(confessHints, member, def.groups, items) : []),
-    [confessHints, member, def.groups, items],
-  )
 
   // 잉여현금(예산 모드는 예상) — 지금 입력 중인 사람 기준, 입력하는 대로 실시간 반영
   const myItems = items.filter((it) => it.member === member)
