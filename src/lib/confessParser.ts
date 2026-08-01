@@ -60,12 +60,18 @@ function unitValue(u: string | undefined): number {
   return u === '만' ? 10_000 : u === '천' ? 1_000 : u === '백' ? 100 : 1
 }
 
-/** 조각에서 금액(원)과 금액 부분을 제거한 나머지 텍스트를 뽑는다 */
-export function extractAmount(segment: string): { amount: number; rest: string } | null {
+interface AmountMatch {
+  amount: number
+  start: number
+  end: number
+}
+
+/** 텍스트에서 금액으로 볼 수 있는 부분을 모두 찾는다 (등장 순서) */
+function findAmounts(text: string): AmountMatch[] {
   AMOUNT_RE.lastIndex = 0
-  let best: { amount: number; start: number; end: number } | null = null
+  const out: AmountMatch[] = []
   let m: RegExpExecArray | null
-  while ((m = AMOUNT_RE.exec(segment))) {
+  while ((m = AMOUNT_RE.exec(text))) {
     let amount = 0
     if (m[5]) {
       // "만원" / "천원" 단독
@@ -82,14 +88,53 @@ export function extractAmount(segment: string): { amount: number; rest: string }
     }
     amount = Math.round(amount)
     if (amount <= 0 || amount > 999_999_999) continue
-    // 같은 조각에 숫자가 여럿이면 더 큰 쪽(금액일 확률이 높은 쪽)을 채택
-    if (!best || amount > best.amount) best = { amount, start: m.index, end: m.index + m[0].length }
+    out.push({ amount, start: m.index, end: m.index + m[0].length })
   }
-  if (!best) return null
+  return out
+}
+
+/** 라벨 후보 정리 — 앞뒤 구분자·조사 꼬리를 털어낸다 */
+function cleanLabel(s: string): string {
+  return s
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s,·]+|[\s,·]+$/g, '')
+    .replace(/(에|은|는|이|가|을|를|로|으로)$/, '')
+    .trim()
+}
+
+/** 조각에서 가장 큰 금액 하나와 나머지 텍스트 (단건 확인용) */
+export function extractAmount(segment: string): { amount: number; rest: string } | null {
+  const all = findAmounts(segment)
+  if (!all.length) return null
+  const best = all.reduce((a, b) => (b.amount > a.amount ? b : a))
   const rest = (segment.slice(0, best.start) + ' ' + segment.slice(best.end))
     .replace(/\s+/g, ' ')
     .trim()
   return { amount: best.amount, rest }
+}
+
+/**
+ * 한 조각을 금액 개수만큼 항목으로 쪼갠다.
+ * 음성인식은 쉼표를 넣어주지 않아 "점심 9000원 커피 5500원"이 한 덩어리로 들어온다.
+ * 금액마다 바로 앞의 말을 이름으로 삼고, 앞이 비었으면 바로 뒤의 말을 쓴다.
+ */
+function splitByAmounts(segment: string): { amount: number; label: string }[] {
+  const found = findAmounts(segment)
+  if (!found.length) return []
+
+  // 금액 사이(및 앞뒤)의 텍스트 조각들
+  const gaps: string[] = []
+  gaps.push(cleanLabel(segment.slice(0, found[0].start)))
+  for (let i = 1; i < found.length; i++) {
+    gaps.push(cleanLabel(segment.slice(found[i - 1].end, found[i].start)))
+  }
+  const tail = cleanLabel(segment.slice(found[found.length - 1].end))
+
+  return found.map((f, i) => ({
+    amount: f.amount,
+    // 앞의 말이 비었으면 뒤의 말로 대체 ("9천원 점심" 같은 어순도 받기 위함)
+    label: gaps[i] || (i === found.length - 1 ? tail : gaps[i + 1]) || '',
+  }))
 }
 
 // ── 카테고리 매칭 ──────────────────────────────
@@ -134,29 +179,33 @@ export function parseConfessionText(
   const skipped: string[] = []
 
   for (const seg of segments) {
-    const money = extractAmount(seg)
-    if (!money) {
+    const parts = splitByAmounts(seg)
+    if (!parts.length) {
       skipped.push(seg)
       continue
     }
-    const found = findCategory(money.rest || seg, categories, aliases)
-    const note = money.rest || undefined
-    if (found) {
-      entries.push({ ...found, amount: money.amount, note, raw: seg, matched: true })
-    } else {
-      // 폴백은 반드시 이 가구에 실재하는 카테고리여야 함
-      // ('기타'를 지운 가구에서 화면 표시와 저장값이 어긋나는 것 방지)
-      const fallback = categories.variable.includes('기타')
-        ? '기타'
-        : (categories.variable[0] ?? '기타')
-      entries.push({
-        category: fallback,
-        kind: 'variable',
-        amount: money.amount,
-        note,
-        raw: seg,
-        matched: false,
-      })
+    for (const part of parts) {
+      // 이름이 비면 조각 전체를 후보로 (한 건짜리 문장에서 어순이 뒤집힌 경우)
+      const found = findCategory(part.label || seg, categories, aliases)
+      const note = part.label || undefined
+      const raw = part.label ? `${part.label} ${part.amount}원` : seg
+      if (found) {
+        entries.push({ ...found, amount: part.amount, note, raw, matched: true })
+      } else {
+        // 폴백은 반드시 이 가구에 실재하는 카테고리여야 함
+        // ('기타'를 지운 가구에서 화면 표시와 저장값이 어긋나는 것 방지)
+        const fallback = categories.variable.includes('기타')
+          ? '기타'
+          : (categories.variable[0] ?? '기타')
+        entries.push({
+          category: fallback,
+          kind: 'variable',
+          amount: part.amount,
+          note,
+          raw,
+          matched: false,
+        })
+      }
     }
   }
   return { entries, skipped }
