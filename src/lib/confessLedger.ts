@@ -1,4 +1,4 @@
-import type { Confession } from '../types'
+import type { BudgetItem, CategoryGroup, Confession } from '../types'
 
 // ── 고백 → 가계부 연결 ─────────────────────────
 // 고백은 습관 로그지만, 쌓인 내역은 월간 가계부에서 보이고
@@ -23,4 +23,35 @@ export function confessSums(confessions: Confession[], ym: string): Map<string, 
     m.set(key, (m.get(key) ?? 0) + c.amount)
   }
   return m
+}
+
+export interface MissingConfessed {
+  group: CategoryGroup
+  category: string
+  amount: number
+}
+
+/**
+ * 고백은 했는데 정산 목록엔 아직 없는 항목.
+ * 정산 화면에서 "빠뜨린 지출"을 그대로 보여주기 위한 계산 (금액 큰 순).
+ */
+export function missingConfessedItems(
+  sums: Map<string, number> | null,
+  member: 1 | 2,
+  groups: CategoryGroup[],
+  items: Pick<BudgetItem, 'member' | 'group' | 'category'>[],
+): MissingConfessed[] {
+  if (!sums) return []
+  const out: MissingConfessed[] = []
+  for (const [key, amount] of sums) {
+    const [m, g, ...rest] = key.split(':')
+    const category = rest.join(':') // 카테고리명에 ':'가 있어도 안전하게
+    const group = g as CategoryGroup
+    if (Number(m) !== member || !groups.includes(group)) continue
+    const exists = items.some(
+      (it) => it.member === member && it.group === group && it.category === category,
+    )
+    if (!exists) out.push({ group, category, amount })
+  }
+  return out.sort((a, b) => b.amount - a.amount)
 }

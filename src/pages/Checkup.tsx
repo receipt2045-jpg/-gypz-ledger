@@ -16,7 +16,7 @@ import StepProgress from '../components/StepProgress'
 import { buildSummary } from '../lib/aiCoach'
 import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
-import { confessSums } from '../lib/confessLedger'
+import { confessSums, missingConfessedItems } from '../lib/confessLedger'
 import {
   activeYm,
   emptyItem,
@@ -176,6 +176,17 @@ export default function Checkup() {
   const addItem = (group: CategoryGroup, category: string) => {
     if (!member) return
     setItems((prev) => [...prev, { ...emptyItem(group, category, member), planned: 0, actual: 0 }])
+  }
+  /** 고백 합계를 금액까지 채워서 항목으로 추가 (정산 모드 전용) */
+  const addFromConfession = (group: CategoryGroup, category: string, amount: number) => {
+    if (!member) return
+    setItems((prev) => {
+      if (prev.some((it) => it.member === member && it.group === group && it.category === category)) {
+        return prev
+      }
+      const base = emptyItem(group, category, member)
+      return [...prev, { ...base, planned: 0, actual: amount }]
+    })
   }
   const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id))
 
@@ -431,6 +442,12 @@ export default function Checkup() {
   const stepItems = items.filter((it) => def.groups.includes(it.group) && it.member === member)
   const isLastStep = step === LAST_MONEY_STEP
 
+  // 고백은 했는데 정산 목록엔 아직 없는 항목 — 빠뜨리지 않도록 이 스텝에서 제안한다
+  const missingConfessed = useMemo(
+    () => (member ? missingConfessedItems(confessHints, member, def.groups, items) : []),
+    [confessHints, member, def.groups, items],
+  )
+
   // 잉여현금(예산 모드는 예상) — 지금 입력 중인 사람 기준, 입력하는 대로 실시간 반영
   const myItems = items.filter((it) => it.member === member)
   const liveSurplus = summarize({ ym, items: myItems, closed: !isBudget }).surplus
@@ -469,6 +486,8 @@ export default function Checkup() {
           showErrors={showErrors}
           examples={def.groups.map((g) => EXAMPLES[g])}
           hints={confessHints}
+          missingConfessed={missingConfessed}
+          onAddConfessed={addFromConfession}
           onChange={setAmount}
           onNote={setNote}
           onAdd={addItem}
@@ -612,6 +631,8 @@ function MoneyStep({
   onCreateCategory,
   onFillPreset,
   hints,
+  missingConfessed = [],
+  onAddConfessed,
 }: {
   groups: CategoryGroup[]
   items: BudgetItem[]
@@ -620,6 +641,8 @@ function MoneyStep({
   showErrors: boolean
   examples: string[]
   hints?: Map<string, number> | null // (구성원:그룹:카테고리) → 이번 달 고백 합계
+  missingConfessed?: { group: CategoryGroup; category: string; amount: number }[]
+  onAddConfessed?: (g: CategoryGroup, category: string, amount: number) => void
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
   onAdd: (g: CategoryGroup, c: string) => void
@@ -650,9 +673,46 @@ function MoneyStep({
     setAdding(false)
   }
 
+  const confessedTotal = missingConfessed.reduce((s, m) => s + m.amount, 0)
+
   return (
     <div className="space-y-3">
-      {items.length === 0 && (
+      {/* 고백했는데 아직 목록에 없는 항목 — 정산에서 빠뜨리지 않게 */}
+      {missingConfessed.length > 0 && onAddConfessed && (
+        <div className="rounded-card bg-brand/10 px-4 py-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[13.5px] font-bold text-brand">
+              🎙️ 고백한 항목 {missingConfessed.length}개가 아직 없어요
+            </p>
+            <span className="tnum text-[13px] font-bold text-brand">
+              {formatWon(confessedTotal)}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {missingConfessed.map((m) => (
+              <button
+                key={`${m.group}:${m.category}`}
+                onClick={() => onAddConfessed(m.group, m.category, m.amount)}
+                className="flex w-full items-center justify-between rounded-btn bg-white px-3 py-2.5 text-left shadow-card active:bg-line"
+              >
+                <span className="text-[14px] font-semibold text-ink">{m.category}</span>
+                <span className="flex items-center gap-2">
+                  <span className="tnum text-[14px] font-bold text-ink">{formatWon(m.amount)}</span>
+                  <Plus size={16} className="text-brand" />
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => missingConfessed.forEach((m) => onAddConfessed(m.group, m.category, m.amount))}
+            className="mt-2 h-11 w-full rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark"
+          >
+            {missingConfessed.length}개 모두 넣기
+          </button>
+        </div>
+      )}
+
+      {items.length === 0 && missingConfessed.length === 0 && (
         <div className="space-y-3 py-5 text-center">
           <p className="text-[13.5px] font-medium text-sub">항목을 추가해 주세요</p>
           {examples.map((ex) => (
