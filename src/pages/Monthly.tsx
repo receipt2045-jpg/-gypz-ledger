@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import BudgetBars from '../components/BudgetBars'
@@ -8,6 +8,8 @@ import { useLedgerStore } from '../lib/store'
 import { activeYm, resolveLedger, summarize } from '../lib/carryover'
 import { formatWon, formatYmKorean, shiftYm } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER, TERM_TIP } from '../lib/constants'
+import { monthConfessions } from '../lib/confessLedger'
+import { memberStyle } from '../lib/memberColors'
 import type { CategoryGroup } from '../types'
 
 type MemberFilter = 0 | 1 | 2 // 0 = 함께
@@ -16,7 +18,7 @@ const BANNER_KEY = 'gypz-concept-banner-closed'
 
 export default function Monthly() {
   const navigate = useNavigate()
-  const { ledgers, profile } = useLedgerStore()
+  const { ledgers, profile, confessions } = useLedgerStore()
   const [ym, setYm] = useState(() => activeYm(ledgers))
   const [member, setMember] = useState<MemberFilter>(0)
   // 개념 안내 배너 (브리프 P0 1.2) — 닫으면 이 기기에서 다시 안 뜸
@@ -33,6 +35,14 @@ export default function Monthly() {
     member === 0 ? ledger.items : ledger.items.filter((it) => it.member === member)
   const filteredLedger = { ...ledger, items: filteredItems }
   const s = summarize(filteredLedger)
+
+  // 이번 달 고백 내역 (최근 62일만 로드되므로 오래된 달엔 자연히 비어 있음)
+  const monthLog = useMemo(() => {
+    const list = monthConfessions(confessions, ym)
+    return member === 0 ? list : list.filter((c) => c.memberNo === member)
+  }, [confessions, ym, member])
+  const [logOpen, setLogOpen] = useState(false)
+  const logTotal = monthLog.reduce((sum, c) => sum + c.amount, 0)
 
   const goodWhenOver = (g: CategoryGroup) =>
     g === 'income' || g === 'saving' || g === 'investment'
@@ -123,6 +133,48 @@ export default function Monthly() {
           </button>
         ))}
       </div>
+
+      {/* 이번 달 고백 내역 — 매일 기록한 것이 여기 쌓인다 */}
+      {monthLog.length > 0 && (
+        <div className="rounded-card bg-card px-5 py-4 shadow-card">
+          <button onClick={() => setLogOpen((v) => !v)} className="flex w-full items-center justify-between">
+            <span className="text-[15px] font-bold text-ink">
+              🎙️ 이번 달 고백 <span className="text-sub">{monthLog.length}건</span>
+            </span>
+            <span className="tnum text-[15px] font-bold text-ink">{formatWon(logTotal)}</span>
+          </button>
+          {logOpen && (
+            <div className="mt-3 space-y-2 border-t border-line pt-3">
+              {monthLog.map((c) => {
+                const d = new Date(c.createdAt)
+                const style = memberStyle(c.memberNo, profile)
+                return (
+                  <div key={c.id} className="flex items-center gap-2.5">
+                    <span className="tnum w-10 shrink-0 text-[12px] text-cap">
+                      {d.getMonth() + 1}/{d.getDate()}
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${style.badge}`}
+                    >
+                      {memberNames[c.memberNo - 1]}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
+                      {c.category}
+                      {c.note && <span className="text-cap"> · {c.note}</span>}
+                    </span>
+                    <span className="tnum shrink-0 text-[13.5px] font-bold text-ink">
+                      {formatWon(c.amount)}
+                    </span>
+                  </div>
+                )
+              })}
+              <p className="pt-1 text-[12px] leading-relaxed text-cap">
+                정산할 때 카테고리별 합계를 한 번에 넣을 수 있어요
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 섹션별 리스트 */}
       <div className="space-y-3">

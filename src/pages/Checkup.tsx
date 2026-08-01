@@ -15,6 +15,7 @@ import AmountInput from '../components/AmountInput'
 import StepProgress from '../components/StepProgress'
 import { buildSummary } from '../lib/aiCoach'
 import { useLedgerStore } from '../lib/store'
+import { confessSums } from '../lib/confessLedger'
 import {
   activeYm,
   emptyItem,
@@ -90,8 +91,17 @@ const DONE_STEP = TOTAL_STEPS // 완료 화면
 export default function Checkup() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { ledgers, snapshots, categories, profile, memberNo, saveLedger, saveSnapshot, addCategory } =
-    useLedgerStore()
+  const {
+    ledgers,
+    snapshots,
+    categories,
+    profile,
+    memberNo,
+    confessions,
+    saveLedger,
+    saveSnapshot,
+    addCategory,
+  } = useLedgerStore()
 
   // 모드: 'budget'(예산 세우기, 계획 금액) / 'settle'(정산하기, 실제 금액)
   const nav = (location.state as { ym?: string; mode?: 'budget' | 'settle' } | null) ?? null
@@ -116,6 +126,12 @@ export default function Checkup() {
   const prevNetWorth = useMemo(
     () => netWorthOf(resolveSnapshot(snapshots, shiftYm(ym, -1))),
     [snapshots, ym],
+  )
+
+  // 정산 모드: 이번 달 고백 합계를 항목별 초안으로 제안 (예산 모드는 미래 계획이라 제외)
+  const confessHints = useMemo(
+    () => (isBudget ? null : confessSums(confessions, ym)),
+    [isBudget, confessions, ym],
   )
 
   const [step, setStep] = useState(MEMBER_STEP)
@@ -427,6 +443,7 @@ export default function Checkup() {
           categories={categories}
           showErrors={showErrors}
           examples={def.groups.map((g) => EXAMPLES[g])}
+          hints={confessHints}
           onChange={setAmount}
           onNote={setNote}
           onAdd={addItem}
@@ -568,6 +585,7 @@ function MoneyStep({
   onRemove,
   onCreateCategory,
   onFillPreset,
+  hints,
 }: {
   groups: CategoryGroup[]
   items: BudgetItem[]
@@ -575,6 +593,7 @@ function MoneyStep({
   categories: Record<CategoryGroup, string[]>
   showErrors: boolean
   examples: string[]
+  hints?: Map<string, number> | null // (구성원:그룹:카테고리) → 이번 달 고백 합계
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
   onAdd: (g: CategoryGroup, c: string) => void
@@ -671,6 +690,22 @@ function MoneyStep({
                 금액을 입력해 주세요 ❗️
               </p>
             )}
+            {(() => {
+              // 이번 달 고백 합계가 있고 현재 값과 다르면 한 번에 반영할 수 있게
+              const hint = hints?.get(`${it.member}:${it.group}:${it.category}`)
+              if (!hint || hint === it[valueField]) return null
+              return (
+                <button
+                  onClick={() => onChange(it.id, hint)}
+                  className="mt-2 flex w-full items-center justify-between rounded-btn bg-brand/10 px-3 py-2 text-left active:bg-brand/20"
+                >
+                  <span className="text-[12.5px] font-semibold text-brand">
+                    🎙️ 이번 달 고백 합계 {formatWon(hint)}
+                  </span>
+                  <span className="text-[12px] font-bold text-brand">눌러서 반영</span>
+                </button>
+              )
+            })()}
           </div>
         )
       })}
