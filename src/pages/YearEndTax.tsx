@@ -5,24 +5,14 @@ import AmountInput from '../components/AmountInput'
 import { useLedgerStore } from '../lib/store'
 import { memberStyle } from '../lib/memberColors'
 import { abbreviateKRW, formatWon } from '../lib/format'
-import { RULES, recommendCard, type MemberStatus } from '../lib/yearEndTax'
-
-const SAVE_KEY = 'gypz-yearend-input'
-
-interface Saved {
-  gross1: number
-  gross2: number
-  spent1: number
-  spent2: number
-}
-
-function readSaved(): Saved {
-  try {
-    return { gross1: 0, gross2: 0, spent1: 0, spent2: 0, ...JSON.parse(localStorage.getItem(SAVE_KEY) ?? '{}') }
-  } catch {
-    return { gross1: 0, gross2: 0, spent1: 0, spent2: 0 }
-  }
-}
+import {
+  RULES,
+  YEAREND_SAVE_KEY,
+  readYearEndInput,
+  recommendCard,
+  type MemberStatus,
+  type YearEndInput as Saved,
+} from '../lib/yearEndTax'
 
 /**
  * 연말정산 — 맞벌이 부부의 '누구 카드로 쓸까' 판단.
@@ -31,13 +21,13 @@ function readSaved(): Saved {
 export default function YearEndTax() {
   const navigate = useNavigate()
   const { profile } = useLedgerStore()
-  const [v, setV] = useState<Saved>(readSaved)
+  const [v, setV] = useState<Saved>(readYearEndInput)
 
   const names: [string, string] = [profile.member1Name, profile.member2Name]
   const set = (patch: Partial<Saved>) => {
     const next = { ...v, ...patch }
     setV(next)
-    localStorage.setItem(SAVE_KEY, JSON.stringify(next))
+    localStorage.setItem(YEAREND_SAVE_KEY, JSON.stringify(next))
   }
 
   const ready = v.gross1 > 0 && v.gross2 > 0

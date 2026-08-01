@@ -245,7 +245,7 @@ function OccasionSection({
   return (
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-[15px] font-bold text-ink">경조사 · 연간비</h2>
+        <h2 className="text-[15px] font-bold text-ink">비정기 지출</h2>
         <button
           onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-[12px] font-bold text-brand"
@@ -254,7 +254,8 @@ function OccasionSection({
         </button>
       </div>
       <p className="mb-2 text-[12px] text-cap">
-        올해 합계 <span className="tnum font-semibold text-sub">{formatWon(total)}</span>
+        경조사·명절·자동차·세금처럼 <b className="font-semibold">가끔 오는 큰돈</b> · 공동 카드 지출도 여기에
+        · 올해 합계 <span className="tnum font-semibold text-sub">{formatWon(total)}</span>
       </p>
 
       {open && (
@@ -296,7 +297,9 @@ function OccasionSection({
       )}
 
       {items.length === 0 ? (
-        <p className="py-3 text-center text-[13px] text-cap">기록된 경조사가 없어요</p>
+        <p className="py-3 text-center text-[13px] text-cap">
+          아직 기록이 없어요 · 예산이 무너지는 1위가 비정기 지출이에요
+        </p>
       ) : (
         <div className="divide-y divide-line/70">
           {items.map((o) => (

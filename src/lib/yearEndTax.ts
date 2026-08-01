@@ -10,6 +10,30 @@
 //
 // 모든 값은 참고용 추정이다. 실제 공제는 부양가족·의료비·연금 등에 따라 달라진다.
 
+/** 연봉·사용액 입력 저장 위치 (연말정산 화면과 홈 오늘 카드가 함께 읽음) */
+export const YEAREND_SAVE_KEY = 'gypz-yearend-input'
+
+export interface YearEndInput {
+  gross1: number
+  gross2: number
+  spent1: number
+  spent2: number
+}
+
+export function readYearEndInput(): YearEndInput {
+  try {
+    return {
+      gross1: 0,
+      gross2: 0,
+      spent1: 0,
+      spent2: 0,
+      ...JSON.parse(localStorage.getItem(YEAREND_SAVE_KEY) ?? '{}'),
+    }
+  } catch {
+    return { gross1: 0, gross2: 0, spent1: 0, spent2: 0 }
+  }
+}
+
 /** 신용카드 등 사용액 소득공제가 시작되는 지점 (총급여의 25%) */
 export const CARD_THRESHOLD_RATE = 0.25
 /** 의료비 세액공제가 시작되는 지점 (총급여의 3%) */

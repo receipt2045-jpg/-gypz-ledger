@@ -6,6 +6,7 @@ import InfoTip from '../components/InfoTip'
 import MonthlyCombo, { type MonthPoint } from '../components/MonthlyCombo'
 import ProgressBar from '../components/ProgressBar'
 import StatGauges from '../components/StatGauges'
+import TodayCard from '../components/TodayCard'
 import { useLedgerStore } from '../lib/store'
 import {
   activeYm,
@@ -141,6 +142,9 @@ export default function Home() {
           지난달보다 {delta.zero ? '변동 없음' : delta.text}
         </p>
       </header>
+
+      {/* 오늘 카드 — 매일의 기록이 예산·연말정산으로 이어지는 허브 */}
+      <TodayCard />
 
       {/* 이번 달 할 일 — 월초 예산 / 월말 정산 */}
       {todo && (
