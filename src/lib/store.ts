@@ -12,25 +12,64 @@ import { DEFAULT_CATEGORIES } from './constants'
 import { genId } from './carryover'
 import { buildSeed } from '../seed'
 import * as db from './db'
+import {
+  enqueue,
+  flushQueue,
+  migrateLegacyQueue,
+  pendingCount,
+  type PendingOp,
+} from './syncQueue'
 
-// 저장 실패를 사용자에게 조용히 알리기 위한 핸들러 (App에서 토스트 등으로 교체 가능)
-function reportSyncError(err: unknown) {
-  console.error('[sync] Supabase 저장 실패:', err)
-}
-
-// 일일 고백 오프라인 큐 — 전송 실패분을 보관했다가 다음 접속 때 재전송
-const CONFESS_QUEUE_KEY = 'gypz-confess-queue'
-
-function readConfessQueue(): Confession[] {
-  try {
-    return JSON.parse(localStorage.getItem(CONFESS_QUEUE_KEY) ?? '[]') as Confession[]
-  } catch {
-    return []
+/** op 하나를 실제로 서버에 보낸다 */
+async function sendOp(op: PendingOp, hid: string): Promise<void> {
+  switch (op.kind) {
+    case 'ledger':
+      return db.pushLedger(hid, op.payload)
+    case 'snapshot':
+      return db.pushSnapshot(hid, op.payload)
+    case 'occasion':
+      return db.pushOccasion(hid, op.payload)
+    case 'occasionDelete':
+      return db.deleteOccasion(op.payload.id)
+    case 'profile':
+      return db.pushProfile(hid, op.payload)
+    case 'categories':
+      return db.pushCategories(hid, op.payload)
+    case 'aliases':
+      return db.pushAliases(hid, op.payload)
+    case 'confession':
+      return db.insertConfession(hid, op.payload)
   }
 }
 
-function pushConfessQueue(c: Confession) {
-  localStorage.setItem(CONFESS_QUEUE_KEY, JSON.stringify([...readConfessQueue(), c]))
+/**
+ * 저장 실패 처리 — 콘솔에만 남기지 않고 큐에 넣어 나중에 재전송한다.
+ * 화면은 이미 낙관적으로 바뀐 상태라, 큐가 없으면 사용자는 저장된 줄 알고 앱을 닫는다.
+ */
+function onSaveFailed(op: PendingOp) {
+  return (err: unknown) => {
+    console.error('[sync] 저장 실패, 재시도 큐에 넣음:', op.kind, err)
+    enqueue(op)
+    useLedgerStore.setState({ pendingSync: pendingCount() })
+  }
+}
+
+/**
+ * 전체 초기화·가져오기 실패용. 이 둘은 큐에 넣지 않는다 —
+ * 나중에 replay 하면 그사이 쌓인 최신 데이터를 지워버릴 수 있기 때문.
+ * 대신 사용자에게 바로 알린다.
+ */
+function reportSyncError(err: unknown) {
+  console.error('[sync] Supabase 저장 실패:', err)
+  useLedgerStore.setState({ syncFailed: true })
+}
+
+/** 큐를 비우고 남은 건수를 스토어에 반영 */
+export async function flushPendingSync(): Promise<void> {
+  const hid = useLedgerStore.getState().householdId
+  if (!hid) return
+  const left = await flushQueue(hid, sendOp)
+  useLedgerStore.setState({ pendingSync: left })
 }
 
 const EMPTY: AppData = {
@@ -61,6 +100,8 @@ interface LedgerState extends AppData {
   inviteCode: string | null
   sample: boolean // 샘플 둘러보기 모드 (householdId가 없어 DB 저장은 자동으로 건너뜀)
   confessions: Confession[] // 일일 고백 로그 (최근 62일, 정산과 독립)
+  pendingSync: number // 아직 서버에 못 보낸 저장 건수 (연결되면 자동 재전송)
+  syncFailed: boolean // 재시도할 수 없는 저장 실패 (전체 초기화·가져오기)
   init: (membership: db.Membership) => Promise<void>
   loadSample: () => void
   clear: () => void
@@ -96,6 +137,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
   sample: false,
   confessions: [],
   aliases: {},
+  pendingSync: 0,
+  syncFailed: false,
 
   init: async ({ householdId, memberNo }) => {
     set({ status: 'loading', householdId, memberNo, sample: false })
@@ -107,13 +150,10 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       set({ status: 'error' })
       return
     }
-    // 일일 고백: 오프라인 큐 재전송 → 최근 로그 로드 (실패해도 앱 사용엔 지장 없음)
+    // 못 보낸 저장분 재전송 → 최근 고백 로그 로드 (실패해도 앱 사용엔 지장 없음)
+    migrateLegacyQueue()
+    await flushPendingSync()
     try {
-      const queued = readConfessQueue()
-      for (const c of queued) {
-        await db.insertConfession(householdId, c)
-      }
-      if (queued.length > 0) localStorage.removeItem(CONFESS_QUEUE_KEY)
       set({ confessions: await db.fetchConfessions(householdId) })
     } catch (err) {
       console.error('[sync] 고백 로그 동기화 실패:', err)
@@ -144,13 +184,18 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       sample: false,
       confessions: [],
       aliases: {},
+      pendingSync: 0,
+      syncFailed: false,
     }),
 
   learnAliases: (patch) => {
     const merged = { ...get().aliases, ...patch }
     set({ aliases: merged })
     const hid = get().householdId
-    if (hid) db.pushAliases(hid, merged).catch(reportSyncError)
+    if (hid) {
+      const op: PendingOp = { kind: 'aliases', key: 'aliases', payload: merged }
+      db.pushAliases(hid, merged).catch(onSaveFailed(op))
+    }
   },
 
   addConfession: (c) => {
@@ -166,10 +211,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     // 2) 백그라운드 전송, 실패 시 오프라인 큐
     //    내 구성원 번호를 모르면 서버가 거부하므로(작성자 위조 방지 정책) 보내지 않는다
     if (s.householdId && s.memberNo) {
-      db.insertConfession(s.householdId, full).catch((err) => {
-        reportSyncError(err)
-        pushConfessQueue(full)
-      })
+      const op: PendingOp = { kind: 'confession', key: `confession:${full.id}`, payload: full }
+      db.insertConfession(s.householdId, full).catch(onSaveFailed(op))
     }
     return full
   },
@@ -178,7 +221,10 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const profile = { ...get().profile, ...patch }
     set({ profile })
     const hid = get().householdId
-    if (hid) db.pushProfile(hid, profile).catch(reportSyncError)
+    if (hid) {
+      const op: PendingOp = { kind: 'profile', key: 'profile', payload: profile }
+      db.pushProfile(hid, profile).catch(onSaveFailed(op))
+    }
   },
 
   saveLedger: (ledger) => {
@@ -187,7 +233,10 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       return { ledgers: [...rest, ledger].sort((a, b) => (a.ym < b.ym ? -1 : 1)) }
     })
     const hid = get().householdId
-    if (hid) db.pushLedger(hid, ledger).catch(reportSyncError)
+    if (hid) {
+      const op: PendingOp = { kind: 'ledger', key: `ledger:${ledger.ym}`, payload: ledger }
+      db.pushLedger(hid, ledger).catch(onSaveFailed(op))
+    }
   },
 
   saveSnapshot: (snapshot) => {
@@ -196,7 +245,10 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       return { snapshots: [...rest, snapshot].sort((a, b) => (a.ym < b.ym ? -1 : 1)) }
     })
     const hid = get().householdId
-    if (hid) db.pushSnapshot(hid, snapshot).catch(reportSyncError)
+    if (hid) {
+      const op: PendingOp = { kind: 'snapshot', key: `snapshot:${snapshot.ym}`, payload: snapshot }
+      db.pushSnapshot(hid, snapshot).catch(onSaveFailed(op))
+    }
   },
 
   addOccasion: (entry) => {
@@ -205,12 +257,18 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       occasions: [...s.occasions, full].sort((a, b) => (a.date < b.date ? 1 : -1)),
     }))
     const hid = get().householdId
-    if (hid) db.pushOccasion(hid, full).catch(reportSyncError)
+    if (hid) {
+      const op: PendingOp = { kind: 'occasion', key: `occasion:${full.id}`, payload: full }
+      db.pushOccasion(hid, full).catch(onSaveFailed(op))
+    }
   },
 
   removeOccasion: (id) => {
     set((s) => ({ occasions: s.occasions.filter((o) => o.id !== id) }))
-    if (get().householdId) db.deleteOccasion(id).catch(reportSyncError)
+    if (get().householdId) {
+      const op: PendingOp = { kind: 'occasionDelete', key: `occasionDelete:${id}`, payload: { id } }
+      db.deleteOccasion(id).catch(onSaveFailed(op))
+    }
   },
 
   addCategory: (group, name) => {
@@ -219,7 +277,10 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     if (!trimmed || s.categories[group].includes(trimmed)) return
     const categories = { ...s.categories, [group]: [...s.categories[group], trimmed] }
     set({ categories })
-    if (s.householdId) db.pushCategories(s.householdId, categories).catch(reportSyncError)
+    if (s.householdId) {
+      const op: PendingOp = { kind: 'categories', key: 'categories', payload: categories }
+      db.pushCategories(s.householdId, categories).catch(onSaveFailed(op))
+    }
   },
 
   removeCategory: (group, name) => {
@@ -229,7 +290,10 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       [group]: s.categories[group].filter((c) => c !== name),
     }
     set({ categories })
-    if (s.householdId) db.pushCategories(s.householdId, categories).catch(reportSyncError)
+    if (s.householdId) {
+      const op: PendingOp = { kind: 'categories', key: 'categories', payload: categories }
+      db.pushCategories(s.householdId, categories).catch(onSaveFailed(op))
+    }
   },
 
   resetData: () => {

@@ -5,6 +5,7 @@ import { supabase } from './lib/supabase'
 import { getMyMembership, type Membership } from './lib/db'
 import { useLedgerStore } from './lib/store'
 import AppFrame from './components/AppFrame'
+import SyncBanner from './components/SyncBanner'
 import Home from './pages/Home'
 import Monthly from './pages/Monthly'
 import Assets from './pages/Assets'
@@ -99,20 +100,23 @@ function AuthedFlow({ user }: { user: User }) {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route element={<AppFrame />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/roadmap" element={<Roadmap />} />
-        <Route path="/monthly" element={<Monthly />} />
-        <Route path="/assets" element={<Assets />} />
-        <Route path="/yearly" element={<Yearly />} />
-        <Route path="/settings" element={<Settings />} />
-      </Route>
-      <Route path="/admin/feedback" element={<AdminFeedback />} />
-      <Route path="/checkup" element={<Checkup />} />
-      <Route path="/confess" element={<Confess />} />
-      <Route path="/asset-setup" element={<AssetSetup />} />
-    </Routes>
+    <>
+      <SyncBanner />
+      <Routes>
+        <Route element={<AppFrame />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/roadmap" element={<Roadmap />} />
+          <Route path="/monthly" element={<Monthly />} />
+          <Route path="/assets" element={<Assets />} />
+          <Route path="/yearly" element={<Yearly />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
+        <Route path="/admin/feedback" element={<AdminFeedback />} />
+        <Route path="/checkup" element={<Checkup />} />
+        <Route path="/confess" element={<Confess />} />
+        <Route path="/asset-setup" element={<AssetSetup />} />
+      </Routes>
+    </>
   )
 }
 
