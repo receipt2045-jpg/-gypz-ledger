@@ -161,6 +161,16 @@ create policy "confessions_delete" on public.confessions
     public.is_member(household_id) and member_no = public.my_member_no(household_id)
   );
 
+-- ai-coach 사용량 (사용자당 하루 진단 횟수 제한 — Edge Function이 service_role로만 접근)
+create table if not exists public.ai_coach_usage (
+  user_id uuid not null,
+  day date not null,
+  n int not null default 0,
+  primary key (user_id, day)
+);
+-- 정책을 만들지 않음 → 기본 거부. 앱(anon/authenticated)에선 읽기·쓰기 모두 불가.
+alter table public.ai_coach_usage enable row level security;
+
 -- feedback: 로그인 사용자는 '보내기'만 가능. 읽기 정책이 없으므로
 -- 앱에서는 아무도 조회할 수 없고, 운영자는 대시보드(service_role)로만 확인.
 alter table public.feedback enable row level security;

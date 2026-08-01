@@ -1,13 +1,29 @@
 // AI 코치 by 결영이네 — Supabase Edge Function
 // 클라이언트가 보낸 정산 요약(익명 집계)을 Claude API로 진단해 돌려준다.
 // 시스템 프롬프트는 《결영이네 관점엔진 판단규칙 v1》의 'F. 시스템 프롬프트'를 그대로 사용.
+//
+// 보안: 로그인 사용자만 호출 가능(getUser 검증) + 사용자당 하루 5회 제한.
+// 공개 anon 키만으로는 실행되지 않는다 — Claude API 비용이 무한정 새는 것 방지.
 import Anthropic from "npm:@anthropic-ai/sdk";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+// 브라우저 호출은 우리 도메인만 허용 (curl은 어차피 auth가 막는다 — 심층 방어)
+const ALLOWED_ORIGINS = new Set([
+  "https://moabuli.com",
+  "https://www.moabuli.com",
+  "http://localhost:5173",
+]);
+
+function corsHeadersFor(req: Request) {
+  const origin = req.headers.get("Origin") ?? "";
+  return {
+    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.has(origin) ? origin : "https://moabuli.com",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    Vary: "Origin",
+  };
+}
+
+const DAILY_LIMIT = 5; // 사용자당 하루 진단 횟수
 
 // ── 결영이네 관점엔진 F. 시스템 프롬프트 (원문 그대로) ──
 const SYSTEM_PROMPT = `너는 '결영이네가 만든 AI 코치'다. 신혼부부의 가계부를 보고, 결영이네의 관점으로
@@ -56,31 +72,85 @@ interface CheckupSummary {
   variableItems: ItemSummary[];
 }
 
+// 원소 형태까지 검증 — 거대 문자열을 끼워 넣어 토큰(비용)을 부풀리는 것 차단
+function isValidItems(a: unknown): a is ItemSummary[] {
+  return (
+    Array.isArray(a) &&
+    a.length <= 50 &&
+    a.every(
+      (x) =>
+        x !== null &&
+        typeof x === "object" &&
+        typeof (x as ItemSummary).category === "string" &&
+        (x as ItemSummary).category.length <= 40 &&
+        typeof (x as ItemSummary).amount === "number" &&
+        Number.isFinite((x as ItemSummary).amount),
+    )
+  );
+}
+
 function isValidSummary(s: unknown): s is CheckupSummary {
   if (!s || typeof s !== "object") return false;
   const o = s as Record<string, unknown>;
+  const nums = [o.income, o.saving, o.investment, o.fixedTotal, o.variableTotal, o.surplus];
   return (
     typeof o.ym === "string" &&
-    typeof o.income === "number" &&
-    Array.isArray(o.fixedItems) &&
-    Array.isArray(o.variableItems) &&
-    (o.fixedItems as unknown[]).length <= 50 &&
-    (o.variableItems as unknown[]).length <= 50
+    o.ym.length <= 10 &&
+    nums.every((n) => typeof n === "number" && Number.isFinite(n as number)) &&
+    isValidItems(o.fixedItems) &&
+    isValidItems(o.variableItems)
   );
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req);
+  const json = (body: unknown, status: number) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // 1) 로그인 사용자 검증 — 세션 토큰 없이는 진단 불가
+    const authClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } },
+    );
+    const { data: userData } = await authClient.auth.getUser();
+    const user = userData?.user;
+    if (!user) {
+      return json({ error: "로그인이 필요해요" }, 401);
+    }
+
+    // 2) 하루 사용량 제한 (service_role — ai_coach_usage는 정책이 없어 앱에선 접근 불가)
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: usage } = await admin
+      .from("ai_coach_usage")
+      .select("n")
+      .eq("user_id", user.id)
+      .eq("day", today)
+      .maybeSingle();
+    const used = usage?.n ?? 0;
+    if (used >= DAILY_LIMIT) {
+      return json({ error: "오늘 진단 횟수를 다 썼어요. 내일 다시 만나요 🙂" }, 429);
+    }
+    await admin
+      .from("ai_coach_usage")
+      .upsert({ user_id: user.id, day: today, n: used + 1 });
+
+    // 3) 입력 검증
     const { summary } = await req.json();
     if (!isValidSummary(summary)) {
-      return new Response(JSON.stringify({ error: "잘못된 요청이에요" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "잘못된 요청이에요" }, 400);
     }
 
     const client = new Anthropic({
@@ -115,13 +185,7 @@ Deno.serve(async (req) => {
     });
 
     if (response.stop_reason === "refusal") {
-      return new Response(
-        JSON.stringify({ error: "이번 데이터로는 진단을 만들지 못했어요" }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return json({ error: "이번 데이터로는 진단을 만들지 못했어요" }, 200);
     }
 
     const text = response.content
@@ -130,18 +194,12 @@ Deno.serve(async (req) => {
       .join("")
       .trim();
 
-    return new Response(JSON.stringify({ text }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ text }, 200);
   } catch (err) {
     console.error(err);
-    return new Response(
-      JSON.stringify({ error: "진단 서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요." }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+    return json(
+      { error: "진단 서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요." },
+      500,
     );
   }
 });
