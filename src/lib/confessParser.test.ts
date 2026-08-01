@@ -69,4 +69,9 @@ describe('parseConfessionText — 카테고리 매칭', () => {
     const r = parseConfessionText('넷플릭스 17,000원', cats)
     expect(r.entries[0]).toMatchObject({ category: '구독', kind: 'fixed' })
   })
+  it("'기타'를 지운 가구에선 폴백이 실재하는 첫 카테고리", () => {
+    const custom = { ...cats, variable: ['배달', '카페'] } // 기타 없음
+    const r = parseConfessionText('택시 3천원', custom)
+    expect(r.entries[0]).toMatchObject({ category: '배달', matched: false })
+  })
 })

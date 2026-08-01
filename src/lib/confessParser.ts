@@ -144,8 +144,13 @@ export function parseConfessionText(
     if (found) {
       entries.push({ ...found, amount: money.amount, note, raw: seg, matched: true })
     } else {
+      // 폴백은 반드시 이 가구에 실재하는 카테고리여야 함
+      // ('기타'를 지운 가구에서 화면 표시와 저장값이 어긋나는 것 방지)
+      const fallback = categories.variable.includes('기타')
+        ? '기타'
+        : (categories.variable[0] ?? '기타')
       entries.push({
-        category: '기타',
+        category: fallback,
         kind: 'variable',
         amount: money.amount,
         note,
