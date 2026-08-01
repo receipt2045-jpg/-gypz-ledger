@@ -11,6 +11,7 @@ create table public.households (
   member2_name text not null default '아내',
   member1_color text,
   member2_color text,
+  category_aliases jsonb not null default '{}', -- 줄글 고백 학습 별칭 (단어 → 카테고리)
   child_names jsonb not null default '[]'::jsonb,
   target_net_worth bigint not null default 1000000000,
   start_year int not null default date_part('year', now()),
@@ -130,9 +131,35 @@ create policy "snapshots_all" on public.snapshots
   for all using (public.is_member(household_id)) with check (public.is_member(household_id));
 create policy "occasions_all" on public.occasions
   for all using (public.is_member(household_id)) with check (public.is_member(household_id));
+-- confessions: 읽기는 우리 가구 전체, 쓰기는 '내 번호'로만
+-- (household_id만 확인하면 배우자 이름으로 고백을 남길 수 있어서 나눠 둠)
+create or replace function public.my_member_no(hid uuid)
+returns smallint
+language sql stable security definer
+set search_path = public
+as $$
+  select member_no from household_members
+  where household_id = hid and user_id = auth.uid()
+  limit 1;
+$$;
+
 alter table public.confessions enable row level security;
-create policy "confessions_all" on public.confessions
-  for all using (public.is_member(household_id)) with check (public.is_member(household_id));
+create policy "confessions_select" on public.confessions
+  for select using (public.is_member(household_id));
+create policy "confessions_insert" on public.confessions
+  for insert with check (
+    public.is_member(household_id) and member_no = public.my_member_no(household_id)
+  );
+create policy "confessions_update" on public.confessions
+  for update using (
+    public.is_member(household_id) and member_no = public.my_member_no(household_id)
+  ) with check (
+    public.is_member(household_id) and member_no = public.my_member_no(household_id)
+  );
+create policy "confessions_delete" on public.confessions
+  for delete using (
+    public.is_member(household_id) and member_no = public.my_member_no(household_id)
+  );
 
 -- feedback: 로그인 사용자는 '보내기'만 가능. 읽기 정책이 없으므로
 -- 앱에서는 아무도 조회할 수 없고, 운영자는 대시보드(service_role)로만 확인.

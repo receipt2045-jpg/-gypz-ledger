@@ -22,3 +22,6 @@ dist-ssr
 
 # AI 리뷰 결과물
 review/
+
+# 허깅페이스 토큰 (절대 커밋 금지)
+.hf-token

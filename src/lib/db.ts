@@ -48,6 +48,7 @@ export async function joinHousehold(code: string): Promise<Membership> {
 
 export interface HouseholdData extends AppData {
   inviteCode: string
+  aliases: Record<string, string> // 줄글 고백 학습 별칭 (단어 → 카테고리)
 }
 
 export async function fetchHouseholdData(householdId: string): Promise<HouseholdData> {
@@ -92,7 +93,18 @@ export async function fetchHouseholdData(householdId: string): Promise<Household
     occasions,
     categories: h.categories as Categories,
     inviteCode: h.invite_code,
+    // 줄글 고백 학습 별칭 (단어 → 카테고리, 가구 공유)
+    aliases: ((h.category_aliases as Record<string, string> | null) ?? {}),
   }
+}
+
+/** 줄글 고백에서 학습한 별칭 저장 (가구 단위 — 부부가 함께 씀) */
+export async function pushAliases(householdId: string, aliases: Record<string, string>) {
+  const { error } = await supabase
+    .from('households')
+    .update({ category_aliases: aliases })
+    .eq('id', householdId)
+  if (error) throw error
 }
 
 // ── 저장 (각 스토어 액션과 1:1 대응) ──────────

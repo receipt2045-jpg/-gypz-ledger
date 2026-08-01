@@ -7,10 +7,36 @@
 // 결과는 화면에 출력되고 review/ 폴더에 마크다운으로 저장됩니다.
 
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+/**
+ * HF 토큰 찾기 — 채팅·코드에 토큰을 적지 않아도 되도록 여러 위치를 순서대로 확인.
+ * 1) HF_TOKEN 환경변수
+ * 2) hf CLI 로그인 토큰 (hf auth login 하면 여기 저장됨)
+ * 3) 프로젝트 .hf-token 파일 (gitignore 처리됨)
+ */
+function findToken() {
+  if (process.env.HF_TOKEN?.trim()) return process.env.HF_TOKEN.trim()
+
+  const candidates = [
+    path.join(os.homedir(), '.cache', 'huggingface', 'token'),
+    path.join(os.homedir(), '.huggingface', 'token'),
+    path.join(ROOT, '.hf-token'),
+  ]
+  for (const p of candidates) {
+    try {
+      const t = fs.readFileSync(p, 'utf8').trim()
+      if (t) return t
+    } catch {
+      /* 다음 후보 확인 */
+    }
+  }
+  return null
+}
 const HF_URL = 'https://router.huggingface.co/v1/chat/completions'
 const MODEL = process.env.HF_MODEL ?? 'Qwen/Qwen3-235B-A22B-Instruct-2507'
 
@@ -81,8 +107,18 @@ async function main() {
     console.error(`관점을 골라주세요: ${Object.keys(FOCUS).join(' | ')} | all`)
     process.exit(1)
   }
-  if (!process.env.HF_TOKEN) {
-    console.error('HF_TOKEN 환경변수가 필요해요.\n예: HF_TOKEN=hf_xxx node scripts/review.mjs ux')
+  const token = findToken()
+  if (!token) {
+    console.error(`허깅페이스 토큰을 찾지 못했어요. 아래 중 하나로 준비해 주세요.
+
+  1) 파일로 저장 (권장)
+     gypz-ledger/.hf-token 파일에 토큰만 한 줄로 저장
+
+  2) 환경변수
+     HF_TOKEN=hf_xxx node scripts/review.mjs ux
+
+  3) hf CLI 로그인
+     hf auth login`)
     process.exit(1)
   }
 
@@ -126,7 +162,7 @@ ${bundle}`
     const res = await fetch(HF_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.HF_TOKEN}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

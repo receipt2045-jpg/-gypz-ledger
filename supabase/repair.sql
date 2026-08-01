@@ -25,6 +25,10 @@ create table if not exists public.households (
 );
 -- 뒤늦게 추가된 컬럼 보정
 alter table public.households add column if not exists child_names jsonb not null default '[]'::jsonb;
+alter table public.households add column if not exists member1_color text;
+alter table public.households add column if not exists member2_color text;
+alter table public.households add column if not exists category_aliases jsonb not null default '{}'::jsonb;
+alter table public.confessions add column if not exists note text;
 
 create table if not exists public.household_members (
   household_id uuid not null references public.households(id) on delete cascade,
@@ -122,9 +126,41 @@ drop policy if exists "occasions_all" on public.occasions;
 create policy "occasions_all" on public.occasions
   for all using (public.is_member(household_id)) with check (public.is_member(household_id));
 
+-- confessions: 읽기는 우리 가구 전체, 쓰기는 '내 번호'로만 (작성자 위조 방지)
+create or replace function public.my_member_no(hid uuid)
+returns smallint
+language sql stable security definer
+set search_path = public
+as $$
+  select member_no from household_members
+  where household_id = hid and user_id = auth.uid()
+  limit 1;
+$$;
+
 drop policy if exists "confessions_all" on public.confessions;
-create policy "confessions_all" on public.confessions
-  for all using (public.is_member(household_id)) with check (public.is_member(household_id));
+drop policy if exists "confessions_select" on public.confessions;
+create policy "confessions_select" on public.confessions
+  for select using (public.is_member(household_id));
+
+drop policy if exists "confessions_insert" on public.confessions;
+create policy "confessions_insert" on public.confessions
+  for insert with check (
+    public.is_member(household_id) and member_no = public.my_member_no(household_id)
+  );
+
+drop policy if exists "confessions_update" on public.confessions;
+create policy "confessions_update" on public.confessions
+  for update using (
+    public.is_member(household_id) and member_no = public.my_member_no(household_id)
+  ) with check (
+    public.is_member(household_id) and member_no = public.my_member_no(household_id)
+  );
+
+drop policy if exists "confessions_delete" on public.confessions;
+create policy "confessions_delete" on public.confessions
+  for delete using (
+    public.is_member(household_id) and member_no = public.my_member_no(household_id)
+  );
 
 -- 5) RPC 함수 (다시 정의)
 create or replace function public.create_household()

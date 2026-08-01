@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Baby,
@@ -16,6 +16,8 @@ import {
   Gift,
   HeartPulse,
   Home,
+  Keyboard,
+  Mic,
   MonitorPlay,
   PiggyBank,
   Plane,
@@ -26,6 +28,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  Trash2,
   Umbrella,
   Utensils,
   Wallet,
@@ -34,6 +37,8 @@ import WeeklyCostCard from '../components/WeeklyCostCard'
 import { useLedgerStore } from '../lib/store'
 import { pickReaction, streakOf, type Reaction } from '../lib/reactions'
 import { formatComma, formatWon } from '../lib/format'
+import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
+import { GROUP_LABEL } from '../lib/constants'
 import type { CategoryGroup } from '../types'
 
 // 카테고리 아이콘 매핑 (없으면 Coins)
@@ -70,21 +75,77 @@ const ICONS: Record<string, typeof Coins> = {
 
 const QUICK_CHIPS = [1_000, 5_000, 10_000, 50_000]
 
+// ── 인앱 음성인식 지원 판별 ──────────────────────
+// iOS 홈화면 PWA에선 Web Speech API가 동작하지 않으므로 마이크 버튼을 숨긴다.
+// (그 경우에도 키보드의 딕테이션 키로 같은 경험 가능)
+function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
+  const w = window as unknown as Record<string, unknown>
+  const ctor = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as
+    | (new () => SpeechRecognitionLike)
+    | undefined
+  if (!ctor) return null
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  const standalone =
+    (navigator as unknown as { standalone?: boolean }).standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches
+  if (isIos && standalone) return null
+  return ctor
+}
+
+interface SpeechRecognitionLike {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
+/** 확인 화면에서 다루는 항목 (파싱 결과 + 수정 추적) */
+interface DraftEntry extends ParsedEntry {
+  key: number
+  origCategory: string
+}
+
 /**
- * 일일 고백 (원팀가계부 P0)
- * 카테고리 탭 → 금액 탭 → 저장, 3탭 이내 · 키보드 없음.
- * 저장 즉시 모아/불리 말풍선 반응(로컬 규칙) + 스트릭.
+ * 일일 고백 — 줄글/음성 입력이 기본.
+ * "점심 9천원, 커피 5,500원" → 파싱 → 확인 → 저장 → 모아/불리 반응.
+ * 버튼식(카테고리 그리드 → 숫자패드)은 보조 수단으로 유지.
  */
 export default function Confess() {
   const navigate = useNavigate()
-  const { categories, memberNo, confessions, addConfession } = useLedgerStore()
+  const { categories, memberNo, confessions, aliases, addConfession, learnAliases } =
+    useLedgerStore()
 
+  // 모드: 줄글(text, 기본) / 버튼(picker)
+  const [mode, setMode] = useState<'text' | 'picker'>('text')
+
+  // 줄글 흐름
+  const [draft, setDraft] = useState('')
+  const [parseMsg, setParseMsg] = useState<string | null>(null)
+  const [drafts, setDrafts] = useState<DraftEntry[] | null>(null)
+  const [skipped, setSkipped] = useState<string[]>([])
+  const [listening, setListening] = useState(false)
+  const recRef = useRef<SpeechRecognitionLike | null>(null)
+  const SR = useMemo(speechRecognitionCtor, [])
+
+  // 버튼 흐름 (기존)
   const [sel, setSel] = useState<{ kind: CategoryGroup; category: string } | null>(null)
   const [amount, setAmount] = useState(0)
   const [note, setNote] = useState('')
-  const [result, setResult] = useState<{ reaction: Reaction; streak: number } | null>(null)
 
-  // 자주 쓰는 순 정렬 (최근 고백 횟수 기준, 나머지는 기본 순서)
+  // 반응 화면 (공통)
+  const [result, setResult] = useState<{
+    reaction: Reaction
+    streak: number
+    saved: { category: string; amount: number; note?: string }[]
+  } | null>(null)
+
+  useEffect(() => () => recRef.current?.stop(), [])
+
+  // 자주 쓰는 순 정렬 (최근 고백 횟수 기준)
   const freq = useMemo(() => {
     const m = new Map<string, number>()
     for (const c of confessions) m.set(c.category, (m.get(c.category) ?? 0) + 1)
@@ -101,18 +162,69 @@ export default function Confess() {
     { title: '투자', kind: 'investment', cats: categories.investment },
   ]
 
-  const save = () => {
-    if (!sel || amount <= 0) return
-    const full = addConfession({
-      category: sel.category,
-      kind: sel.kind,
-      amount,
-      note: note.trim() || undefined,
-    })
+  // ── 저장 (양쪽 흐름 공통) ───────────────────
+  const finishSave = (entries: { category: string; kind: CategoryGroup; amount: number; note?: string }[]) => {
+    let last = null as ReturnType<typeof addConfession> | null
+    for (const e of entries) {
+      last = addConfession({ category: e.category, kind: e.kind, amount: e.amount, note: e.note })
+    }
+    if (!last) return
     const all = useLedgerStore.getState().confessions
-    const reaction = pickReaction(full, all)
+    // 여러 건이면 지출(변동·고정) 중 최고액을 저격 대상으로
+    const spend = entries.filter((e) => e.kind === 'variable' || e.kind === 'fixed')
+    const headline = (spend.length ? spend : entries).reduce((a, b) => (b.amount > a.amount ? b : a))
+    const reaction = pickReaction({ category: headline.category, kind: headline.kind, amount: headline.amount }, all)
     const streak = streakOf(all, memberNo ?? 1)
-    setResult({ reaction, streak })
+    setResult({ reaction, streak, saved: entries.map(({ category, amount, note }) => ({ category, amount, note })) })
+  }
+
+  // ── 줄글: 파싱 → 확인 단계로 ────────────────
+  const runParse = () => {
+    const r = parseConfessionText(draft, categories, aliases)
+    if (r.entries.length === 0) {
+      setParseMsg('금액을 찾지 못했어요. "커피 5천원, 점심 9,000원"처럼 적어주세요.')
+      return
+    }
+    setParseMsg(null)
+    setSkipped(r.skipped)
+    setDrafts(r.entries.map((e, i) => ({ ...e, key: i, origCategory: e.category })))
+  }
+
+  // ── 줄글: 확인 → 저장 ───────────────────────
+  const saveDrafts = () => {
+    if (!drafts?.length) return
+    // 카테고리를 고쳤거나 매칭에 실패했던 항목은 별칭으로 학습 (다음부턴 자동)
+    const patch: Record<string, string> = {}
+    for (const d of drafts) {
+      const word = d.note?.split(' ')[0]
+      if (!word || word.length < 2) continue
+      if (d.category !== d.origCategory || !d.matched) patch[word] = d.category
+    }
+    if (Object.keys(patch).length) learnAliases(patch)
+    finishSave(drafts)
+  }
+
+  const toggleMic = () => {
+    if (!SR) return
+    if (listening) {
+      recRef.current?.stop()
+      return
+    }
+    const rec = new SR()
+    recRef.current = rec
+    rec.lang = 'ko-KR'
+    rec.continuous = false
+    rec.interimResults = false
+    rec.onresult = (ev) => {
+      const text = Array.from({ length: ev.results.length }, (_, i) => ev.results[i][0].transcript)
+        .join(' ')
+        .trim()
+      if (text) setDraft((d) => (d.trim() ? `${d.trim()}, ${text}` : text))
+    }
+    rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    setListening(true)
+    rec.start()
   }
 
   const reset = () => {
@@ -120,6 +232,10 @@ export default function Confess() {
     setAmount(0)
     setNote('')
     setResult(null)
+    setDraft('')
+    setDrafts(null)
+    setSkipped([])
+    setParseMsg(null)
   }
 
   const tapDigit = (d: string) => {
@@ -135,19 +251,32 @@ export default function Confess() {
   }
 
   // ── 반응 화면 ─────────────────────────────
-  if (result && sel) {
+  if (result) {
+    const total = result.saved.reduce((s, e) => s + e.amount, 0)
     return (
       <Frame>
         <Top onBack={() => navigate('/')} title="오늘의 고백" />
         <div className="flex flex-1 flex-col px-5 pt-2 animate-fade-up">
           {/* 방금 고백한 내용 */}
-          <div className="mb-5 rounded-card bg-card px-5 py-4 text-center shadow-card">
-            <p className="text-[13px] text-sub">{sel.category}</p>
-            <p className="tnum text-[26px] font-extrabold text-ink">{formatWon(amount)}</p>
-            {note.trim() && <p className="mt-1.5 text-[14px] font-medium text-sub">“{note.trim()}”</p>}
+          <div className="mb-5 rounded-card bg-card px-5 py-4 shadow-card">
+            {result.saved.map((e, i) => (
+              <div key={i} className="flex items-center justify-between py-1">
+                <span className="text-[14px] text-sub">
+                  {e.category}
+                  {e.note && <span className="text-cap"> · {e.note}</span>}
+                </span>
+                <span className="tnum text-[15px] font-bold text-ink">{formatWon(e.amount)}</span>
+              </div>
+            ))}
+            {result.saved.length > 1 && (
+              <div className="mt-2 flex items-center justify-between border-t border-line pt-2">
+                <span className="text-[13px] font-bold text-sub">모두</span>
+                <span className="tnum text-[20px] font-extrabold text-ink">{formatWon(total)}</span>
+              </div>
+            )}
           </div>
 
-          {/* 캐릭터 말풍선 (스티커 슬롯은 추후 이미지 예정 — 지금은 이름표+이모지) */}
+          {/* 캐릭터 말풍선 */}
           <div className="space-y-3">
             {result.reaction.bubbles.map((b, i) => (
               <div key={i} className={`flex ${b.who === '불리' ? 'justify-end' : 'justify-start'}`}>
@@ -158,7 +287,6 @@ export default function Confess() {
                     }`}
                   >
                     {b.who === '모아' ? '🐷 모아' : '📈 불리'}
-                    {/* TODO: 캐릭터 스티커 슬롯 (5~6종 자체 제작 예정) */}
                   </p>
                   <div
                     className={`inline-block rounded-2xl px-4 py-3 text-left text-[14px] leading-relaxed shadow-card ${
@@ -172,15 +300,13 @@ export default function Confess() {
             ))}
           </div>
 
-          {/* 불리 실행 액션 (면죄부 방지 — 다음 행동으로 연결) */}
+          {/* 불리 실행 액션 */}
           {result.reaction.action && (
             <button
               onClick={() => navigate('/monthly')}
               className="mt-4 flex w-full items-center justify-between gap-2 rounded-card bg-amber-50 px-4 py-3 text-left active:bg-amber-100"
             >
-              <span className="text-[14px] font-bold text-amber-700">
-                {result.reaction.action}
-              </span>
+              <span className="text-[14px] font-bold text-amber-700">{result.reaction.action}</span>
               <ChevronRight size={18} className="shrink-0 text-amber-500" />
             </button>
           )}
@@ -210,8 +336,103 @@ export default function Confess() {
     )
   }
 
-  // ── 금액 입력 (숫자 패드, 키보드 없음) ─────
-  if (sel) {
+  // ── 줄글: 확인 화면 ────────────────────────
+  if (drafts) {
+    const expense: { kind: CategoryGroup; label: string; cats: string[] }[] = [
+      { kind: 'variable', label: GROUP_LABEL.variable, cats: categories.variable },
+      { kind: 'fixed', label: GROUP_LABEL.fixed, cats: categories.fixed },
+    ]
+    return (
+      <Frame>
+        <Top
+          onBack={() => setDrafts(null)}
+          title="이렇게 기록할까요?"
+          subtitle="카테고리와 금액을 눌러 고칠 수 있어요"
+        />
+        <div className="flex-1 space-y-3 px-5 pb-10 pt-1">
+          {drafts.map((d) => {
+            const Icon = ICONS[d.category] ?? Coins
+            return (
+              <div key={d.key} className="rounded-card bg-card px-4 py-3 shadow-card">
+                <div className="flex items-center gap-3">
+                  <Icon size={20} className="shrink-0 text-brand" />
+                  <div className="min-w-0 flex-1">
+                    <select
+                      value={`${d.kind}:${d.category}`}
+                      onChange={(e) => {
+                        const [kind, category] = e.target.value.split(':') as [CategoryGroup, string]
+                        setDrafts((prev) =>
+                          prev!.map((x) => (x.key === d.key ? { ...x, kind, category } : x)),
+                        )
+                      }}
+                      className={`w-full appearance-none bg-transparent text-[15px] font-bold outline-none ${
+                        d.matched ? 'text-ink' : 'text-amber-600'
+                      }`}
+                    >
+                      {expense.map((g) => (
+                        <optgroup key={g.kind} label={g.label}>
+                          {g.cats.map((c) => (
+                            <option key={c} value={`${g.kind}:${c}`}>
+                              {c}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    {d.note && <p className="truncate text-[12px] text-cap">{d.note}</p>}
+                  </div>
+                  <input
+                    inputMode="numeric"
+                    value={formatComma(d.amount)}
+                    onChange={(e) => {
+                      const v = Math.min(Number(e.target.value.replace(/[^\d]/g, '')) || 0, 999_999_999)
+                      setDrafts((prev) => prev!.map((x) => (x.key === d.key ? { ...x, amount: v } : x)))
+                    }}
+                    className="tnum w-24 shrink-0 rounded-btn border border-line bg-white px-2 py-1.5 text-right text-[15px] font-bold text-ink outline-none focus:border-brand"
+                  />
+                  <span className="text-[13px] text-sub">원</span>
+                  <button
+                    onClick={() => setDrafts((prev) => prev!.filter((x) => x.key !== d.key))}
+                    aria-label="삭제"
+                    className="shrink-0 text-cap active:text-ink"
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
+                {!d.matched && (
+                  <p className="mt-1.5 text-[12px] text-amber-600">
+                    어디에 쓴 건지 몰라서 기타로 두었어요. 고쳐주시면 다음부턴 기억할게요.
+                  </p>
+                )}
+              </div>
+            )
+          })}
+
+          {skipped.length > 0 && (
+            <p className="px-1 text-[12px] text-cap">
+              금액이 없어 건너뛴 부분: {skipped.join(' / ')}
+            </p>
+          )}
+        </div>
+        <BottomBar>
+          <button
+            onClick={saveDrafts}
+            disabled={drafts.length === 0 || drafts.some((d) => d.amount <= 0)}
+            className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
+          >
+            {drafts.length}건 고백하기
+          </button>
+        </BottomBar>
+      </Frame>
+    )
+  }
+
+  // ── 버튼 모드: 금액 입력 (기존 숫자패드) ─────
+  if (mode === 'picker' && sel) {
+    const save = () => {
+      if (!sel || amount <= 0) return
+      finishSave([{ category: sel.category, kind: sel.kind, amount, note: note.trim() || undefined }])
+    }
     return (
       <Frame>
         <Top onBack={() => setSel(null)} title={sel.category} />
@@ -221,7 +442,6 @@ export default function Confess() {
             <span className="ml-1 text-[20px] font-bold text-sub">원</span>
           </p>
 
-          {/* 선택적 한 마디 (숫자만 넣던 걸 보완) */}
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -230,7 +450,6 @@ export default function Confess() {
             className="mb-3 w-full rounded-btn border border-line bg-white px-4 py-3 text-center text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
           />
 
-          {/* 퀵칩: 탭 한 번으로 금액 추가 */}
           <div className="mb-3 flex justify-center gap-2">
             {QUICK_CHIPS.map((v) => (
               <button
@@ -243,7 +462,6 @@ export default function Confess() {
             ))}
           </div>
 
-          {/* 숫자 패드 */}
           <div className="grid grid-cols-3 gap-2">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', '⌫'].map((d) => (
               <button
@@ -269,40 +487,102 @@ export default function Confess() {
     )
   }
 
-  // ── 카테고리 선택 (아이콘 그리드) ──────────
+  // ── 버튼 모드: 카테고리 그리드 (기존) ────────
+  if (mode === 'picker') {
+    return (
+      <Frame>
+        <Top onBack={() => setMode('text')} title="무엇에 썼나요?" subtitle="기록하면 모아·불리가 바로 반응해요" />
+        <div className="flex-1 space-y-5 px-5 pb-10 pt-1">
+          <WeeklyCostCard confessions={confessions} />
+          {groups.map(
+            (g) =>
+              g.cats.length > 0 && (
+                <section key={g.kind}>
+                  <p className="mb-2 px-1 text-[13px] font-bold text-sub">{g.title}</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {g.cats.map((cat) => {
+                      const Icon = ICONS[cat] ?? Coins
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setSel({ kind: g.kind, category: cat })}
+                          className="flex flex-col items-center gap-1.5 rounded-card bg-card px-1 py-3 shadow-card transition-transform active:scale-95"
+                        >
+                          <Icon size={22} className="text-brand" />
+                          <span className="w-full truncate text-center text-[12px] font-medium text-ink">
+                            {cat}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
+              ),
+          )}
+        </div>
+      </Frame>
+    )
+  }
+
+  // ── 줄글 입력 (기본 화면) ────────────────────
   return (
     <Frame>
-      <Top onBack={() => navigate('/')} title="무엇에 썼나요?" subtitle="기록하면 모아·불리가 바로 반응해요" />
-      <div className="flex-1 space-y-5 px-5 pb-10 pt-1">
-        {/* 면죄부 방지 — 이번 주 기회비용 */}
+      <Top
+        onBack={() => navigate('/')}
+        title="오늘 뭐에 썼나요?"
+        subtitle="쓴 것들을 한 번에 적어주세요. 나눠서 기록해 드려요"
+      />
+      <div className="flex-1 space-y-4 px-5 pb-10 pt-1">
         <WeeklyCostCard confessions={confessions} />
 
-        {groups.map(
-          (g) =>
-            g.cats.length > 0 && (
-              <section key={g.kind}>
-                <p className="mb-2 px-1 text-[13px] font-bold text-sub">{g.title}</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {g.cats.map((cat) => {
-                    const Icon = ICONS[cat] ?? Coins
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => setSel({ kind: g.kind, category: cat })}
-                        className="flex flex-col items-center gap-1.5 rounded-card bg-card px-1 py-3 shadow-card transition-transform active:scale-95"
-                      >
-                        <Icon size={22} className="text-brand" />
-                        <span className="w-full truncate text-center text-[12px] font-medium text-ink">
-                          {cat}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            ),
+        <div className="rounded-card bg-card p-3 shadow-card">
+          <textarea
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value)
+              if (parseMsg) setParseMsg(null)
+            }}
+            rows={4}
+            placeholder={'점심 9천원, 커피 5,500원, 택시 12,000원\n\n말하듯 편하게 적어도 돼요'}
+            className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none placeholder:text-cap"
+          />
+          <div className="mt-1 flex items-center justify-between">
+            <button
+              onClick={() => setMode('picker')}
+              className="flex items-center gap-1.5 text-[13px] font-bold text-sub active:text-ink"
+            >
+              <Keyboard size={15} /> 버튼으로 고르기
+            </button>
+            {SR && (
+              <button
+                onClick={toggleMic}
+                aria-label="음성으로 입력"
+                className={`flex h-11 w-11 items-center justify-center rounded-full shadow-card transition-colors ${
+                  listening ? 'animate-pulse bg-red-500 text-white' : 'bg-brand text-white active:bg-brand-dark'
+                }`}
+              >
+                <Mic size={19} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {listening && (
+          <p className="text-center text-[13px] font-bold text-red-500">
+            듣고 있어요… 말이 끝나면 자동으로 받아 적어요
+          </p>
         )}
+        {parseMsg && <p className="px-1 text-[13px] font-bold text-amber-600">{parseMsg}</p>}
       </div>
+      <BottomBar>
+        <button
+          onClick={runParse}
+          disabled={!draft.trim()}
+          className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
+        >
+          확인하기
+        </button>
+      </BottomBar>
     </Frame>
   )
 }

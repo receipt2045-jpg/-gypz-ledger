@@ -66,6 +66,9 @@ interface LedgerState extends AppData {
   clear: () => void
   // 일일 고백: 로컬 즉시 반영 → 백그라운드 전송(실패 시 큐)
   addConfession: (c: Omit<Confession, 'id' | 'createdAt' | 'memberNo'>) => Confession
+  // 줄글 고백 학습 별칭 (단어 → 카테고리)
+  aliases: Record<string, string>
+  learnAliases: (patch: Record<string, string>) => void
   // 프로필
   updateProfile: (patch: Partial<Profile>) => void
   // 월간 가계부
@@ -92,6 +95,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
   inviteCode: null,
   sample: false,
   confessions: [],
+  aliases: {},
 
   init: async ({ householdId, memberNo }) => {
     set({ status: 'loading', householdId, memberNo, sample: false })
@@ -127,6 +131,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       inviteCode: null,
       sample: true,
       confessions: [],
+      aliases: {},
     }),
 
   clear: () =>
@@ -138,7 +143,15 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       inviteCode: null,
       sample: false,
       confessions: [],
+      aliases: {},
     }),
+
+  learnAliases: (patch) => {
+    const merged = { ...get().aliases, ...patch }
+    set({ aliases: merged })
+    const hid = get().householdId
+    if (hid) db.pushAliases(hid, merged).catch(reportSyncError)
+  },
 
   addConfession: (c) => {
     const s = get()
@@ -151,7 +164,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     // 1) 로컬 즉시 반영 (반응 0.3초 규칙 — 네트워크를 기다리지 않는다)
     set({ confessions: [full, ...s.confessions] })
     // 2) 백그라운드 전송, 실패 시 오프라인 큐
-    if (s.householdId) {
+    //    내 구성원 번호를 모르면 서버가 거부하므로(작성자 위조 방지 정책) 보내지 않는다
+    if (s.householdId && s.memberNo) {
       db.insertConfession(s.householdId, full).catch((err) => {
         reportSyncError(err)
         pushConfessQueue(full)
