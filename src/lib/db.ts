@@ -107,6 +107,27 @@ export async function pushAliases(householdId: string, aliases: Record<string, s
   if (error) throw error
 }
 
+/** 특정 월 가계부만 다시 읽기 — 정산 저장 직전, 배우자가 그사이 저장한 내용을 보존하기 위함 */
+export async function fetchLedger(
+  householdId: string,
+  ym: string,
+): Promise<MonthlyLedger | null> {
+  const { data, error } = await supabase
+    .from('ledgers')
+    .select('*')
+    .eq('household_id', householdId)
+    .eq('ym', ym)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return {
+    ym: data.ym,
+    items: data.items,
+    closed: data.closed,
+    settledMembers: data.settled_members,
+  }
+}
+
 // ── 저장 (각 스토어 액션과 1:1 대응) ──────────
 
 export async function pushLedger(householdId: string, ledger: MonthlyLedger) {

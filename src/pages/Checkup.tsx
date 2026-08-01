@@ -15,6 +15,7 @@ import AmountInput from '../components/AmountInput'
 import StepProgress from '../components/StepProgress'
 import { buildSummary } from '../lib/aiCoach'
 import { useLedgerStore } from '../lib/store'
+import * as db from '../lib/db'
 import { confessSums } from '../lib/confessLedger'
 import {
   activeYm,
@@ -191,24 +192,48 @@ export default function Checkup() {
     if (add.length) setItems((prev) => [...prev, ...add])
   }
 
-  const commit = () => {
-    if (!member) return
-    const existing = resolveLedger(ledgers, ym)
+  const [committing, setCommitting] = useState(false)
+
+  const commit = async () => {
+    if (!member || committing) return
+    setCommitting(true)
+
+    // 저장 직전 서버에서 이 달을 다시 읽는다.
+    // 이 화면의 items는 진입 시점 스냅샷이라, 그사이 배우자가 다른 기기에서
+    // 정산했으면 그 저장분을 통째로 덮어쓰게 된다 — 배우자 항목은 서버 것을,
+    // 내 항목만 내 편집본을 쓰는 병합으로 방지. (화면은 내 항목만 편집 가능)
+    let base = resolveLedger(ledgers, ym)
+    const hid = useLedgerStore.getState().householdId
+    if (hid) {
+      try {
+        const server = await db.fetchLedger(hid, ym)
+        if (server) base = server
+      } catch {
+        // 오프라인 등으로 못 읽으면 로컬 기준으로 저장 (기존 동작 유지)
+      }
+    }
+    const mergedItems = [
+      ...base.items.filter((it) => it.member !== member),
+      ...items.filter((it) => it.member === member),
+    ]
+
     if (isBudget) {
       // 예산 세우기: 계획값만 저장, 정산 상태(closed·settledMembers)는 건드리지 않음
       saveLedger({
         ym,
-        items,
-        closed: existing.closed,
-        settledMembers: existing.settledMembers ?? [],
+        items: mergedItems,
+        closed: base.closed,
+        settledMembers: base.settledMembers ?? [],
       })
     } else {
-      const merged = Array.from(new Set([...settledMembers, member])) as (1 | 2)[]
+      const merged = Array.from(new Set([...(base.settledMembers ?? []), member])) as (1 | 2)[]
       const closed = merged.includes(1) && merged.includes(2)
-      saveLedger({ ym, items, closed, settledMembers: merged })
+      saveLedger({ ym, items: mergedItems, closed, settledMembers: merged })
       // 자산은 자산 탭에서 관리하지만, 이 달의 순자산 스냅샷은 이어지도록 저장
       saveSnapshot({ ym, items: assets })
     }
+    setItems(mergedItems) // 완료 화면 합계도 병합 결과 기준으로
+    setCommitting(false)
     setStep(DONE_STEP)
   }
 
@@ -467,9 +492,10 @@ export default function Checkup() {
         <div className="space-y-2">
           <button
             onClick={proceed}
-            className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark"
+            disabled={committing}
+            className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-60"
           >
-            {isLastStep ? (isBudget ? '예산 세우기 완료' : '정산 완료하기') : '다음'}
+            {committing ? '저장하는 중…' : isLastStep ? (isBudget ? '예산 세우기 완료' : '정산 완료하기') : '다음'}
           </button>
           {def.sameAsLast &&
             (hasPrevLedger ? (
