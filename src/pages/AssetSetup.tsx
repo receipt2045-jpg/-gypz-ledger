@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Baby, ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
 import AssetEditor from '../components/AssetEditor'
 import { useLedgerStore } from '../lib/store'
-import { activeYm, genId, netWorthOf, resolveSnapshot } from '../lib/carryover'
+import * as db from '../lib/db'
+import { activeYm, genId, mergeAssets, netWorthOf, resolveSnapshot } from '../lib/carryover'
 import { memberStyle } from '../lib/memberColors'
 import { abbreviateKRW } from '../lib/format'
 import type { AssetItem } from '../types'
@@ -18,9 +19,9 @@ export default function AssetSetup() {
   const { ledgers, snapshots, profile, memberNo, saveSnapshot } = useLedgerStore()
 
   const [ym] = useState(() => activeYm(ledgers))
-  const [assets, setAssets] = useState<AssetItem[]>(
-    () => resolveSnapshot(snapshots, ym).items.map((it) => ({ ...it })),
-  )
+  // 화면을 열 때의 원본 — 저장할 때 '내가 지운 것'과 '배우자가 그사이 추가한 것'을 가르는 기준
+  const [baseline] = useState<AssetItem[]>(() => resolveSnapshot(snapshots, ym).items)
+  const [assets, setAssets] = useState<AssetItem[]>(() => baseline.map((it) => ({ ...it })))
 
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
   const childNames = profile.childNames ?? []
@@ -48,8 +49,34 @@ export default function AssetSetup() {
     setAssets((prev) => [...prev, { ...asset, id: genId() }])
   const removeAsset = (id: string) => setAssets((prev) => prev.filter((it) => it.id !== id))
 
+  /**
+   * 저장 — 서버 최신본과 3-way 병합한다.
+   *
+   * 이 화면의 assets는 진입 시점 스냅샷이라, 그사이 배우자가 다른 기기에서
+   * 자산을 추가했으면 통째로 덮어써서 없애버린다. baseline과 비교해
+   * '배우자가 새로 넣은 것'은 남기고 '내가 지운 것'만 뺀다.
+   */
+  const persist = async () => {
+    let server = baseline
+    const hid = useLedgerStore.getState().householdId
+    if (hid) {
+      try {
+        server = (await db.fetchSnapshot(hid, ym))?.items ?? baseline
+      } catch {
+        // 오프라인 등으로 못 읽으면 로컬 기준으로 저장
+      }
+    }
+    saveSnapshot({ ym, items: mergeAssets(server, baseline, assets) })
+  }
+
+  // 뒤로 갈 때도 저장한다 — '저장하기'를 안 누르고 나가면 지운 게 없던 일이 됐다
+  const saveAndBack = () => {
+    void persist()
+    setSelName(null)
+  }
+
   const save = () => {
-    saveSnapshot({ ym, items: assets })
+    void persist()
     navigate('/assets')
   }
 
@@ -143,7 +170,7 @@ export default function AssetSetup() {
   return (
     <Frame>
       <Header
-        onBack={() => setSelName(null)}
+        onBack={saveAndBack}
         title="자산 등록"
         subtitle={
           isChild

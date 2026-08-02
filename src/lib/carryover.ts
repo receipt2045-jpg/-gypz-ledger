@@ -91,6 +91,39 @@ export function deriveAssetsFromPrevious(prevItems: AssetItem[], ym: string): As
   }))
 }
 
+/**
+ * 자산 3-way 병합: 화면을 열어둔 사이 배우자가 추가한 자산을 지켜준다.
+ *
+ * 자산은 items처럼 구성원으로 나뉘지 않아(공동·자녀 계좌가 있다) 소유자로
+ * 가를 수 없다. 대신 화면에 처음 불러온 목록(baseline)과 비교해서,
+ * 서버에는 있는데 baseline엔 없는 항목 = 그사이 배우자가 추가한 것으로 보고 남긴다.
+ *
+ * @param server   저장 직전 서버에서 다시 읽은 목록
+ * @param baseline 이 화면에 처음 불러왔던 목록
+ * @param mine     지금 화면의 편집 결과
+ */
+export function mergeAssets(
+  server: AssetItem[],
+  baseline: AssetItem[],
+  mine: AssetItem[],
+): AssetItem[] {
+  const baselineIds = new Set(baseline.map((it) => it.id))
+  const mineById = new Map(mine.map((it) => [it.id, it]))
+  const serverIds = new Set(server.map((it) => it.id))
+
+  const out: AssetItem[] = []
+  for (const s of server) {
+    const edited = mineById.get(s.id)
+    if (edited) out.push(edited) // 내가 고친 것 → 내 값
+    else if (!baselineIds.has(s.id)) out.push(s) // 배우자가 새로 넣은 것 → 지킨다
+    // baseline에 있었는데 내 목록엔 없다 = 내가 지운 것 → 버린다
+  }
+  for (const m of mine) {
+    if (!serverIds.has(m.id)) out.push(m) // 내가 새로 넣은 것
+  }
+  return out
+}
+
 function findLatestSnapshotBefore(
   snapshots: AssetSnapshot[],
   ym: string,

@@ -128,6 +128,22 @@ export async function fetchLedger(
   }
 }
 
+/** 특정 월 자산 스냅샷만 다시 읽기 — 저장 직전, 배우자가 그사이 추가한 자산을 보존하기 위함 */
+export async function fetchSnapshot(
+  householdId: string,
+  ym: string,
+): Promise<AssetSnapshot | null> {
+  const { data, error } = await supabase
+    .from('snapshots')
+    .select('*')
+    .eq('household_id', householdId)
+    .eq('ym', ym)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return { ym: data.ym, items: data.items }
+}
+
 // ── 저장 (각 스토어 액션과 1:1 대응) ──────────
 
 export async function pushLedger(householdId: string, ledger: MonthlyLedger) {

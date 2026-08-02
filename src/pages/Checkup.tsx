@@ -20,6 +20,7 @@ import { confessSums, missingConfessedItems } from '../lib/confessLedger'
 import {
   activeYm,
   emptyItem,
+  mergeAssets,
   mergeMemberItems,
   netWorthOf,
   resolveLedger,
@@ -270,8 +271,12 @@ export default function Checkup() {
       const merged = Array.from(new Set([...(base.settledMembers ?? []), member])) as (1 | 2)[]
       const closed = merged.includes(1) && merged.includes(2)
       saveLedger({ ym, items: mergedItems, closed, settledMembers: merged })
-      // 자산은 자산 탭에서 관리하지만, 이 달의 순자산 스냅샷은 이어지도록 저장
-      saveSnapshot({ ym, items: assets })
+      // 자산은 자산 탭에서 관리하지만, 이 달의 순자산 스냅샷은 이어지도록 저장.
+      // 이 화면은 자산을 편집하지 않으므로 baseline = 내 목록. 그사이 배우자가
+      // 자산 탭에서 추가한 게 있으면 덮어쓰지 않고 살려둔다.
+      const hid = useLedgerStore.getState().householdId
+      const server = hid ? await db.fetchSnapshot(hid, ym).catch(() => null) : null
+      saveSnapshot({ ym, items: mergeAssets(server?.items ?? assets, assets, assets) })
     }
     setItems(mergedItems) // 완료 화면 합계도 병합 결과 기준으로
     setCommitting(false)
