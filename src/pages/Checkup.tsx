@@ -33,9 +33,9 @@ import {
   formatYmKorean,
   shiftYm,
 } from '../lib/format'
-import { GROUP_LABEL } from '../lib/constants'
+import { GROUP_LABEL, findCategoryGroup } from '../lib/constants'
 import { memberStyle } from '../lib/memberColors'
-import type { AssetItem, BudgetItem, CategoryGroup } from '../types'
+import type { AssetItem, BudgetItem, Categories, CategoryGroup } from '../types'
 
 interface StepDef {
   title: string
@@ -656,6 +656,7 @@ function MoneyStep({
   const [g, setG] = useState<CategoryGroup>(groups[0])
   const [cat, setCat] = useState(categories[groups[0]][0])
   const [newCatName, setNewCatName] = useState('')
+  const [nameError, setNameError] = useState<string | null>(null)
   const [memoOpen, setMemoOpen] = useState<string | null>(null)
 
   // '기타'가 없는 기존 데이터에도 항상 노출 (브리프 P1 2.1)
@@ -665,6 +666,12 @@ function MoneyStep({
     if (cat === NEW_CAT) {
       const name = newCatName.trim()
       if (!name) return
+      // 같은 이름이 다른 그룹에 있으면 막는다 — 두 스텝에 항목이 갈라져 혼란해진다
+      const clash = findCategoryGroup(categories as Categories, name, g)
+      if (clash) {
+        setNameError(`'${name}'은 이미 ${GROUP_LABEL[clash]}에 있어요. 다른 이름으로 적어주세요.`)
+        return
+      }
       onCreateCategory(g, name) // 설정의 카테고리 목록에도 저장
       onAdd(g, name)
     } else {
@@ -836,18 +843,27 @@ function MoneyStep({
             <input
               type="text"
               value={newCatName}
-              onChange={(e) => setNewCatName(e.target.value)}
+              onChange={(e) => {
+                setNewCatName(e.target.value)
+                if (nameError) setNameError(null)
+              }}
               onKeyDown={(e) => e.key === 'Enter' && submitAdd()}
               placeholder="새 카테고리 이름"
               autoFocus
-              className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
+              className={`w-full rounded-btn border bg-white px-3 py-2.5 text-[14px] text-ink outline-none placeholder:text-cap ${
+                nameError ? 'border-danger' : 'border-line focus:border-brand'
+              }`}
             />
+          )}
+          {nameError && (
+            <p className="text-[12.5px] font-medium text-danger">{nameError}</p>
           )}
           <div className="flex gap-2 pt-1">
             <button
               onClick={() => {
                 setAdding(false)
                 setNewCatName('')
+                setNameError(null)
               }}
               className="h-11 flex-1 rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
             >

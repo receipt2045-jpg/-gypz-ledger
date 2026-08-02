@@ -8,7 +8,7 @@ import type {
   OccasionEntry,
   Profile,
 } from '../types'
-import { DEFAULT_CATEGORIES } from './constants'
+import { DEFAULT_CATEGORIES, findCategoryGroup } from './constants'
 import { genId } from './carryover'
 import { buildSeed } from '../seed'
 import * as db from './db'
@@ -275,6 +275,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const trimmed = name.trim()
     const s = get()
     if (!trimmed || s.categories[group].includes(trimmed)) return
+    // 같은 이름이 다른 그룹에 있으면 거부 — 스텝마다 항목이 갈라져 "안 지워진다"가 된다
+    if (findCategoryGroup(s.categories, trimmed, group)) return
     const categories = { ...s.categories, [group]: [...s.categories[group], trimmed] }
     set({ categories })
     if (s.householdId) {

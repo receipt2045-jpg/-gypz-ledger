@@ -54,6 +54,31 @@ export const DEFAULT_CATEGORIES: Categories = {
 }
 
 /**
+ * 같은 이름이 다른 그룹에 이미 있는지 찾는다 (없으면 null).
+ *
+ * 이름이 두 그룹에 걸치면 항목이 스텝마다 따로 생겨서,
+ * 한쪽에서 지워도 다른 스텝에 남아 "안 지워진다"로 보인다.
+ * (실제 제보: '부수입'이 고정지출·변동지출 양쪽에 등록된 사례)
+ * '기타'처럼 처음부터 모든 그룹에 있는 기본 이름은 예외로 둔다.
+ */
+export function findCategoryGroup(
+  categories: Categories,
+  name: string,
+  exceptGroup: CategoryGroup,
+): CategoryGroup | null {
+  const trimmed = name.trim()
+  if (!trimmed || SHARED_CATEGORIES.includes(trimmed)) return null
+  for (const g of GROUP_ORDER) {
+    if (g === exceptGroup) continue
+    if (categories[g].includes(trimmed)) return g
+  }
+  return null
+}
+
+/** 여러 그룹에 함께 두어도 되는 기본 이름 */
+export const SHARED_CATEGORIES = ['기타']
+
+/**
  * 무지출 기록용 카테고리.
  * 안 쓴 날도 기록으로 남겨야 연속(스트릭)이 끊기지 않는다.
  * 금액 0원으로 저장되며, 예산·정산 합계에는 잡히지 않는다.
