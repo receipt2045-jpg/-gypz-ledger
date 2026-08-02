@@ -20,6 +20,7 @@ import { confessSums, missingConfessedItems } from '../lib/confessLedger'
 import {
   activeYm,
   emptyItem,
+  mergeMemberItems,
   netWorthOf,
   resolveLedger,
   resolveSnapshot,
@@ -196,7 +197,42 @@ export default function Checkup() {
       return [...prev, { ...base, planned: 0, actual: amount }]
     })
   }
-  const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id))
+  /**
+   * 저장 직전 이 달의 서버 상태를 읽어온다 (배우자가 그사이 저장했을 수 있음).
+   * 오프라인이면 로컬 기준으로 진행.
+   */
+  const fetchBase = async () => {
+    const local = resolveLedger(ledgers, ym)
+    const hid = useLedgerStore.getState().householdId
+    if (!hid) return local
+    try {
+      return (await db.fetchLedger(hid, ym)) ?? local
+    } catch {
+      return local
+    }
+  }
+
+  /**
+   * 삭제는 화면에서 지우는 즉시 저장한다.
+   *
+   * 예전에는 마지막 스텝의 '정산 완료하기'에서만 저장했다. 그래서 수입 스텝에서
+   * 항목을 지우고 뒤로 나가면 지운 게 없던 일이 됐고, 다시 들어오면 그대로 있었다.
+   * (0원 항목이 있어 다음 스텝으로 못 넘어가면 아예 저장할 방법이 없었다.)
+   * 정산 완료 상태(closed·settledMembers)는 건드리지 않는다.
+   */
+  const removeItem = (id: string) => {
+    if (!member) return
+    const next = items.filter((it) => it.id !== id)
+    setItems(next)
+    void fetchBase().then((base) => {
+      saveLedger({
+        ym,
+        items: mergeMemberItems(base.items, next, member),
+        closed: base.closed,
+        settledMembers: base.settledMembers ?? [],
+      })
+    })
+  }
 
   // '보통 이렇게 씁니다' — 해당 스텝 그룹에 2인 가구 평균 초안을 채워줌
   const fillPreset = (groups: CategoryGroup[]) => {
@@ -217,24 +253,10 @@ export default function Checkup() {
     if (!member || committing) return
     setCommitting(true)
 
-    // 저장 직전 서버에서 이 달을 다시 읽는다.
-    // 이 화면의 items는 진입 시점 스냅샷이라, 그사이 배우자가 다른 기기에서
-    // 정산했으면 그 저장분을 통째로 덮어쓰게 된다 — 배우자 항목은 서버 것을,
-    // 내 항목만 내 편집본을 쓰는 병합으로 방지. (화면은 내 항목만 편집 가능)
-    let base = resolveLedger(ledgers, ym)
-    const hid = useLedgerStore.getState().householdId
-    if (hid) {
-      try {
-        const server = await db.fetchLedger(hid, ym)
-        if (server) base = server
-      } catch {
-        // 오프라인 등으로 못 읽으면 로컬 기준으로 저장 (기존 동작 유지)
-      }
-    }
-    const mergedItems = [
-      ...base.items.filter((it) => it.member !== member),
-      ...items.filter((it) => it.member === member),
-    ]
+    // 배우자가 그사이 다른 기기에서 정산했으면 그 저장분을 통째로 덮어쓰게 된다.
+    // 배우자 항목은 서버 것을, 내 항목만 내 편집본을 쓰는 병합으로 방지.
+    const base = await fetchBase()
+    const mergedItems = mergeMemberItems(base.items, items, member)
 
     if (isBudget) {
       // 예산 세우기: 계획값만 저장, 정산 상태(closed·settledMembers)는 건드리지 않음
@@ -480,7 +502,14 @@ export default function Checkup() {
         caption={`${formatYmKorean(ym)} ${modeLabel}`}
       />
       <div className="flex-1 px-5 pb-40">
+        {/*
+          key로 스텝마다 새로 만든다. 없으면 네 스텝이 같은 인스턴스를 재사용해서
+          '항목 추가'의 그룹·카테고리 선택이 첫 스텝(수입) 값 그대로 남는다.
+          그 상태로 저축·투자 화면에서 추가하면 수입 카테고리가 뜨고,
+          그 화면엔 보이지도 않는 수입 항목이 만들어진다.
+        */}
         <MoneyStep
+          key={step}
           groups={def.groups}
           items={stepItems}
           valueField={field}

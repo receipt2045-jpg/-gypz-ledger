@@ -44,6 +44,24 @@ export function deriveItemsFromPrevious(prevItems: BudgetItem[], ym: string): Bu
   })
 }
 
+/**
+ * 저장용 병합: 배우자 항목은 base(서버) 것을, 내 항목만 내 편집본을 쓴다.
+ *
+ * 정산 화면의 items는 진입 시점 스냅샷이라, 그사이 배우자가 다른 기기에서
+ * 저장했으면 통째로 덮어쓰게 된다. 화면에서 편집 가능한 건 내 항목뿐이므로
+ * 그 부분만 교체하는 게 안전하다.
+ */
+export function mergeMemberItems(
+  baseItems: BudgetItem[],
+  myItems: BudgetItem[],
+  member: 1 | 2,
+): BudgetItem[] {
+  return [
+    ...baseItems.filter((it) => it.member !== member),
+    ...myItems.filter((it) => it.member === member),
+  ]
+}
+
 /** ledgers 배열에서 ym 이하의 가장 최근 ledger 찾기 */
 function findLatestBefore(ledgers: MonthlyLedger[], ym: string): MonthlyLedger | undefined {
   const before = ledgers.filter((l) => l.ym < ym).sort((a, b) => (a.ym < b.ym ? 1 : -1))
