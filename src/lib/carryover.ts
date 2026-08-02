@@ -22,26 +22,25 @@ export function isFixedLike(group: CategoryGroup): boolean {
   return FIXED_LIKE.includes(group)
 }
 
-/** 직전 월의 items로부터 새 달 items 파생 (이월 규칙 적용) */
+/**
+ * 직전 월의 items로부터 새 달 items 파생 (이월 규칙 적용)
+ *
+ * ID에 인덱스를 붙이는 이유:
+ * (그룹·카테고리·구성원)만으로 만들면 같은 카테고리를 두 개 쓰는 가구
+ * (예: '부수입' 20만 + '부수입' 5만)에서 ID가 겹친다. 그러면 React key가
+ * 충돌해 행이 엉뚱하게 보이고, 금액 수정·삭제가 두 행에 같이 먹는다.
+ * 인덱스는 배열 순서가 유지되는 한 렌더마다 동일해서 입력 포커스도 안 튄다.
+ */
 export function deriveItemsFromPrevious(prevItems: BudgetItem[], ym: string): BudgetItem[] {
-  return prevItems.map((it) => {
+  return prevItems.map((it, i) => {
+    const id = `${ym}-${it.group}-${it.category}-${it.member}-${i}`
     const base = it.actual || it.planned
     if (isFixedLike(it.group)) {
       // income/saving/investment/fixed: planned = actual = 지난달 값
-      return {
-        ...it,
-        id: `${ym}-${it.group}-${it.category}-${it.member}`,
-        planned: base,
-        actual: base,
-      }
+      return { ...it, id, planned: base, actual: base }
     }
     // variable: planned = 지난달 planned, actual = 0
-    return {
-      ...it,
-      id: `${ym}-${it.group}-${it.category}-${it.member}`,
-      planned: it.planned,
-      actual: 0,
-    }
+    return { ...it, id, planned: it.planned, actual: 0 }
   })
 }
 
