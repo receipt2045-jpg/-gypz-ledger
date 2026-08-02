@@ -70,6 +70,13 @@ describe('confessSums — 구성원·그룹·카테고리별 합계', () => {
   it('다른 달은 섞이지 않는다', () => {
     expect(confessSums(list, '2026-08').get('1:variable:식비')).not.toBe(16000)
   })
+
+  it('무지출(0원)은 정산 합계에 잡히지 않는다', () => {
+    const withNoSpend = [...list, c('n1', 1, 'variable', '무지출', 0, localIso(2026, 8, 5))]
+    const sums = confessSums(withNoSpend, '2026-08')
+    expect(sums.has('1:variable:무지출')).toBe(false)
+    expect(sums.get('1:variable:식비')).toBe(15000) // 나머지는 그대로
+  })
 })
 
 describe('missingConfessedItems — 정산에 빠진 고백 항목', () => {

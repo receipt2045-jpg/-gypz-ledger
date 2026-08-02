@@ -7,6 +7,7 @@
 // ============================================================
 import type { CategoryGroup, Confession } from '../types'
 import { abbreviateKRW, formatWon } from './format'
+import { NO_SPEND } from './constants'
 
 // ── 3분법 버킷 ────────────────────────────────
 export type Bucket = 'reduce' | 'protect' | 'leverage' | 'grow' | 'income' | 'neutral'
@@ -293,6 +294,23 @@ export function pickReaction(
   c: Pick<Confession, 'category' | 'kind' | 'amount'>,
   all: Confession[] = [],
 ): Reaction {
+  // 무지출은 유일하게 잔소리가 아니라 칭찬을 받는 기록이다.
+  if (c.category === NO_SPEND) {
+    const days = noSpendCount(all)
+    return {
+      bubbles: [
+        { who: '모아', text: noRepeat(NO_SPEND_MOA, 'nospend-moa', asStr) },
+        {
+          who: '불리',
+          text:
+            days >= 2
+              ? `이번 달 안 쓴 날 ${days}일째예요. 이 페이스면 한 달에 ${abbreviateKRW(days * 20_000)} 아껴요 📈`
+              : '오늘 안 쓴 만큼이 그대로 남았어요. 이게 제일 확실한 저축이에요 🤍',
+        },
+      ],
+    }
+  }
+
   const bucket = bucketOf(c.kind, c.category)
   const ym = new Date().toISOString().slice(0, 7)
   const same = all.filter((x) => x.category === c.category && x.createdAt.slice(0, 7) === ym)
@@ -361,6 +379,25 @@ export function weeklyReduceCost(confessions: Confession[]): WeeklyCost {
   )
   const weekSum = reduce.reduce((s, c) => s + c.amount, 0)
   return { count: reduce.length, weekSum, perYear: weekSum * 52, tenYears: weekSum * 520 }
+}
+
+// ── 무지출 ────────────────────────────────────
+const NO_SPEND_MOA = [
+  '오늘 한 푼도 안 썼다고? 웬일이야 🐷👏',
+  '지갑이 오늘 하루 푹 쉬었네요. 잘했어요 🤍',
+  '안 쓴 날도 기록이에요. 이런 날이 쌓여서 목돈이 돼요 👏',
+  '오… 오늘은 잔소리할 게 없네. 다음에 봐요 😉',
+]
+
+/** 이번 달 무지출로 기록한 날 수 */
+export function noSpendCount(all: Confession[]): number {
+  const ym = new Date().toISOString().slice(0, 7)
+  const days = new Set(
+    all
+      .filter((c) => c.category === NO_SPEND && c.createdAt.slice(0, 7) === ym)
+      .map((c) => new Date(c.createdAt).toLocaleDateString('sv-SE')),
+  )
+  return days.size
 }
 
 // ── 스트릭 ────────────────────────────────────

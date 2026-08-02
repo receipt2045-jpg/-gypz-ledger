@@ -38,7 +38,7 @@ import { useLedgerStore } from '../lib/store'
 import { pickReaction, streakOf, type Reaction } from '../lib/reactions'
 import { formatComma, formatWon } from '../lib/format'
 import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
-import { GROUP_LABEL } from '../lib/constants'
+import { GROUP_LABEL, NO_SPEND } from '../lib/constants'
 import type { CategoryGroup } from '../types'
 
 // 카테고리 아이콘 매핑 (없으면 Coins)
@@ -155,6 +155,15 @@ export default function Confess() {
   const sortByFreq = (list: string[]) =>
     [...list].sort((a, b) => (freq.get(b) ?? 0) - (freq.get(a) ?? 0))
 
+  // 오늘 내가 이미 기록했는지 (무지출 버튼 노출 여부)
+  const confessedToday = useMemo(() => {
+    const today = new Date().toLocaleDateString('sv-SE')
+    const me = memberNo ?? 1
+    return confessions.some(
+      (c) => c.memberNo === me && new Date(c.createdAt).toLocaleDateString('sv-SE') === today,
+    )
+  }, [confessions, memberNo])
+
   const groups: { title: string; kind: CategoryGroup; cats: string[] }[] = [
     { title: '변동지출', kind: 'variable', cats: sortByFreq(categories.variable) },
     { title: '고정지출', kind: 'fixed', cats: sortByFreq(categories.fixed) },
@@ -176,6 +185,11 @@ export default function Confess() {
     const reaction = pickReaction({ category: headline.category, kind: headline.kind, amount: headline.amount }, all)
     const streak = streakOf(all, memberNo ?? 1)
     setResult({ reaction, streak, saved: entries.map(({ category, amount, note }) => ({ category, amount, note })) })
+  }
+
+  // ── 무지출: 0원으로 바로 저장 (확인 단계 없음) ─
+  const saveNoSpend = () => {
+    finishSave([{ category: NO_SPEND, kind: 'variable', amount: 0 }])
   }
 
   // ── 줄글: 파싱 → 확인 단계로 ────────────────
@@ -543,7 +557,7 @@ export default function Confess() {
               if (parseMsg) setParseMsg(null)
             }}
             rows={4}
-            placeholder={'점심 9천원, 커피 5,500원, 택시 12,000원\n\n말하듯 편하게 적어도 돼요'}
+            placeholder={'"점심 9천원, 커피 5,500원"\n이라고 말해보세요'}
             className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none placeholder:text-cap"
           />
           <div className="mt-1 flex items-center justify-between">
@@ -573,6 +587,22 @@ export default function Confess() {
           </p>
         )}
         {parseMsg && <p className="px-1 text-[13px] font-bold text-amber-600">{parseMsg}</p>}
+
+        {/* 무지출 — 안 쓴 날도 기록해야 연속이 안 끊긴다 */}
+        {!confessedToday && (
+          <button
+            onClick={saveNoSpend}
+            className="flex w-full items-center justify-between rounded-card bg-card px-4 py-3.5 text-left shadow-card active:bg-line"
+          >
+            <span>
+              <span className="block text-[14px] font-bold text-ink">🍚 오늘은 안 썼어요</span>
+              <span className="mt-0.5 block text-[12px] text-sub">
+                0원도 기록이에요. 연속 일수가 안 끊겨요
+              </span>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-cap" />
+          </button>
+        )}
       </div>
       <BottomBar>
         <button

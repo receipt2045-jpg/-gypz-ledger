@@ -74,7 +74,8 @@ create table public.confessions (
   member_no smallint not null check (member_no in (1, 2)),
   category text not null,
   kind text not null check (kind in ('income', 'saving', 'investment', 'fixed', 'variable')),
-  amount bigint not null check (amount > 0),
+  -- 0원 = 무지출 기록 (안 쓴 날도 남겨야 연속이 안 끊긴다)
+  amount bigint not null check (amount >= 0),
   note text,
   created_at timestamptz not null default now()
 );

@@ -53,6 +53,13 @@ export const DEFAULT_CATEGORIES: Categories = {
   ],
 }
 
+/**
+ * 무지출 기록용 카테고리.
+ * 안 쓴 날도 기록으로 남겨야 연속(스트릭)이 끊기지 않는다.
+ * 금액 0원으로 저장되며, 예산·정산 합계에는 잡히지 않는다.
+ */
+export const NO_SPEND = '무지출'
+
 // 용어 툴팁 문구 (개선브리프 5장 최종본 그대로)
 export const TERM_TIP = {
   netWorth: '자산에서 부채를 뺀, 진짜 내 재산입니다',

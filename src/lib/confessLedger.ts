@@ -1,4 +1,5 @@
 import type { BudgetItem, CategoryGroup, Confession } from '../types'
+import { NO_SPEND } from './constants'
 
 // ── 고백 → 가계부 연결 ─────────────────────────
 // 고백은 습관 로그지만, 쌓인 내역은 월간 가계부에서 보이고
@@ -19,6 +20,8 @@ export function monthConfessions(confessions: Confession[], ym: string): Confess
 export function confessSums(confessions: Confession[], ym: string): Map<string, number> {
   const m = new Map<string, number>()
   for (const c of monthConfessions(confessions, ym)) {
+    // 무지출(0원)은 기록일 뿐 지출이 아니므로 정산 합계에서 뺀다
+    if (c.category === NO_SPEND || c.amount <= 0) continue
     const key = `${c.memberNo}:${c.kind}:${c.category}`
     m.set(key, (m.get(key) ?? 0) + c.amount)
   }
