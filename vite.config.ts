@@ -1,3 +1,4 @@
+// 테스트 설정은 vitest.config.ts에 따로 있다 (여기 두면 rollup 타입과 충돌한다)
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
