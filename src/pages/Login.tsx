@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -23,6 +23,16 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [agreed, setAgreed] = useState(false)
+  // 사회적 증거 — 실제 가구 수 (RPC 실패 시 null이면 줄 자체를 숨김)
+  const [households, setHouseholds] = useState<number | null>(null)
+
+  useEffect(() => {
+    supabase
+      .rpc('public_household_count')
+      .then(({ data, error: err }) => {
+        if (!err && typeof data === 'number' && data >= 10) setHouseholds(data)
+      })
+  }, [])
 
   const canSubmit = email.trim() && password.length >= 6 && !busy
 
@@ -83,6 +93,11 @@ export default function Login() {
           <p className="mt-2 text-[15px] font-medium leading-relaxed text-sub">
             매달 한 번, 부부가 함께 순자산을 키우는 가계부입니다 🤍
           </p>
+          {households !== null && (
+            <p className="mt-2 text-[13.5px] font-bold text-brand">
+              지금 <span className="tnum">{households}</span>가구가 함께 쓰고 있어요
+            </p>
+          )}
 
           {/* 구글 로그인 */}
           <button
