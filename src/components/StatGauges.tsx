@@ -1,11 +1,13 @@
 // 홈 상단 미니 게이지 4종 (채움가계부 스타일 대시보드)
 // 링 = 비율, 가운데 = 값. 순수 SVG라 가볍다.
 
-function shortWon(n: number): string {
+// 부채가 자산보다 많으면 순자산이 음수다 — 부호를 버리면 -4천만이 4천만으로 보인다
+export function shortWon(n: number): string {
+  const sign = n < 0 ? '-' : ''
   const abs = Math.abs(n)
   const man = Math.round(abs / 10000)
-  if (man >= 10000) return `${(man / 10000).toFixed(1)}억`
-  return `${man.toLocaleString('ko-KR')}만`
+  if (man >= 10000) return `${sign}${(man / 10000).toFixed(1)}억`
+  return `${sign}${man.toLocaleString('ko-KR')}만`
 }
 
 function Ring({
