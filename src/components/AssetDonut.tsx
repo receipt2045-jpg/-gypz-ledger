@@ -83,9 +83,13 @@ function Legend({
         <span className={`h-2 w-2 rounded-full ${dot}`} />
         {label}
       </span>
-      <span className={`tnum text-[13px] font-bold ${danger ? 'text-danger' : 'text-ink'}`}>
+      {/* danger(부채)는 양수로 들고 와서 −를 직접 붙인다. 나머지(순자산)는
+          음수일 수 있으므로 절댓값을 취하면 안 된다 — -4천만이 4천만으로 보였다. */}
+      <span
+        className={`tnum text-[13px] font-bold ${danger || value < 0 ? 'text-danger' : 'text-ink'}`}
+      >
         {danger && value > 0 ? '−' : ''}
-        {abbreviateKRW(Math.abs(value))}
+        {abbreviateKRW(danger ? Math.abs(value) : value)}
       </span>
     </div>
   )
