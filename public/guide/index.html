@@ -1,0 +1,623 @@
+<title>모아불리 사용 가이드북</title>
+
+<style>
+  :root {
+    --paper: #E4E9EF;
+    --card: #FFFFFF;
+    --ink: #0F1519;
+    --sub: #3A4655;
+    --cap: #69737F;
+    --line: #DCE1E7;
+    --blue: #1F6FE5;
+    --blue-soft: #E7F0FD;
+    --frame: #171D24;
+    --shadow: 0 10px 24px rgba(15, 21, 25, .08);
+    --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic",
+      "Noto Sans KR", "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0E1318; --card: #1B222B; --ink: #F2F5F8; --sub: #C2CBD6;
+      --cap: #8B96A3; --line: #2C353F; --blue: #6BAAFF; --blue-soft: #16283D;
+      --frame: #000000; --shadow: 0 10px 24px rgba(0, 0, 0, .5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0E1318; --card: #1B222B; --ink: #F2F5F8; --sub: #C2CBD6;
+    --cap: #8B96A3; --line: #2C353F; --blue: #6BAAFF; --blue-soft: #16283D;
+    --frame: #000000; --shadow: 0 10px 24px rgba(0, 0, 0, .5);
+  }
+  :root[data-theme="light"] {
+    --paper: #E4E9EF; --card: #FFFFFF; --ink: #0F1519; --sub: #3A4655;
+    --cap: #69737F; --line: #DCE1E7; --blue: #1F6FE5; --blue-soft: #E7F0FD;
+    --frame: #171D24; --shadow: 0 10px 24px rgba(15, 21, 25, .08);
+  }
+
+  * { box-sizing: border-box; }
+
+  .book {
+    background: var(--paper); color: var(--ink); font-family: var(--sans);
+    line-height: 1.6; padding: 0 20px 72px; overflow-x: hidden;
+    word-break: keep-all;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+
+  /* ── 표지 ── */
+  .cover {
+    display: grid; gap: 16px; padding: 72px 0 56px;
+    text-align: center; justify-items: center;
+  }
+  .cover .mark {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--blue);
+  }
+  .cover h1 {
+    margin: 0; font-size: clamp(34px, 6vw, 52px); font-weight: 800;
+    letter-spacing: -.035em; line-height: 1.15; text-wrap: balance;
+  }
+  .cover p {
+    margin: 0; max-width: 27em; color: var(--sub);
+    font-size: clamp(15px, 1.8vw, 16.5px); line-height: 1.75;
+  }
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
+  .flow span {
+    font-size: 12.5px; font-weight: 600; color: var(--sub);
+    background: var(--card); padding: 7px 13px; border-radius: 999px;
+  }
+
+  /* ── 페이지 = 하나의 카드 ── */
+  .page {
+    background: var(--card); border-radius: 18px;
+    padding: clamp(26px, 3.6vw, 38px); margin-bottom: 16px;
+    box-shadow: var(--shadow);
+    display: grid; gap: clamp(22px, 3vw, 30px);
+  }
+  .head { display: grid; gap: 10px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11.5px; font-weight: 700;
+    letter-spacing: .06em; color: var(--blue);
+  }
+  .eyebrow i {
+    font-style: normal; background: var(--blue); color: #fff;
+    width: 22px; height: 22px; border-radius: 7px;
+    display: grid; place-items: center; font-size: 11px;
+  }
+  .head h2 {
+    margin: 0; font-size: clamp(22px, 3vw, 29px); font-weight: 800;
+    letter-spacing: -.03em; line-height: 1.3; text-wrap: balance;
+  }
+  .head .lede { margin: 0; max-width: 40em; color: var(--sub); font-size: 15.5px; line-height: 1.7; }
+  .head .lede b { color: var(--ink); font-weight: 700; }
+
+  /* ── [화면 | 사용 방법] ── */
+  .pair {
+    display: grid; grid-template-columns: 258px minmax(0, 1fr);
+    gap: clamp(22px, 3vw, 34px); align-items: start;
+    border-top: 1px solid var(--line); padding-top: clamp(22px, 3vw, 28px);
+  }
+  @media (max-width: 720px) {
+    .pair { grid-template-columns: 1fr; justify-items: center; }
+    .how { width: 100%; }
+  }
+
+  .how h3 {
+    margin: 0 0 4px; font-size: 12.5px; font-weight: 700;
+    color: var(--cap); letter-spacing: .04em;
+  }
+  .how ol { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+  /* li 안에 <b>·<em>이 섞여 있어 grid를 쓰면 인라인 요소가 별도 칸으로 튄다.
+     번호는 절대배치로 빼고 본문은 한 덩어리로 흐르게 둔다. */
+  .how li {
+    counter-increment: step;
+    position: relative; padding: 11px 0 11px 34px;
+    border-top: 1px solid var(--line);
+    font-size: 15px; color: var(--ink); line-height: 1.6;
+  }
+  .how li:first-child { border-top: none; }
+  .how li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 12px;
+    width: 22px; height: 22px; border-radius: 7px;
+    background: var(--blue-soft); color: var(--blue);
+    font-family: var(--mono); font-size: 11.5px; font-weight: 700;
+    display: grid; place-items: center;
+  }
+  .how b { font-weight: 700; }
+  .how em {
+    font-style: normal; color: var(--cap); font-size: 13.5px;
+    display: block; margin-top: 3px; line-height: 1.55;
+  }
+
+  /* ── 폰 목업 ── */
+  .shot { display: flex; justify-content: center; }
+  .phone {
+    width: 258px; max-width: 100%; background: #F2F4F6; color: #191F28;
+    border: 6px solid var(--frame); border-radius: 30px;
+    padding: 12px 10px 14px; font-size: 12px; line-height: 1.55;
+  }
+  .ph-top { text-align: center; font-size: 12px; font-weight: 700; margin-bottom: 9px; }
+  .ph-cap { font-size: 10px; color: #8B95A1; }
+  .ph-big { font-size: 21px; font-weight: 800; letter-spacing: -.02em; }
+  .ph-up { font-size: 11px; font-weight: 700; color: #3182F6; }
+  .ph-card { background: #fff; border-radius: 13px; padding: 11px 12px; margin-top: 8px; }
+  .ph-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .ph-div { border-top: 1px solid #E5E8EB; margin: 8px -12px; }
+  .ph-strong { font-size: 12px; font-weight: 700; }
+  .ph-sub { font-size: 11px; color: #4E5968; }
+  .ph-mini { font-size: 10px; color: #8B95A1; margin-top: 3px; }
+  .ph-link { font-size: 11px; font-weight: 700; color: #3182F6; white-space: nowrap; }
+  .bar { height: 6px; background: #E5E8EB; border-radius: 3px; overflow: hidden; margin-top: 5px; }
+  .bar i { display: block; height: 100%; background: #3182F6; border-radius: 3px; }
+  .ph-quick { display: flex; gap: 4px; margin-top: 8px; }
+  .ph-quick div {
+    flex: 1; background: #fff; border-radius: 11px; padding: 8px 0;
+    text-align: center; font-size: 10px; font-weight: 700;
+  }
+  .ph-pill {
+    display: inline-block; background: #E8F0FE; color: #1B58B8;
+    font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+  }
+  .ph-item { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; font-size: 11.5px; }
+  .ph-item + .ph-item { border-top: 1px solid #EEF1F4; }
+  .ph-cta {
+    background: #3182F6; color: #fff; text-align: center; font-weight: 700;
+    font-size: 12px; border-radius: 11px; padding: 10px; margin-top: 9px;
+  }
+  .ph-ghost {
+    background: #fff; color: #4E5968; text-align: center; font-weight: 700;
+    font-size: 11.5px; border-radius: 11px; padding: 9px; margin-top: 6px;
+  }
+  .ph-input {
+    background: #fff; border-radius: 12px; padding: 11px 12px; margin-top: 8px;
+    font-size: 11.5px; color: #8B95A1; min-height: 80px;
+  }
+  .ph-bubble { border-radius: 12px; padding: 9px 11px; font-size: 11px; margin-top: 6px; max-width: 93%; }
+  .b-moa { background: #fff; border-top-left-radius: 4px; }
+  .b-bul { background: #3182F6; color: #fff; border-top-right-radius: 4px; margin-left: auto; }
+  .b-name { font-size: 9.5px; font-weight: 700; margin-bottom: 2px; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* ── 마무리 ── */
+  .outro {
+    background: var(--card); border-radius: 18px; box-shadow: var(--shadow);
+    padding: clamp(30px, 4vw, 44px); text-align: center;
+    display: grid; gap: 14px; justify-items: center;
+  }
+  .outro h2 { margin: 0; font-size: clamp(22px, 3vw, 30px); font-weight: 800; letter-spacing: -.03em; }
+  .outro p { margin: 0; max-width: 30em; color: var(--sub); font-size: 15.5px; line-height: 1.75; }
+  .day { display: grid; width: 100%; max-width: 640px; margin-top: 10px; text-align: left; }
+  .day > div {
+    padding: 12px 0; border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 14px; align-items: baseline;
+  }
+  .day > div:first-child { border-top: none; }
+  .day span { font-size: 12.5px; font-weight: 700; color: var(--blue); }
+  .day p { margin: 0; font-size: 14.5px; color: var(--sub); max-width: none; line-height: 1.6; }
+  .day b { color: var(--ink); font-weight: 700; }
+</style>
+<div class="book">
+<div class="wrap">
+
+  <header class="cover">
+    <div class="mark">moabuli · 사용 가이드</div>
+    <h1>목적지부터 정하고<br>시작하세요</h1>
+    <p>가계부 쓰다 그만둔 적 있으시죠.<br>게을러서가 아니에요.<br>어디로 가는지 모른 채 적기만 해서 그렇습니다.<br><br>모아불리는 10년 뒤부터 거꾸로 내려옵니다.<br>순서대로 따라와 보세요.</p>
+    <div class="flow">
+      <span>10년 · 내집마련</span>
+      <span>올해 · 세금과 목돈</span>
+      <span>이번 달 · 예산</span>
+      <span>오늘 · 한 마디</span>
+    </div>
+  </header>
+
+  <!-- 1 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>01</i><span>10년 뒤</span></div>
+      <h2>우리집까지 얼마나 남았을까요</h2>
+      <p class="lede">저축률 막대를 움직이면<br>10년 뒤 밑천이 바로 나옵니다.<br><br>절약·절세는 <b>방어</b>, 부수입·투자는 <b>공격</b>이에요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">🏠 우리집까지 가는 길</div>
+          <div class="ph-card">
+            <div class="ph-sub" style="font-weight:700">저축률을 움직여 보세요 🎚</div>
+            <div class="ph-big tnum" style="font-size:19px;margin-top:6px">59%</div>
+            <div class="ph-mini">월 377만원 저축</div>
+            <div class="bar"><i style="width:59%"></i></div>
+            <div class="ph-div"></div>
+            <div class="ph-cap">이 저축률이면 10년 뒤 우리집 밑천</div>
+            <div class="ph-big tnum" style="font-size:19px">4억 5,312만원</div>
+          </div>
+          <div class="ph-card">
+            <div class="ph-sub" style="font-weight:700;margin-bottom:6px">우리 팀 상태</div>
+            <div class="ph-item"><span>🛡 절약 · 절세</span><span style="color:#3182F6;font-weight:700">방어</span></div>
+            <div class="ph-item"><span>⚔️ 부수입</span><span style="color:#8B95A1">비어있음</span></div>
+            <div class="ph-item"><span>⚔️ 투자</span><span style="color:#3182F6;font-weight:700">공격</span></div>
+          </div>
+          <div class="ph-card" style="background:#E8F0FE">
+            <div class="ph-strong" style="color:#1B58B8;font-size:11.5px">이번 주, 안 쓰는 물건 1개 중고로 올려보기 📦</div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>아래 탭에서 <b>내집마련</b>을 누르세요.</li>
+          <li>저축률 막대를 좌우로 움직여 보세요.</li>
+          <li>10년 뒤 금액이 실시간으로 바뀝니다.</li>
+          <li><b>우리 팀 상태</b>에서 비어 있는 칸을 찾으세요.<em>비어있음이 보이면 거기가 지금 약한 곳이에요.</em></li>
+          <li>맨 아래 <b>이번 주 할 일</b> 하나만 이번 주에 해보세요.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>02</i><span>지금 우리</span></div>
+      <h2>통장은 각자, 숫자는 같이 봅니다</h2>
+      <p class="lede">누구 명의로 얼마가 어디 있는지<br>한 장에 모입니다.<br><br>빚을 뺀 진짜 재산이 <b>순자산</b>이에요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">자산</div>
+          <div class="ph-cap">순자산</div>
+          <div class="ph-big tnum">10억 4,270만원</div>
+          <div class="ph-up tnum">전월 대비 +2,500만원</div>
+          <div class="ph-card">
+            <div class="ph-item"><span>총자산</span><b class="tnum">18억 5,270만원</b></div>
+            <div class="ph-item"><span>부채</span><b class="tnum" style="color:#F04452">−8억 1,000만원</b></div>
+          </div>
+          <div class="ph-card">
+            <div class="ph-item"><span>부동산</span><b class="tnum">17억 1,200만원</b></div>
+            <div class="ph-item"><span>주식/코인</span><b class="tnum">7,490만원</b></div>
+            <div class="ph-item"><span>연금/보험</span><b class="tnum">4,580만원</b></div>
+            <div class="ph-item"><span>현금성</span><b class="tnum">2,000만원</b></div>
+          </div>
+          <div class="ph-card">
+            <div class="ph-row"><span class="ph-sub">10년 목표</span><span class="ph-strong" style="color:#3182F6">35%</span></div>
+            <div class="bar"><i style="width:35%"></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>아래 탭에서 <b>자산</b>을 누르세요.</li>
+          <li>오른쪽 위 <b>등록·수정</b>을 누릅니다.</li>
+          <li>통장·주식·부동산을 하나씩 넣으세요.<em>대출은 부채로 넣으시면 됩니다.</em></li>
+          <li>소유자를 <b>남편·아내·공동</b> 중에 고르세요.</li>
+          <li>달러 자산은 통화를 USD로 바꾸세요.<em>환율은 자동으로 계산됩니다.</em></li>
+          <li>다 넣으면 순자산이 바로 나옵니다.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>03</i><span>올해 · 세금</span></div>
+      <h2>오늘 결제, 누구 카드로 하실 건가요</h2>
+      <p class="lede">부부 카드값은 합쳐지지 않아요.<br><b>각자 이름으로 따로 계산됩니다.</b><br><br>연봉 두 개만 넣으면 답이 나와요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">연말정산 미리보기</div>
+          <div class="ph-card">
+            <div class="ph-sub" style="font-weight:700">두 분의 연봉</div>
+            <div class="ph-item"><span><span class="ph-pill">남편</span></span><b class="tnum">60,000,000원</b></div>
+            <div class="ph-item"><span><span class="ph-pill" style="background:#FDECF2;color:#B03A62">아내</span></span><b class="tnum">30,000,000원</b></div>
+          </div>
+          <div class="ph-card" style="background:#3182F6">
+            <div style="font-size:10.5px;color:#D7E7FF;font-weight:700">지금은</div>
+            <div style="font-size:17px;font-weight:800;color:#fff;line-height:1.35;margin-top:2px">아내 카드로 쓰는 게 유리해요</div>
+            <div style="font-size:11px;color:#DCEAFF;margin-top:6px">문턱까지 남은 금액이 더 적어요. 먼저 넘겨두면 그 뒤부터 공제가 시작돼요.</div>
+          </div>
+          <div class="ph-card">
+            <div class="ph-item"><span>남편 · 공제 시작</span><b class="tnum">1,500만원</b></div>
+            <div class="ph-item"><span>아내 · 공제 시작</span><b class="tnum">750만원</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>홈 <b>오늘 카드</b>의 맨 아랫줄을 누르세요.<em>내집마련 탭에서도 들어갈 수 있어요.</em></li>
+          <li>두 분 연봉을 각각 넣습니다.<em>세전 금액이고, 대략이어도 괜찮아요.</em></li>
+          <li>올해 쓴 카드값을 알면 같이 넣으세요.<em>모르면 비워두셔도 됩니다.</em></li>
+          <li>파란 칸에 <b>누구 카드를 쓸지</b> 나옵니다.</li>
+          <li>이제 결제할 때마다 그 카드를 쓰세요.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>04</i><span>올해 · 목돈</span></div>
+      <h2>예산은 여기서 무너집니다</h2>
+      <p class="lede">자동차세, 명절 용돈, 자동차보험, 경조사.<br>매달은 아니지만 <b>반드시 오는 돈</b>이에요.<br><br>공동 카드에서 나가는 큰 지출도 여기 적으세요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">2026년 · 연간</div>
+          <div class="ph-card">
+            <div class="ph-row">
+              <span class="ph-strong">비정기 지출</span>
+              <span class="ph-link">＋ 추가</span>
+            </div>
+            <div class="ph-mini">경조사·명절·자동차·세금처럼 가끔 오는 큰돈<br>공동 카드 지출도 여기에</div>
+            <div class="ph-div"></div>
+            <div class="ph-item"><span>2/14 · 자동차 · 자동차세</span><b class="tnum">32만원</b></div>
+            <div class="ph-item"><span>5/18 · 지인경조사 · 결혼식</span><b class="tnum">10만원</b></div>
+            <div class="ph-item"><span>9/28 · 명절 · 추석 용돈</span><b class="tnum">60만원</b></div>
+            <div class="ph-item"><span>11/03 · 세금·보험 · 자동차보험</span><b class="tnum">78만원</b></div>
+          </div>
+          <div class="ph-card" style="background:#FFF8E8">
+            <div class="ph-strong" style="color:#B77B0B;font-size:11.5px">올해 합계 180만원</div>
+            <div class="ph-mini">월로 나누면 15만원씩 미리 떼둬야 해요</div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>홈 오른쪽 위 <b>📊 아이콘</b>을 누르세요.</li>
+          <li>맨 아래 <b>비정기 지출</b>에서 <b>＋ 추가</b>를 누릅니다.</li>
+          <li>날짜·항목·금액을 넣으세요.</li>
+          <li>작년 카드 명세서를 보면서 한 번에 몰아 넣으면 편해요.</li>
+          <li>올해 합계를 12로 나누세요.<em>그 금액만큼 매달 따로 떼두시면 됩니다.</em></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>05</i><span>오늘 · 홈</span></div>
+      <h2>아침에 홈만 열면 오늘 할 일이 끝나요</h2>
+      <p class="lede">맨 위는 순자산,<br>바로 아래가 <b>오늘 카드</b>예요.<br><br>세 줄이면 됩니다.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">‹ 2026년 10월 ›</div>
+          <div class="ph-cap">10월 순자산</div>
+          <div class="ph-big tnum">10억 4,270만원</div>
+          <div class="ph-up tnum">지난달보다 +2,500만원</div>
+          <div class="ph-card">
+            <div class="ph-row">
+              <span class="ph-strong">🎙️ 오늘의 고백</span>
+              <span class="ph-link">고백 ›</span>
+            </div>
+            <div class="ph-div"></div>
+            <div class="ph-row">
+              <span class="ph-sub">이번 달 변동지출</span>
+              <span class="ph-strong tnum">2만원 <span style="color:#8B95A1;font-weight:500">/ 180만원</span></span>
+            </div>
+            <div class="bar"><i style="width:4%"></i></div>
+            <div class="ph-mini">고백한 만큼 채워져요 · 177만원 남음</div>
+            <div class="ph-div"></div>
+            <div class="ph-row">
+              <span class="ph-sub">💳 오늘 긁을 땐 <b style="color:#3182F6">아내 카드</b></span>
+              <span class="ph-link">왜? ›</span>
+            </div>
+          </div>
+          <div class="ph-quick">
+            <div>📝<br>예산 세우기</div>
+            <div>✅<br>정산하기</div>
+            <div>🏦<br>자산 입력</div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>아침에 앱을 열면 바로 보입니다.</li>
+          <li><b>첫 줄</b> — 오늘 고백했는지 확인하세요.</li>
+          <li><b>둘째 줄</b> — 이번 달 얼마 남았는지 보세요.<em>막대는 고백할 때마다 채워집니다.</em></li>
+          <li><b>셋째 줄</b> — 오늘 쓸 카드를 확인하세요.</li>
+          <li>여기까지 10초면 끝납니다.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>06</i><span>오늘 · 기록</span></div>
+      <h2>말하듯 한 줄이면 끝납니다</h2>
+      <p class="lede">"점심 9천원 커피 5,500원 택시 12,000원"<br><br>이렇게 <b>쉼표 없이 말해도</b><br>세 건으로 나눠서 기록해요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">오늘 뭐에 썼나요?</div>
+          <div class="ph-mini" style="text-align:center;margin-bottom:4px">쓴 것들을 한 번에 적어주세요</div>
+          <div class="ph-input">점심 9천원, 커피 5,500원,<br>택시 12,000원<br><br>말하듯 편하게 적어도 돼요</div>
+          <div class="ph-ghost">🎙️ 말로 하기</div>
+          <div class="ph-cta">확인하기</div>
+          <div class="ph-card" style="margin-top:12px">
+            <div class="ph-mini" style="margin:0 0 6px">이렇게 기록할까요?</div>
+            <div class="ph-item"><span>식비 · 점심</span><b class="tnum">9,000원</b></div>
+            <div class="ph-item"><span>카페 · 커피</span><b class="tnum">5,500원</b></div>
+            <div class="ph-item"><span>자동차 · 택시</span><b class="tnum">12,000원</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>아래 탭 맨 오른쪽 <b>고백</b>을 누르세요.<em>빨간 점이 있으면 오늘 아직 안 하신 거예요.</em></li>
+          <li>오늘 쓴 걸 한 줄로 적으세요.</li>
+          <li>키보드의 <b>마이크</b>를 누르면 말로 넣을 수 있어요.</li>
+          <li><b>확인하기</b>를 누르면 항목별로 나뉩니다.</li>
+          <li>카테고리가 틀렸으면 눌러서 바꾸세요.<em>한 번 고치면 다음부터 알아서 맞춥니다.</em></li>
+          <li><b>N건 고백하기</b>를 누르면 끝.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>07</i><span>오늘 · 반응</span></div>
+      <h2>모아는 찌르고 불리는 계산합니다</h2>
+      <p class="lede">기록하면 <b>모아</b>가 바로 한 소리 해요.<br><br>그다음 <b>불리</b>가<br>그 돈을 모으면 뭐가 되는지 알려줍니다.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">오늘의 고백</div>
+          <div class="ph-card" style="text-align:center">
+            <div class="ph-cap">배달</div>
+            <div class="ph-big tnum" style="font-size:21px">23,000원</div>
+          </div>
+          <div class="ph-bubble b-moa">
+            <div class="b-name" style="color:#E86A94">🐷 모아</div>
+            배달 또…? 이번 달 4번째. 이러다 배달앱이 널 부양하겠어 💀
+          </div>
+          <div class="ph-bubble b-bul">
+            <div class="b-name" style="color:#D7E7FF">📈 불리</div>
+            이 돈 매주 모으면 1년에 119만원. 제주도 왕복이 나와요.
+          </div>
+          <div class="ph-card" style="background:#FFF8E8;margin-top:9px">
+            <div class="ph-strong" style="color:#B77B0B;font-size:11.5px">고정비부터 손봐야 진짜 줄어요 ›</div>
+          </div>
+          <div class="ph-mini" style="text-align:center;margin-top:10px">🔥 3일 연속 고백 중!</div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>고백을 저장하면 자동으로 나옵니다.</li>
+          <li>모아 말풍선을 먼저 읽으세요.<em>배달·카페·택시·미용실. 카테고리마다 다릅니다.</em></li>
+          <li>불리가 알려주는 금액을 보세요.</li>
+          <li>노란 칸이 뜨면 눌러보세요.<em>지금 손볼 곳으로 바로 데려다줍니다.</em></li>
+          <li>맨 아래 연속 일수가 끊기지 않게 매일 하세요.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>08</i><span>이번 달</span></div>
+      <h2>오늘 한 마디가 장부로 쌓입니다</h2>
+      <p class="lede">가계부 탭에 들어가면<br>이번 달 고백이 다 모여 있어요.<br><br>날짜, 누가, 뭘 샀는지,<br>한 마디까지 그대로 남습니다.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">‹ 2026년 8월 ›</div>
+          <div class="ph-card">
+            <div class="ph-row">
+              <span class="ph-strong">🎙️ 이번 달 고백 <span style="color:#4E5968">2건</span></span>
+              <span class="ph-strong tnum">14,000원</span>
+            </div>
+            <div class="ph-div"></div>
+            <div class="ph-item">
+              <span><span class="ph-pill">남편</span> 식비 · 점심</span>
+              <b class="tnum">9,000원</b>
+            </div>
+            <div class="ph-item">
+              <span><span class="ph-pill" style="background:#FDECF2;color:#B03A62">아내</span> 카페 · 커피</span>
+              <b class="tnum">5,000원</b>
+            </div>
+            <div class="ph-mini">정산할 때 카테고리별 합계를 한 번에 넣을 수 있어요</div>
+          </div>
+          <div class="ph-card">
+            <div class="ph-sub" style="font-weight:700;margin-bottom:6px">예산 대비 지출</div>
+            <div class="ph-item"><span>식비</span><b class="tnum">150만 / 150만</b></div>
+            <div class="ph-item"><span>주거</span><b class="tnum">130만 / 95만</b></div>
+            <div class="ph-item"><span>통신</span><b class="tnum">8,000 / 8,000</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>아래 탭에서 <b>가계부</b>를 누르세요.</li>
+          <li><b>🎙️ 이번 달 고백</b>을 눌러 펼치세요.</li>
+          <li>날짜·이름·금액을 확인하세요.</li>
+          <li><b>함께 보기 / 남편 / 아내</b>로 나눠 볼 수 있어요.</li>
+          <li>위쪽 <b>예산 대비 지출</b>에서 어디가 넘쳤는지 보세요.<em>빨간 막대가 이번 달 조여야 할 곳이에요.</em></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>09</i><span>월말</span></div>
+      <h2>다시 적지 마세요, 버튼 한 번이면 됩니다</h2>
+      <p class="lede">고백한 금액이 카테고리별로 합쳐져<br>먼저 올라와요.<br><br><b>모두 넣기</b>를 누르면 금액까지 채워집니다.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">5/5 · 2026년 8월 정산</div>
+          <div class="ph-mini" style="text-align:center;margin-bottom:4px">변동지출 · 남편</div>
+          <div class="ph-card" style="background:#E8F0FE">
+            <div class="ph-row">
+              <span class="ph-strong" style="color:#1B58B8;font-size:11.5px">🎙️ 고백한 항목 2개가 아직 없어요</span>
+              <span class="ph-strong tnum" style="color:#1B58B8">14,000원</span>
+            </div>
+            <div style="background:#fff;border-radius:11px;padding:8px 10px;margin-top:8px">
+              <div class="ph-item" style="padding:3px 0"><span>식비</span><b class="tnum">9,000원 ＋</b></div>
+              <div class="ph-item" style="padding:3px 0"><span>카페</span><b class="tnum">5,000원 ＋</b></div>
+            </div>
+            <div class="ph-cta" style="margin-top:8px">2개 모두 넣기</div>
+          </div>
+          <div class="ph-card">
+            <div class="ph-item"><span>생활용품</span><b class="tnum">300,000원</b></div>
+            <div class="ph-item"><span>배달</span><b class="tnum">150,000원</b></div>
+          </div>
+          <div class="ph-cta">정산 완료하기</div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>홈에서 <b>✅ 정산하기</b>를 누르세요.</li>
+          <li>남편·아내 중 <b>본인</b>을 고릅니다.<em>각자 자기 항목만 입력하시면 돼요.</em></li>
+          <li>수입 → 저축·투자 → 고정 → 변동 순으로 넘어가세요.</li>
+          <li>파란 칸이 뜨면 <b>N개 모두 넣기</b>를 누르세요.</li>
+          <li>고백에 없던 지출을 마지막에 더하세요.<em>카드 자동결제처럼 말 안 한 돈이 있을 거예요.</em></li>
+          <li><b>정산 완료하기</b>를 누르면 끝.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <footer class="outro">
+    <h2>이제 거꾸로 쌓입니다</h2>
+    <p>큰 것부터 내려왔으니 이번엔 반대예요.<br>오늘 한 마디가 이번 달이 되고,<br>올해 세금이 되고,<br>10년 뒤 우리집이 됩니다.</p>
+    <div class="day">
+      <div><span>아침</span><p>홈을 엽니다. 어제까지 얼마 썼는지, 오늘은 누구 카드를 쓸지 확인하세요.</p></div>
+      <div><span>낮</span><p>결제 전에 잠깐. <b>유리한 쪽 카드</b>로 긁으세요.</p></div>
+      <div><span>저녁</span><p>말로 <b>고백</b>하세요. 모아가 한 소리 하고, 막대가 움직입니다.</p></div>
+      <div><span>월말</span><p>쌓인 고백이 <b>정산 초안</b>이 됩니다. 확인만 하세요.</p></div>
+      <div><span>연말</span><p>1년치 카드 전략이 <b>돌려받는 돈</b>으로 옵니다.</p></div>
+      <div><span>10년</span><p>매달의 저축률이 쌓여 <b>우리집 밑천</b>이 됩니다.</p></div>
+    </div>
+  </footer>
+
+</div>
+</div>

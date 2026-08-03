@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
+import { attachSourceToUser, captureSource } from './lib/source'
 import { getMyMembership, type Membership } from './lib/db'
 import { useLedgerStore } from './lib/store'
 import AppFrame from './components/AppFrame'
@@ -37,12 +38,15 @@ function AuthGate() {
   const [authReady, setAuthReady] = useState(false)
 
   useEffect(() => {
+    captureSource() // 나눔 링크(?src=)로 왔으면 채널을 기억해 둔다
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setAuthReady(true)
+      if (data.session) void attachSourceToUser(data.session.user)
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s)
+      if (s) void attachSourceToUser(s.user)
       if (!s) useLedgerStore.getState().clear()
     })
     return () => sub.subscription.unsubscribe()
