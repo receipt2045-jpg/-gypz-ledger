@@ -17,6 +17,7 @@ import Confess from './pages/Confess'
 import Roadmap from './pages/Roadmap'
 import AdminFeedback from './pages/AdminFeedback'
 import AssetSetup from './pages/AssetSetup'
+import Report from './pages/Report'
 import YearEndTax from './pages/YearEndTax'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
@@ -121,6 +122,7 @@ function AppRoutes() {
         <Route path="/confess" element={<Confess />} />
         <Route path="/asset-setup" element={<AssetSetup />} />
         <Route path="/year-end-tax" element={<YearEndTax />} />
+        <Route path="/report" element={<Report />} />
       </Routes>
     </>
   )

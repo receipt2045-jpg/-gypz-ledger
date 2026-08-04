@@ -12,8 +12,10 @@ import {
 } from 'lucide-react'
 import AiCoachCard from '../components/AiCoachCard'
 import AmountInput from '../components/AmountInput'
+import MonthlyReportCard from '../components/MonthlyReportCard'
 import StepProgress from '../components/StepProgress'
 import { buildSummary } from '../lib/aiCoach'
+import { buildMonthlyCard } from '../lib/monthlyCard'
 import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
 import { confessSums, missingConfessedItems } from '../lib/confessLedger'
@@ -456,6 +458,13 @@ export default function Checkup() {
               </p>
             )}
           </div>
+
+          {/* 성적표 카드 — 두 사람 다 정산을 마쳤을 때만. 이미지로 공유할 수 있다. */}
+          {bothDone && (
+            <MonthlyReportCard
+              data={buildMonthlyCard({ ym, items, closed: true }, snapshots, profile)}
+            />
+          )}
 
           {/* AI 코치 진단 (브리프 P3 4.1) */}
           <AiCoachCard summary={buildSummary(ym, items)} />

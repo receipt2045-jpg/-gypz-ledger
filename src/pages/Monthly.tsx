@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import BudgetBars from '../components/BudgetBars'
 import InfoTip from '../components/InfoTip'
+import MonthlyReportCard from '../components/MonthlyReportCard'
 import OccasionSection from '../components/OccasionSection'
 import SectionList from '../components/SectionList'
 import { useLedgerStore } from '../lib/store'
+import { buildMonthlyCard } from '../lib/monthlyCard'
 import { activeYm, resolveLedger, summarize } from '../lib/carryover'
 import { formatWon, formatYmKorean, shiftYm } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER, TERM_TIP } from '../lib/constants'
@@ -19,7 +21,7 @@ const BANNER_KEY = 'gypz-concept-banner-closed'
 
 export default function Monthly() {
   const navigate = useNavigate()
-  const { ledgers, profile, confessions, occasions, addOccasion, removeOccasion } =
+  const { ledgers, snapshots, profile, confessions, occasions, addOccasion, removeOccasion } =
     useLedgerStore()
   const [ym, setYm] = useState(() => activeYm(ledgers))
   const [member, setMember] = useState<MemberFilter>(0)
@@ -138,6 +140,11 @@ export default function Monthly() {
       >
         🧾 비정기 지출 입력 · 경조사, 명절, 자동차 같은 큰돈
       </button>
+
+      {/* 결산이 끝난 달이면 성적표 — 정산 화면을 다시 안 열어도 여기서 공유할 수 있게 */}
+      {ledger.closed && (
+        <MonthlyReportCard data={buildMonthlyCard(ledger, snapshots, profile)} />
+      )}
 
       {/* 예산 대비 지출 */}
       <div className="rounded-card bg-card px-5 py-4 shadow-card">

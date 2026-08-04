@@ -247,6 +247,60 @@ export async function insertConfession(householdId: string, c: Confession) {
   if (error) throw error
 }
 
+// ── 맞춤 리포트 신청 ───────────────────────────
+// 사람이 직접 가계부를 열어보는 서비스라, 신청과 열람 동의를 한 행에 남긴다.
+
+export interface ReportRequest {
+  id: string
+  contact: string
+  note?: string
+  consentAt: string
+  revokedAt: string | null
+  status: 'requested' | 'paid' | 'writing' | 'done' | 'canceled'
+  createdAt: string
+}
+
+export async function fetchReportRequests(householdId: string): Promise<ReportRequest[]> {
+  const { data, error } = await supabase
+    .from('report_requests')
+    .select('*')
+    .eq('household_id', householdId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    contact: r.contact,
+    note: r.note ?? undefined,
+    consentAt: r.consent_at,
+    revokedAt: r.revoked_at,
+    status: r.status,
+    createdAt: r.created_at,
+  }))
+}
+
+/** 신청 = 동의. 동의 없이 부르지 않는다(화면에서 체크를 강제). */
+export async function insertReportRequest(
+  householdId: string,
+  input: { contact: string; note?: string },
+) {
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user) throw new Error('로그인이 필요해요')
+  const { error } = await supabase.from('report_requests').insert({
+    household_id: householdId,
+    user_id: auth.user.id,
+    contact: input.contact,
+    note: input.note ?? null,
+    consent_at: new Date().toISOString(),
+  })
+  if (error) throw error
+}
+
+/** 열람 동의 철회 */
+export async function revokeReportConsent(requestId: string) {
+  const { error } = await supabase.rpc('revoke_report_consent', { request_id: requestId })
+  if (error) throw error
+}
+
 // ── 사용자 의견 (feedback) ─────────────────────
 // 운영자만 읽을 수 있고, 사용자는 자기 의견만 남길 수 있음(RLS).
 export async function sendFeedback(input: {

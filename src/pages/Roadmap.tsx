@@ -125,20 +125,22 @@ export default function Roadmap() {
 
       {/* 연말정산 미리보기 입구는 '올해의 돈' 화면인 연간 리포트로 이동 (10년 로드맵과 주제 분리) */}
 
-      {/* ── ⑤ 저단가 리포트 (준비 중) ──────────── */}
+      {/* ── ⑤ 맞춤 리포트 (수기 · 유료) ────────── */}
       {hasIncome && (
-        <Card>
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-bg px-2.5 py-1">
+        <Card onClick={() => navigate('/report')}>
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-            <span className="text-[11px] font-bold text-sub">준비 중</span>
+            <span className="text-[11px] font-bold text-brand">월 10팀 한정</span>
           </div>
-          <p className="text-[15px] font-bold text-ink">우리 부부 맞춤 리포트</p>
-          <p className="mt-1.5 text-[13.5px] leading-relaxed text-sub">
-            결영이네가 <b className="text-ink">우리 부부 숫자를 직접 보고</b> 만든 맞춤 리포트예요.
-            지금 뭐가 제일 급한지, 다음 3개월에 뭘 해야 할지 콕 짚어드려요. 곧 만나요 🤍
-          </p>
-          <div className="mt-3 flex h-12 w-full items-center justify-center rounded-btn bg-line/60 text-[15px] font-bold text-cap">
-            곧 열려요
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold text-ink">우리 부부 맞춤 리포트</p>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-sub">
+                결영이네가 <b className="text-ink">우리집 숫자를 직접 보고</b> 씁니다. 지금 뭐가 제일
+                급한지, 다음 3개월에 뭘 할지 짚어드려요.
+              </p>
+            </div>
+            <ChevronRight size={20} className="shrink-0 text-cap" />
           </div>
         </Card>
       )}
