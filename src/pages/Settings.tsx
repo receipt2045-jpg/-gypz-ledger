@@ -330,6 +330,19 @@ export default function Settings() {
       {/* 의견 보내기 */}
       <FeedbackCard screen="settings" />
 
+      {/* 운영자 전용 — 리포트 신청 관리 */}
+      {isAdmin && (
+        <Card onClick={() => navigate('/admin/reports')}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[15px] font-bold text-ink">리포트 신청 🔒</p>
+              <p className="mt-1 text-[13px] text-sub">신청을 열면 초안이 자동으로 만들어져요</p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-cap" />
+          </div>
+        </Card>
+      )}
+
       {/* 운영자 전용 — 받은 의견 분석 */}
       {isAdmin && (
         <Card onClick={() => navigate('/admin/feedback')}>

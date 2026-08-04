@@ -252,11 +252,13 @@ export async function insertConfession(householdId: string, c: Confession) {
 
 export interface ReportRequest {
   id: string
-  contact: string
+  email: string
+  contact?: string // 카톡 닉네임 (선택)
   note?: string
   consentAt: string
   revokedAt: string | null
   status: 'requested' | 'paid' | 'writing' | 'done' | 'canceled'
+  paidAt: string | null
   createdAt: string
 }
 
@@ -269,11 +271,13 @@ export async function fetchReportRequests(householdId: string): Promise<ReportRe
   if (error) throw error
   return (data ?? []).map((r) => ({
     id: r.id,
-    contact: r.contact,
+    email: r.email ?? r.contact ?? '',
+    contact: r.contact ?? undefined,
     note: r.note ?? undefined,
     consentAt: r.consent_at,
     revokedAt: r.revoked_at,
     status: r.status,
+    paidAt: r.paid_at ?? null,
     createdAt: r.created_at,
   }))
 }
@@ -281,14 +285,15 @@ export async function fetchReportRequests(householdId: string): Promise<ReportRe
 /** 신청 = 동의. 동의 없이 부르지 않는다(화면에서 체크를 강제). */
 export async function insertReportRequest(
   householdId: string,
-  input: { contact: string; note?: string },
+  input: { email: string; contact?: string; note?: string },
 ) {
   const { data: auth } = await supabase.auth.getUser()
   if (!auth.user) throw new Error('로그인이 필요해요')
   const { error } = await supabase.from('report_requests').insert({
     household_id: householdId,
     user_id: auth.user.id,
-    contact: input.contact,
+    email: input.email,
+    contact: input.contact ?? null,
     note: input.note ?? null,
     consent_at: new Date().toISOString(),
   })

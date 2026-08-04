@@ -33,7 +33,7 @@ describe('맞춤 리포트 신청 — 데이터 공유 동의', () => {
     const { user } = openReport()
     await waitFor(() => expect(fetchReportRequests).toHaveBeenCalled())
 
-    await user.type(screen.getByPlaceholderText(/카톡 닉네임/), '결영')
+    await user.type(screen.getByPlaceholderText('이메일 주소'), 'gyeol@example.com')
     expect(screen.getByRole('button', { name: '신청하기' })).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: '신청하기' }))
@@ -53,11 +53,11 @@ describe('맞춤 리포트 신청 — 데이터 공유 동의', () => {
     await waitFor(() => expect(fetchReportRequests).toHaveBeenCalled())
 
     await user.click(screen.getByRole('button', { name: /동의하고 가계부 열람을 허용/ }))
-    await user.type(screen.getByPlaceholderText(/카톡 닉네임/), '결영')
+    await user.type(screen.getByPlaceholderText('이메일 주소'), 'gyeol@example.com')
     await user.click(screen.getByRole('button', { name: '신청하기' }))
 
     await waitFor(() =>
-      expect(insertReportRequest).toHaveBeenCalledWith('hh-1', { contact: '결영', note: undefined }),
+      expect(insertReportRequest).toHaveBeenCalledWith('hh-1', { email: 'gyeol@example.com', contact: undefined, note: undefined }),
     )
   })
 
@@ -74,7 +74,7 @@ describe('맞춤 리포트 신청 — 데이터 공유 동의', () => {
     fetchReportRequests.mockResolvedValue([
       {
         id: 'r1',
-        contact: '결영',
+        email: 'gyeol@example.com',
         consentAt: '2026-08-04T00:00:00.000Z',
         revokedAt: null,
         status: 'writing',
@@ -94,7 +94,7 @@ describe('맞춤 리포트 신청 — 데이터 공유 동의', () => {
     fetchReportRequests.mockResolvedValue([
       {
         id: 'r0',
-        contact: '결영',
+        email: 'gyeol@example.com',
         consentAt: '2026-07-01T00:00:00.000Z',
         revokedAt: '2026-07-10T00:00:00.000Z',
         status: 'canceled',
@@ -104,5 +104,34 @@ describe('맞춤 리포트 신청 — 데이터 공유 동의', () => {
     openReport()
 
     await waitFor(() => expect(screen.getByRole('button', { name: '신청하기' })).toBeInTheDocument())
+  })
+})
+
+describe('맞춤 리포트 신청 — 이메일', () => {
+  beforeEach(() => {
+    fetchReportRequests.mockResolvedValue([])
+    insertReportRequest.mockResolvedValue(undefined)
+  })
+
+  it('이메일 형식이 아니면 신청할 수 없다', async () => {
+    const { user } = openReport()
+    await waitFor(() => expect(fetchReportRequests).toHaveBeenCalled())
+
+    await user.click(screen.getByRole('button', { name: /동의하고 가계부 열람을 허용/ }))
+    await user.type(screen.getByPlaceholderText('이메일 주소'), '결영')
+
+    expect(screen.getByText(/이메일 주소를 다시 확인해 주세요/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '신청하기' })).toBeDisabled()
+  })
+
+  it('카톡 닉네임은 선택이라 비워도 신청된다', async () => {
+    const { user } = openReport()
+    await waitFor(() => expect(fetchReportRequests).toHaveBeenCalled())
+
+    await user.click(screen.getByRole('button', { name: /동의하고 가계부 열람을 허용/ }))
+    await user.type(screen.getByPlaceholderText('이메일 주소'), 'a@b.co')
+    await user.click(screen.getByRole('button', { name: '신청하기' }))
+
+    await waitFor(() => expect(insertReportRequest).toHaveBeenCalled())
   })
 })

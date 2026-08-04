@@ -6,6 +6,18 @@ import * as db from '../lib/db'
 
 const PRICE = '30,000원'
 
+/**
+ * 결제 링크 — netlify.toml의 VITE_PAYMENT_URL에 넣으면 버튼이 켜진다.
+ * 아직 비어 있으면 '메일로 안내드려요'로 대신한다(빈 버튼을 보여주지 않는다).
+ */
+const PAYMENT_URL = (import.meta.env.VITE_PAYMENT_URL as string | undefined)?.trim() || ''
+
+/** 흔한 오타만 거른다 — 너무 빡빡하면 멀쩡한 주소가 막힌다 */
+export function isEmailLike(v: string): boolean {
+  const s = v.trim()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s)
+}
+
 /** 리포트에 들어가는 것 */
 const CONTENTS = [
   '우리집 한 줄 진단',
@@ -37,6 +49,7 @@ export default function Report() {
   const { householdId } = useLedgerStore()
 
   const [requests, setRequests] = useState<db.ReportRequest[] | null>(null)
+  const [email, setEmail] = useState('')
   const [contact, setContact] = useState('')
   const [note, setNote] = useState('')
   const [agreed, setAgreed] = useState(false)
@@ -57,15 +70,19 @@ export default function Report() {
   // 살아있는 신청 = 아직 철회하지 않았고 취소되지 않은 것
   const active = requests?.find((r) => !r.revokedAt && r.status !== 'canceled') ?? null
 
+  const canSubmit = !!householdId && agreed && isEmailLike(email) && !busy
+
   const submit = async () => {
-    if (!householdId || !agreed || !contact.trim() || busy) return
+    if (!householdId || !canSubmit) return
     setBusy(true)
     setError('')
     try {
       await db.insertReportRequest(householdId, {
-        contact: contact.trim(),
+        email: email.trim(),
+        contact: contact.trim() || undefined,
         note: note.trim() || undefined,
       })
+      setEmail('')
       setContact('')
       setNote('')
       setAgreed(false)
@@ -134,9 +151,28 @@ export default function Report() {
                 상태: <b className="text-ink">{STATUS_LABEL[active.status]}</b>
               </p>
               <p className="mt-1 text-[12.5px] text-cap">
-                받으실 곳: {active.contact} · 동의{' '}
+                받으실 곳: {active.email} · 동의{' '}
                 {new Date(active.consentAt).toLocaleDateString('ko-KR')}
               </p>
+
+              {/* 결제 — 링크가 준비되면 버튼이 켜진다 */}
+              {!active.paidAt && active.status !== 'done' && (
+                PAYMENT_URL ? (
+                  <a
+                    href={PAYMENT_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 flex h-12 w-full items-center justify-center rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
+                  >
+                    {PRICE} 결제하기
+                  </a>
+                ) : (
+                  <p className="mt-3 rounded-btn bg-bg px-3.5 py-3 text-[12.5px] leading-relaxed text-sub">
+                    결제 방법은 메일로 안내해 드릴게요.
+                  </p>
+                )
+              )}
+
               <button
                 onClick={() => revoke(active.id)}
                 disabled={busy}
@@ -191,12 +227,29 @@ export default function Report() {
               {/* 연락처 */}
               <div className="rounded-card bg-card px-5 py-4 shadow-card">
                 <h2 className="text-[15px] font-bold text-ink">어디로 보내드릴까요?</h2>
+                <p className="mt-1 text-[12.5px] text-cap">리포트는 메일로 보내드려요.</p>
+                <input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="이메일 주소"
+                  className={`mt-2.5 w-full rounded-btn border bg-white px-3.5 py-3 text-[14px] text-ink outline-none placeholder:text-cap ${
+                    email && !isEmailLike(email) ? 'border-danger' : 'border-line focus:border-brand'
+                  }`}
+                />
+                {email && !isEmailLike(email) && (
+                  <p className="mt-1 text-[12px] font-medium text-danger">
+                    이메일 주소를 다시 확인해 주세요
+                  </p>
+                )}
                 <input
                   type="text"
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
-                  placeholder="카톡 닉네임 또는 이메일"
-                  className="mt-2.5 w-full rounded-btn border border-line bg-white px-3.5 py-3 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
+                  placeholder="카톡 닉네임 (선택)"
+                  className="mt-2 w-full rounded-btn border border-line bg-white px-3.5 py-3 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
                 />
                 <textarea
                   value={note}
@@ -211,13 +264,15 @@ export default function Report() {
 
               <button
                 onClick={submit}
-                disabled={!agreed || !contact.trim() || busy}
+                disabled={!canSubmit}
                 className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
               >
                 {busy ? '보내는 중…' : '신청하기'}
               </button>
               <p className="px-1 text-[12px] leading-relaxed text-cap">
-                신청하시면 결영이네가 연락드려요. 결제는 그때 안내해 드립니다.
+                {PAYMENT_URL
+                  ? '신청하신 뒤 결제하시면 순서대로 작성해 드려요.'
+                  : '신청하시면 결영이네가 메일로 연락드려요. 결제는 그때 안내해 드립니다.'}
               </p>
             </>
           )}
