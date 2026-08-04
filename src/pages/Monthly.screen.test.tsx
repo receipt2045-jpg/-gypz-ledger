@@ -36,6 +36,15 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     expect(savedOccasions()[0]).toMatchObject({ title: '친구 결혼식', amount: 100_000 })
   })
 
+  it("상단 '비정기 지출 입력' 버튼을 누르면 입력 폼이 열린다", async () => {
+    seedWithLedger()
+    const { user } = renderScreen(<Monthly />)
+
+    expect(screen.queryByPlaceholderText(/내용/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /비정기 지출 입력/ }))
+    expect(screen.getByPlaceholderText(/내용/)).toBeInTheDocument()
+  })
+
   it('보는 달의 비정기 지출만 목록에 보인다', () => {
     seedWithLedger()
     useLedgerStore.setState({

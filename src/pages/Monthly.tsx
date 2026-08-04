@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import BudgetBars from '../components/BudgetBars'
@@ -54,6 +54,13 @@ export default function Monthly() {
   // 추가 폼 기본 날짜: 보는 달이 이번 달이면 오늘, 아니면 그 달 1일
   const today = new Date().toLocaleDateString('sv-SE')
   const occasionDefaultDate = today.startsWith(ym) ? today : `${ym}-01`
+  // 상단 '비정기 지출 입력' 버튼 → 아래 섹션 폼을 열고 그리로 스크롤
+  const [occasionOpen, setOccasionOpen] = useState(false)
+  const occasionRef = useRef<HTMLDivElement>(null)
+  const openOccasionForm = () => {
+    setOccasionOpen(true)
+    occasionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const goodWhenOver = (g: CategoryGroup) =>
     g === 'income' || g === 'saving' || g === 'investment'
@@ -123,6 +130,14 @@ export default function Monthly() {
           ✅ {formatYmKorean(ym).split(' ')[1]} 정산하기
         </button>
       </div>
+
+      {/* 비정기 지출 바로 적기 — 경조사·명절은 월말 정산까지 기다리면 잊어버린다 */}
+      <button
+        onClick={openOccasionForm}
+        className="h-11 w-full rounded-btn bg-white text-[13.5px] font-semibold text-sub shadow-card active:bg-line"
+      >
+        🧾 비정기 지출 입력 · 경조사, 명절, 자동차 같은 큰돈
+      </button>
 
       {/* 예산 대비 지출 */}
       <div className="rounded-card bg-card px-5 py-4 shadow-card">
@@ -202,14 +217,18 @@ export default function Monthly() {
       </div>
 
       {/* 비정기 지출 — 경조사·명절처럼 월 예산 밖의 지출을 생긴 그 달에 기록 */}
-      <OccasionSection
-        items={monthOccasions}
-        yearTotal={occasionYearTotal}
-        defaultDate={occasionDefaultDate}
-        onAdd={addOccasion}
-        onRemove={removeOccasion}
-        emptyText={`${formatYmKorean(ym).split(' ')[1]}엔 아직 없어요 · 경조사·명절·자동차 같은 큰돈이 생기면 바로 적어두세요`}
-      />
+      <div ref={occasionRef} className="scroll-mt-4">
+        <OccasionSection
+          items={monthOccasions}
+          yearTotal={occasionYearTotal}
+          defaultDate={occasionDefaultDate}
+          onAdd={addOccasion}
+          onRemove={removeOccasion}
+          open={occasionOpen}
+          onOpenChange={setOccasionOpen}
+          emptyText={`${formatYmKorean(ym).split(' ')[1]}엔 아직 없어요 · 경조사·명절·자동차 같은 큰돈이 생기면 바로 적어두세요`}
+        />
+      </div>
 
       {/* 잉여현금 */}
       <div className="rounded-card bg-ink px-5 py-4 text-white">

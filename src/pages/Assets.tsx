@@ -99,6 +99,22 @@ export default function Assets() {
         </Card>
       )}
 
+      {/* 10년 목표 — 목적지부터 보여준다 (탭하면 설정에서 바로 수정) */}
+      <Card onClick={() => navigate('/settings')}>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[15px] font-bold text-ink">10년 목표 순자산</p>
+          <span className="flex items-center gap-0.5 text-[14px] font-bold text-brand">
+            <span className="tnum">{formatPercent(targetRatio)}</span>
+            <ChevronRight size={16} className="text-cap" />
+          </span>
+        </div>
+        <ProgressBar ratio={targetRatio} className="mb-2" />
+        <div className="flex justify-between text-[13px] text-sub">
+          <span className="tnum">현재 {abbreviateKRW(netWorth)}</span>
+          <span className="tnum">목표 {abbreviateKRW(profile.targetNetWorth)}</span>
+        </div>
+      </Card>
+
       {/* 순자산 요약 */}
       <Card>
         <p className="text-[13px] font-medium text-cap">
@@ -219,21 +235,6 @@ export default function Assets() {
         </section>
       )}
 
-      {/* 10년 목표 — 탭하면 설정에서 바로 수정 (브리프 P2 3.2) */}
-      <Card onClick={() => navigate('/settings')}>
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-[15px] font-bold text-ink">10년 목표 순자산</p>
-          <span className="flex items-center gap-0.5 text-[14px] font-bold text-brand">
-            <span className="tnum">{formatPercent(targetRatio)}</span>
-            <ChevronRight size={16} className="text-cap" />
-          </span>
-        </div>
-        <ProgressBar ratio={targetRatio} className="mb-2" />
-        <div className="flex justify-between text-[13px] text-sub">
-          <span className="tnum">현재 {abbreviateKRW(netWorth)}</span>
-          <span className="tnum">목표 {abbreviateKRW(profile.targetNetWorth)}</span>
-        </div>
-      </Card>
     </div>
   )
 }

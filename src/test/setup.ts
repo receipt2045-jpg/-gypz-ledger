@@ -10,6 +10,7 @@ afterEach(() => {
 
 // jsdom에 없는 브라우저 기능들 — 화면 코드가 호출해도 죽지 않게만 채운다
 window.scrollTo = vi.fn()
+Element.prototype.scrollIntoView = Element.prototype.scrollIntoView ?? vi.fn()
 // recharts(차트)가 컨테이너 크기 감지에 사용
 window.ResizeObserver =
   window.ResizeObserver ??

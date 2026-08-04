@@ -17,6 +17,8 @@ export default function OccasionSection({
   onAdd,
   onRemove,
   emptyText = '아직 기록이 없어요 · 예산이 무너지는 1위가 비정기 지출이에요',
+  open: openProp,
+  onOpenChange,
 }: {
   items: OccasionEntry[]
   yearTotal: number
@@ -24,8 +26,13 @@ export default function OccasionSection({
   onAdd?: (e: Omit<OccasionEntry, 'id'>) => void
   onRemove: (id: string) => void
   emptyText?: string
+  // 폼 열림을 밖에서 제어할 때 (가계부 탭 상단 '비정기 지출 입력' 버튼)
+  open?: boolean
+  onOpenChange?: (v: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [selfOpen, setSelfOpen] = useState(false)
+  const open = openProp ?? selfOpen
+  const setOpen = (v: boolean) => (onOpenChange ? onOpenChange(v) : setSelfOpen(v))
   const [date, setDate] = useState(defaultDate ?? '')
   const [category, setCategory] = useState(OCCASION_CATEGORIES[0])
   const [title, setTitle] = useState('')
@@ -45,7 +52,7 @@ export default function OccasionSection({
         <h2 className="text-[15px] font-bold text-ink">비정기 지출</h2>
         {onAdd && (
           <button
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => setOpen(!open)}
             className="flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-[12px] font-bold text-brand"
           >
             <Plus size={14} /> 추가
