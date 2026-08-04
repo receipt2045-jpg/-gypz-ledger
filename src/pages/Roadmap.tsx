@@ -123,22 +123,7 @@ export default function Roadmap() {
         })}
       </div>
 
-      {/* ── ④-b 연말정산 미리보기 ─────────────── */}
-      <button
-        onClick={() => navigate('/year-end-tax')}
-        className="w-full rounded-card bg-card px-5 py-4 text-left shadow-card active:bg-line"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[15px] font-bold text-ink">💳 누구 카드로 쓸까?</p>
-            <p className="mt-1 text-[13.5px] leading-relaxed text-sub">
-              부부 카드값은 합쳐지지 않아요. 연봉만 넣으면 지금 누구 카드를 쓰는 게 유리한지
-              알려드려요.
-            </p>
-          </div>
-          <ChevronRight size={20} className="shrink-0 text-cap" />
-        </div>
-      </button>
+      {/* 연말정산 미리보기 입구는 '올해의 돈' 화면인 연간 리포트로 이동 (10년 로드맵과 주제 분리) */}
 
       {/* ── ⑤ 저단가 리포트 (준비 중) ──────────── */}
       {hasIncome && (

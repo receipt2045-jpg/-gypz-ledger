@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import BudgetBars from '../components/BudgetBars'
 import InfoTip from '../components/InfoTip'
+import OccasionSection from '../components/OccasionSection'
 import SectionList from '../components/SectionList'
 import { useLedgerStore } from '../lib/store'
 import { activeYm, resolveLedger, summarize } from '../lib/carryover'
@@ -18,7 +19,8 @@ const BANNER_KEY = 'gypz-concept-banner-closed'
 
 export default function Monthly() {
   const navigate = useNavigate()
-  const { ledgers, profile, confessions } = useLedgerStore()
+  const { ledgers, profile, confessions, occasions, addOccasion, removeOccasion } =
+    useLedgerStore()
   const [ym, setYm] = useState(() => activeYm(ledgers))
   const [member, setMember] = useState<MemberFilter>(0)
   // 개념 안내 배너 (브리프 P0 1.2) — 닫으면 이 기기에서 다시 안 뜸
@@ -43,6 +45,15 @@ export default function Monthly() {
   }, [confessions, ym, member])
   const [logOpen, setLogOpen] = useState(false)
   const logTotal = monthLog.reduce((sum, c) => sum + c.amount, 0)
+
+  // 비정기 지출 — 보는 달 것만 목록에, 합계는 올해 누적 (연간비 감각 유지)
+  const monthOccasions = occasions.filter((o) => o.date.startsWith(ym))
+  const occasionYearTotal = occasions
+    .filter((o) => o.date.startsWith(ym.slice(0, 4)))
+    .reduce((a, o) => a + o.amount, 0)
+  // 추가 폼 기본 날짜: 보는 달이 이번 달이면 오늘, 아니면 그 달 1일
+  const today = new Date().toLocaleDateString('sv-SE')
+  const occasionDefaultDate = today.startsWith(ym) ? today : `${ym}-01`
 
   const goodWhenOver = (g: CategoryGroup) =>
     g === 'income' || g === 'saving' || g === 'investment'
@@ -189,6 +200,16 @@ export default function Monthly() {
           />
         ))}
       </div>
+
+      {/* 비정기 지출 — 경조사·명절처럼 월 예산 밖의 지출을 생긴 그 달에 기록 */}
+      <OccasionSection
+        items={monthOccasions}
+        yearTotal={occasionYearTotal}
+        defaultDate={occasionDefaultDate}
+        onAdd={addOccasion}
+        onRemove={removeOccasion}
+        emptyText={`${formatYmKorean(ym).split(' ')[1]}엔 아직 없어요 · 경조사·명절·자동차 같은 큰돈이 생기면 바로 적어두세요`}
+      />
 
       {/* 잉여현금 */}
       <div className="rounded-card bg-ink px-5 py-4 text-white">

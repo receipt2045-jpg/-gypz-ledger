@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Card from '../components/Card'
-import AmountInput from '../components/AmountInput'
+import OccasionSection from '../components/OccasionSection'
 import { useLedgerStore } from '../lib/store'
 import { summarize } from '../lib/carryover'
-import { formatComma, formatWon } from '../lib/format'
-import { GROUP_LABEL, GROUP_ORDER, OCCASION_CATEGORIES } from '../lib/constants'
+import { formatComma } from '../lib/format'
+import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import type { CategoryGroup } from '../types'
 
 export default function Yearly() {
-  const { ledgers, occasions, addOccasion, removeOccasion, profile } = useLedgerStore()
+  const navigate = useNavigate()
+  const { ledgers, occasions, removeOccasion, profile } = useLedgerStore()
   const [year, setYear] = useState(profile.startYear || new Date().getFullYear())
 
   const yms = useMemo(
@@ -82,6 +84,22 @@ export default function Yearly() {
           <ChevronRight size={22} />
         </button>
       </div>
+
+      {/* 연말정산 미리보기 — '올해의 돈' 화면이라 여기가 입구 (홈 오늘 카드에서도 진입) */}
+      <button
+        onClick={() => navigate('/year-end-tax')}
+        className="w-full rounded-card bg-card px-5 py-4 text-left shadow-card active:bg-line"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-ink">💳 연말정산 미리보기 — 누구 카드로 쓸까?</p>
+            <p className="mt-1 text-[13.5px] leading-relaxed text-sub">
+              부부 카드값은 합쳐지지 않아요. 연봉만 넣으면 지금 누구 카드가 유리한지 알려드려요.
+            </p>
+          </div>
+          <ChevronRight size={20} className="shrink-0 text-cap" />
+        </div>
+      </button>
 
       {/* 결산 매트릭스 */}
       <Card className="!px-3 !py-4">
@@ -159,13 +177,12 @@ export default function Yearly() {
         </div>
       </Card>
 
-      {/* 경조사 / 연간비 */}
+      {/* 비정기 지출 — 연간 조회 전용 (기록·추가는 가계부 탭) */}
       <OccasionSection
-        year={year}
         items={yearOccasions}
-        total={occasionTotal}
-        onAdd={addOccasion}
+        yearTotal={occasionTotal}
         onRemove={removeOccasion}
+        emptyText={`${year}년 기록이 없어요 · 가계부 탭에서 적을 수 있어요`}
       />
     </div>
   )
@@ -215,117 +232,3 @@ function FragmentGroup({
   )
 }
 
-function OccasionSection({
-  year,
-  items,
-  total,
-  onAdd,
-  onRemove,
-}: {
-  year: number
-  items: { id: string; date: string; category: string; title: string; amount: number }[]
-  total: number
-  onAdd: (e: { date: string; category: string; title: string; amount: number }) => void
-  onRemove: (id: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [date, setDate] = useState(`${year}-01-01`)
-  const [category, setCategory] = useState(OCCASION_CATEGORIES[0])
-  const [title, setTitle] = useState('')
-  const [amount, setAmount] = useState(0)
-
-  const submit = () => {
-    if (!title.trim() || amount <= 0) return
-    onAdd({ date, category, title: title.trim(), amount })
-    setTitle('')
-    setAmount(0)
-    setOpen(false)
-  }
-
-  return (
-    <div className="rounded-card bg-card px-5 py-4 shadow-card">
-      <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-[15px] font-bold text-ink">비정기 지출</h2>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-[12px] font-bold text-brand"
-        >
-          <Plus size={14} /> 추가
-        </button>
-      </div>
-      <p className="mb-2 text-[12px] text-cap">
-        경조사·명절·자동차·세금처럼 <b className="font-semibold">가끔 오는 큰돈</b> · 공동 카드 지출도 여기에
-        · 올해 합계 <span className="tnum font-semibold text-sub">{formatWon(total)}</span>
-      </p>
-
-      {open && (
-        <div className="mb-3 space-y-2 rounded-btn bg-bg p-3">
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="tnum flex-1 rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
-            />
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
-            >
-              {OCCASION_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="내용 (예: 친구 결혼식)"
-            className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
-          />
-          <AmountInput value={amount} onChange={setAmount} placeholder="금액" />
-          <button
-            onClick={submit}
-            className="h-11 w-full rounded-btn bg-brand text-[15px] font-bold text-white active:bg-brand-dark"
-          >
-            추가하기
-          </button>
-        </div>
-      )}
-
-      {items.length === 0 ? (
-        <p className="py-3 text-center text-[13px] text-cap">
-          아직 기록이 없어요 · 예산이 무너지는 1위가 비정기 지출이에요
-        </p>
-      ) : (
-        <div className="divide-y divide-line/70">
-          {items.map((o) => (
-            <div key={o.id} className="flex items-center justify-between py-3">
-              <div className="min-w-0">
-                <p className="truncate text-[15px] font-medium text-ink">{o.title}</p>
-                <p className="mt-0.5 text-[12px] text-cap">
-                  {o.date.replace(/-/g, '.')} · {o.category}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="tnum text-[15px] font-semibold text-ink">
-                  {formatWon(o.amount)}
-                </span>
-                <button
-                  onClick={() => onRemove(o.id)}
-                  className="text-cap active:text-danger"
-                  aria-label="삭제"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
