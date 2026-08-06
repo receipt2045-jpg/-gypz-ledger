@@ -30,8 +30,8 @@ describe('extractAmount — 금액 표기', () => {
     expect(extractAmount('커피 5500')?.amount).toBe(5_500)
     expect(extractAmount('커피 2잔')).toBeNull()
   })
-  it('순한글 금액은 오인하지 않고 버림: 만이천원', () => {
-    expect(extractAmount('택시 만이천원')).toBeNull()
+  it('순한글 금액도 읽는다: 만이천원', () => {
+    expect(extractAmount('택시 만이천원')?.amount).toBe(12_000)
   })
   it('숫자 여러 개면 금액 쪽 채택: 2명이서 3만원', () => {
     expect(extractAmount('2명이서 3만원')?.amount).toBe(30_000)
@@ -110,5 +110,46 @@ describe('parseConfessionText — 카테고리 매칭', () => {
     const custom = { ...cats, variable: ['배달', '카페'] } // 기타 없음
     const r = parseConfessionText('택시 3천원', custom)
     expect(r.entries[0]).toMatchObject({ category: '배달', matched: false })
+  })
+})
+
+describe('한글 숫자 금액', () => {
+  // 제보 재현: "마트 오만 5000원"을 적었는데 5,000원만 잡혔다
+  it('한글과 숫자가 섞여도 합쳐서 읽는다: 오만 5000원 = 55,000', () => {
+    expect(extractAmount('마트 오만 5000원')?.amount).toBe(55_000)
+    expect(extractAmount('마트 오만 5000원')?.rest).toBe('마트')
+  })
+
+  it('순한글 수사를 읽는다', () => {
+    expect(extractAmount('마트 오만원')?.amount).toBe(50_000)
+    expect(extractAmount('커피 구천원')?.amount).toBe(9_000)
+    expect(extractAmount('장보기 삼만오천원')?.amount).toBe(35_000)
+    expect(extractAmount('월세 십만원')?.amount).toBe(100_000)
+    expect(extractAmount('선물 이십만원')?.amount).toBe(200_000)
+  })
+
+  it('숫자와 한글 단위를 섞어 써도 된다', () => {
+    expect(extractAmount('택시 3만 2천원')?.amount).toBe(32_000)
+    expect(extractAmount('밥 1만2천')?.amount).toBe(12_000)
+    expect(extractAmount('회식 5만 5000원')?.amount).toBe(55_000)
+  })
+
+  // 여기가 진짜 어려운 부분 — 수사가 든 평범한 말을 금액으로 읽으면 안 된다
+  it('수사가 들어간 낱말은 금액이 아니다', () => {
+    expect(extractAmount('천천히 걸었어요')).toBeNull()
+    expect(extractAmount('친구 만나서 놀았어요')).toBeNull()
+    expect(extractAmount('이만큼 아꼈어요')).toBeNull()
+    expect(extractAmount('고기만두 사먹음')).toBeNull()
+  })
+
+  it('낱말 사이에 있어도 진짜 금액은 찾아낸다', () => {
+    expect(extractAmount('친구 만나서 밥 2만원')?.amount).toBe(20_000)
+    expect(extractAmount('고기만두 3000원')?.amount).toBe(3_000)
+  })
+
+  it('한글 금액 두 건도 각각 나눈다', () => {
+    const r = parseConfessionText('점심 만원 커피 오천원', cats)
+    expect(r.entries.map((e) => e.amount)).toEqual([10_000, 5_000])
+    expect(r.entries.map((e) => e.category)).toEqual(['식비', '카페'])
   })
 })

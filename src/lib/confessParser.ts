@@ -50,15 +50,22 @@ export const BUILTIN_ALIASES: Record<string, string> = {
 
 // ── 금액 파싱 ──────────────────────────────────
 // 지원: 12,000원 / 5500 / 9천원 / 1만2천 / 3만 / 만원 / 1.5만
-// 미지원(1차): 순한글 숫자(구천원, 만이천원)
+//       오만원 / 구천원 / 만이천원 / 삼만오천 / 십만
+//       "오만 5000원"처럼 한글과 숫자가 섞인 것도 55,000으로 읽는다.
+//
+// 정규식 하나로는 한글 수사를 감당할 수 없어 왼쪽부터 훑는 방식으로 바꿨다.
+// 어려운 점은 '읽는 것'이 아니라 '안 읽는 것'이다 — 천천히·만나서·이만큼처럼
+// 수사가 들어간 평범한 말을 금액으로 오인하면 안 된다.
 
-// 뒤 lookbehind: "만이천원"의 "천원"처럼 순한글 숫자의 꼬리를 금액으로 오인하지 않기 위함
-const AMOUNT_RE =
-  /(\d[\d,]*(?:\.\d+)?)\s*(만|천|백)?\s*(\d[\d,]*)?\s*(만|천|백)?\s*원?|(?<![일이삼사오육칠팔구십백천만\d])(만|천)\s*원/g
-
-function unitValue(u: string | undefined): number {
-  return u === '만' ? 10_000 : u === '천' ? 1_000 : u === '백' ? 100 : 1
+const KO_DIGIT: Record<string, number> = {
+  영: 0, 공: 0, 일: 1, 이: 2, 삼: 3, 사: 4, 오: 5, 육: 6, 칠: 7, 팔: 8, 구: 9,
 }
+const KO_SMALL: Record<string, number> = { 십: 10, 백: 100, 천: 1_000 }
+const KO_BIG: Record<string, number> = { 만: 10_000, 억: 100_000_000 }
+const KO_NUM = new Set([
+  ...Object.keys(KO_DIGIT), ...Object.keys(KO_SMALL), ...Object.keys(KO_BIG),
+])
+const HANGUL = /[가-힣]/
 
 interface AmountMatch {
   amount: number
@@ -66,29 +73,144 @@ interface AmountMatch {
   end: number
 }
 
+interface Scan {
+  amount: number
+  end: number // '원'까지 포함한 끝 위치
+  hasUnit: boolean // 만/천/백/십이 있었는지
+  hasWon: boolean
+  hasKorean: boolean
+  startsKorean: boolean
+}
+
+/**
+ * start 위치에서 금액 하나를 읽는다.
+ *
+ * 자릿수 누적 규칙은 한국어 수 읽기 그대로다:
+ *   삼(current) 만(→ section을 만 단위로 확정) 오(current) 천(section에 더함)
+ * '만/억' 뒤 공백은 나머지 자릿수가 이어질 수 있으므로 한 번만 넘어간다
+ * ("오만 5000" = 55,000). 그 외 공백에서는 멈춘다 ("5000 3000"이 합쳐지지 않게).
+ */
+function scanAmount(text: string, start: number): Scan | null {
+  let i = start
+  let total = 0
+  let section = 0
+  let current = 0
+  let hasCurrent = false
+  let hasUnit = false
+  let hasKorean = false
+  let sawAny = false
+  let lastWasBig = false
+  const startsKorean = KO_NUM.has(text[start])
+
+  const flushBig = (mult: number) => {
+    let s = section + current
+    if (!hasCurrent && section === 0) s = 1 // "만원" = 10,000
+    total += s * mult
+    section = 0
+    current = 0
+    hasCurrent = false
+  }
+
+  while (i < text.length) {
+    const ch = text[i]
+
+    if (/\d/.test(ch)) {
+      const m = /^\d[\d,]*(?:\.\d+)?/.exec(text.slice(i))!
+      current = parseFloat(m[0].replace(/,/g, ''))
+      hasCurrent = true
+      sawAny = true
+      lastWasBig = false
+      i += m[0].length
+      continue
+    }
+    if (KO_DIGIT[ch] !== undefined) {
+      current = KO_DIGIT[ch]
+      hasCurrent = true
+      sawAny = true
+      hasKorean = true
+      lastWasBig = false
+      i++
+      continue
+    }
+    if (KO_SMALL[ch] !== undefined) {
+      section += (hasCurrent ? current : 1) * KO_SMALL[ch]
+      current = 0
+      hasCurrent = false
+      hasUnit = true
+      sawAny = true
+      hasKorean = true
+      lastWasBig = false
+      i++
+      continue
+    }
+    if (KO_BIG[ch] !== undefined) {
+      flushBig(KO_BIG[ch])
+      hasUnit = true
+      sawAny = true
+      hasKorean = true
+      lastWasBig = true
+      i++
+      continue
+    }
+    // 만/억 바로 뒤 공백만 넘어간다 — 나머지 자릿수가 이어지는 자리
+    if (ch === ' ' && lastWasBig) {
+      const next = text[i + 1]
+      if (next && (/\d/.test(next) || KO_NUM.has(next))) {
+        lastWasBig = false
+        i++
+        continue
+      }
+    }
+    break
+  }
+
+  if (!sawAny) return null
+  total += section + current
+
+  const won = /^\s*원/.exec(text.slice(i))
+  return {
+    amount: total,
+    end: won ? i + won[0].length : i,
+    hasUnit,
+    hasWon: !!won,
+    hasKorean,
+    startsKorean,
+  }
+}
+
 /** 텍스트에서 금액으로 볼 수 있는 부분을 모두 찾는다 (등장 순서) */
 function findAmounts(text: string): AmountMatch[] {
-  AMOUNT_RE.lastIndex = 0
   const out: AmountMatch[] = []
-  let m: RegExpExecArray | null
-  while ((m = AMOUNT_RE.exec(text))) {
-    let amount = 0
-    if (m[5]) {
-      // "만원" / "천원" 단독
-      amount = unitValue(m[5])
-    } else {
-      const n1 = parseFloat(m[1].replace(/,/g, ''))
-      if (!Number.isFinite(n1)) continue
-      amount = n1 * unitValue(m[2])
-      if (m[3]) amount += parseFloat(m[3].replace(/,/g, '')) * unitValue(m[4])
-      // "5500" 같은 단위 없는 맨숫자: 3자리 이하는 금액으로 보기엔 애매하므로 버림
-      // (단, "원"이 붙어 있으면 그대로 인정 — "500원")
-      const hasUnit = !!m[2] || !!m[4] || /원\s*$/.test(m[0].trim())
-      if (!hasUnit && amount < 1000) continue
+  let i = 0
+  while (i < text.length) {
+    const ch = text[i]
+    if (!/\d/.test(ch) && !KO_NUM.has(ch)) {
+      i++
+      continue
     }
-    amount = Math.round(amount)
-    if (amount <= 0 || amount > 999_999_999) continue
-    out.push({ amount, start: m.index, end: m.index + m[0].length })
+    const r = scanAmount(text, i)
+    if (!r) {
+      i++
+      continue
+    }
+    const prev = i > 0 ? text[i - 1] : ''
+    const after = text[r.end] ?? ''
+    const ok =
+      r.amount > 0 &&
+      r.amount <= 999_999_999 &&
+      // 낱말 중간에서 시작한 수사는 버린다 ("고기만두"의 만)
+      !(r.startsKorean && HANGUL.test(prev)) &&
+      // 뒤에 한글이 붙으면 수사가 아니라 낱말이다 (천천히·만나서·이만큼)
+      !(r.hasKorean && !r.hasWon && HANGUL.test(after)) &&
+      // 단위도 '원'도 없는 세 자리 이하는 금액으로 보기 애매하다
+      (r.hasUnit || r.hasWon || r.amount >= 1000)
+
+    if (ok) {
+      out.push({ amount: Math.round(r.amount), start: i, end: r.end })
+      i = r.end
+    } else {
+      i++
+    }
   }
   return out
 }
