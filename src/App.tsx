@@ -7,6 +7,7 @@ import { getMyMembership, type Membership } from './lib/db'
 import { useLedgerStore } from './lib/store'
 import AppFrame from './components/AppFrame'
 import SyncBanner from './components/SyncBanner'
+import UpdateBanner from './components/UpdateBanner'
 import Home from './pages/Home'
 import Monthly from './pages/Monthly'
 import Assets from './pages/Assets'
@@ -27,11 +28,15 @@ import Legal from './pages/Legal'
 
 export default function App() {
   return (
-    <Routes>
-      {/* 방침·약관은 로그인 전에도 열람 가능 */}
-      <Route path="/legal/:doc" element={<Legal />} />
-      <Route path="*" element={<AuthGate />} />
-    </Routes>
+    <>
+      {/* 홈 화면 앱은 옛 파일을 붙들고 있는 일이 잦다 — 새로 배포되면 알려준다 */}
+      <UpdateBanner />
+      <Routes>
+        {/* 방침·약관은 로그인 전에도 열람 가능 */}
+        <Route path="/legal/:doc" element={<Legal />} />
+        <Route path="*" element={<AuthGate />} />
+      </Routes>
+    </>
   )
 }
 
