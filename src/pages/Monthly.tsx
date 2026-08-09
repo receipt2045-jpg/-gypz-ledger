@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import BudgetBars from '../components/BudgetBars'
+import FixedCostCheck from '../components/FixedCostCheck'
 import InfoTip from '../components/InfoTip'
 import MonthlyReportCard from '../components/MonthlyReportCard'
 import OccasionSection from '../components/OccasionSection'
@@ -145,6 +146,9 @@ export default function Monthly() {
       {ledger.closed && (
         <MonthlyReportCard data={buildMonthlyCard(ledger, snapshots, profile)} />
       )}
+
+      {/* 고정비 점검 — 금액만으론 알 수 없으니 수입 대비로 견줘 본다 (가구 전체 기준) */}
+      <FixedCostCheck items={ledger.items} closed={ledger.closed} />
 
       {/* 예산 대비 지출 */}
       <div className="rounded-card bg-card px-5 py-4 shadow-card">
