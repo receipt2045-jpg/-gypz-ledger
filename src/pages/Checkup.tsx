@@ -200,9 +200,11 @@ export default function Checkup() {
     setItems((prev) =>
       prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)),
     )
-  const addItem = (group: CategoryGroup, category: string) => {
-    if (!member) return
-    setItems((prev) => [...prev, { ...emptyItem(group, category, member), planned: 0, actual: 0 }])
+  const addItem = (group: CategoryGroup, category: string, forMember: 1 | 2) => {
+    setItems((prev) => [
+      ...prev,
+      { ...emptyItem(group, category, forMember), planned: 0, actual: 0 },
+    ])
   }
   /** 고백 합계를 금액까지 채워서 항목으로 추가 (정산 모드 전용) */
   const addFromConfession = (group: CategoryGroup, category: string, amount: number) => {
@@ -586,6 +588,9 @@ export default function Checkup() {
           onAdd={addItem}
           onRemove={removeItem}
           onCreateCategory={addCategory}
+          showMember={bothMode}
+          memberNames={memberNames}
+          defaultMember={member ?? 1}
           onFillPreset={() => fillPreset(def.groups)}
         />
       </div>
@@ -726,6 +731,9 @@ function MoneyStep({
   hints,
   missingConfessed = [],
   onAddConfessed,
+  showMember,
+  memberNames,
+  defaultMember,
 }: {
   groups: CategoryGroup[]
   items: BudgetItem[]
@@ -738,7 +746,11 @@ function MoneyStep({
   onAddConfessed?: (g: CategoryGroup, category: string, amount: number) => void
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
-  onAdd: (g: CategoryGroup, c: string) => void
+  onAdd: (g: CategoryGroup, c: string, member: 1 | 2) => void
+  /** 두 사람 몫을 한 화면에서 넣는 중인지 */
+  showMember?: boolean
+  memberNames: [string, string]
+  defaultMember: 1 | 2
   onRemove: (id: string) => void
   onCreateCategory: (g: CategoryGroup, name: string) => void
   onFillPreset: () => void
@@ -749,6 +761,7 @@ function MoneyStep({
   const [newCatName, setNewCatName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
   const [memoOpen, setMemoOpen] = useState<string | null>(null)
+  const [addMember, setAddMember] = useState<1 | 2>(defaultMember)
 
   // '기타'가 없는 기존 데이터에도 항상 노출 (브리프 P1 2.1)
   const catOptions = categories[g].includes('기타') ? categories[g] : [...categories[g], '기타']
@@ -764,10 +777,10 @@ function MoneyStep({
         return
       }
       onCreateCategory(g, name) // 설정의 카테고리 목록에도 저장
-      onAdd(g, name)
+      onAdd(g, name, addMember)
     } else {
       if (!cat) return
-      onAdd(g, cat)
+      onAdd(g, cat, addMember)
     }
     setNewCatName('')
     setAdding(false)
@@ -837,8 +850,14 @@ function MoneyStep({
             <div className="flex items-center gap-2.5">
               <div className="w-[76px] shrink-0">
                 <p className="truncate text-[15px] font-semibold text-ink">{it.category}</p>
-                {groups.length > 1 && (
-                  <p className="mt-0.5 truncate text-[11px] text-cap">{GROUP_LABEL[it.group]}</p>
+                {/* 두 사람 몫을 한 화면에서 넣을 땐 누구 것인지가 제일 중요하다 */}
+                {(showMember || groups.length > 1) && (
+                  <p className="mt-0.5 truncate text-[11px] text-cap">
+                    {[showMember ? memberNames[it.member - 1] : null,
+                      groups.length > 1 ? GROUP_LABEL[it.group] : null]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
                 )}
               </div>
               <AmountInput
@@ -899,6 +918,20 @@ function MoneyStep({
       {adding ? (
         <div className="space-y-2 rounded-card bg-card p-4 shadow-card">
           {/* 드롭다운 가로 배치: '추가' 버튼 위치가 흔들리지 않게 고정 (브리프 P1 2.3) */}
+          {/* 두 사람 몫을 넣는 중이면 누구 항목인지 먼저 고른다 */}
+          {showMember && (
+            <select
+              value={addMember}
+              onChange={(e) => setAddMember(Number(e.target.value) as 1 | 2)}
+              className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] font-semibold text-ink outline-none focus:border-brand"
+            >
+              {([1, 2] as const).map((m) => (
+                <option key={m} value={m}>
+                  {memberNames[m - 1]} 항목
+                </option>
+              ))}
+            </select>
+          )}
           <div className="flex gap-2">
             {groups.length > 1 && (
               <select

@@ -100,3 +100,45 @@ describe('정산 — 혼자서도 완주하기', () => {
     expect(isClosed()).toBe(false)
   })
 })
+
+describe('둘 다 입력 — 누구 항목인지 알아보게', () => {
+  it('항목마다 구성원 이름이 붙는다', async () => {
+    const { user } = openCheckup()
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+
+    // 같은 '주수입'이 둘이라 이름이 없으면 구분이 안 된다
+    expect(screen.getByText('남편')).toBeInTheDocument()
+    expect(screen.getByText('아내')).toBeInTheDocument()
+  })
+
+  it('한 사람만 정산할 땐 이름을 붙이지 않는다 (군더더기)', async () => {
+    const { user } = openCheckup()
+    await user.click(screen.getByRole('button', { name: /^아내/ }))
+
+    expect(screen.queryByText('남편')).not.toBeInTheDocument()
+  })
+
+  it('항목 추가할 때 누구 것인지 고를 수 있다', async () => {
+    const { user } = openCheckup()
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    await user.click(screen.getByRole('button', { name: /항목 추가/ }))
+
+    expect(screen.getByRole('option', { name: '남편 항목' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '아내 항목' })).toBeInTheDocument()
+  })
+
+  it('고른 구성원으로 항목이 만들어진다', async () => {
+    const { user } = openCheckup()
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    await user.click(screen.getByRole('button', { name: /항목 추가/ }))
+
+    // 구성원 선택은 첫 번째 드롭다운 (그 뒤가 카테고리)
+    const memberSelect = screen.getAllByRole('combobox')[0]
+    await user.selectOptions(memberSelect, '1') // 남편
+    await user.click(screen.getByRole('button', { name: '추가' }))
+
+    // 남편 수입 항목이 하나 늘었다 (원래 1개 → 2개)
+    const rows = screen.getAllByLabelText('삭제')
+    expect(rows).toHaveLength(3)
+  })
+})
