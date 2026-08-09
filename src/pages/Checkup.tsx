@@ -7,14 +7,17 @@ import {
   X,
   Plus,
   PartyPopper,
+  Share2,
   StickyNote,
   UserRound,
+  Users,
 } from 'lucide-react'
 import AiCoachCard from '../components/AiCoachCard'
 import AmountInput from '../components/AmountInput'
 import MonthlyReportCard from '../components/MonthlyReportCard'
 import StepProgress from '../components/StepProgress'
 import { buildSummary } from '../lib/aiCoach'
+import { shareInvite } from '../lib/invite'
 import { buildMonthlyCard } from '../lib/monthlyCard'
 import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
@@ -102,6 +105,7 @@ export default function Checkup() {
     categories,
     profile,
     memberNo,
+    inviteCode,
     confessions,
     saveLedger,
     saveSnapshot,
@@ -141,6 +145,14 @@ export default function Checkup() {
 
   const [step, setStep] = useState(MEMBER_STEP)
   const [member, setMember] = useState<1 | 2 | null>(null)
+  /**
+   * 한 사람이 두 사람 몫을 다 입력하는 모드.
+   *
+   * 실측: 혼자 남은 가구가 70%인데, 화면이 '각자 자기 항목만 입력하면 돼요'라고
+   * 안내해서 배우자를 기다리다 결산이 영원히 미완성으로 남았다. 한 명만 정산하면
+   * closed가 안 돼 성적표도 순자산 확정도 안 나온다.
+   */
+  const [bothMode, setBothMode] = useState(false)
   const [showErrors, setShowErrors] = useState(false) // 금액 검증 (브리프 P1 2.2)
 
   // 고백은 했는데 정산 목록엔 아직 없는 항목 — 빠뜨리지 않도록 해당 스텝에서 제안한다.
@@ -167,12 +179,15 @@ export default function Checkup() {
     setAssets(resolveSnapshot(snapshots, ny).items.map((it) => ({ ...it })))
   }
 
-  const selectMember = (m: 1 | 2) => {
+  const selectMember = (m: 1 | 2, both = false) => {
     setMember(m)
+    setBothMode(both)
     // 정산(결산) 모드는 실제값 시작점을 계획값으로 채움. 예산 모드는 계획값 그대로 편집.
     if (!isBudget) {
       setItems((prev) =>
-        prev.map((it) => (it.member === m ? { ...it, actual: it.actual || it.planned } : it)),
+        prev.map((it) =>
+          both || it.member === m ? { ...it, actual: it.actual || it.planned } : it,
+        ),
       )
     }
     setStep(1)
@@ -259,7 +274,7 @@ export default function Checkup() {
     // 배우자가 그사이 다른 기기에서 정산했으면 그 저장분을 통째로 덮어쓰게 된다.
     // 배우자 항목은 서버 것을, 내 항목만 내 편집본을 쓰는 병합으로 방지.
     const base = await fetchBase()
-    const mergedItems = mergeMemberItems(base.items, items, member)
+    const mergedItems = bothMode ? items : mergeMemberItems(base.items, items, member)
 
     if (isBudget) {
       // 예산 세우기: 계획값만 저장, 정산 상태(closed·settledMembers)는 건드리지 않음
@@ -270,7 +285,9 @@ export default function Checkup() {
         settledMembers: base.settledMembers ?? [],
       })
     } else {
-      const merged = Array.from(new Set([...(base.settledMembers ?? []), member])) as (1 | 2)[]
+      const merged = (bothMode
+        ? [1, 2]
+        : Array.from(new Set([...(base.settledMembers ?? []), member]))) as (1 | 2)[]
       const closed = merged.includes(1) && merged.includes(2)
       saveLedger({ ym, items: mergedItems, closed, settledMembers: merged })
       // 자산은 자산 탭에서 관리하지만, 이 달의 순자산 스냅샷은 이어지도록 저장.
@@ -301,7 +318,7 @@ export default function Checkup() {
           step={step}
           onBack={goBack}
           title={isBudget ? '누가 예산을 세우나요?' : '누가 정산하나요?'}
-          subtitle="각자 자기 항목만 입력하면 돼요"
+          subtitle="각자 입력해도, 한 사람이 다 해도 괜찮아요"
         />
         <div className="flex-1 space-y-3 px-5 pt-4">
           {/* 대상 달 선택 — 지난 달·다음 달 이동 가능 */}
@@ -368,7 +385,34 @@ export default function Checkup() {
               </button>
             )
           })}
-          <p className="px-1 pt-2 text-[12px] leading-relaxed text-cap">
+          {/* 배우자를 기다리다 결산이 미완성으로 남는 걸 막는다 — 혼자서도 끝낼 수 있게 */}
+          <button
+            onClick={() => selectMember(memberNo ?? 1, true)}
+            className="flex w-full items-center gap-4 rounded-card border border-dashed border-line bg-transparent px-5 py-4 text-left active:bg-white"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand/10">
+              <Users size={22} className="text-brand" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[15px] font-bold text-ink">둘 다 제가 입력할게요</p>
+              <p className="mt-0.5 text-[12.5px] leading-relaxed text-sub">
+                배우자가 아직 없어도 {formatMonthKorean(ym)} 결산을 끝낼 수 있어요
+              </p>
+            </div>
+            <ChevronRight size={20} className="shrink-0 text-cap" />
+          </button>
+
+          {/* 초대는 한 번 눌러 보내지게 — 코드를 찾아 옮겨 적게 하지 않는다 */}
+          {inviteCode && (
+            <button
+              onClick={() => shareInvite(inviteCode)}
+              className="flex w-full items-center justify-center gap-1.5 py-1 text-[13px] font-bold text-brand active:opacity-60"
+            >
+              <Share2 size={14} /> 배우자에게 초대 보내기
+            </button>
+          )}
+
+          <p className="px-1 pt-1 text-[12px] leading-relaxed text-cap">
             {isBudget
               ? `${formatMonthKorean(ym)} 예산을 미리 정해두면, 월말에 정산할 때 계획과 실제를 비교할 수 있어요.`
               : `두 사람 모두 정산을 마치면 ${formatMonthKorean(ym)} 결산이 확정돼요.`}
@@ -418,7 +462,9 @@ export default function Checkup() {
       )
     }
 
-    const bothDone = settledMembers.includes(1) && settledMembers.includes(2)
+    // 방금 두 사람 몫을 다 넣었으면 저장 반영을 기다리지 않고 바로 완료로 본다
+    const bothDone =
+      bothMode || (settledMembers.includes(1) && settledMembers.includes(2))
     const s = summarize({ ym, items, closed: true })
     const newNetWorth = netWorthOf({ ym, items: assets })
     const nwDelta = newNetWorth - prevNetWorth
@@ -483,11 +529,13 @@ export default function Checkup() {
 
   // ── 금액 입력 스텝 (수입/저축·투자/고정/변동) ──
   const def = STEPS[step - 1]
-  const stepItems = items.filter((it) => def.groups.includes(it.group) && it.member === member)
+  const stepItems = items.filter(
+    (it) => def.groups.includes(it.group) && (bothMode || it.member === member),
+  )
   const isLastStep = step === LAST_MONEY_STEP
 
   // 잉여현금(예산 모드는 예상) — 지금 입력 중인 사람 기준, 입력하는 대로 실시간 반영
-  const myItems = items.filter((it) => it.member === member)
+  const myItems = bothMode ? items : items.filter((it) => it.member === member)
   const liveSurplus = summarize({ ym, items: myItems, closed: !isBudget }).surplus
 
   // 빈값·0원 항목이 있으면 다음 단계로 못 넘어감 (삭제하거나 금액 입력)
@@ -512,7 +560,7 @@ export default function Checkup() {
         step={step}
         onBack={goBack}
         title={def.title}
-        subtitle={`${memberName} · ${stepSubtitle}`}
+        subtitle={`${bothMode ? '우리집' : memberName} · ${stepSubtitle}`}
         caption={`${formatYmKorean(ym)} ${modeLabel}`}
       />
       <div className="flex-1 px-5 pb-40">
@@ -545,7 +593,7 @@ export default function Checkup() {
         {/* 잉여현금 실시간 표시 */}
         <div className="mb-2 flex items-center justify-between rounded-btn bg-ink px-4 py-2.5">
           <span className="text-[13px] font-semibold text-white/80">
-            {memberName} {isBudget ? '예상 잉여현금' : '잉여현금'}
+            {bothMode ? '우리집' : memberName} {isBudget ? '예상 잉여현금' : '잉여현금'}
           </span>
           <span
             className={`tnum text-[16px] font-extrabold ${liveSurplus < 0 ? 'text-[#FF8A93]' : 'text-white'}`}

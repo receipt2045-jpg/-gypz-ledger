@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Copy, Check, ChevronRight, Download, KeyRound, LogOut, Upload, RotateCcw, Trash2, X, Plus } from 'lucide-react'
+import { Copy, Check, ChevronRight, Download, KeyRound, LogOut, Share2, Upload, RotateCcw, Trash2, X, Plus } from 'lucide-react'
 import Card from '../components/Card'
 import AmountInput from '../components/AmountInput'
 import FeedbackCard from '../components/FeedbackCard'
+import { shareInvite } from '../lib/invite'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { deleteMyAccount } from '../lib/db'
@@ -78,6 +79,16 @@ export default function Settings() {
       alert(`초대 코드: ${inviteCode}`)
     }
   }
+
+  // 코드만 복사하면 사용자가 안내 문구를 직접 써야 한다. 문구까지 담아 보낸다.
+  const [invited, setInvited] = useState(false)
+  const sendInvite = async () => {
+    if (!inviteCode) return
+    const r = await shareInvite(inviteCode)
+    if (r === 'failed') return alert(`초대 코드: ${inviteCode}`)
+    setInvited(true)
+    setTimeout(() => setInvited(false), 2000)
+  }
   const [newCat, setNewCat] = useState<Record<CategoryGroup, string>>({
     income: '',
     saving: '',
@@ -141,12 +152,19 @@ export default function Settings() {
           </span>
           <button
             onClick={copyInvite}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-btn bg-brand text-white active:bg-brand-dark"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-btn bg-bg text-sub active:bg-line"
             aria-label="초대 코드 복사"
           >
             {copied ? <Check size={19} /> : <Copy size={19} />}
           </button>
         </div>
+        <button
+          onClick={sendInvite}
+          className="mt-2 flex h-12 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
+        >
+          <Share2 size={17} />
+          {invited ? '보냈어요' : '배우자에게 초대 보내기'}
+        </button>
       </Card>
 
       {/* 프로필 */}
