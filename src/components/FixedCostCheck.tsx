@@ -1,11 +1,14 @@
-import { useState } from 'react'
-import { Check, ChevronDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Check, ChevronDown, Users } from 'lucide-react'
 import { abbreviateKRW, formatWon } from '../lib/format'
 import {
   buildFixedCostReport,
   headlineOf,
   type CategoryVerdict,
 } from '../lib/fixedCostBenchmark'
+import { peerIsHigh, peerLabel, peerStateOf, type PeerRow } from '../lib/peerBenchmark'
+import * as db from '../lib/db'
+import { useLedgerStore } from '../lib/store'
 import type { BudgetItem } from '../types'
 
 /**
@@ -22,6 +25,25 @@ export default function FixedCostCheck({
   closed: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const householdId = useLedgerStore((s) => s.householdId)
+  // 또래 비교는 있으면 얹고, 없으면(로그인 전·샘플·통신 실패) 조용히 생략한다
+  const [peers, setPeers] = useState<Map<string, PeerRow>>(new Map())
+
+  useEffect(() => {
+    if (!householdId) return
+    let alive = true
+    db.fetchPeerBenchmark()
+      .then((rows) => {
+        if (alive) setPeers(new Map(rows.map((r) => [r.category, r])))
+      })
+      .catch(() => {
+        /* 비교는 곁들이는 정보라, 실패해도 화면은 그대로 */
+      })
+    return () => {
+      alive = false
+    }
+  }, [householdId])
+
   const r = buildFixedCostReport(items, closed)
 
   if (r.categories.length === 0) return null
@@ -50,9 +72,9 @@ export default function FixedCostCheck({
         </div>
       )}
 
-      <div className="mt-3 space-y-2">
+      <div className="mt-3 space-y-2.5">
         {r.categories.map((c) => (
-          <Row key={c.category} v={c} />
+          <Row key={c.category} v={c} peer={peers.get(c.category)} />
         ))}
       </div>
 
@@ -81,28 +103,47 @@ export default function FixedCostCheck({
   )
 }
 
-function Row({ v }: { v: CategoryVerdict }) {
+function Row({ v, peer }: { v: CategoryVerdict; peer?: PeerRow }) {
   const pct = Math.round(v.ratio * 100)
+  const state = peer ? peerStateOf(peer) : null
+
   return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="truncate text-[14px] font-semibold text-ink">{v.category}</span>
-        {v.status === 'ok' && <Check size={13} className="shrink-0 text-brand" />}
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-[14px] font-semibold text-ink">{v.category}</span>
+          {v.status === 'ok' && <Check size={13} className="shrink-0 text-brand" />}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="tnum text-[13.5px] font-semibold text-ink">{formatWon(v.amount)}</span>
+          {v.status === 'unknown' ? (
+            <span className="w-[62px] text-right text-[11.5px] text-cap">기준 없음</span>
+          ) : (
+            <span
+              className={`tnum w-[62px] text-right text-[12px] font-bold ${
+                v.status === 'over' ? 'text-danger' : 'text-cap'
+              }`}
+            >
+              수입의 {pct}%
+            </span>
+          )}
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <span className="tnum text-[13.5px] font-semibold text-ink">{formatWon(v.amount)}</span>
-        {v.status === 'unknown' ? (
-          <span className="w-[62px] text-right text-[11.5px] text-cap">기준 없음</span>
-        ) : (
-          <span
-            className={`tnum w-[62px] text-right text-[12px] font-bold ${
-              v.status === 'over' ? 'text-danger' : 'text-cap'
-            }`}
-          >
-            수입의 {pct}%
-          </span>
-        )}
-      </div>
+
+      {/* 또래 비교 — 모아불리 쓰는 부부들 사이에서의 위치 */}
+      {state && (
+        <p
+          className={`mt-0.5 flex items-center gap-1 text-[11.5px] ${
+            peerIsHigh(state) ? 'font-semibold text-danger' : 'text-cap'
+          }`}
+        >
+          <Users size={11} className="shrink-0" />
+          {peerLabel(state)}
+          {state.kind !== 'locked' && (
+            <span className="text-cap"> · 중간값 {formatWon(state.median)}</span>
+          )}
+        </p>
+      )}
     </div>
   )
 }

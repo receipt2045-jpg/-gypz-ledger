@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import type { PeerRow } from './peerBenchmark'
 import type {
   AppData,
   AssetSnapshot,
@@ -351,4 +352,12 @@ export async function replaceAllData(householdId: string, data: AppData) {
     ...data.snapshots.map((s) => pushSnapshot(householdId, s)),
     ...data.occasions.map((o) => pushOccasion(householdId, o)),
   ])
+}
+
+// ── 고정비 또래 비교 ───────────────────────────
+// 서버가 분포만 계산해서 준다. 남의 금액은 넘어오지 않는다.
+export async function fetchPeerBenchmark(): Promise<PeerRow[]> {
+  const { data, error } = await supabase.rpc('fixed_cost_benchmark')
+  if (error) throw error
+  return (data ?? []) as PeerRow[]
 }
