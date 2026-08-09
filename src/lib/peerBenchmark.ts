@@ -1,15 +1,16 @@
 /**
- * 또래 비교 — 모아불리를 쓰는 부부들 사이에서 우리집 고정비 위치.
+ * 또래 기준값 — 모아불리를 쓰는 부부들은 이 항목에 보통 얼마를 쓰는가.
  *
- * 숫자는 서버(fixed_cost_benchmark RPC)가 분포만 계산해서 준다.
- * 여기서는 '표본이 얼마나 모였는지'에 따라 무엇까지 말할지를 정한다.
- * 20집짜리 표본으로 "상위 12%"라고 하면 그건 통계가 아니라 꾸며낸 정밀도다.
+ * 순위(상위 몇 %)도, 표본 수(30집 중)도 보여주지 않는다.
+ *   - 순위는 하위권 사용자를 위축시키기만 하고 행동으로 이어지지 않는다.
+ *   - 표본 수를 드러내면 "겨우 30집?"이 되어 오히려 신뢰를 깎는다.
+ * 대신 중간값 하나만 조용히 놓아둔다. 판단은 사용자가 한다.
+ *
+ * 표본이 적을 때는 아무 말도 하지 않는다. 다섯 집의 중간값은 통계가 아니다.
  */
 
-/** 표본이 이만큼 모여야 비교를 시작한다 */
+/** 이만큼 모여야 중간값을 말할 자격이 생긴다 */
 export const MIN_SAMPLE = 20
-/** 정확한 백분위를 말해도 되는 표본 */
-export const EXACT_SAMPLE = 50
 
 export interface PeerRow {
   category: string
@@ -20,39 +21,14 @@ export interface PeerRow {
   band: 'high' | 'mid' | 'low' | null
 }
 
-export type PeerState =
-  | { kind: 'locked'; need: number } // 표본 부족 — 몇 집 더 모이면 열리는지
-  | { kind: 'band'; band: 'high' | 'mid' | 'low'; n: number; median: number }
-  | { kind: 'exact'; rankPct: number; n: number; median: number }
-
-export function peerStateOf(row: PeerRow): PeerState {
-  if (row.n < MIN_SAMPLE || row.median_amount == null) {
-    return { kind: 'locked', need: Math.max(1, MIN_SAMPLE - row.n) }
-  }
-  if (row.n >= EXACT_SAMPLE && row.rank_pct != null) {
-    return { kind: 'exact', rankPct: row.rank_pct, n: row.n, median: row.median_amount }
-  }
-  // band는 20집 이상이면 서버가 항상 채워주지만, 없으면 '보통'으로 둔다
-  return { kind: 'band', band: row.band ?? 'mid', n: row.n, median: row.median_amount }
+/** 보여줄 게 있으면 중간값, 없으면 null */
+export function peerMedian(row: PeerRow | undefined): number | null {
+  if (!row || row.n < MIN_SAMPLE || row.median_amount == null) return null
+  return row.median_amount
 }
 
-/** 화면에 쓸 한 줄 */
-export function peerLabel(s: PeerState): string {
-  switch (s.kind) {
-    case 'locked':
-      return `${s.need}집 더 모이면 비교할 수 있어요`
-    case 'band':
-      return s.band === 'high'
-        ? `${s.n}집 중 많이 쓰는 편`
-        : s.band === 'low'
-          ? `${s.n}집 중 적게 쓰는 편`
-          : `${s.n}집 중 보통`
-    case 'exact':
-      return `${s.n}집 중 상위 ${s.rankPct}%`
-  }
-}
-
-/** 강조 색을 쓸지 (많이 쓰는 편일 때만) */
-export function peerIsHigh(s: PeerState): boolean {
-  return (s.kind === 'band' && s.band === 'high') || (s.kind === 'exact' && s.rankPct <= 25)
+/** 화면에 쓸 한 줄 (없으면 null) */
+export function peerLabel(row: PeerRow | undefined, format: (n: number) => string): string | null {
+  const median = peerMedian(row)
+  return median == null ? null : `다른 집들은 보통 ${format(median)}`
 }

@@ -6,7 +6,7 @@ import {
   headlineOf,
   type CategoryVerdict,
 } from '../lib/fixedCostBenchmark'
-import { peerIsHigh, peerLabel, peerStateOf, type PeerRow } from '../lib/peerBenchmark'
+import { peerLabel, type PeerRow } from '../lib/peerBenchmark'
 import * as db from '../lib/db'
 import { useLedgerStore } from '../lib/store'
 import type { BudgetItem } from '../types'
@@ -105,7 +105,7 @@ export default function FixedCostCheck({
 
 function Row({ v, peer }: { v: CategoryVerdict; peer?: PeerRow }) {
   const pct = Math.round(v.ratio * 100)
-  const state = peer ? peerStateOf(peer) : null
+  const peerLine = peerLabel(peer, formatWon)
 
   return (
     <div>
@@ -130,18 +130,11 @@ function Row({ v, peer }: { v: CategoryVerdict; peer?: PeerRow }) {
         </div>
       </div>
 
-      {/* 또래 비교 — 모아불리 쓰는 부부들 사이에서의 위치 */}
-      {state && (
-        <p
-          className={`mt-0.5 flex items-center gap-1 text-[11.5px] ${
-            peerIsHigh(state) ? 'font-semibold text-danger' : 'text-cap'
-          }`}
-        >
+      {/* 또래 기준값 — 순위를 매기지 않고 '보통 얼마'만 조용히 놓아둔다 */}
+      {peerLine && (
+        <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-cap">
           <Users size={11} className="shrink-0" />
-          {peerLabel(state)}
-          {state.kind !== 'locked' && (
-            <span className="text-cap"> · 중간값 {formatWon(state.median)}</span>
-          )}
+          {peerLine}
         </p>
       )}
     </div>
