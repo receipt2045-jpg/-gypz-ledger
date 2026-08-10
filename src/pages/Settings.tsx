@@ -5,6 +5,7 @@ import Card from '../components/Card'
 import AmountInput from '../components/AmountInput'
 import FeedbackCard from '../components/FeedbackCard'
 import { shareInvite } from '../lib/invite'
+import { listRequests } from '../lib/reportAdmin'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { deleteMyAccount } from '../lib/db'
@@ -35,9 +36,18 @@ export default function Settings() {
   const [deleting, setDeleting] = useState(false)
   // 운영자 메뉴는 운영자 계정에만 노출 (실제 권한 검증은 서버에서)
   const [isAdmin, setIsAdmin] = useState(false)
+  // 아직 손대지 않은 리포트 신청 건수 — 들어온 걸 모르고 지나치지 않게
+  const [newRequests, setNewRequests] = useState(0)
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      setIsAdmin(data.user?.email?.toLowerCase() === ADMIN_EMAIL)
+      const admin = data.user?.email?.toLowerCase() === ADMIN_EMAIL
+      setIsAdmin(admin)
+      if (!admin) return
+      listRequests()
+        .then((rs) => setNewRequests(rs.filter((r) => r.status === 'requested' && !r.revoked_at).length))
+        .catch(() => {
+          /* 실패해도 설정 화면은 그대로 */
+        })
     })
   }, [])
 
@@ -353,7 +363,14 @@ export default function Settings() {
         <Card onClick={() => navigate('/admin/reports')}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[15px] font-bold text-ink">리포트 신청 🔒</p>
+              <p className="flex items-center gap-1.5 text-[15px] font-bold text-ink">
+                리포트 신청 🔒
+                {newRequests > 0 && (
+                  <span className="tnum rounded-full bg-danger px-2 py-0.5 text-[11px] font-bold text-white">
+                    새 신청 {newRequests}건
+                  </span>
+                )}
+              </p>
               <p className="mt-1 text-[13px] text-sub">신청을 열면 초안이 자동으로 만들어져요</p>
             </div>
             <ChevronRight size={18} className="shrink-0 text-cap" />
