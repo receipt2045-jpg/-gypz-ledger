@@ -138,9 +138,6 @@ export default function Report() {
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-[12px] leading-relaxed text-cap">
-              1:1 상담을 신청하시면 리포트 금액만큼 빼드려요.
-            </p>
           </div>
 
           {active ? (
