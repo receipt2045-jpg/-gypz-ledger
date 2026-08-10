@@ -12,7 +12,33 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type Action = "list" | "data" | "save" | "mark";
+type Action = "list" | "data" | "save" | "mark" | "ai-rewrite";
+
+/**
+ * 초안을 결영 말투로 다듬는다.
+ *
+ * 숫자는 절대 AI가 만들지 않는다. 규칙이 계산한 초안을 그대로 받아서
+ * 문장만 고치고, 신청자가 적은 궁금한 점에 답하는 문단을 더한다.
+ * (AI가 금액을 자유롭게 쓰게 두면 반드시 지어낸다.)
+ */
+const REWRITE_SYSTEM = `너는 '결영이네'라는 신혼부부 재테크 브랜드의 글쓴이다.
+부부 가계부 앱 '모아불리'의 유료 맞춤 리포트를 고객 부부에게 보낸다.
+
+[절대 규칙]
+- 주어진 초안에 있는 숫자만 쓴다. 새 숫자를 만들거나 어림하지 않는다.
+- 초안에 없는 사실을 지어내지 않는다. 모르면 쓰지 않는다.
+- 마크다운 제목(##)과 구조는 그대로 유지한다. 문장만 다듬는다.
+
+[말투]
+- 짧고 정돈된 존댓말. 한 문장에 한 가지만.
+- 잠언체 금지("~은 ~가 아니라 ~다" 같은 대구 반복 금지).
+- 추상적인 말 금지. 금액과 항목을 그대로 지목한다.
+- 겁주지 않는다. 문제는 사실대로 쓰되 다음 행동으로 이어지게 쓴다.
+- 이모지는 마지막 인사에만 하나.
+
+[신청자가 궁금한 점을 적었다면]
+'## 물어보신 것' 섹션을 '## 다음 3개월에 할 일' 앞에 넣고, 초안의 숫자
+안에서 답한다. 데이터로 답할 수 없으면 무엇을 더 알아야 하는지 적는다.`;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -179,6 +205,52 @@ Deno.serve(async (req) => {
       const { error } = await admin.from("report_requests").update(patch).eq("id", requestId);
       if (error) throw error;
       return json({ ok: true });
+    }
+
+    // ── 초안 다듬기 (AI) ───────────────────────
+    // 가계부 원본은 넘기지 않는다. 이미 계산된 초안 텍스트만 보낸다.
+    if (action === "ai-rewrite") {
+      const { draft, note } = body as { draft: string; note?: string };
+      if (!draft || draft.length < 50) {
+        return json({ error: "다듬을 초안이 없어요" }, 400);
+      }
+      const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!apiKey) return json({ error: "AI 키가 설정되지 않았어요" }, 503);
+
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-opus-4-8",
+          max_tokens: 3000,
+          system: REWRITE_SYSTEM,
+          messages: [{
+            role: "user",
+            content: `아래 초안을 결영 말투로 다듬어 주세요. 숫자는 그대로 두세요.
+
+${note ? `[신청자가 적은 궁금한 점]\n${note}\n` : "[신청자가 적은 궁금한 점 없음]\n"}
+[초안]
+${draft}`,
+          }],
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("[ai-rewrite]", res.status, await res.text());
+        return json({ error: "다듬기에 실패했어요. 잠시 후 다시 시도해 주세요" }, 502);
+      }
+      const data = await res.json();
+      const text = (data.content ?? [])
+        .filter((b: { type: string }) => b.type === "text")
+        .map((b: { text: string }) => b.text)
+        .join("")
+        .trim();
+      if (!text) return json({ error: "빈 결과가 왔어요" }, 502);
+      return json({ draft: text });
     }
 
     return json({ error: "알 수 없는 action이에요" }, 400);

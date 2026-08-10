@@ -50,3 +50,12 @@ export async function markStatus(
 ): Promise<void> {
   await call({ action: 'mark', requestId, status })
 }
+
+/**
+ * 초안을 결영 말투로 다듬는다 (AI).
+ * 가계부 원본은 보내지 않는다 — 이미 계산된 초안 텍스트만 넘긴다.
+ */
+export async function aiRewriteDraft(draft: string, note?: string): Promise<string> {
+  const r = await call<{ draft: string }>({ action: 'ai-rewrite', draft, note })
+  return r.draft
+}

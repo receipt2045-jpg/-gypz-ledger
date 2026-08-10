@@ -12,11 +12,9 @@ import {
   UserRound,
   Users,
 } from 'lucide-react'
-import AiCoachCard from '../components/AiCoachCard'
 import AmountInput from '../components/AmountInput'
 import MonthlyReportCard from '../components/MonthlyReportCard'
 import StepProgress from '../components/StepProgress'
-import { buildSummary } from '../lib/aiCoach'
 import { shareInvite } from '../lib/invite'
 import { buildMonthlyCard } from '../lib/monthlyCard'
 import { useLedgerStore } from '../lib/store'
@@ -514,8 +512,8 @@ export default function Checkup() {
             />
           )}
 
-          {/* AI 코치 진단 (브리프 P3 4.1) */}
-          <AiCoachCard summary={buildSummary(ym, items)} />
+          {/* AI 코치는 유료 리포트 초안 쪽으로 옮겼다 — 무료로 뿌리는 자리보다
+              돈을 받는 자리에서 값어치가 크고, API 비용도 그쪽이 감당한다. */}
         </div>
         <BottomBar>
           <button

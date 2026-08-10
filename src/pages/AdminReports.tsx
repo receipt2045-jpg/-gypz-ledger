@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Copy, Mail, RefreshCw, Sparkles } from 'lucide-react'
+import { ChevronLeft, Copy, Mail, RefreshCw, RotateCcw, Sparkles } from 'lucide-react'
 import Card from '../components/Card'
 import { buildReportDraft } from '../lib/reportDraft'
 import {
   listRequests,
   loadHousehold,
+  aiRewriteDraft,
   markStatus,
   saveDraft,
   type AdminHouseholdData,
@@ -83,6 +84,22 @@ export default function AdminReports() {
     if (!household) return
     setDraft(buildReportDraft(household, household.benchmark))
     flash('초안을 다시 만들었어요')
+  }
+
+  /** 규칙이 만든 초안을 결영 말투로 다듬는다. 숫자는 그대로 두게 시킨다. */
+  const [polishing, setPolishing] = useState(false)
+  const polish = async () => {
+    if (!selected || !draft || polishing) return
+    setPolishing(true)
+    setError('')
+    try {
+      setDraft(await aiRewriteDraft(draft, selected.note ?? undefined))
+      flash('말투를 다듬었어요. 숫자가 맞는지 꼭 확인해 주세요')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '다듬지 못했어요.')
+    } finally {
+      setPolishing(false)
+    }
   }
 
   const persist = async () => {
@@ -244,12 +261,22 @@ export default function AdminReports() {
               <>
                 <div className="flex items-center justify-between px-1">
                   <p className="text-[13px] font-bold text-cap">초안 (고쳐서 보내세요)</p>
-                  <button
-                    onClick={regenerate}
-                    className="flex items-center gap-1 text-[12px] font-bold text-brand active:opacity-60"
-                  >
-                    <Sparkles size={13} /> 다시 만들기
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={regenerate}
+                      className="flex items-center gap-1 text-[12px] font-bold text-cap active:opacity-60"
+                    >
+                      <RotateCcw size={12} /> 처음으로
+                    </button>
+                    <button
+                      onClick={polish}
+                      disabled={polishing}
+                      className="flex items-center gap-1 text-[12px] font-bold text-brand active:opacity-60 disabled:opacity-40"
+                    >
+                      <Sparkles size={13} />
+                      {polishing ? '다듬는 중…' : '결영 말투로 다듬기'}
+                    </button>
+                  </div>
                 </div>
                 <textarea
                   value={draft}
