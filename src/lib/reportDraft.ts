@@ -327,7 +327,6 @@ export function buildReportDraft(d: HouseholdData, bench?: Benchmark): string {
   L.push(
     "이 숫자를 놓고 '그래서 우리집은 언제 집 사?'까지 가고 싶으시면 1:1 내집마련 상담에서 이어서 봐요.",
   )
-  L.push('수입 쪽을 키우고 싶은 분께는 부수입 상담도 있어요. 답장으로 물어보시면 안내드릴게요.')
   L.push('')
   L.push('다음 달에도 잘 모아봐요 🤍')
   L.push('')

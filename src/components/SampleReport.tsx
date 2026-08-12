@@ -115,9 +115,7 @@ export default function SampleReport() {
             <p>여기까지가 리포트예요.</p>
             <p className="mt-1.5">
               이 숫자를 놓고 '그래서 우리집은 언제 집 사?'까지 가고 싶으시면{' '}
-              <b className="text-ink">1:1 내집마련 상담</b>에서 이어서 봐요. 다은 님처럼 수입
-              쪽을 키우고 싶으면 <b className="text-ink">부수입 상담</b>도 있어요. 답장으로
-              편하게 물어보세요.
+              <b className="text-ink">1:1 내집마련 상담</b>에서 이어서 봐요.
             </p>
             <p className="mt-3">다음 달에도 잘 모아봐요 🤍</p>
             <p className="mt-1.5 text-ink">결영이네 드림</p>
