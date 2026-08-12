@@ -5,7 +5,7 @@ import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
 import SampleReport from '../components/SampleReport'
 
-const PRICE = '30,000원'
+const PRICE = '5,000원'
 
 /**
  * 결제 링크 — netlify.toml의 VITE_PAYMENT_URL에 넣으면 버튼이 켜진다.
@@ -122,7 +122,7 @@ export default function Report() {
         <div className="space-y-4 px-5 pt-3">
           <p className="text-[13.5px] leading-relaxed text-sub">
             결영이네가 <b className="text-ink">우리집 숫자를 직접 보고</b> 씁니다. 자동으로 만드는 게
-            아니라 사람이 읽고 쓰는 거라, 한 달에 <b className="text-ink">10팀</b>만 받아요.
+            아니라 사람이 읽고 쓰는 리포트예요.
           </p>
 
           {/* 무엇이 들어가는지 */}

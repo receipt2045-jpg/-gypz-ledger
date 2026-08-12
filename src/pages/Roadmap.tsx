@@ -130,7 +130,7 @@ export default function Roadmap() {
         <Card onClick={() => navigate('/report')}>
           <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-            <span className="text-[11px] font-bold text-brand">월 10팀 한정</span>
+            <span className="text-[11px] font-bold text-brand">5,000원</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
