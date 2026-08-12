@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, ChevronLeft } from 'lucide-react'
 import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
+import SampleReport from '../components/SampleReport'
 
 const PRICE = '30,000원'
 
@@ -139,6 +140,9 @@ export default function Report() {
               ))}
             </ul>
           </div>
+
+          {/* 예시 리포트 — 신청 전에 실물을 보여준다 */}
+          <SampleReport />
 
           {active ? (
             /* 이미 신청함 — 상태와 철회 */
