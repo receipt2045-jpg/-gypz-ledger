@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react'
 import BudgetBars from '../components/BudgetBars'
 import FixedCostCheck from '../components/FixedCostCheck'
 import InfoTip from '../components/InfoTip'
@@ -22,8 +22,17 @@ const BANNER_KEY = 'gypz-concept-banner-closed'
 
 export default function Monthly() {
   const navigate = useNavigate()
-  const { ledgers, snapshots, profile, confessions, occasions, addOccasion, removeOccasion } =
-    useLedgerStore()
+  const {
+    ledgers,
+    snapshots,
+    profile,
+    confessions,
+    occasions,
+    addOccasion,
+    removeOccasion,
+    removeConfession,
+    memberNo,
+  } = useLedgerStore()
   const [ym, setYm] = useState(() => activeYm(ledgers))
   const [member, setMember] = useState<MemberFilter>(0)
   // 개념 안내 배너 (브리프 P0 1.2) — 닫으면 이 기기에서 다시 안 뜸
@@ -201,11 +210,22 @@ export default function Monthly() {
                     <span className="tnum shrink-0 text-[13.5px] font-bold text-ink">
                       {formatWon(c.amount)}
                     </span>
+                    {/* 잘못 쓴 고백은 지우고 다시 — 내가 쓴 것만 (서버도 배우자 것은 거부) */}
+                    {c.memberNo === memberNo && (
+                      <button
+                        onClick={() => removeConfession(c.id)}
+                        className="shrink-0 text-cap active:text-danger"
+                        aria-label="고백 삭제"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 )
               })}
               <p className="pt-1 text-[12px] leading-relaxed text-cap">
-                정산할 때 카테고리별 합계를 한 번에 넣을 수 있어요
+                잘못 쓴 건 지우고 다시 적으면 돼요 · 정산할 때 카테고리별 합계를 한 번에 넣을 수
+                있어요
               </p>
             </div>
           )}

@@ -21,6 +21,7 @@ export type PendingOp =
   | { kind: 'categories'; key: string; payload: Categories }
   | { kind: 'aliases'; key: string; payload: Record<string, string> }
   | { kind: 'confession'; key: string; payload: Confession }
+  | { kind: 'confessionDelete'; key: string; payload: { id: string } }
 
 export const QUEUE_KEY = 'gypz-sync-queue'
 const LEGACY_CONFESS_KEY = 'gypz-confess-queue'
@@ -32,8 +33,8 @@ const LEGACY_CONFESS_KEY = 'gypz-confess-queue'
  * - 아직 못 보낸 경조사를 지우면 둘 다 무의미하므로 서로 상쇄시킨다.
  */
 export function mergeOp(list: PendingOp[], op: PendingOp): PendingOp[] {
-  if (op.kind === 'occasionDelete') {
-    const addKey = `occasion:${op.payload.id}`
+  if (op.kind === 'occasionDelete' || op.kind === 'confessionDelete') {
+    const addKey = `${op.kind === 'occasionDelete' ? 'occasion' : 'confession'}:${op.payload.id}`
     const pendingAdd = list.some((o) => o.key === addKey)
     const without = list.filter((o) => o.key !== addKey)
     return pendingAdd ? without : [...without, op]

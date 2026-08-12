@@ -234,6 +234,12 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
   }))
 }
 
+/** 고백 삭제 — RLS가 '내가 쓴 것'만 허용한다 (배우자 것은 서버가 거부) */
+export async function deleteConfession(id: string) {
+  const { error } = await supabase.from('confessions').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function insertConfession(householdId: string, c: Confession) {
   const { error } = await supabase.from('confessions').insert({
     id: c.id,
@@ -333,10 +339,17 @@ export async function deleteMyAccount() {
 
 /** 모든 기록 삭제 (가구/멤버십은 유지) */
 export async function clearHouseholdRecords(householdId: string) {
+  // 서버 RPC가 고백까지 한 번에 지운다. 고백 삭제 정책은 '내 것만'이라
+  // 클라이언트에서 지우면 배우자 고백이 남는다 — 그래서 security definer 함수를 쓴다.
+  const { error } = await supabase.rpc('reset_household')
+  if (!error) return
+  // RPC가 아직 없으면(마이그레이션 전) 예전 방식으로 — 고백만 못 지운다
+  if (error.code !== 'PGRST202' && error.code !== '42883') throw error
   const results = await Promise.all([
     supabase.from('ledgers').delete().eq('household_id', householdId),
     supabase.from('snapshots').delete().eq('household_id', householdId),
     supabase.from('occasions').delete().eq('household_id', householdId),
+    supabase.from('confessions').delete().eq('household_id', householdId),
   ])
   const err = results.find((r) => r.error)?.error
   if (err) throw err

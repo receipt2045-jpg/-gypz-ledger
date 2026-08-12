@@ -57,6 +57,20 @@ describe('mergeOp — 재시도 큐 병합', () => {
     expect(list).toEqual([])
   })
 
+  it('아직 못 보낸 고백을 지우면 둘 다 사라진다', () => {
+    const add: PendingOp = {
+      kind: 'confession',
+      key: 'confession:c1',
+      payload: { id: 'c1' } as never,
+    }
+    const del: PendingOp = { kind: 'confessionDelete', key: 'confessionDelete:c1', payload: { id: 'c1' } }
+    let list = mergeOp([], add)
+    list = mergeOp(list, del)
+    expect(list).toEqual([])
+    // 이미 보낸 고백을 지우면 삭제 요청만 남는다
+    expect(mergeOp([], del)).toEqual([del])
+  })
+
   it('이미 보낸 경조사를 지우면 삭제 요청이 큐에 남는다', () => {
     const list = mergeOp([], occasionDelete('sent-1'))
     expect(list).toHaveLength(1)

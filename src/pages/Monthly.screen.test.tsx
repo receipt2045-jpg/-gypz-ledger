@@ -97,6 +97,50 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
   })
 })
 
+describe('가계부 탭 — 고백 내역 삭제', () => {
+  const seedConfessions = () =>
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        {
+          id: 'c1',
+          memberNo: 2,
+          category: '식비',
+          kind: 'variable',
+          amount: 9_000,
+          createdAt: `${TEST_YM}-10T12:00:00.000Z`,
+        },
+        {
+          id: 'c2',
+          memberNo: 1,
+          category: '카페/간식',
+          kind: 'variable',
+          amount: 5_500,
+          createdAt: `${TEST_YM}-11T12:00:00.000Z`,
+        },
+      ],
+    })
+
+  it('내가 쓴 고백만 지울 수 있다 (배우자 것엔 삭제 버튼이 없다)', async () => {
+    seedConfessions()
+    const { user } = renderScreen(<Monthly />)
+
+    await user.click(screen.getByRole('button', { name: /이번 달 고백/ }))
+    // 내 것(c1) 하나에만 삭제 버튼
+    expect(screen.getAllByLabelText('고백 삭제')).toHaveLength(1)
+
+    await user.click(screen.getByLabelText('고백 삭제'))
+    const left = useLedgerStore.getState().confessions
+    expect(left.map((c) => c.id)).toEqual(['c2'])
+  })
+
+  it('데이터 초기화는 고백까지 지운다', () => {
+    seedConfessions()
+    useLedgerStore.getState().resetData()
+    expect(useLedgerStore.getState().confessions).toEqual([])
+  })
+})
+
 describe('연간 리포트 — 조회 전용 + 연말정산 입구', () => {
   it('연간 리포트엔 비정기 지출 추가 버튼이 없다 (기록은 가계부 탭)', () => {
     seedStore({})

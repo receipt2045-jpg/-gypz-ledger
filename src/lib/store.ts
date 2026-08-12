@@ -10,6 +10,7 @@ import type {
 } from '../types'
 import { DEFAULT_CATEGORIES, findCategoryGroup } from './constants'
 import { genId } from './carryover'
+import { YEAREND_SAVE_KEY } from './yearEndTax'
 import { buildSeed } from '../seed'
 import * as db from './db'
 import {
@@ -39,6 +40,8 @@ async function sendOp(op: PendingOp, hid: string): Promise<void> {
       return db.pushAliases(hid, op.payload)
     case 'confession':
       return db.insertConfession(hid, op.payload)
+    case 'confessionDelete':
+      return db.deleteConfession(op.payload.id)
   }
 }
 
@@ -107,6 +110,7 @@ interface LedgerState extends AppData {
   clear: () => void
   // 일일 고백: 로컬 즉시 반영 → 백그라운드 전송(실패 시 큐)
   addConfession: (c: Omit<Confession, 'id' | 'createdAt' | 'memberNo'>) => Confession
+  removeConfession: (id: string) => void
   // 줄글 고백 학습 별칭 (단어 → 카테고리)
   aliases: Record<string, string>
   learnAliases: (patch: Record<string, string>) => void
@@ -217,6 +221,18 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     return full
   },
 
+  removeConfession: (id) => {
+    const s = get()
+    const target = s.confessions.find((c) => c.id === id)
+    // 내가 쓴 것만 지운다 — 서버 정책도 배우자 것은 거부하므로 로컬만 지워지는 사고 방지
+    if (!target || (s.memberNo && target.memberNo !== s.memberNo)) return
+    set({ confessions: s.confessions.filter((c) => c.id !== id) })
+    if (s.householdId) {
+      const op: PendingOp = { kind: 'confessionDelete', key: `confessionDelete:${id}`, payload: { id } }
+      db.deleteConfession(id).catch(onSaveFailed(op))
+    }
+  },
+
   updateProfile: (patch) => {
     const profile = { ...get().profile, ...patch }
     set({ profile })
@@ -300,7 +316,9 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
 
   resetData: () => {
     const hid = get().householdId
-    set({ ledgers: [], snapshots: [], occasions: [] })
+    // 고백과 연말정산 입력도 함께 — "초기화해도 남아있어요" 신고의 원인
+    set({ ledgers: [], snapshots: [], occasions: [], confessions: [] })
+    localStorage.removeItem(YEAREND_SAVE_KEY)
     if (hid) db.clearHouseholdRecords(hid).catch(reportSyncError)
   },
 
