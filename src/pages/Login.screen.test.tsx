@@ -38,7 +38,7 @@ describe('로그인 화면 — 가구 수 표시', () => {
     rpc.mockResolvedValue({ data: null, error: { message: 'boom' } })
     render(<Login />)
     await waitFor(() => expect(rpc).toHaveBeenCalled())
-    expect(screen.getByText('우리집 가계부')).toBeInTheDocument()
+    expect(screen.getByText('모아불리 가계부')).toBeInTheDocument()
     expect(screen.queryByText(/가구가 함께 쓰고 있어요/)).not.toBeInTheDocument()
   })
 })

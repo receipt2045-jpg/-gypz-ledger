@@ -89,7 +89,7 @@ export default function Login() {
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/10">
             <Wallet size={30} className="text-brand" />
           </div>
-          <h1 className="text-[26px] font-extrabold leading-snug text-ink">우리집 가계부</h1>
+          <h1 className="text-[26px] font-extrabold leading-snug text-ink">모아불리 가계부</h1>
           <p className="mt-2 text-[15px] font-medium leading-relaxed text-sub">
             매달 한 번, 부부가 함께 순자산을 키우는 가계부입니다 🤍
           </p>
