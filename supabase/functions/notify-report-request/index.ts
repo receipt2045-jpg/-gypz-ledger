@@ -7,6 +7,8 @@
 //   RESEND_API_KEY  — 없으면 아무것도 하지 않고 조용히 끝난다(설정 전에도 안전)
 //   ADMIN_EMAIL     — 받는 사람
 //   MAIL_FROM       — 보내는 주소 (기본: onboarding@resend.dev, 도메인 인증 전에도 발송됨)
+//   NOTIFY_SECRET   — DB 트리거만 아는 값. 앱 공개키는 누구나 갖고 있어서,
+//                     이 값이 없으면 아무나 이 함수를 불러 메일을 낭비시킬 수 있다.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +30,15 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // DB 트리거가 보낸 호출인지 확인 — 공유 비밀이 설정돼 있으면 반드시 맞아야 한다
+    const notifySecret = Deno.env.get("NOTIFY_SECRET");
+    if (notifySecret && req.headers.get("x-notify-secret") !== notifySecret) {
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const apiKey = Deno.env.get("RESEND_API_KEY");
     const to = Deno.env.get("ADMIN_EMAIL");
 
