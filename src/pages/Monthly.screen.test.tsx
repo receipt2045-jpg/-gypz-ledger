@@ -77,6 +77,24 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     expect(screen.getByText('어머니 생신')).toBeInTheDocument()
     expect(screen.queryByText('자동차세')).not.toBeInTheDocument()
   })
+
+  it("다른 달 기록은 '올해 전체 보기'로 꺼내서 지울 수 있다", async () => {
+    // 실제 신고 상황: 일년치를 몰아 적으면 합계만 뜨고 내역이 안 보였다
+    seedWithLedger()
+    useLedgerStore.setState({
+      occasions: [
+        { id: 'o2', date: '2026-03-05', category: '세금', title: '자동차세', amount: 150_000 },
+      ],
+    })
+    const { user } = renderScreen(<Monthly />)
+
+    expect(screen.queryByText('자동차세')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /올해 전체 보기/ }))
+    expect(screen.getByText('자동차세')).toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('삭제'))
+    expect(savedOccasions()).toHaveLength(0)
+  })
 })
 
 describe('연간 리포트 — 조회 전용 + 연말정산 입구', () => {

@@ -12,6 +12,7 @@ import type { OccasionEntry } from '../types'
  */
 export default function OccasionSection({
   items,
+  yearItems,
   yearTotal,
   defaultDate,
   onAdd,
@@ -21,6 +22,9 @@ export default function OccasionSection({
   onOpenChange,
 }: {
   items: OccasionEntry[]
+  // 올해 전체 기록 — 넘기면 '올해 전체 보기' 토글이 생긴다.
+  // 일년치를 몰아 적은 집이 "합계만 뜨고 내역이 안 보여요"가 되는 걸 막는다.
+  yearItems?: OccasionEntry[]
   yearTotal: number
   defaultDate?: string
   onAdd?: (e: Omit<OccasionEntry, 'id'>) => void
@@ -52,6 +56,11 @@ export default function OccasionSection({
     setAmount(0)
     setOpen(false)
   }
+
+  // '올해 전체 보기' — 보는 달 밖에 기록이 있을 때만 토글을 보여준다
+  const [showYear, setShowYear] = useState(false)
+  const hiddenCount = yearItems ? yearItems.length - items.length : 0
+  const shown = showYear && yearItems ? yearItems : items
 
   return (
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
@@ -113,11 +122,11 @@ export default function OccasionSection({
         </div>
       )}
 
-      {items.length === 0 ? (
+      {shown.length === 0 ? (
         <p className="py-3 text-center text-[13px] text-cap">{emptyText}</p>
       ) : (
         <div className="divide-y divide-line/70">
-          {items.map((o) => (
+          {shown.map((o) => (
             <div key={o.id} className="flex items-center justify-between py-3">
               <div className="min-w-0">
                 <p className="truncate text-[15px] font-medium text-ink">{o.title}</p>
@@ -140,6 +149,15 @@ export default function OccasionSection({
             </div>
           ))}
         </div>
+      )}
+
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setShowYear(!showYear)}
+          className="mt-1 w-full py-2 text-center text-[12.5px] font-bold text-brand active:opacity-60"
+        >
+          {showYear ? '이 달 것만 보기' : `올해 전체 보기 · ${yearItems?.length}건`}
+        </button>
       )}
     </div>
   )

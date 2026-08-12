@@ -51,9 +51,8 @@ export default function Monthly() {
 
   // 비정기 지출 — 보는 달 것만 목록에, 합계는 올해 누적 (연간비 감각 유지)
   const monthOccasions = occasions.filter((o) => o.date.startsWith(ym))
-  const occasionYearTotal = occasions
-    .filter((o) => o.date.startsWith(ym.slice(0, 4)))
-    .reduce((a, o) => a + o.amount, 0)
+  const yearOccasions = occasions.filter((o) => o.date.startsWith(ym.slice(0, 4)))
+  const occasionYearTotal = yearOccasions.reduce((a, o) => a + o.amount, 0)
   // 추가 폼 기본 날짜: 보는 달이 이번 달이면 오늘, 아니면 그 달 1일
   const today = new Date().toLocaleDateString('sv-SE')
   const occasionDefaultDate = today.startsWith(ym) ? today : `${ym}-01`
@@ -231,6 +230,7 @@ export default function Monthly() {
       <div ref={occasionRef} className="scroll-mt-4">
         <OccasionSection
           items={monthOccasions}
+          yearItems={yearOccasions}
           yearTotal={occasionYearTotal}
           defaultDate={occasionDefaultDate}
           onAdd={addOccasion}
