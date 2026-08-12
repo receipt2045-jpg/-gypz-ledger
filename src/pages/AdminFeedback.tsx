@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, RefreshCw, Sparkles, Star } from 'lucide-react'
+import { ChevronLeft, RefreshCw, Star } from 'lucide-react'
 import Card from '../components/Card'
 import { requestFeedbackDigest, type FeedbackDigest } from '../lib/feedbackDigest'
 
@@ -54,8 +54,7 @@ export default function AdminFeedback() {
         {loading && (
           <div className="flex flex-col items-center py-16">
             <div className="mb-3 h-7 w-7 animate-spin rounded-full border-[3px] border-line border-t-brand" />
-            <p className="text-[13.5px] text-sub">의견을 읽고 정리하는 중…</p>
-            <p className="mt-1 text-[12px] text-cap">30초 정도 걸려요</p>
+            <p className="text-[13.5px] text-sub">의견을 불러오는 중…</p>
           </div>
         )}
 
@@ -86,19 +85,6 @@ export default function AdminFeedback() {
                 </p>
               </Card>
             </div>
-
-            {/* AI 분석 */}
-            <Card>
-              <div className="mb-2 flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand/10">
-                  <Sparkles size={14} className="text-brand" />
-                </div>
-                <p className="text-[14px] font-bold text-ink">AI 분석</p>
-              </div>
-              <p className="whitespace-pre-line text-[13.5px] leading-relaxed text-ink">
-                {digest.text}
-              </p>
-            </Card>
 
             {/* 원문 목록 */}
             {digest.items && digest.items.length > 0 && (

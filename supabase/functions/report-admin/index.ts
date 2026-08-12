@@ -12,7 +12,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type Action = "list" | "data" | "save" | "mark" | "ai-rewrite";
+type Action = "list" | "data" | "save" | "mark" | "ai-rewrite" | "feedback";
 
 /**
  * 초안을 결영 말투로 다듬는다.
@@ -109,6 +109,22 @@ Deno.serve(async (req) => {
           hasDraft: hasDraft.has(r.id),
         })),
       });
+    }
+
+    // ── 받은 의견 목록 (feedback 테이블은 RLS로 앱에서 못 읽는다) ──
+    if (action === "feedback") {
+      const { data, error } = await admin
+        .from("feedback")
+        .select("rating, message, screen, created_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      const items = data ?? [];
+      const rated = items.filter((r) => r.rating != null);
+      const avgRating = rated.length
+        ? Math.round((rated.reduce((a, r) => a + Number(r.rating), 0) / rated.length) * 10) / 10
+        : null;
+      return json({ count: items.length, avgRating, items });
     }
 
     // ── 가구 데이터 + 저장된 초안 ───────────────
