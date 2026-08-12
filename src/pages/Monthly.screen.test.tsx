@@ -4,6 +4,7 @@ import Monthly from './Monthly'
 import Yearly from './Yearly'
 import { renderScreen, seedStore, TEST_YM } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
+import { shiftYm } from '../lib/format'
 
 const savedOccasions = () => useLedgerStore.getState().occasions
 
@@ -43,6 +44,24 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     expect(screen.queryByPlaceholderText(/내용/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /비정기 지출 입력/ }))
     expect(screen.getByPlaceholderText(/내용/)).toBeInTheDocument()
+  })
+
+  it('달을 옮긴 뒤 추가하면 보고 있는 그 달로 기록된다', async () => {
+    seedWithLedger()
+    const { user } = renderScreen(<Monthly />)
+
+    await user.click(screen.getByRole('button', { name: '이전 달' }))
+    await user.click(screen.getByRole('button', { name: /추가/ }))
+    await user.type(screen.getByPlaceholderText(/내용/), '부모님 생신')
+    await user.type(screen.getByPlaceholderText('금액'), '200000')
+    await user.click(screen.getByRole('button', { name: '추가하기' }))
+
+    // 폼 기본 날짜가 처음 열었던 달에 머물면, 엉뚱한 달로 저장되고
+    // 보는 달 목록에서 사라져 "입력했는데 없어졌어요"가 된다
+    const prevYm = shiftYm(TEST_YM, -1)
+    expect(savedOccasions()).toHaveLength(1)
+    expect(savedOccasions()[0].date.startsWith(prevYm)).toBe(true)
+    expect(screen.getByText('부모님 생신')).toBeInTheDocument()
   })
 
   it('보는 달의 비정기 지출만 목록에 보인다', () => {

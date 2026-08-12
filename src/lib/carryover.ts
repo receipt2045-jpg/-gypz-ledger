@@ -13,7 +13,13 @@ export function genId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID()
   }
-  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  // 구형 브라우저(iOS 15.3 이하 등) — occasions.id가 uuid 컬럼이라
+  // uuid 형식이 아니면 서버 저장이 계속 실패한다
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
 }
 
 /** 고정 성격 그룹: 값이 매달 이월되는 그룹 */

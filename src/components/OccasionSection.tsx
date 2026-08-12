@@ -34,6 +34,13 @@ export default function OccasionSection({
   const open = openProp ?? selfOpen
   const setOpen = (v: boolean) => (onOpenChange ? onOpenChange(v) : setSelfOpen(v))
   const [date, setDate] = useState(defaultDate ?? '')
+  // 달을 옮기면 기본 날짜도 따라간다 — 처음 열었던 달에 머물면
+  // 엉뚱한 달로 저장되고 보는 달 목록에서 사라진다
+  const [prevDefault, setPrevDefault] = useState(defaultDate)
+  if (defaultDate !== prevDefault) {
+    setPrevDefault(defaultDate)
+    setDate(defaultDate ?? '')
+  }
   const [category, setCategory] = useState(OCCASION_CATEGORIES[0])
   const [title, setTitle] = useState('')
   const [amount, setAmount] = useState(0)
