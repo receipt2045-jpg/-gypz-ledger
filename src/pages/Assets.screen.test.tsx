@@ -37,6 +37,7 @@ describe('자산 탭 — 사람별로 보기', () => {
             { id: 'a2', kind: 'asset', group: 'stock', name: '남편주식', amount: 30_000_000, owner: '남편' },
             { id: 'a3', kind: 'asset', group: 'cash', name: '아내청약', amount: 5_000_000, owner: '아내' },
             { id: 'd1', kind: 'debt', group: 'realestate', name: '남편주담대', amount: 40_000_000, owner: '남편' },
+            { id: 'd2', kind: 'debt', group: 'realestate', name: '아내대출', amount: 70_000_000, owner: '아내' },
           ],
         },
       ],
@@ -66,8 +67,10 @@ describe('자산 탭 — 사람별로 보기', () => {
 
     // 자산 4,500만 − 부채 4,000만 = 순자산 500만
     expect(screen.getByText('500만원')).toBeInTheDocument()
-    expect(screen.getByText('4,500만원')).toBeInTheDocument()
+    expect(screen.getByText(/자산 4,500만원/)).toBeInTheDocument()
+    // 부채 섹션 합계도 그 사람 것만 — 부부 전체(1억 1,000만)가 뜨면 안 된다
     expect(screen.getAllByText('−4,000만원').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/1억 1,000만원/)).not.toBeInTheDocument()
   })
 
   it('함께로 돌아오면 10년 목표 카드가 다시 보인다', async () => {

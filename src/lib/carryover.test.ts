@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { deriveItemsFromPrevious, mergeAssets, mergeMemberItems } from './carryover'
+import {
+  deriveAssetsFromPrevious,
+  deriveItemsFromPrevious,
+  mergeAssets,
+  mergeMemberItems,
+  resolveSnapshot,
+} from './carryover'
 import type { AssetItem, BudgetItem } from '../types'
 
 const item = (
@@ -111,5 +117,32 @@ describe('mergeAssets — 자산 3-way 병합', () => {
     const server = [asset('a', '해지', 0), asset('c', '배우자 신규', 700_000)]
     const merged = mergeAssets(server, baseline, [asset('d', '내 신규', 50_000)])
     expect(merged.map((i) => i.id).sort()).toEqual(['c', 'd'])
+  })
+
+  it('서버에 id가 겹친 항목이 있어도 저장할 때마다 불어나지 않는다', () => {
+    // 실제 사고: 같은 이름의 계좌 두 개가 같은 id를 받아 저장할 때마다 복제됐다
+    const dup = asset('2026-08-미국주식', '미국주식', 13_600_000)
+    const server = [dup, { ...dup }, { ...dup }]
+    const merged = mergeAssets(server, [dup], [dup])
+    expect(merged).toHaveLength(1)
+  })
+})
+
+describe('deriveAssetsFromPrevious — 이름이 같아도 id가 안 겹친다', () => {
+  it('같은 이름의 계좌 두 개가 서로 다른 id를 받는다', () => {
+    const prev: AssetItem[] = [
+      { id: 'x', kind: 'asset', group: 'stock', name: '미국주식', amount: 1 },
+      { id: 'y', kind: 'asset', group: 'stock', name: '미국주식', amount: 2 },
+    ]
+    const derived = deriveAssetsFromPrevious(prev, '2026-09')
+    expect(new Set(derived.map((i) => i.id)).size).toBe(2)
+  })
+})
+
+describe('resolveSnapshot — 이미 불어난 데이터 정리', () => {
+  it('id가 겹친 항목은 읽을 때 하나만 남는다', () => {
+    const dup = { id: 'same', kind: 'asset', group: 'stock', name: '미국주식', amount: 13_600_000 } as AssetItem
+    const snap = resolveSnapshot([{ ym: '2026-08', items: [dup, { ...dup }, { ...dup }] }], '2026-08')
+    expect(snap.items).toHaveLength(1)
   })
 })

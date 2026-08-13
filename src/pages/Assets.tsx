@@ -84,9 +84,10 @@ export default function Assets() {
 
   const assetItems = picked ? allAssetItems.filter((it) => isOwned(it.owner, picked)) : allAssetItems
   const debtItems = picked ? allDebtItems.filter((it) => isOwned(it.owner, picked)) : allDebtItems
-  // 고른 사람 기준 요약 (부채까지 빼서 그 사람 순자산)
-  const pickedAssets = assetItems.reduce((acc, it) => acc + it.amount, 0)
-  const pickedDebts = debtItems.reduce((acc, it) => acc + it.amount, 0)
+  // 화면에 보이는 항목들의 합계 — 사람을 골랐으면 그 사람 것만.
+  // (전체 합계인 assets·debts를 섹션 머리에 쓰면 카드 합과 안 맞는다)
+  const shownAssets = assetItems.reduce((acc, it) => acc + it.amount, 0)
+  const shownDebts = debtItems.reduce((acc, it) => acc + it.amount, 0)
 
   const groupsWithItems = ASSET_GROUP_ORDER.map((g) => ({
     group: g,
@@ -168,22 +169,17 @@ export default function Assets() {
             <p className="text-[13px] font-medium text-cap">순자산</p>
           </div>
           <p className="tnum mt-1 text-[30px] font-extrabold tracking-tight text-ink">
-            {abbreviateKRW(pickedAssets - pickedDebts)}
+            {abbreviateKRW(shownAssets - shownDebts)}
           </p>
-          <div className="mt-3 flex gap-2">
-            <div className="flex-1 rounded-btn bg-bg px-3 py-2.5">
-              <p className="text-[12px] text-cap">자산</p>
-              <p className="tnum mt-0.5 text-[15px] font-bold text-ink">
-                {abbreviateKRW(pickedAssets)}
-              </p>
-            </div>
-            <div className="flex-1 rounded-btn bg-bg px-3 py-2.5">
-              <p className="text-[12px] text-cap">부채</p>
-              <p className="tnum mt-0.5 text-[15px] font-bold text-danger">
-                {pickedDebts > 0 ? `−${abbreviateKRW(pickedDebts)}` : '없어요'}
-              </p>
-            </div>
-          </div>
+          <p className="tnum mt-1.5 text-[13px] text-sub">
+            자산 {abbreviateKRW(shownAssets)}
+            {shownDebts > 0 && (
+              <>
+                <span className="mx-1 text-cap">·</span>
+                <span className="text-danger">부채 −{abbreviateKRW(shownDebts)}</span>
+              </>
+            )}
+          </p>
         </Card>
       )}
 
@@ -294,7 +290,9 @@ export default function Assets() {
         <section>
           <div className="mb-2 flex items-center justify-between px-1">
             <h3 className="text-[15px] font-bold text-danger">부채</h3>
-            <span className="tnum text-[14px] font-bold text-danger">−{abbreviateKRW(debts)}</span>
+            <span className="tnum text-[14px] font-bold text-danger">
+              −{abbreviateKRW(shownDebts)}
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {debtItems.map((it) => (

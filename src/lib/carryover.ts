@@ -89,12 +89,28 @@ export function resolveLedger(ledgers: MonthlyLedger[], ym: string): MonthlyLedg
   return { ym, items: [], closed: false }
 }
 
-/** 자산 스냅샷 파생: 직전 스냅샷 구조 복사(금액은 유지, 이후 갱신) */
+/**
+ * 자산 스냅샷 파생: 직전 스냅샷 구조 복사(금액은 유지, 이후 갱신)
+ *
+ * id에 순번을 넣는 이유: 예전엔 `${ym}-${name}`이라 '미국주식'처럼 같은 이름의
+ * 계좌가 둘이면 id가 겹쳤고, mergeAssets가 겹친 id를 각각 복사해 넣어
+ * 저장할 때마다 항목이 불어났다.
+ */
 export function deriveAssetsFromPrevious(prevItems: AssetItem[], ym: string): AssetItem[] {
-  return prevItems.map((it) => ({
+  return prevItems.map((it, i) => ({
     ...it,
-    id: `${ym}-${it.name}`,
+    id: `${ym}-${i}-${it.name}`,
   }))
+}
+
+/** id가 겹친 항목을 걷어낸다 (먼저 온 것을 남긴다) — 옛 중복 데이터 복구용 */
+export function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>()
+  return items.filter((it) => {
+    if (seen.has(it.id)) return false
+    seen.add(it.id)
+    return true
+  })
 }
 
 /**
@@ -127,7 +143,8 @@ export function mergeAssets(
   for (const m of mine) {
     if (!serverIds.has(m.id)) out.push(m) // 내가 새로 넣은 것
   }
-  return out
+  // 서버에 겹친 id가 있으면 위 반복이 같은 항목을 여러 번 넣는다. 마지막에 한 번 걸러준다.
+  return dedupeById(out)
 }
 
 function findLatestSnapshotBefore(
@@ -140,7 +157,8 @@ function findLatestSnapshotBefore(
 
 export function resolveSnapshot(snapshots: AssetSnapshot[], ym: string): AssetSnapshot {
   const existing = snapshots.find((s) => s.ym === ym)
-  if (existing) return existing
+  // 이미 불어난 데이터는 읽는 순간 걷어낸다 — 다음 저장 때 정리된 채로 올라간다
+  if (existing) return { ...existing, items: dedupeById(existing.items) }
 
   const prev = findLatestSnapshotBefore(snapshots, ym)
   if (prev) {
