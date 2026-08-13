@@ -109,7 +109,10 @@ interface LedgerState extends AppData {
   loadSample: () => void
   clear: () => void
   // 일일 고백: 로컬 즉시 반영 → 백그라운드 전송(실패 시 큐)
-  addConfession: (c: Omit<Confession, 'id' | 'createdAt' | 'memberNo'>) => Confession
+  // createdAt을 넘기면 지난 날짜로도 적을 수 있다 (며칠 밀린 기록 몰아 적기)
+  addConfession: (
+    c: Omit<Confession, 'id' | 'createdAt' | 'memberNo'> & { createdAt?: string },
+  ) => Confession
   removeConfession: (id: string) => void
   // 줄글 고백 학습 별칭 (단어 → 카테고리)
   aliases: Record<string, string>
@@ -208,7 +211,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       ...c,
       id: genId(),
       memberNo: s.memberNo ?? 1,
-      createdAt: new Date().toISOString(),
+      createdAt: c.createdAt ?? new Date().toISOString(),
     }
     // 1) 로컬 즉시 반영 (반응 0.3초 규칙 — 네트워크를 기다리지 않는다)
     set({ confessions: [full, ...s.confessions] })

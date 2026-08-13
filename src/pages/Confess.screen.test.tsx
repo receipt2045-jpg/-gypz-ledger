@@ -1,64 +1,96 @@
 import { describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import Confess from './Confess'
 import { renderScreen, seedStore } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
-import { NO_SPEND } from '../lib/constants'
 
-const saved = () => useLedgerStore.getState().confessions
-
-function openConfess() {
-  seedStore({})
-  return renderScreen(<Confess />)
+const daysAgo = (n: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d
 }
+const ymd = (d: Date) => d.toLocaleDateString('sv-SE')
 
-/** 줄글을 적고 '확인하기 → n건 고백하기'까지 */
-async function confessText(user: ReturnType<typeof openConfess>['user'], text: string) {
-  await user.type(screen.getByRole('textbox'), text)
-  await user.click(screen.getByRole('button', { name: '확인하기' }))
-  await user.click(screen.getByRole('button', { name: /건 고백하기/ }))
-}
+describe('고백 페이지 — 내 기록 보기·삭제', () => {
+  it('지난 기록도 날짜별로 보이고, 내 것만 지울 수 있다', async () => {
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        {
+          id: 'c1',
+          memberNo: 2,
+          category: '식비',
+          kind: 'variable',
+          amount: 9_000,
+          note: '점심',
+          createdAt: new Date().toISOString(),
+        },
+        // 사흘 전 내 기록 — 오늘 것만 보여주면 이게 안 보였다
+        {
+          id: 'c3',
+          memberNo: 2,
+          category: '교통',
+          kind: 'variable',
+          amount: 1_500,
+          createdAt: daysAgo(3).toISOString(),
+        },
+        // 배우자 것 — 내 목록엔 안 보인다
+        {
+          id: 'c2',
+          memberNo: 1,
+          category: '카페/간식',
+          kind: 'variable',
+          amount: 5_500,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
 
-describe('고백 화면 — 기록', () => {
-  it('한 건을 말하면 그대로 저장된다', async () => {
-    const { user } = openConfess()
-    await confessText(user, '점심 9000원')
+    expect(screen.getByText('식비')).toBeInTheDocument()
+    expect(screen.getByText('교통')).toBeInTheDocument()
+    expect(screen.queryByText('카페/간식')).not.toBeInTheDocument()
 
-    expect(saved()).toHaveLength(1)
-    expect(saved()[0].amount).toBe(9_000)
+    const buttons = screen.getAllByLabelText('고백 삭제')
+    expect(buttons).toHaveLength(2)
+
+    await user.click(buttons[0])
+    expect(useLedgerStore.getState().confessions).toHaveLength(2)
   })
 
-  // 제보 재현: "점심 9,000원, 커피 5,500원이라고 하니 커피가 설명으로 들어가요"
-  it('한 번에 두 건을 말하면 두 건 다 저장된다', async () => {
-    const { user } = openConfess()
-    await confessText(user, '점심 9000원, 커피 5500원')
-
-    expect(saved().map((c) => c.amount).sort((a, b) => a - b)).toEqual([5_500, 9_000])
+  it('14일보다 오래된 기록은 목록에 없다', () => {
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        {
+          id: 'old',
+          memberNo: 2,
+          category: '식비',
+          kind: 'variable',
+          amount: 9_000,
+          createdAt: daysAgo(20).toISOString(),
+        },
+      ],
+    })
+    renderScreen(<Confess />)
+    expect(screen.queryByText(/내 기록/)).not.toBeInTheDocument()
   })
+})
 
-  it('무지출 버튼은 0원으로 기록된다', async () => {
-    const { user } = openConfess()
-    await user.click(screen.getByRole('button', { name: /안 썼어요/ }))
+describe('고백 페이지 — 지난 날짜로 적기', () => {
+  it('날짜를 바꾸면 그 날짜로 기록된다', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
 
-    expect(saved()).toHaveLength(1)
-    expect(saved()[0]).toMatchObject({ category: NO_SPEND, amount: 0 })
-  })
+    const target = ymd(daysAgo(2))
+    // date input은 타이핑이 아니라 값 변경으로 다룬다
+    fireEvent.change(screen.getByDisplayValue(ymd(new Date())), { target: { value: target } })
 
-  it('금액이 없으면 저장하지 않고 알려준다', async () => {
-    const { user } = openConfess()
-    await user.type(screen.getByRole('textbox'), '오늘 그냥 그랬어')
-    await user.click(screen.getByRole('button', { name: '확인하기' }))
+    // 지난 날짜를 고르면 무지출 문구가 '이 날은'으로 바뀐다
+    await user.click(screen.getByText(/안 썼어요/))
 
-    expect(screen.getByText(/금액을 찾지 못했어요/)).toBeInTheDocument()
-    expect(saved()).toHaveLength(0)
-  })
-
-  it('오늘 이미 기록했으면 무지출 버튼이 사라진다', async () => {
-    const { user } = openConfess()
-    expect(screen.getByRole('button', { name: /안 썼어요/ })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /안 썼어요/ }))
-
-    expect(screen.queryByRole('button', { name: /안 썼어요/ })).not.toBeInTheDocument()
+    const saved = useLedgerStore.getState().confessions
+    expect(saved).toHaveLength(1)
+    expect(ymd(new Date(saved[0].createdAt))).toBe(target)
   })
 })

@@ -25,3 +25,4 @@ review/
 
 # 허깅페이스 토큰 (절대 커밋 금지)
 .hf-token
+.vitest-report.json

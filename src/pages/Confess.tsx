@@ -116,7 +116,7 @@ interface DraftEntry extends ParsedEntry {
  */
 export default function Confess() {
   const navigate = useNavigate()
-  const { categories, memberNo, confessions, aliases, addConfession, learnAliases } =
+  const { categories, memberNo, confessions, aliases, addConfession, removeConfession, learnAliases } =
     useLedgerStore()
 
   // 모드: 줄글(text, 기본) / 버튼(picker)
@@ -155,14 +155,34 @@ export default function Confess() {
   const sortByFreq = (list: string[]) =>
     [...list].sort((a, b) => (freq.get(b) ?? 0) - (freq.get(a) ?? 0))
 
-  // 오늘 내가 이미 기록했는지 (무지출 버튼 노출 여부)
-  const confessedToday = useMemo(() => {
-    const today = new Date().toLocaleDateString('sv-SE')
+  // 어느 날짜로 적을지 — 며칠 밀렸을 때 지난 날짜로도 적을 수 있게
+  const today = new Date().toLocaleDateString('sv-SE')
+  const [logDate, setLogDate] = useState(today)
+
+  // 내가 쓴 기록 (최근 14일) — 잘못 쓴 걸 그 자리에서 지울 수 있게
+  const myRecent = useMemo(() => {
     const me = memberNo ?? 1
-    return confessions.some(
-      (c) => c.memberNo === me && new Date(c.createdAt).toLocaleDateString('sv-SE') === today,
-    )
+    const since = new Date()
+    since.setDate(since.getDate() - 14)
+    return confessions
+      .filter((c) => c.memberNo === me && new Date(c.createdAt) >= since)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   }, [confessions, memberNo])
+
+  // 날짜별로 묶어서 보여준다
+  const recentByDate = useMemo(() => {
+    const m = new Map<string, typeof myRecent>()
+    for (const c of myRecent) {
+      const d = new Date(c.createdAt).toLocaleDateString('sv-SE')
+      m.set(d, [...(m.get(d) ?? []), c])
+    }
+    return [...m.entries()]
+  }, [myRecent])
+
+  // 고른 날짜에 이미 기록했는지 (무지출 버튼 노출 여부)
+  const confessedToday = myRecent.some(
+    (c) => new Date(c.createdAt).toLocaleDateString('sv-SE') === logDate,
+  )
 
   const groups: { title: string; kind: CategoryGroup; cats: string[] }[] = [
     { title: '변동지출', kind: 'variable', cats: sortByFreq(categories.variable) },
@@ -173,9 +193,12 @@ export default function Confess() {
 
   // ── 저장 (양쪽 흐름 공통) ───────────────────
   const finishSave = (entries: { category: string; kind: CategoryGroup; amount: number; note?: string }[]) => {
+    // 지난 날짜를 골랐으면 그 날 낮 12시로 — 시간대가 밀려 하루 어긋나는 걸 막는다
+    const createdAt =
+      logDate === today ? new Date().toISOString() : new Date(`${logDate}T12:00:00`).toISOString()
     let last = null as ReturnType<typeof addConfession> | null
     for (const e of entries) {
-      last = addConfession({ category: e.category, kind: e.kind, amount: e.amount, note: e.note })
+      last = addConfession({ category: e.category, kind: e.kind, amount: e.amount, note: e.note, createdAt })
     }
     if (!last) return
     const all = useLedgerStore.getState().confessions
@@ -549,6 +572,26 @@ export default function Confess() {
       <div className="flex-1 space-y-4 px-5 pb-10 pt-1">
         <WeeklyCostCard confessions={confessions} />
 
+        {/* 언제 쓴 건지 — 며칠 밀렸으면 지난 날짜로 적을 수 있다 */}
+        <div className="flex items-center gap-2 rounded-card bg-card px-4 py-3 shadow-card">
+          <span className="shrink-0 text-[13px] font-bold text-sub">언제 쓴 건가요?</span>
+          <input
+            type="date"
+            value={logDate}
+            max={today}
+            onChange={(e) => setLogDate(e.target.value || today)}
+            className="tnum min-w-0 flex-1 rounded-btn border border-line bg-white px-2.5 py-1.5 text-[13.5px] text-ink outline-none focus:border-brand"
+          />
+          {logDate !== today && (
+            <button
+              onClick={() => setLogDate(today)}
+              className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-[12px] font-bold text-brand active:bg-brand/20"
+            >
+              오늘로
+            </button>
+          )}
+        </div>
+
         <div className="rounded-card bg-card p-3 shadow-card">
           <textarea
             value={draft}
@@ -595,13 +638,53 @@ export default function Confess() {
             className="flex w-full items-center justify-between rounded-card bg-card px-4 py-3.5 text-left shadow-card active:bg-line"
           >
             <span>
-              <span className="block text-[14px] font-bold text-ink">🍚 오늘은 안 썼어요</span>
+              <span className="block text-[14px] font-bold text-ink">
+                🍚 {logDate === today ? '오늘은' : '이 날은'} 안 썼어요
+              </span>
               <span className="mt-0.5 block text-[12px] text-sub">
                 0원도 기록이에요. 연속 일수가 안 끊겨요
               </span>
             </span>
             <ChevronRight size={18} className="shrink-0 text-cap" />
           </button>
+        )}
+
+        {/* 내가 쓴 기록 (최근 14일) — 잘못 쓴 건 여기서 바로 지운다 */}
+        {recentByDate.length > 0 && (
+          <div className="rounded-card bg-card px-4 py-3.5 shadow-card">
+            <p className="mb-2 text-[13px] font-bold text-cap">
+              내 기록 · 잘못 썼으면 지우고 다시 적어요
+            </p>
+            <div className="space-y-3">
+              {recentByDate.map(([date, list]) => (
+                <div key={date}>
+                  <p className="tnum text-[12px] font-bold text-sub">
+                    {date === today ? '오늘' : date.slice(5).replace('-', '월 ') + '일'}
+                  </p>
+                  <div className="divide-y divide-line/70">
+                    {list.map((c) => (
+                      <div key={c.id} className="flex items-center gap-2.5 py-2.5">
+                        <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
+                          {c.category}
+                          {c.note && <span className="text-cap"> · {c.note}</span>}
+                        </span>
+                        <span className="tnum shrink-0 text-[14px] font-bold text-ink">
+                          {formatWon(c.amount)}
+                        </span>
+                        <button
+                          onClick={() => removeConfession(c.id)}
+                          aria-label="고백 삭제"
+                          className="shrink-0 text-cap active:text-danger"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
       <BottomBar>
