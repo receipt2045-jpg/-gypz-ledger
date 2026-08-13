@@ -127,8 +127,14 @@ export default function TodayCard() {
           </>
         ) : (
           <>
-            <span className="text-[13.5px] font-medium text-sub">
-              💳 연봉 넣고 오늘 쓸 카드 추천 받기
+            {/* 할 일(연봉 입력)을 앞세우지 않는다. 궁금한 것부터 묻고 방법은 아래 줄에 */}
+            <span className="min-w-0">
+              <span className="block text-[14px] font-bold text-ink">
+                💳 {profile.member1Name} 카드 쓸까, {profile.member2Name} 카드 쓸까?
+              </span>
+              <span className="mt-0.5 block text-[12px] text-cap">
+                연말정산 대비 · 연봉 두 개만 넣으면 알려드려요
+              </span>
             </span>
             <ChevronRight size={15} className="shrink-0 text-cap" />
           </>
