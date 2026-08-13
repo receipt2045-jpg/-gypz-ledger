@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDownRight, ArrowUpRight, ChevronRight, Pencil } from 'lucide-react'
@@ -49,24 +50,43 @@ export default function Assets() {
 
   const targetRatio = profile.targetNetWorth > 0 ? netWorth / profile.targetNetWorth : 0
 
-  const assetItems = snapshot.items.filter((it) => it.kind === 'asset')
-  const debtItems = snapshot.items.filter((it) => it.kind === 'debt')
+  const allAssetItems = snapshot.items.filter((it) => it.kind === 'asset')
+  const allDebtItems = snapshot.items.filter((it) => it.kind === 'debt')
 
   // 소유자별 배지 색: 부부는 각자 고른 색 · 자녀 노랑 · 공동 중립
   const childNames = profile.childNames ?? []
   const ownerBadgeClass = (owner?: string) => ownerBadge(owner, profile, childNames)
 
+  // 소유자 일치 — '공동'은 주인을 안 정한 항목까지 포함한다
+  const isOwned = (owner: string | undefined, name: string) =>
+    name === '공동' ? !owner || owner === '공동' : owner === name
+
   // 구성원별 자산 합계 (자산만, 부채 제외) — 자녀 포함
   const ownerTotals = [profile.member1Name, profile.member2Name, '공동', ...childNames].map(
     (name) => ({
       name,
-      total: assetItems
-        .filter((it) =>
-          name === '공동' ? !it.owner || it.owner === '공동' : it.owner === name,
-        )
+      total: allAssetItems
+        .filter((it) => isOwned(it.owner, name))
         .reduce((acc, it) => acc + it.amount, 0),
     }),
   )
+
+  // ── 누구 것을 볼지 (A안 탭) ──────────────────
+  // '함께'는 지금까지 쓰던 화면 그대로. 사람을 고르면 그 사람 자산만 종류별로 본다.
+  const ALL = '함께'
+  const [tab, setTab] = useState(ALL)
+  // 항목이 있는 소유자만 탭으로 — 빈 탭을 눌러보게 만들지 않는다
+  const ownerTabs = [profile.member1Name, profile.member2Name, '공동', ...childNames].filter(
+    (name) => snapshot.items.some((it) => isOwned(it.owner, name)),
+  )
+  const showTabs = snapshot.items.length > 0 && ownerTabs.length > 1
+  const picked = showTabs && tab !== ALL ? tab : null
+
+  const assetItems = picked ? allAssetItems.filter((it) => isOwned(it.owner, picked)) : allAssetItems
+  const debtItems = picked ? allDebtItems.filter((it) => isOwned(it.owner, picked)) : allDebtItems
+  // 고른 사람 기준 요약 (부채까지 빼서 그 사람 순자산)
+  const pickedAssets = assetItems.reduce((acc, it) => acc + it.amount, 0)
+  const pickedDebts = debtItems.reduce((acc, it) => acc + it.amount, 0)
 
   const groupsWithItems = ASSET_GROUP_ORDER.map((g) => ({
     group: g,
@@ -99,7 +119,25 @@ export default function Assets() {
         </Card>
       )}
 
+      {/* 누구 자산을 볼지 — 사람을 고르면 그 사람 것만 종류별로 본다 */}
+      {showTabs && (
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+          {[ALL, ...ownerTabs].map((name) => (
+            <button
+              key={name}
+              onClick={() => setTab(name)}
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-bold transition-colors ${
+                tab === name ? 'bg-ink text-white' : 'bg-card text-sub shadow-card active:bg-line'
+              }`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* 10년 목표 — 목적지부터 보여준다 (탭하면 설정에서 바로 수정) */}
+      {!picked && (
       <Card onClick={() => navigate('/settings')}>
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[15px] font-bold text-ink">10년 목표 순자산</p>
@@ -114,8 +152,43 @@ export default function Assets() {
           <span className="tnum">목표 {abbreviateKRW(profile.targetNetWorth)}</span>
         </div>
       </Card>
+      )}
+
+      {/* 고른 사람 요약 — 그 사람 자산·부채·순자산 */}
+      {picked && (
+        <Card>
+          <div className="flex items-center gap-2">
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${ownerBadgeClass(
+                picked === '공동' ? undefined : picked,
+              )}`}
+            >
+              {picked}
+            </span>
+            <p className="text-[13px] font-medium text-cap">순자산</p>
+          </div>
+          <p className="tnum mt-1 text-[30px] font-extrabold tracking-tight text-ink">
+            {abbreviateKRW(pickedAssets - pickedDebts)}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <div className="flex-1 rounded-btn bg-bg px-3 py-2.5">
+              <p className="text-[12px] text-cap">자산</p>
+              <p className="tnum mt-0.5 text-[15px] font-bold text-ink">
+                {abbreviateKRW(pickedAssets)}
+              </p>
+            </div>
+            <div className="flex-1 rounded-btn bg-bg px-3 py-2.5">
+              <p className="text-[12px] text-cap">부채</p>
+              <p className="tnum mt-0.5 text-[15px] font-bold text-danger">
+                {pickedDebts > 0 ? `−${abbreviateKRW(pickedDebts)}` : '없어요'}
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* 순자산 요약 */}
+      {!picked && (
       <Card>
         <p className="text-[13px] font-medium text-cap">
           순자산
@@ -174,9 +247,10 @@ export default function Assets() {
         </div>
 
       </Card>
+      )}
 
       {/* 총자산·순자산·부채 도넛 */}
-      {snapshot.items.length > 0 && (
+      {!picked && snapshot.items.length > 0 && (
         <Card>
           <p className="mb-3 text-[13px] font-medium text-cap">자산 구성</p>
           <AssetDonut assets={assets} debts={debts} />
@@ -184,7 +258,7 @@ export default function Assets() {
       )}
 
       {/* 구성원별 자산 합계 */}
-      {snapshot.items.length > 0 && (
+      {!picked && snapshot.items.length > 0 && (
         <div className="grid grid-cols-3 gap-2.5">
           {ownerTotals.map(({ name, total }) => (
             <div key={name} className="rounded-card bg-card px-2 py-3 text-center shadow-card">
@@ -211,6 +285,7 @@ export default function Assets() {
           items={items}
           badgeClass={ownerBadgeClass}
           onEdit={editOwner}
+          showOwner={!picked}
         />
       ))}
 
@@ -228,6 +303,7 @@ export default function Assets() {
                 item={it}
                 badgeClass={ownerBadgeClass(it.owner)}
                 onEdit={() => editOwner(it.owner)}
+                showOwner={!picked}
                 debt
               />
             ))}
@@ -244,11 +320,14 @@ function AssetGroupSection({
   items,
   badgeClass,
   onEdit,
+  showOwner = true,
 }: {
   group: AssetGroup
   items: AssetItemLike[]
   badgeClass: (owner?: string) => string
   onEdit: (owner?: string) => void
+  // 한 사람만 보는 중이면 카드마다 이름을 또 달 필요가 없다
+  showOwner?: boolean
 }) {
   const subtotal = items.reduce((acc, it) => acc + it.amount, 0)
   return (
@@ -267,6 +346,7 @@ function AssetGroupSection({
             item={it}
             badgeClass={badgeClass(it.owner)}
             onEdit={() => onEdit(it.owner)}
+            showOwner={showOwner}
           />
         ))}
       </div>
@@ -291,11 +371,13 @@ function AccountCard({
   badgeClass,
   onEdit,
   debt,
+  showOwner = true,
 }: {
   item: AssetItemLike
   badgeClass: string
   onEdit: () => void
   debt?: boolean
+  showOwner?: boolean
 }) {
   return (
     <button
@@ -304,7 +386,7 @@ function AccountCard({
     >
       <div className="flex items-start justify-between">
         <AssetIcon group={item.group} kind={item.kind} size={38} />
-        {item.owner && (
+        {showOwner && item.owner && (
           <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${badgeClass}`}>
             {item.owner}
           </span>
