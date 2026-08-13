@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { BarChart3, Check, ChevronLeft, ChevronRight, Settings, TrendingUp } from 'lucide-react'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
+import InviteBanner from '../components/InviteBanner'
 import MonthlyCombo, { type MonthPoint } from '../components/MonthlyCombo'
 import ProgressBar from '../components/ProgressBar'
 import StatGauges from '../components/StatGauges'
@@ -142,6 +143,9 @@ export default function Home() {
           지난달보다 {delta.zero ? '변동 없음' : delta.text}
         </p>
       </header>
+
+      {/* 혼자 쓰는 집이면 배우자 초대 — 정산은 둘 다 해야 끝난다 */}
+      <InviteBanner />
 
       {/* 오늘 카드 — 매일의 기록이 예산·연말정산으로 이어지는 허브 */}
       <TodayCard />

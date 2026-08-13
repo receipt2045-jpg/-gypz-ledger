@@ -17,6 +17,16 @@ export interface Membership {
   memberNo: 1 | 2
 }
 
+/** 우리집 구성원 수 (1이면 아직 혼자 쓰는 중) */
+export async function fetchMemberCount(householdId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('household_members')
+    .select('user_id', { count: 'exact', head: true })
+    .eq('household_id', householdId)
+  if (error) throw error
+  return count ?? 1
+}
+
 export async function getMyMembership(): Promise<Membership | null> {
   // 배우자가 합류하면 가구 멤버가 2명이 되므로, 반드시 내 계정 행만 조회해야 함
   // (필터 없이 maybeSingle()을 쓰면 2행이 잡혀 에러가 남)
