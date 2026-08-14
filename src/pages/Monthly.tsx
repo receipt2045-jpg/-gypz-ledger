@@ -45,6 +45,9 @@ export default function Monthly() {
 
   const ledger = resolveLedger(ledgers, ym)
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
+  // 내가 이 달 정산을 했는지 — 혼자 끝낸 경우에도 되돌릴 수 있어야 한다
+  const me = memberNo ?? 1
+  const iSettled = ledger.closed || (ledger.settledMembers ?? []).includes(me)
 
   const filteredItems =
     member === 0 ? ledger.items : ledger.items.filter((it) => it.member === member)
@@ -152,20 +155,31 @@ export default function Monthly() {
       </button>
 
       {/* 결산이 끝난 달이면 성적표 — 정산 화면을 다시 안 열어도 여기서 공유할 수 있게 */}
-      {ledger.closed && (
-        <>
-          <MonthlyReportCard data={buildMonthlyCard(ledger, snapshots, profile)} />
-          {/* 잘못 정산했으면 되돌리기 (사용자 요청) — 기록은 그대로, 결산 상태만 풀린다 */}
-          <button
-            onClick={() => {
-              if (!window.confirm('이 달 정산을 취소할까요? 입력한 기록은 그대로 남아요.')) return
-              saveLedger({ ...ledger, closed: false, settledMembers: [] })
-            }}
-            className="w-full py-1 text-center text-[12.5px] font-semibold text-cap active:opacity-60"
-          >
-            잘못 정산했나요? 정산 취소하기
-          </button>
-        </>
+      {ledger.closed && <MonthlyReportCard data={buildMonthlyCard(ledger, snapshots, profile)} />}
+
+      {/*
+        잘못 정산했으면 되돌리기. 기록은 그대로 두고 정산 표시만 푼다.
+        예전엔 closed(부부 둘 다 완료)일 때만 보여서, 혼자 정산한 사람은
+        취소할 방법이 없었다 — 정작 되돌리고 싶은 게 그 경우다.
+      */}
+      {iSettled && (
+        <button
+          onClick={() => {
+            const msg = ledger.closed
+              ? '이 달 정산을 취소할까요? 입력한 기록은 그대로 남아요.'
+              : '내 정산을 취소할까요? 입력한 기록은 그대로 남아요.'
+            if (!window.confirm(msg)) return
+            saveLedger({
+              ...ledger,
+              closed: false,
+              // 배우자가 이미 끝냈으면 그건 건드리지 않는다
+              settledMembers: (ledger.settledMembers ?? []).filter((m) => m !== me),
+            })
+          }}
+          className="w-full py-1 text-center text-[12.5px] font-semibold text-cap active:opacity-60"
+        >
+          잘못 정산했나요? 정산 취소하기
+        </button>
       )}
 
       {/* 고정비 점검 — 금액만으론 알 수 없으니 수입 대비로 견줘 본다 (가구 전체 기준) */}

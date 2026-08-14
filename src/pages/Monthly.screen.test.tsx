@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import Monthly from './Monthly'
 import Yearly from './Yearly'
@@ -94,6 +94,52 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
 
     await user.click(screen.getByLabelText('삭제'))
     expect(savedOccasions()).toHaveLength(0)
+  })
+})
+
+describe('가계부 탭 — 정산 취소', () => {
+  const seedSettled = (settledMembers: (1 | 2)[], closed: boolean) =>
+    seedStore({
+      memberNo: 2,
+      ledgers: [
+        {
+          ym: TEST_YM,
+          closed,
+          settledMembers,
+          items: [
+            { id: 'a', group: 'income', category: '주수입', member: 2, planned: 3_000_000, actual: 3_000_000 },
+          ],
+        },
+      ],
+    })
+
+  it('혼자만 정산한 경우에도 취소 버튼이 보인다', () => {
+    // 예전엔 부부 둘 다 끝낸 달(closed)에만 보여서 되돌릴 방법이 없었다
+    seedSettled([2], false)
+    renderScreen(<Monthly />)
+    expect(screen.getByRole('button', { name: /정산 취소하기/ })).toBeInTheDocument()
+  })
+
+  it('정산을 안 했으면 취소 버튼이 없다', () => {
+    seedSettled([], false)
+    renderScreen(<Monthly />)
+    expect(screen.queryByRole('button', { name: /정산 취소하기/ })).not.toBeInTheDocument()
+  })
+
+  it('취소하면 내 정산만 풀리고 배우자 것은 남는다', async () => {
+    seedSettled([1, 2], true)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { user } = renderScreen(<Monthly />)
+
+    // 부부 둘 다 끝낸 달은 화면이 다음 달로 넘어가 있다 — 그 달로 돌아가야 보인다
+    await user.click(screen.getByRole('button', { name: '이전 달' }))
+    await user.click(screen.getByRole('button', { name: /정산 취소하기/ }))
+
+    const saved = useLedgerStore.getState().ledgers.find((l) => l.ym === TEST_YM)
+    expect(saved?.closed).toBe(false)
+    expect(saved?.settledMembers).toEqual([1])
+    // 입력한 기록은 그대로
+    expect(saved?.items).toHaveLength(1)
   })
 })
 
