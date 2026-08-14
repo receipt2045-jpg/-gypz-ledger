@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDownRight, ArrowUpRight, ChevronRight, Pencil } from 'lucide-react'
-import AssetDonut from '../components/AssetDonut'
+import { LazyAssetDonut, LazyNetWorthChart } from '../components/LazyCharts'
 import AssetIcon from '../components/AssetIcon'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
@@ -201,45 +200,9 @@ export default function Assets() {
           {abbreviateKRW(Math.abs(delta))}
         </div>
 
-        {/* 순자산 추이 차트 */}
+        {/* 순자산 추이 차트 — 볼 때 받아온다 */}
         <div className="mt-4 h-40 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={series} margin={{ top: 8, right: 6, bottom: 0, left: 6 }}>
-              <defs>
-                <linearGradient id="assetArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3182F6" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="#3182F6" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: '#8B95A1' }}
-                axisLine={false}
-                tickLine={false}
-                dy={4}
-              />
-              <YAxis hide domain={['dataMin - 5000000', 'dataMax + 5000000']} />
-              <Tooltip
-                cursor={{ stroke: '#3182F6', strokeWidth: 1, strokeDasharray: '3 3' }}
-                content={({ active, payload }) =>
-                  active && payload && payload.length ? (
-                    <div className="rounded-lg bg-ink px-2.5 py-1.5 text-[12px] font-semibold text-white shadow-lg">
-                      {abbreviateKRW(Number(payload[0].value))}
-                    </div>
-                  ) : null
-                }
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="#3182F6"
-                strokeWidth={2.5}
-                fill="url(#assetArea)"
-                dot={{ r: 3, fill: '#3182F6', stroke: '#fff', strokeWidth: 1.5 }}
-                activeDot={{ r: 5, fill: '#3182F6', stroke: '#fff', strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <LazyNetWorthChart series={series} />
         </div>
 
       </Card>
@@ -249,7 +212,7 @@ export default function Assets() {
       {!picked && snapshot.items.length > 0 && (
         <Card>
           <p className="mb-3 text-[13px] font-medium text-cap">자산 구성</p>
-          <AssetDonut assets={assets} debts={debts} />
+          <LazyAssetDonut assets={assets} debts={debts} />
         </Card>
       )}
 

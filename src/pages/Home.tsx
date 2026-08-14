@@ -4,7 +4,8 @@ import { BarChart3, Check, ChevronLeft, ChevronRight, Settings, TrendingUp } fro
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import InviteBanner from '../components/InviteBanner'
-import MonthlyCombo, { type MonthPoint } from '../components/MonthlyCombo'
+import { type MonthPoint } from '../components/MonthlyCombo'
+import { LazyMonthlyCombo } from '../components/LazyCharts'
 import ProgressBar from '../components/ProgressBar'
 import StatGauges from '../components/StatGauges'
 import TodayCard from '../components/TodayCard'
@@ -277,7 +278,7 @@ export default function Home() {
           <p className="text-[13px] font-medium text-cap">최근 6개월 지출·순자산</p>
           <TrendingUp size={16} className="text-brand" />
         </div>
-        <MonthlyCombo data={combo} />
+        <LazyMonthlyCombo data={combo} />
       </Card>
 
       {/* 10년 목표 진행바 */}
