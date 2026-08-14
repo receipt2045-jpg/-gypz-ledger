@@ -116,7 +116,7 @@ export default function FixedCostCheck({
             우리집은 뭘 줄여야 할까요?
           </span>
           <span className="mt-0.5 block text-[11.5px] text-cap">
-            결영이네가 우리집 숫자를 직접 보고 써드려요
+            모아불리 맞춤 리포트에서 알려드려요
           </span>
         </span>
         <ChevronRight size={16} className="shrink-0 text-cap" />
