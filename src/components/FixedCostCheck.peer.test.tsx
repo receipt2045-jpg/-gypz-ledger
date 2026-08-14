@@ -10,6 +10,13 @@ import FixedCostCheck from './FixedCostCheck'
 import { useLedgerStore } from '../lib/store'
 import type { BudgetItem } from '../types'
 
+import { MemoryRouter } from 'react-router-dom'
+import type { ReactElement } from 'react'
+
+// 컴포넌트가 useNavigate를 쓰므로 라우터로 감싸서 띄운다
+const renderWithRouter = (ui: ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>)
+
+
 const item = (group: BudgetItem['group'], category: string, amount: number): BudgetItem => ({
   id: `${group}-${category}`,
   group,
@@ -31,7 +38,7 @@ describe('고정비 점검 — 또래 기준값', () => {
     fetchPeerBenchmark.mockResolvedValue([
       { category: '보험', n: 128, my_amount: 700_000, median_amount: 380_000, rank_pct: 12, band: 'high' },
     ])
-    render(<FixedCostCheck items={items} closed />)
+    renderWithRouter(<FixedCostCheck items={items} closed />)
 
     await waitFor(() => expect(screen.getByText(/다른 집들은 보통 380,000원/)).toBeInTheDocument())
   })
@@ -41,7 +48,7 @@ describe('고정비 점검 — 또래 기준값', () => {
     fetchPeerBenchmark.mockResolvedValue([
       { category: '보험', n: 128, my_amount: 700_000, median_amount: 380_000, rank_pct: 12, band: 'high' },
     ])
-    render(<FixedCostCheck items={items} closed />)
+    renderWithRouter(<FixedCostCheck items={items} closed />)
 
     await waitFor(() => expect(screen.getByText(/다른 집들은 보통/)).toBeInTheDocument())
     expect(screen.queryByText(/상위/)).not.toBeInTheDocument()
@@ -53,7 +60,7 @@ describe('고정비 점검 — 또래 기준값', () => {
     fetchPeerBenchmark.mockResolvedValue([
       { category: '보험', n: 14, my_amount: 700_000, median_amount: null, rank_pct: null, band: null },
     ])
-    render(<FixedCostCheck items={items} closed />)
+    renderWithRouter(<FixedCostCheck items={items} closed />)
 
     await waitFor(() => expect(fetchPeerBenchmark).toHaveBeenCalled())
     expect(screen.queryByText(/다른 집들은/)).not.toBeInTheDocument()
@@ -61,14 +68,14 @@ describe('고정비 점검 — 또래 기준값', () => {
 
   it('로그인 전이면 서버에 묻지 않는다', async () => {
     useLedgerStore.setState({ householdId: null })
-    render(<FixedCostCheck items={items} closed />)
+    renderWithRouter(<FixedCostCheck items={items} closed />)
     await new Promise((r) => setTimeout(r, 10))
     expect(fetchPeerBenchmark).not.toHaveBeenCalled()
   })
 
   it('비교를 못 불러와도 카드는 그대로 나온다', async () => {
     fetchPeerBenchmark.mockRejectedValue(new Error('offline'))
-    render(<FixedCostCheck items={items} closed />)
+    renderWithRouter(<FixedCostCheck items={items} closed />)
 
     await waitFor(() => expect(fetchPeerBenchmark).toHaveBeenCalled())
     expect(screen.getByText('고정비 점검')).toBeInTheDocument()

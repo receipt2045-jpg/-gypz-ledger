@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Check, ChevronDown, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Check, ChevronDown, ChevronRight, Users } from 'lucide-react'
 import { abbreviateKRW, formatWon } from '../lib/format'
 import {
   buildFixedCostReport,
@@ -25,6 +26,7 @@ export default function FixedCostCheck({
   closed: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
   const householdId = useLedgerStore((s) => s.householdId)
   // 또래 비교는 있으면 얹고, 없으면(로그인 전·샘플·통신 실패) 조용히 생략한다
   const [peers, setPeers] = useState<Map<string, PeerRow>>(new Map())
@@ -99,6 +101,26 @@ export default function FixedCostCheck({
           </p>
         </div>
       )}
+
+      {/*
+        자기 숫자를 막 확인한 직후 — '그래서 우리집은 어떻게 해야 하나'가
+        가장 궁금한 자리라 리포트로 잇는다. 눈금은 남의 기준이고,
+        리포트는 우리집 숫자를 보고 쓰는 거라는 차이를 문구에 담는다.
+      */}
+      <button
+        onClick={() => navigate('/report')}
+        className="mt-3 flex w-full items-center justify-between rounded-btn bg-bg px-3.5 py-3 text-left active:bg-line"
+      >
+        <span className="min-w-0">
+          <span className="block text-[13.5px] font-bold text-ink">
+            우리집은 뭘 줄여야 할까요?
+          </span>
+          <span className="mt-0.5 block text-[11.5px] text-cap">
+            결영이네가 우리집 숫자를 직접 보고 써드려요
+          </span>
+        </span>
+        <ChevronRight size={16} className="shrink-0 text-cap" />
+      </button>
     </div>
   )
 }
