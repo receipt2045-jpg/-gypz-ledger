@@ -65,6 +65,9 @@ export interface Confession {
   kind: CategoryGroup
   amount: number // 원
   note?: string // 선택적 한 마디 (예: "회식 대신 집밥")
+  // 누구 카드로 썼는지 (1|2). 연말정산 카드 공제는 명의자 기준으로 계산돼서,
+  // 이게 쌓이면 '오늘 누구 카드를 쓸까'를 실제 사용액으로 판단할 수 있다.
+  cardOwner?: 1 | 2
   createdAt: string // ISO
 }
 

@@ -240,6 +240,7 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
     kind: r.kind,
     amount: Number(r.amount),
     note: r.note ?? undefined,
+    cardOwner: (r.card_owner ?? undefined) as 1 | 2 | undefined,
     createdAt: r.created_at,
   }))
 }
@@ -259,6 +260,7 @@ export async function insertConfession(householdId: string, c: Confession) {
     kind: c.kind,
     amount: c.amount,
     note: c.note ?? null,
+    card_owner: c.cardOwner ?? null,
     created_at: c.createdAt,
   })
   if (error) throw error

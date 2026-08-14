@@ -77,6 +77,29 @@ describe('고백 페이지 — 내 기록 보기·삭제', () => {
   })
 })
 
+describe('고백 페이지 — 누구 카드로 썼는지', () => {
+  it('기본은 내 카드고, 기록에 카드 주인이 붙는다', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+
+    expect(screen.getByText('누구 카드로 썼어요?')).toBeInTheDocument()
+    await user.click(screen.getByText(/안 썼어요/))
+
+    // 무지출(0원)도 변동지출이라 카드 주인이 붙는다 — 금액이 0이라 계산엔 영향 없다
+    expect(useLedgerStore.getState().confessions[0].cardOwner).toBe(2)
+  })
+
+  it('배우자 카드로 바꾸면 그쪽으로 기록된다', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+
+    await user.click(screen.getByRole('button', { name: '남편' }))
+    await user.click(screen.getByText(/안 썼어요/))
+
+    expect(useLedgerStore.getState().confessions[0].cardOwner).toBe(1)
+  })
+})
+
 describe('고백 페이지 — 지난 날짜로 적기', () => {
   it('날짜를 바꾸면 그 날짜로 기록된다', async () => {
     seedStore({ memberNo: 2, confessions: [] })

@@ -4,10 +4,11 @@ import { ChevronLeft, Info } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import { useLedgerStore } from '../lib/store'
 import { memberStyle } from '../lib/memberColors'
-import { abbreviateKRW, formatWon } from '../lib/format'
+import { abbreviateKRW, formatComma, formatWon } from '../lib/format'
 import {
   RULES,
   YEAREND_SAVE_KEY,
+  cardSpentFromConfessions,
   readYearEndInput,
   recommendCard,
   type MemberStatus,
@@ -20,7 +21,7 @@ import {
  */
 export default function YearEndTax() {
   const navigate = useNavigate()
-  const { profile } = useLedgerStore()
+  const { profile, confessions } = useLedgerStore()
   const [v, setV] = useState<Saved>(readYearEndInput)
 
   const names: [string, string] = [profile.member1Name, profile.member2Name]
@@ -30,11 +31,18 @@ export default function YearEndTax() {
     localStorage.setItem(YEAREND_SAVE_KEY, JSON.stringify(next))
   }
 
+  // 고백에 카드 주인을 남긴 만큼은 자동으로 더해진다 (직접 입력분과 합산)
+  const [fromApp1, fromApp2] = useMemo(
+    () => cardSpentFromConfessions(confessions),
+    [confessions],
+  )
+  const spent1 = v.spent1 + fromApp1
+  const spent2 = v.spent2 + fromApp2
+
   const ready = v.gross1 > 0 && v.gross2 > 0
   const advice = useMemo(
-    () =>
-      recommendCard({ gross: v.gross1, spent: v.spent1 }, { gross: v.gross2, spent: v.spent2 }),
-    [v],
+    () => recommendCard({ gross: v.gross1, spent: spent1 }, { gross: v.gross2, spent: spent2 }),
+    [v.gross1, v.gross2, spent1, spent2],
   )
 
   const winnerName =
@@ -110,6 +118,14 @@ export default function YearEndTax() {
                     />
                   </div>
                 ))}
+                {fromApp1 + fromApp2 > 0 && (
+                  <p className="px-1 text-[12px] leading-relaxed text-cap">
+                    여기에 고백으로 쌓인 카드값을 더해서 계산해요 ·{' '}
+                    <span className="tnum font-semibold text-sub">
+                      {names[0]} {formatComma(fromApp1)}원 · {names[1]} {formatComma(fromApp2)}원
+                    </span>
+                  </p>
+                )}
               </div>
 
               {/* 결론 */}

@@ -20,6 +20,28 @@ export interface YearEndInput {
   spent2: number
 }
 
+/**
+ * 올해 고백에 쌓인 카드 사용액 (명의자별).
+ *
+ * 카드 공제 대상은 소비 지출이라 저축·투자·수입은 뺀다.
+ * 카드 주인을 안 고른 기록은 누구 것인지 모르므로 세지 않는다.
+ */
+export function cardSpentFromConfessions(
+  confessions: { kind: string; amount: number; cardOwner?: 1 | 2; createdAt: string }[],
+  year = String(new Date().getFullYear()),
+): [number, number] {
+  let a = 0
+  let b = 0
+  for (const c of confessions) {
+    if (c.cardOwner !== 1 && c.cardOwner !== 2) continue
+    if (c.kind !== 'variable' && c.kind !== 'fixed') continue
+    if (!c.createdAt.startsWith(year)) continue
+    if (c.cardOwner === 1) a += c.amount
+    else b += c.amount
+  }
+  return [a, b]
+}
+
 export function readYearEndInput(): YearEndInput {
   try {
     return {

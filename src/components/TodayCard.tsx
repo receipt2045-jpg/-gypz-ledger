@@ -4,7 +4,7 @@ import { useLedgerStore } from '../lib/store'
 import { resolveLedger } from '../lib/carryover'
 import { monthConfessions } from '../lib/confessLedger'
 import { streakOf } from '../lib/reactions'
-import { readYearEndInput, recommendCard } from '../lib/yearEndTax'
+import { cardSpentFromConfessions, readYearEndInput, recommendCard } from '../lib/yearEndTax'
 import { abbreviateKRW, currentYm } from '../lib/format'
 
 const dayKey = (d: Date) => d.toLocaleDateString('sv-SE')
@@ -41,11 +41,13 @@ export default function TodayCard() {
 
   // ③ 카드 줄 — 연말정산 입력이 있으면 오늘 유리한 카드
   const yearEnd = readYearEndInput()
+  // 고백에 카드 주인을 남긴 만큼은 직접 입력분에 더해서 본다
+  const cardFromApp = cardSpentFromConfessions(confessions)
   const hasSalary = yearEnd.gross1 > 0 && yearEnd.gross2 > 0
   const advice = hasSalary
     ? recommendCard(
-        { gross: yearEnd.gross1, spent: yearEnd.spent1 },
-        { gross: yearEnd.gross2, spent: yearEnd.spent2 },
+        { gross: yearEnd.gross1, spent: yearEnd.spent1 + cardFromApp[0] },
+        { gross: yearEnd.gross2, spent: yearEnd.spent2 + cardFromApp[1] },
       )
     : null
   const cardLabel = !advice

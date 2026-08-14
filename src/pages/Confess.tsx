@@ -116,8 +116,16 @@ interface DraftEntry extends ParsedEntry {
  */
 export default function Confess() {
   const navigate = useNavigate()
-  const { categories, memberNo, confessions, aliases, addConfession, removeConfession, learnAliases } =
-    useLedgerStore()
+  const {
+    categories,
+    memberNo,
+    confessions,
+    aliases,
+    profile,
+    addConfession,
+    removeConfession,
+    learnAliases,
+  } = useLedgerStore()
 
   // 모드: 줄글(text, 기본) / 버튼(picker)
   const [mode, setMode] = useState<'text' | 'picker'>('text')
@@ -159,6 +167,10 @@ export default function Confess() {
   const today = new Date().toLocaleDateString('sv-SE')
   const [logDate, setLogDate] = useState(today)
 
+  // 누구 카드로 썼는지 — 연말정산 카드 공제가 명의자 기준이라 쌓아두면 추천이 정확해진다
+  const [cardOwner, setCardOwner] = useState<1 | 2>(memberNo ?? 1)
+  const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
+
   // 내가 쓴 기록 (최근 14일) — 잘못 쓴 걸 그 자리에서 지울 수 있게
   const myRecent = useMemo(() => {
     const me = memberNo ?? 1
@@ -198,7 +210,15 @@ export default function Confess() {
       logDate === today ? new Date().toISOString() : new Date(`${logDate}T12:00:00`).toISOString()
     let last = null as ReturnType<typeof addConfession> | null
     for (const e of entries) {
-      last = addConfession({ category: e.category, kind: e.kind, amount: e.amount, note: e.note, createdAt })
+      last = addConfession({
+        category: e.category,
+        kind: e.kind,
+        amount: e.amount,
+        note: e.note,
+        createdAt,
+        // 카드값이 아닌 것(저축·투자·수입)에는 카드 주인을 남기지 않는다
+        cardOwner: e.kind === 'variable' || e.kind === 'fixed' ? cardOwner : undefined,
+      })
     }
     if (!last) return
     const all = useLedgerStore.getState().confessions
@@ -590,6 +610,29 @@ export default function Confess() {
               오늘로
             </button>
           )}
+        </div>
+
+        {/* 누구 카드로 썼는지 — 연말정산 카드 추천이 이걸로 정확해진다 */}
+        <div className="rounded-card bg-card px-4 py-3 shadow-card">
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-[13px] font-bold text-sub">누구 카드로 썼어요?</span>
+            <div className="flex flex-1 gap-1.5">
+              {([1, 2] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setCardOwner(m)}
+                  className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[13px] font-bold transition-colors ${
+                    cardOwner === m ? 'bg-ink text-white' : 'bg-bg text-sub active:bg-line'
+                  }`}
+                >
+                  {memberNames[m - 1]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="mt-1.5 text-[11.5px] leading-relaxed text-cap">
+            연말정산 카드 공제는 명의자별로 계산돼요. 쌓이면 누구 카드를 쓸지 알려드려요
+          </p>
         </div>
 
         <div className="rounded-card bg-card p-3 shadow-card">
