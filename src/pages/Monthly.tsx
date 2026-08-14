@@ -32,6 +32,7 @@ export default function Monthly() {
     removeOccasion,
     removeConfession,
     memberNo,
+    saveLedger,
   } = useLedgerStore()
   const [ym, setYm] = useState(() => activeYm(ledgers))
   const [member, setMember] = useState<MemberFilter>(0)
@@ -152,7 +153,19 @@ export default function Monthly() {
 
       {/* 결산이 끝난 달이면 성적표 — 정산 화면을 다시 안 열어도 여기서 공유할 수 있게 */}
       {ledger.closed && (
-        <MonthlyReportCard data={buildMonthlyCard(ledger, snapshots, profile)} />
+        <>
+          <MonthlyReportCard data={buildMonthlyCard(ledger, snapshots, profile)} />
+          {/* 잘못 정산했으면 되돌리기 (사용자 요청) — 기록은 그대로, 결산 상태만 풀린다 */}
+          <button
+            onClick={() => {
+              if (!window.confirm('이 달 정산을 취소할까요? 입력한 기록은 그대로 남아요.')) return
+              saveLedger({ ...ledger, closed: false, settledMembers: [] })
+            }}
+            className="w-full py-1 text-center text-[12.5px] font-semibold text-cap active:opacity-60"
+          >
+            잘못 정산했나요? 정산 취소하기
+          </button>
+        </>
       )}
 
       {/* 고정비 점검 — 금액만으론 알 수 없으니 수입 대비로 견줘 본다 (가구 전체 기준) */}

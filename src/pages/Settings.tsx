@@ -207,6 +207,23 @@ export default function Settings() {
               onPick={(c) => updateProfile({ member2Color: c })}
             />
           </Field>
+          {/* "내가 아내인데 남편으로 나와요" — 이름표만 서로 바꾸면 과거 기록까지 맞게 보인다 */}
+          <button
+            onClick={() =>
+              updateProfile({
+                member1Name: profile.member2Name,
+                member2Name: profile.member1Name,
+                member1Color: profile.member2Color,
+                member2Color: profile.member1Color,
+              })
+            }
+            className="w-full rounded-btn bg-bg py-2.5 text-[13px] font-bold text-sub active:bg-line"
+          >
+            ⇄ 두 이름 서로 바꾸기
+          </button>
+          <p className="-mt-1 px-1 text-[12px] leading-relaxed text-cap">
+            내 이름이 배우자 자리에 있으면 눌러주세요. 기록은 그대로 두고 이름표만 바뀌어요.
+          </p>
           <Field label="10년 목표 순자산" hint={abbreviateKRW(profile.targetNetWorth)}>
             <AmountInput
               value={profile.targetNetWorth}

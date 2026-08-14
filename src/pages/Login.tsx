@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Wallet } from 'lucide-react'
+import InAppBrowserNotice from '../components/InAppBrowserNotice'
 import { supabase } from '../lib/supabase'
 
 // OAuth 로그인 후 돌아올 주소 (배포 주소가 바뀌어도 자동 대응)
@@ -98,6 +99,11 @@ export default function Login() {
               지금 <span className="tnum">{households}</span>가구가 함께 쓰고 있어요
             </p>
           )}
+
+          {/* 카톡 안에서 열면 로그인이 매번 풀린다 — 옮기라고 여기서 알려준다 */}
+          <div className="mt-5">
+            <InAppBrowserNotice />
+          </div>
 
           {/* 구글 로그인 */}
           <button
