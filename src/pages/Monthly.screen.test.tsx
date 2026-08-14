@@ -143,6 +143,64 @@ describe('가계부 탭 — 정산 취소', () => {
   })
 })
 
+describe('가계부 탭 — 한 달 통째로 지우기', () => {
+  const seedTwoMonths = () =>
+    seedStore({
+      ledgers: [
+        {
+          ym: shiftYm(TEST_YM, -1),
+          closed: false,
+          settledMembers: [],
+          items: [
+            { id: 'p', group: 'income', category: '주수입', member: 2, planned: 1_000_000, actual: 0 },
+          ],
+        },
+        {
+          ym: TEST_YM,
+          closed: false,
+          settledMembers: [],
+          items: [
+            { id: 'a', group: 'income', category: '주수입', member: 2, planned: 3_000_000, actual: 0 },
+          ],
+        },
+      ],
+      snapshots: [
+        { ym: TEST_YM, items: [{ id: 's1', kind: 'asset', group: 'cash', name: '통장', amount: 1_000 }] },
+      ],
+    })
+
+  it('그 달의 가계부와 자산이 함께 지워진다', async () => {
+    seedTwoMonths()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { user } = renderScreen(<Monthly />)
+
+    await user.click(screen.getByRole('button', { name: /기록 통째로 지우기/ }))
+
+    const s = useLedgerStore.getState()
+    expect(s.ledgers.map((l) => l.ym)).toEqual([shiftYm(TEST_YM, -1)])
+    expect(s.snapshots).toHaveLength(0)
+  })
+
+  it('확인창에서 취소하면 아무것도 안 지워진다', async () => {
+    seedTwoMonths()
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const { user } = renderScreen(<Monthly />)
+
+    await user.click(screen.getByRole('button', { name: /기록 통째로 지우기/ }))
+
+    expect(useLedgerStore.getState().ledgers).toHaveLength(2)
+  })
+
+  it('저장된 기록이 없는 달에는 버튼이 없다', async () => {
+    seedTwoMonths()
+    const { user } = renderScreen(<Monthly />)
+
+    // 다음 달은 이전 달에서 만들어 보여줄 뿐, 저장된 기록은 없다
+    await user.click(screen.getByRole('button', { name: '다음 달' }))
+    expect(screen.queryByRole('button', { name: /기록 통째로 지우기/ })).not.toBeInTheDocument()
+  })
+})
+
 describe('가계부 탭 — 고백 내역 삭제', () => {
   const seedConfessions = () =>
     seedStore({

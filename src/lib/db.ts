@@ -179,6 +179,16 @@ export async function pushSnapshot(householdId: string, snapshot: AssetSnapshot)
   if (error) throw error
 }
 
+/** 한 달 통째로 지우기 — 가계부와 자산을 같이 지운다 */
+export async function deleteMonth(householdId: string, ym: string) {
+  const results = await Promise.all([
+    supabase.from('ledgers').delete().eq('household_id', householdId).eq('ym', ym),
+    supabase.from('snapshots').delete().eq('household_id', householdId).eq('ym', ym),
+  ])
+  const err = results.find((r) => r.error)?.error
+  if (err) throw err
+}
+
 export async function pushOccasion(householdId: string, entry: OccasionEntry) {
   const { error } = await supabase.from('occasions').insert({
     id: entry.id,

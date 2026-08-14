@@ -123,6 +123,8 @@ interface LedgerState extends AppData {
   saveLedger: (ledger: MonthlyLedger) => void
   // 자산 스냅샷
   saveSnapshot: (snapshot: AssetSnapshot) => void
+  // 한 달 통째로 지우기 (가계부 + 자산) — 잘못 만들어진 달을 앱에서 치울 수 있게
+  removeMonth: (ym: string) => void
   // 경조사/연간비
   addOccasion: (entry: Omit<OccasionEntry, 'id'>) => void
   removeOccasion: (id: string) => void
@@ -268,6 +270,15 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       const op: PendingOp = { kind: 'snapshot', key: `snapshot:${snapshot.ym}`, payload: snapshot }
       db.pushSnapshot(hid, snapshot).catch(onSaveFailed(op))
     }
+  },
+
+  removeMonth: (ym) => {
+    set((s) => ({
+      ledgers: s.ledgers.filter((l) => l.ym !== ym),
+      snapshots: s.snapshots.filter((sn) => sn.ym !== ym),
+    }))
+    const hid = get().householdId
+    if (hid) db.deleteMonth(hid, ym).catch(reportSyncError)
   },
 
   addOccasion: (entry) => {

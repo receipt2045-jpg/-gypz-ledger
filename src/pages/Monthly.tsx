@@ -33,6 +33,7 @@ export default function Monthly() {
     removeConfession,
     memberNo,
     saveLedger,
+    removeMonth,
   } = useLedgerStore()
   const [ym, setYm] = useState(() => activeYm(ledgers))
   const [member, setMember] = useState<MemberFilter>(0)
@@ -48,6 +49,10 @@ export default function Monthly() {
   // 내가 이 달 정산을 했는지 — 혼자 끝낸 경우에도 되돌릴 수 있어야 한다
   const me = memberNo ?? 1
   const iSettled = ledger.closed || (ledger.settledMembers ?? []).includes(me)
+  // 이 달에 실제로 저장된 기록이 있을 때만 '통째로 지우기'를 보여준다
+  // (resolveLedger는 없는 달도 이전 달에서 만들어 주므로 원본을 직접 본다)
+  const hasAnyRecord =
+    ledgers.some((l) => l.ym === ym) || snapshots.some((s) => s.ym === ym)
 
   const filteredItems =
     member === 0 ? ledger.items : ledger.items.filter((it) => it.member === member)
@@ -179,6 +184,29 @@ export default function Monthly() {
           className="w-full py-1 text-center text-[12.5px] font-semibold text-cap active:opacity-60"
         >
           잘못 정산했나요? 정산 취소하기
+        </button>
+      )}
+
+      {/*
+        잘못 만들어진 달을 앱에서 치울 수 있게. 예전엔 방법이 없어서
+        운영자가 DB에서 지워야 했다 (미래 달이 저절로 생기는 문제도 있었다).
+      */}
+      {hasAnyRecord && (
+        <button
+          onClick={() => {
+            const label = formatYmKorean(ym)
+            if (
+              !window.confirm(
+                `${label} 기록을 통째로 지울까요?\n가계부와 자산이 같이 지워지고, 되돌릴 수 없어요.`,
+              )
+            )
+              return
+            removeMonth(ym)
+            setYm(shiftYm(ym, -1))
+          }}
+          className="w-full py-1 text-center text-[12.5px] font-semibold text-cap active:text-danger"
+        >
+          {formatYmKorean(ym)} 기록 통째로 지우기
         </button>
       )}
 
