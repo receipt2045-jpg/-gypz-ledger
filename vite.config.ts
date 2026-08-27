@@ -4,9 +4,10 @@ import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // GitHub Pages 프로젝트 페이지 경로 (https://<owner>.github.io/<저장소이름>/)
-  // 배포 워크플로가 VITE_BASE로 실제 저장소 이름을 주입 (로컬 개발은 기본값 사용)
-  base: process.env.VITE_BASE ?? '/gypz-ledger/',
+  // 커스텀 도메인 루트(moabuli.com/)에서 서비스한다.
+  // 예전 기본값은 GitHub Pages용 '/gypz-ledger/'였는데, 그 배포는 더 이상 없고
+  // 호스팅을 옮길 때마다 경로가 깨져서 기본값을 '/'로 바꿨다.
+  base: process.env.VITE_BASE ?? '/',
   plugins: [react()],
   build: {
     rollupOptions: {

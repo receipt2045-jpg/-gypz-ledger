@@ -1,0 +1,2 @@
+# SPA 폴백 — 직접 URL로 들어와도 앱이 뜨게 (netlify.toml의 redirects와 같은 역할)
+/*    /index.html   200
