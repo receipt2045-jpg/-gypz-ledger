@@ -93,6 +93,13 @@ export default function Home() {
 
   return (
     <div className="animate-fade-up space-y-4 pb-24">
+      {/* 무료체험 안내 — 정식 오픈 전까지 전 기능 무료.
+          유료 전환할 때 이 블록만 지우면 된다. */}
+      <div className="rounded-card bg-brand/10 px-4 py-2.5 text-center">
+        <p className="text-[13.5px] font-bold text-brand">🎁 지금은 3개월 무료체험 기간입니다</p>
+        <p className="mt-0.5 text-[12px] text-sub">모든 기능을 무료로 쓸 수 있어요</p>
+      </div>
+
       {/* 달 선택 + 설정 */}
       <div className="relative flex items-center justify-center gap-3 pt-2">
         <button

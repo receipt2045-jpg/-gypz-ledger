@@ -100,6 +100,9 @@ export default function Login() {
             </p>
           )}
 
+          {/* 무료체험 안내 — 홈(Home.tsx)에도 같은 문구가 있다. 유료 전환할 때 둘 다 지운다. */}
+          <p className="mt-2 text-[13.5px] font-bold text-brand">🎁 지금은 3개월 무료체험 기간입니다</p>
+
           {/* 카톡 안에서 열면 로그인이 매번 풀린다 — 옮기라고 여기서 알려준다 */}
           <div className="mt-5">
             <InAppBrowserNotice />
