@@ -4,7 +4,7 @@ import Monthly from './Monthly'
 import Yearly from './Yearly'
 import { renderScreen, seedStore, TEST_YM } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
-import { shiftYm } from '../lib/format'
+import { currentYm, shiftYm } from '../lib/format'
 
 const savedOccasions = () => useLedgerStore.getState().occasions
 
@@ -202,6 +202,8 @@ describe('가계부 탭 — 한 달 통째로 지우기', () => {
 })
 
 describe('가계부 탭 — 고백 내역 삭제', () => {
+  // 가계부를 안 넣고 고백만 넣으므로 화면은 '이번 달'을 편다.
+  // TEST_YM(고정 문자열)로 날짜를 만들면 달이 바뀌는 순간 테스트가 깨진다.
   const seedConfessions = () =>
     seedStore({
       memberNo: 2,
@@ -212,7 +214,7 @@ describe('가계부 탭 — 고백 내역 삭제', () => {
           category: '식비',
           kind: 'variable',
           amount: 9_000,
-          createdAt: `${TEST_YM}-10T12:00:00.000Z`,
+          createdAt: `${currentYm()}-10T12:00:00.000Z`,
         },
         {
           id: 'c2',
@@ -220,7 +222,7 @@ describe('가계부 탭 — 고백 내역 삭제', () => {
           category: '카페/간식',
           kind: 'variable',
           amount: 5_500,
-          createdAt: `${TEST_YM}-11T12:00:00.000Z`,
+          createdAt: `${currentYm()}-11T12:00:00.000Z`,
         },
       ],
     })

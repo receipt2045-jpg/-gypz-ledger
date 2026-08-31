@@ -4,10 +4,13 @@ import AmountInput from '../components/AmountInput'
 import { supabase } from '../lib/supabase'
 import { createHousehold, joinHousehold, pushProfile, type Membership } from '../lib/db'
 import { abbreviateKRW } from '../lib/format'
+import { clearPendingInvite, pendingInvite } from '../lib/invite'
 
 export default function Onboarding({ onDone }: { onDone: (m: Membership) => void }) {
   const [mode, setMode] = useState<'choose' | 'join' | 'profile'>('choose')
-  const [code, setCode] = useState('')
+  // 초대 링크로 온 사람 — 코드는 이미 챙겨 뒀다. 받아 적을 필요가 없다.
+  const [invited, setInvited] = useState(() => pendingInvite())
+  const [code, setCode] = useState(() => pendingInvite() ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   // 가구 생성 직후 이름·목표 설정 (브리프 P2 3.2)
@@ -21,6 +24,7 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
     setBusy(true)
     setError('')
     try {
+      clearPendingInvite() // 초대를 안 쓰기로 했으면 더 들고 있지 않는다
       const m = await createHousehold()
       setMembership(m)
       setBusy(false)
@@ -52,11 +56,21 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
     setBusy(true)
     setError('')
     try {
-      onDone(await joinHousehold(code))
+      const m = await joinHousehold(code)
+      clearPendingInvite()
+      onDone(m)
     } catch (err) {
       setError(err instanceof Error ? err.message : '참여하지 못했어요')
       setBusy(false)
     }
+  }
+
+  /** 초대 링크가 안 맞을 때(코드 만료·이미 두 명) 일반 화면으로 돌아간다. */
+  const dropInvite = () => {
+    clearPendingInvite()
+    setInvited(null)
+    setCode('')
+    setError('')
   }
 
   return (
@@ -71,7 +85,11 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
             )}
           </div>
           <h1 className="text-[26px] font-extrabold leading-snug text-ink">
-            {mode === 'profile' ? '우리 부부를 알려주세요' : '거의 다 됐어요!'}
+            {mode === 'profile'
+              ? '우리 부부를 알려주세요'
+              : invited
+                ? '초대를 받으셨네요!'
+                : '거의 다 됐어요!'}
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-sub">
             {mode === 'profile' ? (
@@ -79,6 +97,12 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
                 호칭과 10년 목표 순자산을 정해요.
                 <br />
                 나중에 설정에서 언제든 바꿀 수 있어요.
+              </>
+            ) : invited ? (
+              <>
+                배우자가 만든 가계부에 참여합니다.
+                <br />
+                버튼 한 번이면 끝이에요.
               </>
             ) : (
               <>
@@ -130,6 +154,33 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
                 className="h-11 w-full rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
               >
                 건너뛰기 (기본값 사용)
+              </button>
+            </div>
+          ) : invited ? (
+            /* 초대 링크로 온 사람 — 코드는 이미 있다. 고를 것도, 적을 것도 없다.
+               '새로 만들기'를 같이 보여주면 그걸 눌러 딴 집을 만들어 버린다. */
+            <div className="mt-8 space-y-3">
+              <div className="rounded-card bg-card p-5 shadow-card">
+                <div className="mb-3 flex items-center gap-2">
+                  <KeyRound size={18} className="text-pink-500" />
+                  <p className="text-[15px] font-bold text-ink">초대 코드 확인됐어요</p>
+                </div>
+                <p className="tnum rounded-btn bg-bg py-3 text-center text-[18px] font-bold tracking-[0.3em] text-ink">
+                  {invited}
+                </p>
+                <button
+                  onClick={handleJoin}
+                  disabled={busy}
+                  className="mt-3 h-14 w-full rounded-btn bg-pink-500 text-[16px] font-bold text-white shadow-cta active:bg-pink-600 disabled:opacity-40"
+                >
+                  {busy ? '연결 중…' : '참여하기'}
+                </button>
+              </div>
+              <button
+                onClick={dropInvite}
+                className="h-11 w-full rounded-btn bg-bg text-[13.5px] font-semibold text-sub active:bg-line"
+              >
+                초대가 아니라 새로 시작하고 싶어요
               </button>
             </div>
           ) : (

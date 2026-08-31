@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { attachSourceToUser, captureSource } from './lib/source'
+import { capturePendingInvite } from './lib/invite'
 import { getMyMembership, type Membership } from './lib/db'
 import { useLedgerStore } from './lib/store'
 import AppFrame from './components/AppFrame'
@@ -46,6 +47,7 @@ function AuthGate() {
 
   useEffect(() => {
     captureSource() // 나눔 링크(?src=)로 왔으면 채널을 기억해 둔다
+    capturePendingInvite() // 초대 링크(#/join/CODE)면 코드를 챙긴다 — 로그인하면 해시가 날아간다
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setAuthReady(true)
