@@ -132,8 +132,9 @@ create policy "snapshots_all" on public.snapshots
   for all using (public.is_member(household_id)) with check (public.is_member(household_id));
 create policy "occasions_all" on public.occasions
   for all using (public.is_member(household_id)) with check (public.is_member(household_id));
--- confessions: 읽기는 우리 가구 전체, 쓰기는 '내 번호'로만
--- (household_id만 확인하면 배우자 이름으로 고백을 남길 수 있어서 나눠 둠)
+-- confessions: 우리 가구 사람이면 읽고 쓴다.
+-- 한 사람이 부부 지출을 몰아서 적는 집이 대부분이라 배우자 몫도 대신 적을 수 있어야 한다.
+-- 그래서 '내 번호로만' 제한은 뺐다(my_member_no 함수는 다른 곳에서 계속 쓴다).
 create or replace function public.my_member_no(hid uuid)
 returns smallint
 language sql stable security definer
@@ -148,19 +149,12 @@ alter table public.confessions enable row level security;
 create policy "confessions_select" on public.confessions
   for select using (public.is_member(household_id));
 create policy "confessions_insert" on public.confessions
-  for insert with check (
-    public.is_member(household_id) and member_no = public.my_member_no(household_id)
-  );
+  for insert with check (public.is_member(household_id));
 create policy "confessions_update" on public.confessions
-  for update using (
-    public.is_member(household_id) and member_no = public.my_member_no(household_id)
-  ) with check (
-    public.is_member(household_id) and member_no = public.my_member_no(household_id)
-  );
+  for update using (public.is_member(household_id))
+  with check (public.is_member(household_id));
 create policy "confessions_delete" on public.confessions
-  for delete using (
-    public.is_member(household_id) and member_no = public.my_member_no(household_id)
-  );
+  for delete using (public.is_member(household_id));
 
 -- ai-coach 사용량 (사용자당 하루 진단 횟수 제한 — Edge Function이 service_role로만 접근)
 create table if not exists public.ai_coach_usage (

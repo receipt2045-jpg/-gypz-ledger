@@ -144,23 +144,16 @@ create policy "confessions_select" on public.confessions
 
 drop policy if exists "confessions_insert" on public.confessions;
 create policy "confessions_insert" on public.confessions
-  for insert with check (
-    public.is_member(household_id) and member_no = public.my_member_no(household_id)
-  );
+  for insert with check (public.is_member(household_id));
 
 drop policy if exists "confessions_update" on public.confessions;
 create policy "confessions_update" on public.confessions
-  for update using (
-    public.is_member(household_id) and member_no = public.my_member_no(household_id)
-  ) with check (
-    public.is_member(household_id) and member_no = public.my_member_no(household_id)
-  );
+  for update using (public.is_member(household_id))
+  with check (public.is_member(household_id));
 
 drop policy if exists "confessions_delete" on public.confessions;
 create policy "confessions_delete" on public.confessions
-  for delete using (
-    public.is_member(household_id) and member_no = public.my_member_no(household_id)
-  );
+  for delete using (public.is_member(household_id));
 
 -- 5) RPC 함수 (다시 정의)
 create or replace function public.create_household()

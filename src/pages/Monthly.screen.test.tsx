@@ -225,17 +225,19 @@ describe('가계부 탭 — 고백 내역 삭제', () => {
       ],
     })
 
-  it('내가 쓴 고백만 지울 수 있다 (배우자 것엔 삭제 버튼이 없다)', async () => {
+  it('배우자 고백도 지울 수 있다 (대신 적어주니 대신 고칠 수도 있어야 한다)', async () => {
     seedConfessions()
     const { user } = renderScreen(<Monthly />)
 
     await user.click(screen.getByRole('button', { name: /이번 달 고백/ }))
-    // 내 것(c1) 하나에만 삭제 버튼
-    expect(screen.getAllByLabelText('고백 삭제')).toHaveLength(1)
+    // 둘 다 삭제 버튼
+    const buttons = screen.getAllByLabelText('고백 삭제')
+    expect(buttons).toHaveLength(2)
 
-    await user.click(screen.getByLabelText('고백 삭제'))
+    // 배우자 것(c2)을 지운다
+    await user.click(buttons[1])
     const left = useLedgerStore.getState().confessions
-    expect(left.map((c) => c.id)).toEqual(['c2'])
+    expect(left.map((c) => c.id)).toEqual(['c1'])
   })
 
   it('데이터 초기화는 고백까지 지운다', () => {

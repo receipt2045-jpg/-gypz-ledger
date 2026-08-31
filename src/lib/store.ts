@@ -110,8 +110,13 @@ interface LedgerState extends AppData {
   clear: () => void
   // 일일 고백: 로컬 즉시 반영 → 백그라운드 전송(실패 시 큐)
   // createdAt을 넘기면 지난 날짜로도 적을 수 있다 (며칠 밀린 기록 몰아 적기)
+  // memberNo를 넘기면 그 사람 지출로 적힌다 — 한 사람이 부부 지출을 몰아서 적는 집이 많다.
+  // 안 넘기면 지금까지처럼 내 지출.
   addConfession: (
-    c: Omit<Confession, 'id' | 'createdAt' | 'memberNo'> & { createdAt?: string },
+    c: Omit<Confession, 'id' | 'createdAt' | 'memberNo'> & {
+      createdAt?: string
+      memberNo?: 1 | 2
+    },
   ) => Confession
   removeConfession: (id: string) => void
   // 줄글 고백 학습 별칭 (단어 → 카테고리)
@@ -212,7 +217,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const full: Confession = {
       ...c,
       id: genId(),
-      memberNo: s.memberNo ?? 1,
+      memberNo: c.memberNo ?? s.memberNo ?? 1,
       createdAt: c.createdAt ?? new Date().toISOString(),
     }
     // 1) 로컬 즉시 반영 (반응 0.3초 규칙 — 네트워크를 기다리지 않는다)
@@ -229,8 +234,9 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
   removeConfession: (id) => {
     const s = get()
     const target = s.confessions.find((c) => c.id === id)
-    // 내가 쓴 것만 지운다 — 서버 정책도 배우자 것은 거부하므로 로컬만 지워지는 사고 방지
-    if (!target || (s.memberNo && target.memberNo !== s.memberNo)) return
+    // 배우자 몫도 지운다 — 대신 적어줄 수 있으면 대신 고칠 수도 있어야 한다.
+    // 서버도 같은 가구인지만 본다(supabase/confession-for-spouse.sql).
+    if (!target) return
     set({ confessions: s.confessions.filter((c) => c.id !== id) })
     if (s.householdId) {
       const op: PendingOp = { kind: 'confessionDelete', key: `confessionDelete:${id}`, payload: { id } }

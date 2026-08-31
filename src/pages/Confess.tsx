@@ -37,6 +37,7 @@ import WeeklyCostCard from '../components/WeeklyCostCard'
 import { useLedgerStore } from '../lib/store'
 import { pickReaction, streakOf, type Reaction } from '../lib/reactions'
 import { formatComma, formatWon } from '../lib/format'
+import { memberStyle } from '../lib/memberColors'
 import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
 import { GROUP_LABEL, NO_SPEND } from '../lib/constants'
 import type { CategoryGroup } from '../types'
@@ -167,33 +168,46 @@ export default function Confess() {
   const today = new Date().toLocaleDateString('sv-SE')
   const [logDate, setLogDate] = useState(today)
 
-  // 누구 카드로 썼는지 — 연말정산 카드 공제가 명의자 기준이라 쌓아두면 추천이 정확해진다
-  const [cardOwner, setCardOwner] = useState<1 | 2>(memberNo ?? 1)
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
 
-  // 내가 쓴 기록 (최근 14일) — 잘못 쓴 걸 그 자리에서 지울 수 있게
-  const myRecent = useMemo(() => {
-    const me = memberNo ?? 1
+  // 누구 지출인지 — 한 사람이 부부 것을 몰아서 적는 집이 많아서 골라 적을 수 있게 했다
+  const [spender, setSpender] = useState<1 | 2>(memberNo ?? 1)
+  // 누구 카드로 썼는지 — 연말정산 카드 공제가 명의자 기준이라 쌓아두면 추천이 정확해진다
+  const [cardOwner, setCardOwner] = useState<1 | 2>(memberNo ?? 1)
+  // 카드를 직접 고르기 전까지는 '쓴 사람 = 그 사람 카드'로 따라간다 (대부분 그렇다)
+  const [cardPicked, setCardPicked] = useState(false)
+  const pickSpender = (m: 1 | 2) => {
+    setSpender(m)
+    if (!cardPicked) setCardOwner(m)
+  }
+  const pickCardOwner = (m: 1 | 2) => {
+    setCardOwner(m)
+    setCardPicked(true)
+  }
+
+  // 우리집 기록 (최근 14일) — 배우자 몫도 대신 적으니 둘 다 보여야 고칠 수 있다
+  const recent = useMemo(() => {
     const since = new Date()
     since.setDate(since.getDate() - 14)
     return confessions
-      .filter((c) => c.memberNo === me && new Date(c.createdAt) >= since)
+      .filter((c) => new Date(c.createdAt) >= since)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  }, [confessions, memberNo])
+  }, [confessions])
 
   // 날짜별로 묶어서 보여준다
   const recentByDate = useMemo(() => {
-    const m = new Map<string, typeof myRecent>()
-    for (const c of myRecent) {
+    const m = new Map<string, typeof recent>()
+    for (const c of recent) {
       const d = new Date(c.createdAt).toLocaleDateString('sv-SE')
       m.set(d, [...(m.get(d) ?? []), c])
     }
     return [...m.entries()]
-  }, [myRecent])
+  }, [recent])
 
-  // 고른 날짜에 이미 기록했는지 (무지출 버튼 노출 여부)
-  const confessedToday = myRecent.some(
-    (c) => new Date(c.createdAt).toLocaleDateString('sv-SE') === logDate,
+  // 고른 사람이 그 날 이미 기록했는지 (무지출 버튼 노출 여부)
+  const confessedToday = recent.some(
+    (c) =>
+      c.memberNo === spender && new Date(c.createdAt).toLocaleDateString('sv-SE') === logDate,
   )
 
   const groups: { title: string; kind: CategoryGroup; cats: string[] }[] = [
@@ -216,6 +230,8 @@ export default function Confess() {
         amount: e.amount,
         note: e.note,
         createdAt,
+        // 고른 사람 지출로 적는다 — 배우자 몫을 대신 적을 수 있다
+        memberNo: spender,
         // 카드값이 아닌 것(저축·투자·수입)에는 카드 주인을 남기지 않는다
         cardOwner: e.kind === 'variable' || e.kind === 'fixed' ? cardOwner : undefined,
       })
@@ -226,7 +242,8 @@ export default function Confess() {
     const spend = entries.filter((e) => e.kind === 'variable' || e.kind === 'fixed')
     const headline = (spend.length ? spend : entries).reduce((a, b) => (b.amount > a.amount ? b : a))
     const reaction = pickReaction({ category: headline.category, kind: headline.kind, amount: headline.amount }, all)
-    const streak = streakOf(all, memberNo ?? 1)
+    // 연속 일수는 '쓴 사람' 기준 — 남편 몫을 적었으면 남편 연속이 이어진다
+    const streak = streakOf(all, spender)
     setResult({ reaction, streak, saved: entries.map(({ category, amount, note }) => ({ category, amount, note })) })
   }
 
@@ -612,15 +629,39 @@ export default function Confess() {
           )}
         </div>
 
-        {/* 누구 카드로 썼는지 — 연말정산 카드 추천이 이걸로 정확해진다 */}
-        <div className="rounded-card bg-card px-4 py-3 shadow-card">
+        {/* 누가 썼는지 + 누구 카드로 썼는지.
+            배우자 몫을 대신 적을 수 있어야 한다 — 한 사람이 몰아서 적는 집이 대부분이다. */}
+        <div className="space-y-2.5 rounded-card bg-card px-4 py-3 shadow-card">
           <div className="flex items-center gap-2">
-            <span className="shrink-0 text-[13px] font-bold text-sub">누구 카드로 썼어요?</span>
+            <span className="w-[104px] shrink-0 text-[13px] font-bold text-sub">누가 썼어요?</span>
             <div className="flex flex-1 gap-1.5">
               {([1, 2] as const).map((m) => (
                 <button
                   key={m}
-                  onClick={() => setCardOwner(m)}
+                  onClick={() => pickSpender(m)}
+                  aria-label={`쓴 사람 ${memberNames[m - 1]}`}
+                  aria-pressed={spender === m}
+                  className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[13px] font-bold transition-colors ${
+                    spender === m ? 'bg-brand text-white' : 'bg-bg text-sub active:bg-line'
+                  }`}
+                >
+                  {memberNames[m - 1]}
+                  {memberNo === m && ' (나)'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-[104px] shrink-0 text-[13px] font-bold text-sub">
+              누구 카드로요?
+            </span>
+            <div className="flex flex-1 gap-1.5">
+              {([1, 2] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => pickCardOwner(m)}
+                  aria-label={`카드 주인 ${memberNames[m - 1]}`}
+                  aria-pressed={cardOwner === m}
                   className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[13px] font-bold transition-colors ${
                     cardOwner === m ? 'bg-ink text-white' : 'bg-bg text-sub active:bg-line'
                   }`}
@@ -630,8 +671,10 @@ export default function Confess() {
               ))}
             </div>
           </div>
-          <p className="mt-1.5 text-[11.5px] leading-relaxed text-cap">
-            연말정산 카드 공제는 명의자별로 계산돼요. 쌓이면 누구 카드를 쓸지 알려드려요
+          <p className="text-[11.5px] leading-relaxed text-cap">
+            {spender === memberNo
+              ? '연말정산 카드 공제는 명의자별로 계산돼요. 쌓이면 누구 카드를 쓸지 알려드려요'
+              : `${memberNames[spender - 1]} 지출로 적혀요. 대신 적어주셔도 괜찮아요`}
           </p>
         </div>
 
@@ -684,8 +727,9 @@ export default function Confess() {
               <span className="block text-[14px] font-bold text-ink">
                 🍚 {logDate === today ? '오늘은' : '이 날은'} 안 썼어요
               </span>
+              {/* 이름 뒤에 조사를 붙이면 받침에 따라 틀린다 — 이름만 두고 뗀다 */}
               <span className="mt-0.5 block text-[12px] text-sub">
-                0원도 기록이에요. 연속 일수가 안 끊겨요
+                0원도 기록이에요. {memberNames[spender - 1]} 연속 일수가 안 끊겨요
               </span>
             </span>
             <ChevronRight size={18} className="shrink-0 text-cap" />
@@ -696,7 +740,7 @@ export default function Confess() {
         {recentByDate.length > 0 && (
           <div className="rounded-card bg-card px-4 py-3.5 shadow-card">
             <p className="mb-2 text-[13px] font-bold text-cap">
-              내 기록 · 잘못 썼으면 지우고 다시 적어요
+              우리집 기록 · 잘못 썼으면 지우고 다시 적어요
             </p>
             <div className="space-y-3">
               {recentByDate.map(([date, list]) => (
@@ -707,6 +751,11 @@ export default function Confess() {
                   <div className="divide-y divide-line/70">
                     {list.map((c) => (
                       <div key={c.id} className="flex items-center gap-2.5 py-2.5">
+                        <span
+                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${memberStyle(c.memberNo, profile).badge}`}
+                        >
+                          {memberNames[c.memberNo - 1]}
+                        </span>
                         <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
                           {c.category}
                           {c.note && <span className="text-cap"> · {c.note}</span>}

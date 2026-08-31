@@ -265,16 +265,14 @@ export default function Monthly() {
                     <span className="tnum shrink-0 text-[13.5px] font-bold text-ink">
                       {formatWon(c.amount)}
                     </span>
-                    {/* 잘못 쓴 고백은 지우고 다시 — 내가 쓴 것만 (서버도 배우자 것은 거부) */}
-                    {c.memberNo === memberNo && (
-                      <button
-                        onClick={() => removeConfession(c.id)}
-                        className="shrink-0 text-cap active:text-danger"
-                        aria-label="고백 삭제"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
+                    {/* 잘못 쓴 고백은 지우고 다시 — 배우자 몫을 대신 적을 수 있으니 대신 지울 수도 있다 */}
+                    <button
+                      onClick={() => removeConfession(c.id)}
+                      className="shrink-0 text-cap active:text-danger"
+                      aria-label="고백 삭제"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 )
               })}

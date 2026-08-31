@@ -11,8 +11,8 @@ const daysAgo = (n: number) => {
 }
 const ymd = (d: Date) => d.toLocaleDateString('sv-SE')
 
-describe('고백 페이지 — 내 기록 보기·삭제', () => {
-  it('지난 기록도 날짜별로 보이고, 내 것만 지울 수 있다', async () => {
+describe('고백 페이지 — 우리집 기록 보기·삭제', () => {
+  it('배우자 기록도 날짜별로 보이고, 둘 다 지울 수 있다', async () => {
     seedStore({
       memberNo: 2,
       confessions: [
@@ -34,7 +34,7 @@ describe('고백 페이지 — 내 기록 보기·삭제', () => {
           amount: 1_500,
           createdAt: daysAgo(3).toISOString(),
         },
-        // 배우자 것 — 내 목록엔 안 보인다
+        // 배우자 것 — 대신 적어줄 수 있으니 대신 고칠 수도 있어야 한다
         {
           id: 'c2',
           memberNo: 1,
@@ -49,13 +49,33 @@ describe('고백 페이지 — 내 기록 보기·삭제', () => {
 
     expect(screen.getByText('식비')).toBeInTheDocument()
     expect(screen.getByText('교통')).toBeInTheDocument()
-    expect(screen.queryByText('카페/간식')).not.toBeInTheDocument()
+    expect(screen.getByText('카페/간식')).toBeInTheDocument()
 
     const buttons = screen.getAllByLabelText('고백 삭제')
-    expect(buttons).toHaveLength(2)
+    expect(buttons).toHaveLength(3)
 
     await user.click(buttons[0])
     expect(useLedgerStore.getState().confessions).toHaveLength(2)
+  })
+
+  it('배우자 기록도 지울 수 있다', async () => {
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        {
+          id: 'his',
+          memberNo: 1,
+          category: '카페/간식',
+          kind: 'variable',
+          amount: 5_500,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
+
+    await user.click(screen.getByLabelText('고백 삭제'))
+    expect(useLedgerStore.getState().confessions).toHaveLength(0)
   })
 
   it('14일보다 오래된 기록은 목록에 없다', () => {
@@ -73,7 +93,53 @@ describe('고백 페이지 — 내 기록 보기·삭제', () => {
       ],
     })
     renderScreen(<Confess />)
-    expect(screen.queryByText(/내 기록/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/우리집 기록/)).not.toBeInTheDocument()
+  })
+})
+
+describe('고백 페이지 — 누가 썼는지', () => {
+  it('기본은 내 지출로 적힌다', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+
+    await user.click(screen.getByText(/안 썼어요/))
+    expect(useLedgerStore.getState().confessions[0].memberNo).toBe(2)
+  })
+
+  it('배우자를 고르면 배우자 지출로 적힌다 — 한 사람이 몰아서 적을 수 있다', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+
+    await user.click(screen.getByLabelText('쓴 사람 남편'))
+    await user.click(screen.getByText(/안 썼어요/))
+
+    expect(useLedgerStore.getState().confessions[0].memberNo).toBe(1)
+  })
+
+  it('쓴 사람을 바꾸면 카드 주인도 따라간다 (직접 고르기 전까지)', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+
+    await user.click(screen.getByLabelText('쓴 사람 남편'))
+    await user.click(screen.getByText(/안 썼어요/))
+
+    const saved = useLedgerStore.getState().confessions[0]
+    expect(saved.memberNo).toBe(1)
+    expect(saved.cardOwner).toBe(1)
+  })
+
+  it('카드 주인을 직접 고르면 쓴 사람을 바꿔도 안 따라간다', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+
+    // 아내가 쓰지만 남편 카드로 — 골라둔 뒤 쓴 사람을 남편으로 바꿔도 카드는 그대로
+    await user.click(screen.getByLabelText('카드 주인 아내'))
+    await user.click(screen.getByLabelText('쓴 사람 남편'))
+    await user.click(screen.getByText(/안 썼어요/))
+
+    const saved = useLedgerStore.getState().confessions[0]
+    expect(saved.memberNo).toBe(1)
+    expect(saved.cardOwner).toBe(2)
   })
 })
 
@@ -82,7 +148,7 @@ describe('고백 페이지 — 누구 카드로 썼는지', () => {
     seedStore({ memberNo: 2, confessions: [] })
     const { user } = renderScreen(<Confess />)
 
-    expect(screen.getByText('누구 카드로 썼어요?')).toBeInTheDocument()
+    expect(screen.getByText('누구 카드로요?')).toBeInTheDocument()
     await user.click(screen.getByText(/안 썼어요/))
 
     // 무지출(0원)도 변동지출이라 카드 주인이 붙는다 — 금액이 0이라 계산엔 영향 없다
@@ -93,10 +159,13 @@ describe('고백 페이지 — 누구 카드로 썼는지', () => {
     seedStore({ memberNo: 2, confessions: [] })
     const { user } = renderScreen(<Confess />)
 
-    await user.click(screen.getByRole('button', { name: '남편' }))
+    await user.click(screen.getByLabelText('카드 주인 남편'))
     await user.click(screen.getByText(/안 썼어요/))
 
-    expect(useLedgerStore.getState().confessions[0].cardOwner).toBe(1)
+    const saved = useLedgerStore.getState().confessions[0]
+    expect(saved.cardOwner).toBe(1)
+    // 카드만 바꿨을 뿐 — 지출은 여전히 내 것
+    expect(saved.memberNo).toBe(2)
   })
 })
 
