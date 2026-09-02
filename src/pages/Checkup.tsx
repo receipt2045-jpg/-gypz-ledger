@@ -512,8 +512,6 @@ export default function Checkup() {
             />
           )}
 
-          {/* AI 코치는 유료 리포트 초안 쪽으로 옮겼다 — 무료로 뿌리는 자리보다
-              돈을 받는 자리에서 값어치가 크고, API 비용도 그쪽이 감당한다. */}
         </div>
         <BottomBar>
           <button
