@@ -69,9 +69,10 @@ describe('고정비 점검 카드', () => {
     expect(screen.getByText(/정답은 아니에요/)).toBeInTheDocument()
   })
 
-  it('맞춤 리포트로 가는 입구가 있다', () => {
-    // 자기 숫자를 막 확인한 자리 — '그래서 뭘 줄이지'로 이어준다
+  it('맞춤 리포트로 가는 입구는 닫아 뒀다', () => {
+    // 신청을 그만 받기로 해서 입구만 막은 상태(2026-09-03).
+    // 기능·관리 화면·서버는 그대로 살아 있다 — 다시 열면 이 테스트를 되돌린다.
     renderWithRouter(<FixedCostCheck items={[...income500, item('fixed', '주거', 1_000_000)]} closed />)
-    expect(screen.getByRole('button', { name: /우리집은 뭘 줄여야 할까요/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /우리집은 뭘 줄여야 할까요/ })).not.toBeInTheDocument()
   })
 })

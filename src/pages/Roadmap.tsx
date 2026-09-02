@@ -125,25 +125,9 @@ export default function Roadmap() {
 
       {/* 연말정산 미리보기 입구는 '올해의 돈' 화면인 연간 리포트로 이동 (10년 로드맵과 주제 분리) */}
 
-      {/* ── ⑤ 맞춤 리포트 (수기 · 유료) ────────── */}
-      {hasIncome && (
-        <Card onClick={() => navigate('/report')}>
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-            <span className="text-[11px] font-bold text-brand">5,000원</span>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[15px] font-bold text-ink">우리 부부 맞춤 리포트</p>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-sub">
-                결영이네가 <b className="text-ink">우리집 숫자를 직접 보고</b> 씁니다. 지금 뭐가 제일
-                급한지, 다음 3개월에 뭘 할지 짚어드려요.
-              </p>
-            </div>
-            <ChevronRight size={20} className="shrink-0 text-cap" />
-          </div>
-        </Card>
-      )}
+      {/* 맞춤 리포트 입구는 닫아 뒀다 (2026-09-03).
+          기능·관리 화면·서버는 그대로 살아 있고 들어오는 길만 막은 상태다.
+          다시 열려면 이 자리에 카드를 되돌리면 된다 — 커밋 기록에 원본이 있다. */}
     </div>
   )
 }
