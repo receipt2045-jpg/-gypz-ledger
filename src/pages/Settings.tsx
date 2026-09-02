@@ -5,6 +5,7 @@ import Card from '../components/Card'
 import AmountInput from '../components/AmountInput'
 import FeedbackCard from '../components/FeedbackCard'
 import { shareInvite } from '../lib/invite'
+import { marketingConsentOf, setMarketingConsent } from '../lib/marketing'
 import { listRequests } from '../lib/reportAdmin'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
@@ -355,6 +356,8 @@ export default function Settings() {
       <Card>
         <h2 className="mb-3 text-[15px] font-bold text-ink">계정</h2>
         <div className="space-y-2">
+          {/* 마케팅 수신은 언제든 끌 수 있어야 한다 — 동의를 받았으면 철회 수단이 있어야 한다 */}
+          <MarketingToggle />
           <PasswordForm />
           <button
             onClick={() => supabase.auth.signOut()}
@@ -434,6 +437,60 @@ export default function Settings() {
 }
 
 // 팝업(prompt) 없이 화면 안에서 비밀번호를 설정하는 폼
+/**
+ * 마케팅 수신 켜고 끄기.
+ * 가입할 때 안 했어도 여기서 켤 수 있고, 했어도 여기서 끌 수 있다.
+ */
+function MarketingToggle() {
+  const [on, setOn] = useState<boolean | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setOn(marketingConsentOf(data.user)))
+  }, [])
+
+  const toggle = async () => {
+    if (on === null || busy) return
+    const next = !on
+    setBusy(true)
+    setMsg('')
+    try {
+      await setMarketingConsent(next)
+      setOn(next)
+      setMsg(next ? '이제 소식을 보내드릴게요 🤍' : '수신을 껐어요. 광고성 메일은 안 보내요')
+    } catch {
+      setMsg('바꾸지 못했어요. 잠시 후 다시 시도해 주세요')
+    }
+    setBusy(false)
+  }
+
+  if (on === null) return null
+
+  return (
+    <div className="rounded-btn bg-bg px-4 py-3">
+      <label className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={busy}
+          onChange={toggle}
+          className="mt-0.5 h-5 w-5 shrink-0 accent-brand"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14.5px] font-semibold text-ink">
+            새 기능·재테크 소식 받기 <span className="text-[12px] font-bold text-cap">(선택)</span>
+          </span>
+          <span className="mt-0.5 block text-[12.5px] leading-relaxed text-sub">
+            끄면 광고성 메일은 보내지 않아요. 가입·정산 같은 안내 메일은 계속 갑니다
+          </span>
+        </span>
+      </label>
+      {msg && <p className="mt-2 pl-8 text-[12.5px] font-medium text-brand">{msg}</p>}
+    </div>
+  )
+}
+
 function PasswordForm() {
   const [open, setOpen] = useState(false)
   const [pw, setPw] = useState('')

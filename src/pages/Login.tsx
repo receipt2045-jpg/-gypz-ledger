@@ -3,6 +3,7 @@ import { Wallet } from 'lucide-react'
 import InAppBrowserNotice from '../components/InAppBrowserNotice'
 import { supabase } from '../lib/supabase'
 import { pendingInvite } from '../lib/invite'
+import { stashMarketingChoice } from '../lib/marketing'
 
 // OAuth 로그인 후 돌아올 주소 (배포 주소가 바뀌어도 자동 대응)
 const redirectTo = window.location.origin + import.meta.env.BASE_URL
@@ -25,6 +26,8 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [agreed, setAgreed] = useState(false)
+  // 마케팅 수신은 '선택'이다 — 필수 동의와 묶으면 안 되고, 기본값도 꺼져 있어야 한다
+  const [marketing, setMarketing] = useState(false)
   // 사회적 증거 — 실제 가구 수 (RPC 실패 시 null이면 줄 자체를 숨김)
   const [households, setHouseholds] = useState<number | null>(null)
 
@@ -60,10 +63,17 @@ export default function Login() {
     setBusy(true)
     setError('')
     setNotice('')
+    const now = new Date().toISOString()
     const { data, error: err } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: redirectTo },
+      options: {
+        emailRedirectTo: redirectTo,
+        // 받은 시각까지 남긴다 — 나중에 "동의받았다"를 대려면 시각이 있어야 한다
+        data: marketing
+          ? { marketingOptIn: true, marketingOptInAt: now }
+          : { marketingOptIn: false },
+      },
     })
     setBusy(false)
     if (err) {
@@ -76,6 +86,8 @@ export default function Login() {
 
   const loginWithGoogle = async () => {
     setError('')
+    // 구글로 나갔다 돌아오면 화면 상태가 사라진다 — 고른 값을 맡겨 두고 간다
+    stashMarketingChoice(marketing)
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
@@ -191,6 +203,25 @@ export default function Login() {
                   이용약관
                 </a>
                 에 동의합니다. (구글 로그인 포함)
+              </span>
+            </label>
+
+            {/* 마케팅 수신 — 선택. 위 필수 동의와 눈으로도 구분되게 줄을 띄운다.
+                안 해도 가입은 그대로 되고, 설정에서 언제든 끌 수 있다. */}
+            <label className="flex items-start gap-2 border-t border-line pt-3 text-[12px] leading-relaxed text-sub">
+              <input
+                type="checkbox"
+                checked={marketing}
+                onChange={(e) => setMarketing(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
+              />
+              <span>
+                <b className="font-bold text-cap">(선택)</b> 새 기능·재테크 소식·이벤트 안내를
+                이메일로 받아볼게요.
+                <br />
+                <span className="text-cap">
+                  동의하지 않아도 가입할 수 있어요. 설정에서 언제든 끌 수 있어요.
+                </span>
               </span>
             </label>
           </div>

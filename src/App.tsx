@@ -4,6 +4,7 @@ import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { attachSourceToUser, captureSource } from './lib/source'
 import { capturePendingInvite } from './lib/invite'
+import { applyMarketingChoice } from './lib/marketing'
 import { getMyMembership, type Membership } from './lib/db'
 import { useLedgerStore } from './lib/store'
 import AppFrame from './components/AppFrame'
@@ -41,6 +42,15 @@ export default function App() {
   )
 }
 
+/**
+ * 로그인 직후 계정에 옮겨 둘 것들.
+ * 둘 다 로그인 페이지를 거치며 화면에서 사라지는 값이라 localStorage에 맡겨 뒀다가 여기서 옮긴다.
+ */
+async function onSignedIn(user: User) {
+  await attachSourceToUser(user)
+  await applyMarketingChoice(user)
+}
+
 function AuthGate() {
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(false)
@@ -51,11 +61,11 @@ function AuthGate() {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setAuthReady(true)
-      if (data.session) void attachSourceToUser(data.session.user)
+      if (data.session) void onSignedIn(data.session.user)
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s)
-      if (s) void attachSourceToUser(s.user)
+      if (s) void onSignedIn(s.user)
       if (!s) useLedgerStore.getState().clear()
     })
     return () => sub.subscription.unsubscribe()

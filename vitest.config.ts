@@ -9,6 +9,10 @@ export default mergeConfig(
       // 화면 테스트를 위한 가짜 브라우저. 버튼을 실제로 눌러보고 결과를 확인한다.
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
+      // 자산 탭처럼 무거운 화면은 혼자 돌리면 1초 안에 끝나는데, 전체를 한꺼번에
+      // 돌리면 밀려서 기본 5초를 넘긴다. 기능 문제가 아닌데 빨간불이 뜨면
+      // 진짜 실패를 못 알아본다.
+      testTimeout: 20_000,
       // supabase 클라이언트는 값이 없으면 import 단계에서 죽는다. 테스트는 실제로
       // 서버를 부르지 않지만(householdId를 비워둠) 값 자체는 있어야 한다.
       env: {
