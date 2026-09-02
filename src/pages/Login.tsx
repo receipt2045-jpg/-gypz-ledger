@@ -113,9 +113,6 @@ export default function Login() {
             </p>
           )}
 
-          {/* 무료체험 안내 — 홈(Home.tsx)에도 같은 문구가 있다. 유료 전환할 때 둘 다 지운다. */}
-          <p className="mt-2 text-[13.5px] font-bold text-brand">🎁 지금은 3개월 무료체험 기간입니다</p>
-
           {/* 초대 링크로 온 사람 — 여기서 나가버리지 않게 왜 로그인하는지 알려준다 */}
           {pendingInvite() && (
             <div className="mt-4 rounded-card bg-pink-50 px-4 py-3">
