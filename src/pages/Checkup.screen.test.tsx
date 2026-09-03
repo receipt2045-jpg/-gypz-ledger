@@ -171,11 +171,21 @@ describe('정산 화면 — 고백 합계 밑 내역 펼쳐 보기', () => {
     expect(screen.queryByText(/첫 건 메모/)).not.toBeInTheDocument()
   })
 
-  // 식비처럼 많은 항목은 20건이 넘는다 — 다 펼치면 정산 화면이 끝없이 길어진다
-  it('5건까지만 보이고 나머지는 숫자로 알려준다', async () => {
+  // 식비처럼 많은 항목은 20건이 넘는다 — 다 펼치면 정산 화면이 끝없이 길어지므로
+  // 높이를 잡아두고 그 안에서 밀어 본다. 잘라내는 게 아니라 전부 담겨 있어야 한다.
+  it('5건이 넘어도 전부 담기고, 높이를 잡아 밀어서 본다', async () => {
     const { user } = await openWithConfessions(8)
     await user.click(screen.getByRole('button', { name: /내역 8건 보기/ }))
-    expect(screen.getByText('3건 더 있어요')).toBeInTheDocument()
+
+    // 8건 전부 DOM에 있다 (예전엔 5건에서 잘라내고 '3건 더 있어요'로 끝냈다)
+    expect(screen.getByText(/첫 건 메모/)).toBeInTheDocument()
+    expect(screen.queryByText(/건 더 있어요/)).not.toBeInTheDocument()
+
+    const box = screen.getByText(/첫 건 메모/).closest('div.overflow-y-auto')
+    expect(box).not.toBeNull()
+    expect(box!.children).toHaveLength(8)
+    // 끝까지 밀었을 때 정산 화면까지 같이 밀리면 안 된다
+    expect(box).toHaveClass('overscroll-contain')
   })
 
   // 정산 중에 숫자가 흔들리면 헷갈린다 — 고치는 건 고백 탭에서

@@ -718,8 +718,11 @@ function ResultRow({
 // ── 금액 입력 스텝 ─────────────────────────────
 const NEW_CAT = '__new__' // '+ 새 카테고리' 옵션 값
 
-/** 한 화면에 다 펼치면 정산이 끝없이 길어진다 — 앞의 몇 건만 보이고 나머지는 숫자로 */
-const LOG_PREVIEW = 5
+/**
+ * 한 번에 보이는 줄 수. 다 펼치면 정산 화면이 끝없이 길어져서 높이를 잡아두고,
+ * 나머지는 그 안에서 밀어 본다. 5.5줄쯤에서 잘리게 둬야 아래가 더 있다는 게 보인다.
+ */
+const LOG_MAX_H = 168
 
 /**
  * 고백 합계 밑에 붙는 내역 아코디언.
@@ -736,8 +739,6 @@ function ConfessLog({
 }) {
   const [open, setOpen] = useState(false)
   if (entries.length === 0) return null
-  const shown = open ? entries.slice(0, LOG_PREVIEW) : []
-  const rest = entries.length - shown.length
 
   return (
     <div className="mt-1.5">
@@ -749,8 +750,12 @@ function ConfessLog({
         <ChevronDown size={13} className={open ? 'rotate-180' : ''} />
       </button>
       {open && (
-        <div className="border-t border-line pt-1">
-          {shown.map((c) => {
+        // overscroll-contain: 목록 끝까지 밀었을 때 정산 화면까지 같이 밀리지 않게
+        <div
+          className="thin-scroll overflow-y-auto overscroll-contain border-t border-line pt-1"
+          style={{ maxHeight: LOG_MAX_H }}
+        >
+          {entries.map((c) => {
             const d = new Date(c.createdAt)
             return (
               <div key={c.id} className="flex items-center gap-2 py-1.5">
@@ -767,9 +772,6 @@ function ConfessLog({
               </div>
             )
           })}
-          {rest > 0 && (
-            <p className="py-1 text-center text-[11.5px] text-cap">{rest}건 더 있어요</p>
-          )}
         </div>
       )}
     </div>
