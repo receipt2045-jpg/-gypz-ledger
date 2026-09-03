@@ -28,6 +28,25 @@ export function confessSums(confessions: Confession[], ym: string): Map<string, 
   return m
 }
 
+/**
+ * (구성원:그룹:카테고리)별 고백 내역 — 합계가 뭘로 이뤄졌는지 펼쳐 보기 위한 것.
+ *
+ * 정산 화면엔 합계만 떠서, 숫자가 맞는지 보려면 가계부 탭으로 나갔다 와야 했다.
+ * confessSums와 같은 키·같은 제외 규칙을 쓴다 — 둘이 어긋나면
+ * "합계는 15만원인데 내역은 12만원"처럼 보인다.
+ */
+export function confessEntries(confessions: Confession[], ym: string): Map<string, Confession[]> {
+  const m = new Map<string, Confession[]>()
+  for (const c of monthConfessions(confessions, ym)) {
+    if (c.category === NO_SPEND || c.amount <= 0) continue
+    const key = `${c.memberNo}:${c.kind}:${c.category}`
+    m.set(key, [...(m.get(key) ?? []), c])
+  }
+  // 최근 것부터 — 방금 적은 게 위에 온다
+  for (const list of m.values()) list.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  return m
+}
+
 export interface MissingConfessed {
   group: CategoryGroup
   category: string

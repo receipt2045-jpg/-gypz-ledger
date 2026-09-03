@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { confessSums, missingConfessedItems, monthConfessions, ymOfIso } from './confessLedger'
+import {
+  confessEntries,
+  confessSums,
+  missingConfessedItems,
+  monthConfessions,
+  ymOfIso,
+} from './confessLedger'
 import type { BudgetItem, Confession } from '../types'
 
 const c = (
@@ -76,6 +82,47 @@ describe('confessSums — 구성원·그룹·카테고리별 합계', () => {
     const sums = confessSums(withNoSpend, '2026-08')
     expect(sums.has('1:variable:무지출')).toBe(false)
     expect(sums.get('1:variable:식비')).toBe(15000) // 나머지는 그대로
+  })
+})
+
+describe('confessEntries — 합계 밑에 펼쳐 볼 내역', () => {
+  const list = [
+    c('1', 1, 'variable', '식비', 9000, localIso(2026, 8, 1)),
+    c('2', 1, 'variable', '식비', 6000, localIso(2026, 8, 3)),
+    c('3', 2, 'variable', '식비', 4000, localIso(2026, 8, 2)),
+    c('4', 1, 'variable', '식비', 1000, localIso(2026, 7, 9)), // 다른 달
+  ]
+
+  it('합계와 같은 키로 묶인다', () => {
+    expect(confessEntries(list, '2026-08').get('1:variable:식비')?.map((e) => e.id)).toEqual([
+      '2',
+      '1',
+    ])
+  })
+
+  it('최근 것이 위에 온다', () => {
+    const got = confessEntries(list, '2026-08').get('1:variable:식비')!
+    expect(got[0].id).toBe('2') // 8/3
+    expect(got[1].id).toBe('1') // 8/1
+  })
+
+  it('사람이 다르면 섞이지 않는다', () => {
+    expect(confessEntries(list, '2026-08').get('2:variable:식비')?.map((e) => e.id)).toEqual(['3'])
+  })
+
+  it('다른 달은 들어오지 않는다', () => {
+    expect(confessEntries(list, '2026-08').get('1:variable:식비')).toHaveLength(2)
+  })
+
+  it('내역 합이 합계와 정확히 같다 — 어긋나면 사용자가 앱을 못 믿는다', () => {
+    const withNoSpend = [...list, c('n1', 1, 'variable', '무지출', 0, localIso(2026, 8, 5))]
+    const sums = confessSums(withNoSpend, '2026-08')
+    const logs = confessEntries(withNoSpend, '2026-08')
+    for (const [key, total] of sums) {
+      const listed = (logs.get(key) ?? []).reduce((a, e) => a + e.amount, 0)
+      expect(listed).toBe(total)
+    }
+    expect(logs.has('1:variable:무지출')).toBe(false)
   })
 })
 

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Check,
   ChevronLeft,
+  ChevronDown,
   ChevronRight,
   X,
   Plus,
@@ -19,7 +20,7 @@ import { shareInvite } from '../lib/invite'
 import { buildMonthlyCard } from '../lib/monthlyCard'
 import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
-import { confessSums, missingConfessedItems } from '../lib/confessLedger'
+import { confessEntries, confessSums, missingConfessedItems } from '../lib/confessLedger'
 import {
   activeYm,
   emptyItem,
@@ -40,7 +41,7 @@ import {
 } from '../lib/format'
 import { GROUP_LABEL, findCategoryGroup } from '../lib/constants'
 import { memberStyle } from '../lib/memberColors'
-import type { AssetItem, BudgetItem, Categories, CategoryGroup } from '../types'
+import type { AssetItem, BudgetItem, Categories, CategoryGroup, Confession } from '../types'
 
 interface StepDef {
   title: string
@@ -138,6 +139,11 @@ export default function Checkup() {
   // 정산 모드: 이번 달 고백 합계를 항목별 초안으로 제안 (예산 모드는 미래 계획이라 제외)
   const confessHints = useMemo(
     () => (isBudget ? null : confessSums(confessions, ym)),
+    [isBudget, confessions, ym],
+  )
+  // 합계 밑에 펼쳐 볼 내역 — 숫자가 뭘로 이뤄졌는지 여기서 바로 확인한다
+  const confessLog = useMemo(
+    () => (isBudget ? null : confessEntries(confessions, ym)),
     [isBudget, confessions, ym],
   )
 
@@ -577,6 +583,7 @@ export default function Checkup() {
           showErrors={showErrors}
           examples={def.groups.map((g) => EXAMPLES[g])}
           hints={confessHints}
+          logs={confessLog}
           missingConfessed={missingConfessed}
           onAddConfessed={addFromConfession}
           onChange={setAmount}
@@ -711,6 +718,64 @@ function ResultRow({
 // ── 금액 입력 스텝 ─────────────────────────────
 const NEW_CAT = '__new__' // '+ 새 카테고리' 옵션 값
 
+/** 한 화면에 다 펼치면 정산이 끝없이 길어진다 — 앞의 몇 건만 보이고 나머지는 숫자로 */
+const LOG_PREVIEW = 5
+
+/**
+ * 고백 합계 밑에 붙는 내역 아코디언.
+ *
+ * 예전엔 합계만 떠서, 15만원이 맞는지 보려면 가계부 탭으로 나갔다 와야 했다.
+ * 정산 중에 숫자가 흔들리면 헷갈리므로 여기선 읽기만 된다 — 고치는 건 고백 탭에서.
+ */
+function ConfessLog({
+  entries,
+  memberNames,
+}: {
+  entries: Confession[]
+  memberNames: [string, string]
+}) {
+  const [open, setOpen] = useState(false)
+  if (entries.length === 0) return null
+  const shown = open ? entries.slice(0, LOG_PREVIEW) : []
+  const rest = entries.length - shown.length
+
+  return (
+    <div className="mt-1.5">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-center gap-1 py-1 text-[12px] font-semibold text-cap active:text-sub"
+      >
+        {open ? '내역 접기' : `내역 ${entries.length}건 보기`}
+        <ChevronDown size={13} className={open ? 'rotate-180' : ''} />
+      </button>
+      {open && (
+        <div className="border-t border-line pt-1">
+          {shown.map((c) => {
+            const d = new Date(c.createdAt)
+            return (
+              <div key={c.id} className="flex items-center gap-2 py-1.5">
+                <span className="tnum w-9 shrink-0 text-[11.5px] text-cap">
+                  {d.getMonth() + 1}/{d.getDate()}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
+                  {memberNames[c.memberNo - 1]}
+                  {c.note && <span className="text-cap"> · {c.note}</span>}
+                </span>
+                <span className="tnum shrink-0 text-[13px] font-semibold text-ink">
+                  {formatWon(c.amount)}
+                </span>
+              </div>
+            )
+          })}
+          {rest > 0 && (
+            <p className="py-1 text-center text-[11.5px] text-cap">{rest}건 더 있어요</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MoneyStep({
   groups,
   items,
@@ -725,6 +790,7 @@ function MoneyStep({
   onCreateCategory,
   onFillPreset,
   hints,
+  logs,
   missingConfessed = [],
   onAddConfessed,
   showMember,
@@ -738,6 +804,7 @@ function MoneyStep({
   showErrors: boolean
   examples: string[]
   hints?: Map<string, number> | null // (구성원:그룹:카테고리) → 이번 달 고백 합계
+  logs?: Map<string, Confession[]> | null // 같은 키 → 그 합계를 이루는 고백 내역
   missingConfessed?: { group: CategoryGroup; category: string; amount: number }[]
   onAddConfessed?: (g: CategoryGroup, category: string, amount: number) => void
   onChange: (id: string, v: number) => void
@@ -893,18 +960,22 @@ function MoneyStep({
             )}
             {(() => {
               // 이번 달 고백 합계가 있고 현재 값과 다르면 한 번에 반영할 수 있게
-              const hint = hints?.get(`${it.member}:${it.group}:${it.category}`)
+              const key = `${it.member}:${it.group}:${it.category}`
+              const hint = hints?.get(key)
               if (!hint || hint === it[valueField]) return null
               return (
-                <button
-                  onClick={() => onChange(it.id, hint)}
-                  className="mt-2 flex w-full items-center justify-between rounded-btn bg-brand/10 px-3 py-2 text-left active:bg-brand/20"
-                >
-                  <span className="text-[12.5px] font-semibold text-brand">
-                    🎙️ 이번 달 고백 합계 {formatWon(hint)}
-                  </span>
-                  <span className="text-[12px] font-bold text-brand">눌러서 반영</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => onChange(it.id, hint)}
+                    className="mt-2 flex w-full items-center justify-between rounded-btn bg-brand/10 px-3 py-2 text-left active:bg-brand/20"
+                  >
+                    <span className="text-[12.5px] font-semibold text-brand">
+                      🎙️ 이번 달 고백 합계 {formatWon(hint)}
+                    </span>
+                    <span className="text-[12px] font-bold text-brand">눌러서 반영</span>
+                  </button>
+                  <ConfessLog entries={logs?.get(key) ?? []} memberNames={memberNames} />
+                </>
               )
             })()}
           </div>

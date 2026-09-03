@@ -125,3 +125,70 @@ describe('정산 화면 — 스텝 이동', () => {
     expect(screen.getByText('수입')).toBeInTheDocument() // 여전히 수입 스텝
   })
 })
+
+describe('정산 화면 — 고백 합계 밑 내역 펼쳐 보기', () => {
+  const conf = (id: string, category: string, amount: number, day: number, note?: string) => ({
+    id,
+    memberNo: 2 as const,
+    kind: 'income' as const,
+    category,
+    amount,
+    note,
+    createdAt: `${TEST_YM}-${String(day).padStart(2, '0')}T12:00:00.000Z`,
+  })
+
+  /** 수입 스텝에 '주수입' 고백 n건을 깔고 아내로 진입한다 */
+  async function openWithConfessions(n: number) {
+    const list = Array.from({ length: n }, (_, i) =>
+      conf(`c${i}`, '주수입', 10_000 * (i + 1), i + 1, i === 0 ? '첫 건 메모' : undefined),
+    )
+    seedStore({
+      ledgers: [ledger([item('a', 'income', '주수입', 2, 0)])],
+      confessions: list,
+    })
+    const { user } = renderScreen(<Checkup />)
+    await user.click(screen.getByRole('button', { name: /아내/ }))
+    return { user }
+  }
+
+  it('처음엔 접혀 있고, 건수를 알려준다', async () => {
+    await openWithConfessions(3)
+    expect(screen.getByRole('button', { name: /내역 3건 보기/ })).toBeInTheDocument()
+    expect(screen.queryByText(/첫 건 메모/)).not.toBeInTheDocument()
+  })
+
+  it('누르면 내역이 펼쳐지고 메모까지 보인다', async () => {
+    const { user } = await openWithConfessions(3)
+    await user.click(screen.getByRole('button', { name: /내역 3건 보기/ }))
+    expect(screen.getByText(/첫 건 메모/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /내역 접기/ })).toBeInTheDocument()
+  })
+
+  it('다시 누르면 접힌다', async () => {
+    const { user } = await openWithConfessions(3)
+    await user.click(screen.getByRole('button', { name: /내역 3건 보기/ }))
+    await user.click(screen.getByRole('button', { name: /내역 접기/ }))
+    expect(screen.queryByText(/첫 건 메모/)).not.toBeInTheDocument()
+  })
+
+  // 식비처럼 많은 항목은 20건이 넘는다 — 다 펼치면 정산 화면이 끝없이 길어진다
+  it('5건까지만 보이고 나머지는 숫자로 알려준다', async () => {
+    const { user } = await openWithConfessions(8)
+    await user.click(screen.getByRole('button', { name: /내역 8건 보기/ }))
+    expect(screen.getByText('3건 더 있어요')).toBeInTheDocument()
+  })
+
+  // 정산 중에 숫자가 흔들리면 헷갈린다 — 고치는 건 고백 탭에서
+  it('여기서는 지울 수 없다', async () => {
+    const { user } = await openWithConfessions(3)
+    await user.click(screen.getByRole('button', { name: /내역 3건 보기/ }))
+    expect(screen.queryByLabelText('고백 삭제')).not.toBeInTheDocument()
+  })
+
+  it('고백이 없는 항목엔 아예 안 붙는다', async () => {
+    seedStore({ ledgers: [ledger([item('a', 'income', '주수입', 2, 0)])], confessions: [] })
+    const { user } = renderScreen(<Checkup />)
+    await user.click(screen.getByRole('button', { name: /아내/ }))
+    expect(screen.queryByRole('button', { name: /내역 .*보기/ })).not.toBeInTheDocument()
+  })
+})
