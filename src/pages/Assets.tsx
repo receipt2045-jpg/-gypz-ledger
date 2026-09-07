@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDownRight, ArrowUpRight, ChevronRight, Pencil } from 'lucide-react'
+import AssetComposition from '../components/AssetComposition'
 import { LazyAssetDonut, LazyNetWorthChart } from '../components/LazyCharts'
 import AssetIcon from '../components/AssetIcon'
 import Card from '../components/Card'
@@ -208,10 +209,11 @@ export default function Assets() {
       </Card>
       )}
 
-      {/* 총자산·순자산·부채 도넛 */}
+      {/* 총자산·순자산·부채 도넛 — 아래 '자산 구성'과 역할이 다르다.
+          여기는 빚을 뺀 순자산, 아래는 자산이 어디에 들어 있는지. */}
       {!picked && snapshot.items.length > 0 && (
         <Card>
-          <p className="mb-3 text-[13px] font-medium text-cap">자산 구성</p>
+          <p className="mb-3 text-[13px] font-medium text-cap">순자산과 부채</p>
           <LazyAssetDonut assets={assets} debts={debts} />
         </Card>
       )}
@@ -235,6 +237,10 @@ export default function Assets() {
           ))}
         </div>
       )}
+
+      {/* 자산 구성 비율 — 바로 아래 그룹별 목록이 곧 이 막대의 설명이 된다.
+          사람을 고른 상태에서도 그 사람 자산으로 다시 계산된다. */}
+      <AssetComposition items={assetItems} />
 
       {/* 자산 그룹별 계좌 카드 그리드 */}
       {groupsWithItems.map(({ group, items }) => (
