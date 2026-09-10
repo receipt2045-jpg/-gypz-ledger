@@ -52,11 +52,29 @@ async function onSignedIn(user: User) {
   await applyMarketingChoice(user)
 }
 
+/**
+ * 개발 전용: 로그인 없이 샘플 데이터로 앱 전체를 띄운다 (`?sample=1`).
+ * 화면을 하나하나 눌러보며 검토할 때 쓴다. 배포본(PROD)에서는 이 분기가 사라진다 —
+ * householdId가 null이라 서버 호출도 전부 건너뛴다.
+ */
+function DevSample() {
+  const loadSample = useLedgerStore((s) => s.loadSample)
+  const status = useLedgerStore((s) => s.status)
+  useEffect(() => {
+    loadSample()
+  }, [loadSample])
+  if (status !== 'ready') return <Splash message="샘플 불러오는 중…" />
+  return <AppRoutes />
+}
+
 function AuthGate() {
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(false)
+  const devSample = import.meta.env.DEV && new URLSearchParams(window.location.search).has('sample')
 
   useEffect(() => {
+    // 샘플 모드에선 로그인 상태를 보지 않는다 — 안 보면 onAuthStateChange가 clear()로 샘플을 지운다
+    if (devSample) return
     captureSource() // 나눔 링크(?src=)로 왔으면 채널을 기억해 둔다
     capturePendingInvite() // 초대 링크(#/join/CODE)면 코드를 챙긴다 — 로그인하면 해시가 날아간다
     supabase.auth.getSession().then(({ data }) => {
@@ -72,6 +90,7 @@ function AuthGate() {
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  if (devSample) return <DevSample />
   if (!authReady) return <Splash message="로그인 확인 중…" />
   if (!session) return <Login />
   // key로 사용자 전환 시 게이트 상태 초기화

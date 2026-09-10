@@ -62,7 +62,11 @@ export default function Yearly() {
   const occasionTotal = yearOccasions.reduce((a, o) => a + o.amount, 0)
   const hasData = ledgerByYm.size > 0
 
-  const toMan = (v: number) => (v === 0 ? '' : formatComma(Math.round(v / 10000)))
+  // 4,000원처럼 만원 밑으로 반올림돼 0이 되는 값은 '0'이 아니라 빈칸으로 (0처럼 보이면 오해한다)
+  const toMan = (v: number) => {
+    const man = Math.round(v / 10000)
+    return man === 0 ? '' : formatComma(man)
+  }
 
   return (
     <div className="animate-fade-up space-y-4">

@@ -202,7 +202,7 @@ export default function Home() {
             />
             <GuideStep
               done={hasConfession}
-              label="오늘 쓴 돈 고백하기"
+              label="오늘 쓴 돈 기록하기"
               hint="3번 탭이면 끝. 모아·불리가 바로 반응해요"
               onClick={() => navigate('/confess')}
             />

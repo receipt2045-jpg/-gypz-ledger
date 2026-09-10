@@ -125,3 +125,33 @@ describe('자산 구성 — 밑에 붙는 한 줄', () => {
     expect(note([])).toBe('')
   })
 })
+
+describe('자산 구성 — 전세·월세 보증금은 불리는 돈이 아니다', () => {
+  it('부동산 그룹이어도 이름에 보증금·전세가 있으면 모으는 돈(보증금 칸)으로 간다', () => {
+    const c = buildComposition([
+      a('전세보증금', 'realestate', 300_000_000),
+      a('통장', 'cash', 30_000_000),
+      a('주식', 'stock', 20_000_000),
+    ])
+    const dep = c.slices.find((s) => s.group === 'deposit')
+    expect(dep?.kind).toBe('save')
+    expect(dep?.amount).toBe(300_000_000)
+    expect(c.slices.some((s) => s.group === 'realestate')).toBe(false)
+    // 신혼부부 전세 집에서 "불리는 쪽 비중이 큰 편"이라는 말이 안 나와야 한다
+    expect(compositionNote(c)).not.toContain('불리는 쪽 비중이 큰')
+  })
+
+  it('진짜 소유 부동산(아파트·오피스텔)은 그대로 불리는 돈', () => {
+    const c = buildComposition([a('우리집 아파트', 'realestate', 500_000_000), a('통장', 'cash', 10_000_000)])
+    expect(c.slices.find((s) => s.group === 'realestate')?.kind).toBe('grow')
+  })
+})
+
+describe('자산 구성 — 소비재가 절반 넘으면 판단을 얹지 않는다', () => {
+  it('자동차가 69%인데 "모으는 데 집중"이라고 하지 않는다', () => {
+    const c = buildComposition([a('자동차', 'consumable', 14_250_000), a('청약', 'cash', 6_500_000)])
+    const note = compositionNote(c)
+    expect(note).not.toContain('모으는 데 집중')
+    expect(note).toContain('소비재')
+  })
+})

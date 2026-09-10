@@ -394,7 +394,9 @@ export function pickReaction(
 
   if (bucket === 'reduce') {
     const sub = reduceSub(c.kind, c.category)!
-    const moa = f(noRepeat(ROAST[sub], `roast-${sub}`, asStr))
+    // "또야, 이번 달 1번째"가 나오던 것 — 이번 달 첫 기록이면 횟수({n})를 쓰는 줄은 뽑지 않는다
+    const roastPool = monthCount >= 2 ? ROAST[sub] : ROAST[sub].filter((t) => !t.includes('{n}'))
+    const moa = f(noRepeat(roastPool.length ? roastPool : ROAST[sub], `roast-${sub}`, asStr))
     const bulli = f(noRepeat(UPSIDE[sub] ?? UPSIDE.default, `upside-${sub}`, asStr))
     return {
       bubbles: [

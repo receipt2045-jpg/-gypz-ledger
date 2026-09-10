@@ -51,7 +51,7 @@ describe('고백 페이지 — 우리집 기록 보기·삭제', () => {
     expect(screen.getByText('교통')).toBeInTheDocument()
     expect(screen.getByText('카페/간식')).toBeInTheDocument()
 
-    const buttons = screen.getAllByLabelText('고백 삭제')
+    const buttons = screen.getAllByLabelText('기록 삭제')
     expect(buttons).toHaveLength(3)
 
     await user.click(buttons[0])
@@ -74,7 +74,7 @@ describe('고백 페이지 — 우리집 기록 보기·삭제', () => {
     })
     const { user } = renderScreen(<Confess />)
 
-    await user.click(screen.getByLabelText('고백 삭제'))
+    await user.click(screen.getByLabelText('기록 삭제'))
     expect(useLedgerStore.getState().confessions).toHaveLength(0)
   })
 

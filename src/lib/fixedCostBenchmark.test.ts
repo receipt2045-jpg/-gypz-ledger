@@ -78,13 +78,20 @@ describe('buildFixedCostReport — 수입 대비로 본다', () => {
     expect(r.tenYearTotal).toBe(42_000_000)
   })
 
-  it('결산 전이면 계획값, 결산 후면 실제값을 본다', () => {
+  it('실제값이 있으면 결산 전이라도 실제값, 없을 때만 계획값을 본다', () => {
+    // 예전엔 결산 전이면 무조건 계획값이었다 — 그래서 정산 중에 넣은(planned=0) 항목이 사라졌다
     const items: BudgetItem[] = [
       { ...item('income', '주수입', 0), planned: 5_000_000, actual: 4_000_000 },
       { ...item('fixed', '보험', 0), planned: 400_000, actual: 600_000 },
     ]
-    expect(buildFixedCostReport(items, false).categories[0].amount).toBe(400_000)
+    expect(buildFixedCostReport(items, false).categories[0].amount).toBe(600_000)
     expect(buildFixedCostReport(items, true).categories[0].amount).toBe(600_000)
+
+    const plannedOnly: BudgetItem[] = [
+      { ...item('income', '주수입', 0), planned: 5_000_000, actual: 0 },
+      { ...item('fixed', '보험', 0), planned: 400_000, actual: 0 },
+    ]
+    expect(buildFixedCostReport(plannedOnly, false).categories[0].amount).toBe(400_000)
   })
 })
 
@@ -102,5 +109,30 @@ describe('headlineOf — 겁주지 않고 방향만', () => {
   it('다 괜찮으면 칭찬한다', () => {
     const r = buildFixedCostReport([...income500, item('fixed', '통신', 150_000)], true)
     expect(headlineOf(r)).toContain('잘 잡혀 있습니다')
+  })
+})
+
+describe('고정비 점검 — 정산 중에 넣은 항목도 보인다 (제보 2026-09-10)', () => {
+  // 정산 중에 추가한 항목은 planned=0, actual=금액으로 저장된다.
+  // 배우자가 아직 정산 전이면 달이 closed가 아니라, 예전엔 planned(0)만 읽어 아내 것이 통째로 사라졌다.
+  const income = { id: 'i', group: 'income' as const, category: '주수입', member: 1 as const, planned: 5_000_000, actual: 5_000_000 }
+  const husbandRent = { id: 'h', group: 'fixed' as const, category: '주거', member: 1 as const, planned: 600_000, actual: 600_000 }
+  const wifeInsurance = { id: 'w', group: 'fixed' as const, category: '보험', member: 2 as const, planned: 0, actual: 150_000 }
+
+  it('달이 아직 안 닫혔어도 실제값이 있으면 그 값으로 센다', () => {
+    const r = buildFixedCostReport([income, husbandRent, wifeInsurance], false)
+    expect(r.categories.find((c) => c.category === '보험')?.amount).toBe(150_000)
+    expect(r.categories.find((c) => c.category === '주거')?.amount).toBe(600_000)
+  })
+
+  it('실제값이 없으면 여전히 계획값을 쓴다 (예산만 세운 달)', () => {
+    const plannedOnly = { ...husbandRent, actual: 0 }
+    const r = buildFixedCostReport([income, plannedOnly], false)
+    expect(r.categories.find((c) => c.category === '주거')?.amount).toBe(600_000)
+  })
+
+  it('닫힌 달은 실제값만 본다', () => {
+    const r = buildFixedCostReport([income, { ...husbandRent, actual: 550_000 }], true)
+    expect(r.categories.find((c) => c.category === '주거')?.amount).toBe(550_000)
   })
 })

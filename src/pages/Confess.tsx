@@ -329,7 +329,7 @@ export default function Confess() {
     const total = result.saved.reduce((s, e) => s + e.amount, 0)
     return (
       <Frame>
-        <Top onBack={() => navigate('/')} title="오늘의 고백" />
+        <Top onBack={() => navigate('/')} title="오늘의 소비 기록" />
         <div className="flex flex-1 flex-col px-5 pt-2 animate-fade-up">
           {/* 방금 고백한 내용 */}
           <div className="mb-5 rounded-card bg-card px-5 py-4 shadow-card">
@@ -385,10 +385,12 @@ export default function Confess() {
             </button>
           )}
 
-          {/* 스트릭 */}
-          <p className="mt-6 text-center text-[14px] font-bold text-ink">
-            🔥 {result.streak}일 연속 고백 중!
-          </p>
+          {/* 스트릭 — 지난 날짜로 적으면 0일이 나온다. "0일 연속"은 안 보여주는 게 낫다 */}
+          {result.streak > 0 && (
+            <p className="mt-6 text-center text-[14px] font-bold text-ink">
+              🔥 {result.streak}일 연속 기록 중!
+            </p>
+          )}
         </div>
         <BottomBar>
           <div className="flex gap-2">
@@ -396,7 +398,7 @@ export default function Confess() {
               onClick={reset}
               className="h-14 flex-1 rounded-btn bg-white text-[15px] font-bold text-ink shadow-cta active:bg-line"
             >
-              한 건 더 고백
+              한 건 더 기록
             </button>
             <button
               onClick={() => navigate('/')}
@@ -494,7 +496,7 @@ export default function Confess() {
             disabled={drafts.length === 0 || drafts.some((d) => d.amount <= 0)}
             className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
           >
-            {drafts.length}건 고백하기
+            {drafts.length}건 기록하기
           </button>
         </BottomBar>
       </Frame>
@@ -554,7 +556,7 @@ export default function Confess() {
             disabled={amount <= 0}
             className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
           >
-            고백하기
+            기록하기
           </button>
         </BottomBar>
       </Frame>
@@ -765,7 +767,7 @@ export default function Confess() {
                         </span>
                         <button
                           onClick={() => removeConfession(c.id)}
-                          aria-label="고백 삭제"
+                          aria-label="기록 삭제"
                           className="shrink-0 text-cap active:text-danger"
                         >
                           <Trash2 size={15} />

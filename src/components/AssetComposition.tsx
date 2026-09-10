@@ -1,7 +1,7 @@
 import Card from './Card'
-import { buildComposition, compositionNote, type CompoSlice } from '../lib/assetComposition'
+import { DEPOSIT, buildComposition, compositionNote, type CompoSlice } from '../lib/assetComposition'
 import { ASSET_GROUP_LABEL } from '../lib/constants'
-import { formatWon } from '../lib/format'
+import { abbreviateKRW } from '../lib/format'
 import type { AssetItem } from '../types'
 
 /**
@@ -17,13 +17,15 @@ import type { AssetItem } from '../types'
 const COLOR: Record<string, string> = {
   cash: '#3182F6',
   pension: '#85B7EB',
+  deposit: '#B5D4F4', // 전세·월세 보증금 — 돌려받을 돈이라 '모으는 돈' 쪽 옅은 파랑
   stock: '#D4537E',
   realestate: '#ED93B1',
   other: '#B4B2A9',
 }
 
 const colorOf = (s: CompoSlice) => COLOR[s.group ?? 'other'] ?? COLOR.other
-const labelOf = (s: CompoSlice) => (s.group ? ASSET_GROUP_LABEL[s.group] : '기타')
+const labelOf = (s: CompoSlice) =>
+  s.group === null ? '기타' : s.group === DEPOSIT ? '보증금' : ASSET_GROUP_LABEL[s.group]
 
 export default function AssetComposition({ items }: { items: AssetItem[] }) {
   const c = buildComposition(items)
@@ -85,7 +87,8 @@ function Row({ slice }: { slice: CompoSlice }) {
         style={{ background: colorOf(slice) }}
       />
       <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{labelOf(slice)}</span>
-      <span className="tnum shrink-0 text-[13px] text-sub">{formatWon(slice.amount)}</span>
+      {/* 같은 화면의 그룹 목록이 '3,275만원'식이라 여기만 원 단위면 두 표기가 섞인다 */}
+      <span className="tnum shrink-0 text-[13px] text-sub">{abbreviateKRW(slice.amount)}</span>
       <span className="tnum w-9 shrink-0 text-right text-[13px] font-bold text-ink">
         {slice.percent}%
       </span>

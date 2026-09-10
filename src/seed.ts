@@ -10,8 +10,21 @@ import type {
 } from './types'
 import { DEFAULT_CATEGORIES } from './lib/constants'
 
-const MONTHS = ['2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07']
-const LAST_INDEX = MONTHS.length - 1 // 2026-07 은 아직 정산 전(closed=false)
+/**
+ * 샘플은 '오늘'을 기준으로 최근 6개월을 만든다. 마지막 달 = 이번 달(정산 전).
+ * 예전엔 2026-02~07로 박혀 있어서, 9월에 샘플을 열면 두 달 전이 최신처럼 보였다.
+ */
+function recentMonths(n: number): string[] {
+  const d = new Date()
+  const out: string[] = []
+  for (let i = n - 1; i >= 0; i--) {
+    const m = new Date(d.getFullYear(), d.getMonth() - i, 1)
+    out.push(`${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`)
+  }
+  return out
+}
+const MONTHS = recentMonths(6)
+const LAST_INDEX = MONTHS.length - 1 // 마지막 달은 아직 정산 전(closed=false)
 
 interface ItemTpl {
   group: CategoryGroup
@@ -115,18 +128,19 @@ function buildSnapshot(i: number): AssetSnapshot {
 }
 
 const OCCASIONS: OccasionEntry[] = [
-  { id: 'occ-1', date: '2026-02-14', category: '지인경조사', title: '대학동기 결혼식', amount: 100_000 },
-  { id: 'occ-2', date: '2026-03-21', category: '가족경조사', title: '어머니 생신', amount: 300_000 },
-  { id: 'occ-3', date: '2026-05-18', category: '지인경조사', title: '회사동료 결혼식', amount: 200_000 },
-  { id: 'occ-4', date: '2026-06-10', category: '기타', title: '자동차 보험 갱신', amount: 780_000 },
-  { id: 'occ-5', date: '2026-07-05', category: '가족경조사', title: '조카 돌잔치', amount: 150_000 },
+  // 날짜는 MONTHS 순번으로 잡는다 — 달이 바뀌어도 샘플이 같이 움직이게
+  { id: 'occ-1', date: `${MONTHS[0]}-14`, category: '지인경조사', title: '대학동기 결혼식', amount: 100_000 },
+  { id: 'occ-2', date: `${MONTHS[1]}-21`, category: '가족경조사', title: '어머니 생신', amount: 300_000 },
+  { id: 'occ-3', date: `${MONTHS[3]}-18`, category: '지인경조사', title: '회사동료 결혼식', amount: 200_000 },
+  { id: 'occ-4', date: `${MONTHS[4]}-10`, category: '기타', title: '자동차 보험 갱신', amount: 780_000 },
+  { id: 'occ-5', date: `${MONTHS[5]}-05`, category: '가족경조사', title: '조카 돌잔치', amount: 150_000 },
 ]
 
 const PROFILE: Profile = {
   member1Name: '남편',
   member2Name: '아내',
   targetNetWorth: 1_000_000_000, // 10억
-  startYear: 2026,
+  startYear: new Date().getFullYear(),
 }
 
 export function buildSeed(): AppData {

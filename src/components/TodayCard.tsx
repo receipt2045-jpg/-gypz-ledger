@@ -5,7 +5,7 @@ import { resolveLedger } from '../lib/carryover'
 import { monthConfessions } from '../lib/confessLedger'
 import { streakOf } from '../lib/reactions'
 import { cardSpentFromConfessions, readYearEndInput, recommendCard } from '../lib/yearEndTax'
-import { abbreviateKRW, currentYm } from '../lib/format'
+import { abbreviateKRW, currentYm, formatWon } from '../lib/format'
 
 const dayKey = (d: Date) => d.toLocaleDateString('sv-SE')
 
@@ -68,13 +68,13 @@ export default function TodayCard() {
         className="flex w-full items-center justify-between px-4 py-3 text-left active:bg-bg"
       >
         <span className="text-[14px] font-bold text-ink">
-          {streak > 0 ? `🔥 ${streak}일 연속` : '🎙️ 오늘의 고백'}
+          {streak > 0 ? `🔥 ${streak}일 연속` : '🎙️ 오늘의 소비 기록'}
           <span className={`ml-1.5 font-semibold ${confessedToday ? 'text-brand' : 'text-sub'}`}>
-            {confessedToday ? '· 오늘 고백 끝 ✅' : streak > 0 ? '· 오늘 고백 아직이에요' : '오늘 쓴 돈을 말해주세요'}
+            {confessedToday ? '· 오늘 기록 끝 ✅' : streak > 0 ? '· 오늘 기록 아직이에요' : '오늘 쓴 돈을 말해주세요'}
           </span>
         </span>
         <span className="flex shrink-0 items-center text-[13px] font-bold text-brand">
-          고백 <ChevronRight size={15} />
+          기록하기 <ChevronRight size={15} />
         </span>
       </button>
 
@@ -85,7 +85,9 @@ export default function TodayCard() {
             <div className="mb-1.5 flex items-baseline justify-between">
               <span className="text-[12.5px] font-medium text-sub">이번 달 변동지출</span>
               <span className="tnum text-[12.5px] font-bold text-ink">
-                {abbreviateKRW(confessed)} <span className="font-medium text-cap">/ {abbreviateKRW(budget)}</span>
+                {/* 14,000원이 '1만원'으로 잘리면 기록한 사람이 갸웃한다 — 10만 밑은 원 단위 그대로 */}
+                {confessed < 100_000 ? formatWon(confessed) : abbreviateKRW(confessed)}{' '}
+                <span className="font-medium text-cap">/ {abbreviateKRW(budget)}</span>
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-line">
@@ -97,7 +99,7 @@ export default function TodayCard() {
             <p className="mt-1.5 text-[11.5px] text-cap">
               {over
                 ? `예산보다 ${abbreviateKRW(confessed - budget)} 넘었어요 · 모아가 할 말이 있대요`
-                : `고백한 만큼 채워져요 · ${abbreviateKRW(budget - confessed)} 남음`}
+                : `기록한 만큼 채워져요 · ${abbreviateKRW(budget - confessed)} 남음`}
             </p>
           </>
         ) : (
@@ -106,7 +108,7 @@ export default function TodayCard() {
             className="flex w-full items-center justify-between text-left"
           >
             <span className="text-[13px] font-medium text-sub">
-              이번 달 예산부터 세워볼까요? 고백이 게이지로 쌓여요
+              이번 달 예산부터 세워볼까요? 기록이 게이지로 쌓여요
             </span>
             <ChevronRight size={15} className="shrink-0 text-cap" />
           </button>

@@ -19,7 +19,7 @@ export default function WeeklyCostCard({ confessions }: { confessions: Confessio
       </div>
       <p className="tnum text-[26px] font-extrabold">{formatWon(weekSum)}</p>
       <p className="mt-1.5 text-[13px] leading-relaxed text-white/80">
-        고백 {count}번 모아보니 이만큼이에요. 매주 이 돈을 적금하면{' '}
+        기록 {count}번 모아보니 이만큼이에요. 매주 이 돈을 적금하면{' '}
         <b className="text-white">1년에 {abbreviateKRW(perYear)}</b>,{' '}
         <b className="text-white">10년이면 {abbreviateKRW(tenYears)}</b> 🤍
       </p>

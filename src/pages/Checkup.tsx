@@ -33,6 +33,7 @@ import {
 } from '../lib/carryover'
 import {
   abbreviateKRW,
+  currentYm,
   formatMonthKorean,
   formatPercent,
   formatWon,
@@ -122,7 +123,9 @@ export default function Checkup() {
   const [ym, setYm] = useState(() => nav?.ym ?? activeYm(ledgers))
   // 미래 달 상한: 최신 가계부 다음 달까지 허용(다음 달 예산 미리 세우기)
   const latestLedgerYm = ledgers.length ? ledgers[ledgers.length - 1].ym : ym
-  const maxYm = shiftYm(latestLedgerYm, 1) > activeYm(ledgers) ? shiftYm(latestLedgerYm, 1) : activeYm(ledgers)
+  // 최소한 '오늘의 달'까지는 열려야 한다. 예전엔 마지막 가계부+1까지만이라,
+  // 7월에서 멈춘 집이 9월 정산을 아예 못 열었다 (직접 눌러보다 발견, 2026-09-10).
+  const maxYm = [shiftYm(latestLedgerYm, 1), activeYm(ledgers), currentYm()].sort().at(-1)!
 
   const [items, setItems] = useState<BudgetItem[]>(() =>
     resolveLedger(ledgers, ym).items.map((it) => ({ ...it })),
@@ -860,7 +863,7 @@ function MoneyStep({
         <div className="rounded-card bg-brand/10 px-4 py-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-[13.5px] font-bold text-brand">
-              🎙️ 고백한 항목 {missingConfessed.length}개가 아직 없어요
+              🎙️ 기록한 항목 {missingConfessed.length}개가 아직 없어요
             </p>
             <span className="tnum text-[13px] font-bold text-brand">
               {formatWon(confessedTotal)}
@@ -972,7 +975,7 @@ function MoneyStep({
                     className="mt-2 flex w-full items-center justify-between rounded-btn bg-brand/10 px-3 py-2 text-left active:bg-brand/20"
                   >
                     <span className="text-[12.5px] font-semibold text-brand">
-                      🎙️ 이번 달 고백 합계 {formatWon(hint)}
+                      🎙️ 이번 달 기록 합계 {formatWon(hint)}
                     </span>
                     <span className="text-[12px] font-bold text-brand">눌러서 반영</span>
                   </button>

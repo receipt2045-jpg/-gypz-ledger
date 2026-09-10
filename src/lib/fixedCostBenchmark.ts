@@ -64,9 +64,15 @@ function tenYearOf(monthly: number): number {
   return Math.round(monthly * 12 * 10)
 }
 
-/** 결산 완료면 실제값, 아니면 계획값 */
+/**
+ * 결산 완료면 실제값. 아니면 실제값이 있으면 실제값, 없으면 계획값.
+ *
+ * 제보(2026-09-10): "고정비 점검에 남편 것만 뜨고 제가 입력한 건 안 떠요".
+ * 정산 중에 추가한 항목은 planned=0·actual=금액으로 저장된다. 배우자가 아직
+ * 정산 전이면 달이 closed가 아니라 planned(0)만 읽어서 통째로 사라졌다.
+ */
 function amountOf(it: BudgetItem, closed: boolean): number {
-  return closed ? it.actual : it.planned
+  return closed ? it.actual : it.actual || it.planned
 }
 
 /**

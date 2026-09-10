@@ -231,9 +231,9 @@ describe('가계부 탭 — 고백 내역 삭제', () => {
     seedConfessions()
     const { user } = renderScreen(<Monthly />)
 
-    await user.click(screen.getByRole('button', { name: /이번 달 고백/ }))
+    await user.click(screen.getByRole('button', { name: /이번 달 소비 기록/ }))
     // 둘 다 삭제 버튼
-    const buttons = screen.getAllByLabelText('고백 삭제')
+    const buttons = screen.getAllByLabelText('기록 삭제')
     expect(buttons).toHaveLength(2)
 
     // 배우자 것(c2)을 지운다

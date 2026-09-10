@@ -19,11 +19,25 @@ const KIND_OF: Record<AssetGroup, CompoKind> = {
   consumable: 'other',
 }
 
-/** 막대에 이름을 달아 보여주는 그룹 (최대 4칸). 나머지는 전부 '기타' 한 칸. */
-const NAMED: AssetGroup[] = ['cash', 'pension', 'stock', 'realestate']
+/**
+ * 부동산 그룹에 들어 있어도 전세·월세 보증금은 '불리는 돈'이 아니다 — 돌려받을 돈이다.
+ * 신혼부부는 전세보증금이 자산의 대부분이라, 이걸 투자로 세면
+ * "불리는 쪽 비중이 큰 편이에요"라는 엉뚱한 말이 나온다 (직접 눌러보다 발견).
+ * 그룹을 새로 만들지 않고 이름으로 가려 '보증금' 칸으로 뺀다.
+ */
+const DEPOSIT_RE = /전세|월세|보증금|임차/
+export const DEPOSIT = 'deposit' as const
+export type CompoGroup = AssetGroup | typeof DEPOSIT
+
+/** 막대에 이름을 달아 보여주는 칸 (최대 5칸). 나머지는 전부 '기타' 한 칸. */
+const NAMED: CompoGroup[] = ['cash', 'pension', DEPOSIT, 'stock', 'realestate']
+
+const kindOf = (g: CompoGroup): CompoKind => (g === DEPOSIT ? 'save' : KIND_OF[g])
+const groupOf = (it: AssetItem): CompoGroup =>
+  it.group === 'realestate' && DEPOSIT_RE.test(it.name) ? DEPOSIT : it.group
 
 export interface CompoSlice {
-  group: AssetGroup | null // null = 기타
+  group: CompoGroup | null // null = 기타
   kind: CompoKind
   amount: number
   percent: number // 정수, 다 더하면 정확히 100
@@ -58,17 +72,18 @@ function toPercents(amounts: number[], total: number): number[] {
 }
 
 export function buildComposition(items: AssetItem[]): Composition {
-  const sums = new Map<AssetGroup, number>()
+  const sums = new Map<CompoGroup, number>()
   let other = 0
   for (const it of items) {
     if (it.amount <= 0) continue
-    if (NAMED.includes(it.group)) sums.set(it.group, (sums.get(it.group) ?? 0) + it.amount)
+    const g = groupOf(it)
+    if (NAMED.includes(g)) sums.set(g, (sums.get(g) ?? 0) + it.amount)
     else other += it.amount
   }
 
   const named = NAMED.filter((g) => (sums.get(g) ?? 0) > 0).map((g) => ({
-    group: g as AssetGroup | null,
-    kind: KIND_OF[g],
+    group: g as CompoGroup | null,
+    kind: kindOf(g),
     amount: sums.get(g)!,
   }))
   // 모으는 돈이 먼저, 그 안에서는 큰 것부터. 기타는 항상 맨 끝.
@@ -99,6 +114,10 @@ export function buildComposition(items: AssetItem[]): Composition {
 export function compositionNote(c: Composition): string {
   if (c.total <= 0) return ''
   const head = `모으는 돈 ${c.savePercent}% · 불리는 돈 ${c.growPercent}%`
+  // 차·가전(기타)이 절반을 넘으면 모으는/불리는 비율로 뭐라 말할 자격이 없다.
+  // 남편 탭에서 자동차 69%인데 "모으는 데 집중하고 있어요"가 뜨던 걸 막는다.
+  const otherPercent = 100 - c.savePercent - c.growPercent
+  if (otherPercent >= 50) return `${head} · 소비재 ${otherPercent}%. 차·가전 같은 소비재가 큰 편이에요`
   if (c.growPercent === 0) return `${head}. 아직은 모으는 데 집중하고 있어요`
   if (c.savePercent >= 70) return `${head}. 현금이 많은 편이에요. 신혼 초엔 자연스러운 모습이에요`
   if (c.growPercent >= 60) return `${head}. 불리는 쪽 비중이 큰 편이에요`

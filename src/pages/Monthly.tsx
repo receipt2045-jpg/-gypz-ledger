@@ -239,7 +239,7 @@ export default function Monthly() {
         <div className="rounded-card bg-card px-5 py-4 shadow-card">
           <button onClick={() => setLogOpen((v) => !v)} className="flex w-full items-center justify-between">
             <span className="text-[15px] font-bold text-ink">
-              🎙️ 이번 달 고백 <span className="text-sub">{monthLog.length}건</span>
+              🎙️ 이번 달 소비 기록 <span className="text-sub">{monthLog.length}건</span>
             </span>
             <span className="tnum text-[15px] font-bold text-ink">{formatWon(logTotal)}</span>
           </button>
@@ -269,7 +269,7 @@ export default function Monthly() {
                     <button
                       onClick={() => removeConfession(c.id)}
                       className="shrink-0 text-cap active:text-danger"
-                      aria-label="고백 삭제"
+                      aria-label="기록 삭제"
                     >
                       <Trash2 size={14} />
                     </button>

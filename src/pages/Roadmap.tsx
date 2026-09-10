@@ -352,8 +352,13 @@ function GoalView({
 
         <div className="mt-4 border-t border-line pt-3">
           <div className="flex items-center justify-between text-[12px] text-sub">
+            {/* 안 움직였을 땐 실제 저축액을 보여준다 — 저축률을 정수로 반올림해 역산하면 307만/310만처럼 어긋난다 */}
             <span className="tnum">
-              월 저축 <b className="text-ink">{abbreviateKRW(simPace.monthlySaving)}</b> · 저축률 {rate}%
+              월 저축{' '}
+              <b className="text-ink">
+                {abbreviateKRW(rate === currentRate ? pace.monthlySaving : simPace.monthlySaving)}
+              </b>{' '}
+              · 저축률 {rate}%
             </span>
             <span className="text-cap">움직이면 D-day가 바뀌어요</span>
           </div>
@@ -488,6 +493,9 @@ function WhatIfCard({
             </b>
             {r.dead ? (
               <> · <span className="font-bold text-danger">저축이 멈춰요</span></>
+            ) : r.extra && r.extra > 60 ? (
+              // "464개월 뒤로"는 숫자만 크고 뜻이 없다 — 5년 넘으면 그냥 어렵다고 말한다
+              <> · <span className="font-bold text-danger">5년 넘게 늦어져요</span></>
             ) : r.extra && r.extra > 0 ? (
               <> · 시점 <span className="font-bold text-pink-600">{r.extra}개월 뒤로</span></>
             ) : (

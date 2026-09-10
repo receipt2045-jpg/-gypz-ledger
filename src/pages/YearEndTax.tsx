@@ -120,7 +120,7 @@ export default function YearEndTax() {
                 ))}
                 {fromApp1 + fromApp2 > 0 && (
                   <p className="px-1 text-[12px] leading-relaxed text-cap">
-                    여기에 고백으로 쌓인 카드값을 더해서 계산해요 ·{' '}
+                    여기에 소비 기록으로 쌓인 카드값을 더해서 계산해요 ·{' '}
                     <span className="tnum font-semibold text-sub">
                       {names[0]} {formatComma(fromApp1)}원 · {names[1]} {formatComma(fromApp2)}원
                     </span>
