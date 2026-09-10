@@ -1,45 +1,86 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ChevronDown, ChevronRight, Sparkles } from 'lucide-react'
+import { ChevronDown, ChevronRight, Pencil, Sparkles } from 'lucide-react'
+import AmountInput from '../components/AmountInput'
+import AssetComposition from '../components/AssetComposition'
 import Card from '../components/Card'
 import { useLedgerStore } from '../lib/store'
-import { netWorthOf, resolveLedger, resolveSnapshot, summarize } from '../lib/carryover'
-import { abbreviateKRW, currentYm } from '../lib/format'
+import { resolveLedger, resolveSnapshot, summarize, totalAssets } from '../lib/carryover'
+import { abbreviateKRW, currentYm, formatYmKorean, shiftYm } from '../lib/format'
+import { PILLAR_INFO, computePillars, diagnose, type Pillars } from '../lib/roadmap'
 import {
-  PILLAR_INFO,
-  STAGES,
-  computePillars,
-  currentStageIndex,
-  diagnose,
-  type Pillars,
-} from '../lib/roadmap'
+  STATUS_LABEL,
+  paceWithoutIncome,
+  planGoal,
+  type GoalPlan,
+  type GoalStatus,
+  type Pace,
+} from '../lib/savingsGoal'
+import type { MonthlyLedger, SavingsGoal } from '../types'
+
+/**
+ * 자산 로드맵 — "얼마를 언제까지"에 지금 속도를 대 본다.
+ *
+ * 집·집값은 넣지 않는다(2026-09-10). 들어가는 건 사용자가 정한 목표와
+ * 정산에서 나온 저축 속도, 지금 자산뿐이라 틀릴 데가 없다.
+ * 위에서부터: 상태·D-day → 모을 돈 → 지금 속도면(지렛대 둘 + 슬라이더) →
+ * 연도별 → 만약에 → 어디에 담나 → 우리 부부 → (접힌) 우리 팀 상태.
+ */
+
+/** 정산의 '부수입' 항목 합 — 저축과 따로 보여주려고 나눈다 */
+function sideIncomeOf(ledger: MonthlyLedger): number {
+  return ledger.items
+    .filter((it) => it.group === 'income' && it.category === '부수입')
+    .reduce((a, it) => a + it.actual, 0)
+}
+
+/** 구성원별 소득 — '만약에'에서 한 사람 소득을 빼 볼 때 */
+function incomeByMember(ledger: MonthlyLedger): [number, number] {
+  const out: [number, number] = [0, 0]
+  for (const it of ledger.items) {
+    if (it.group === 'income') out[it.member - 1] += it.actual
+  }
+  return out
+}
+
+const STATUS_STYLE: Record<GoalStatus, string> = {
+  on: 'bg-emerald-50 text-emerald-700',
+  slight: 'bg-amber-50 text-amber-700',
+  off: 'bg-red-50 text-red-700',
+}
 
 export default function Roadmap() {
   const navigate = useNavigate()
-  const { ledgers, snapshots, profile } = useLedgerStore()
+  const { ledgers, snapshots, profile, updateProfile } = useLedgerStore()
 
-  const latestYm = ledgers.length ? ledgers[ledgers.length - 1].ym : currentYm()
+  const nowYm = currentYm()
+  const latestYm = ledgers.length ? ledgers[ledgers.length - 1].ym : nowYm
   const ledger = resolveLedger(ledgers, latestYm)
   const s = summarize(ledger)
   const snapshot = resolveSnapshot(snapshots, latestYm)
-  const netWorth = netWorthOf(snapshot)
+  // 진행률은 '자산에 들어간 돈 전부' 기준 — 현금·주식·연금·부동산·소비재 다 합쳐서
+  const have = totalAssets(snapshot)
+  const assetItems = snapshot.items.filter((it) => it.kind === 'asset')
 
-  const pace = s.saving + s.investment
+  const pace: Pace = { monthlySaving: s.saving + s.investment, monthlySide: sideIncomeOf(ledger) }
+  const hasIncome = s.income > 0
+  const goal = profile.goal
+  const [editing, setEditing] = useState(false)
+
   const pillars = computePillars(ledger, s)
   const diag = diagnose(pillars)
-  const stageIdx = currentStageIndex(s.income, pace, netWorth, profile.targetNetWorth)
-  const hasIncome = s.income > 0
+
+  const saveGoal = (g: SavingsGoal) => {
+    updateProfile({ goal: { ...profile.goal, ...g, createdYm: profile.goal?.createdYm ?? nowYm } })
+    setEditing(false)
+  }
 
   return (
     <div className="animate-fade-up space-y-4 pb-24">
-      {/* ── 헤더 ─────────────────────────────── */}
       <header className="px-1 pt-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[22px]">🏠</span>
-          <h1 className="text-[20px] font-extrabold tracking-tight text-ink">우리집까지 가는 길</h1>
-        </div>
+        <h1 className="text-[20px] font-extrabold tracking-tight text-ink">자산 로드맵</h1>
         <p className="mt-1.5 text-[13.5px] font-medium leading-relaxed text-sub">
-          아래를 직접 움직여 보면서 지금 우리 팀을 점검해요.
+          얼마를 언제까지 모을지 정하면, 지금 속도로 닿는지 보여드려요.
         </p>
       </header>
 
@@ -47,151 +88,479 @@ export default function Roadmap() {
         <Card onClick={() => navigate('/monthly')}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[15px] font-bold text-ink">먼저 예산을 세워볼까요?</p>
+              <p className="text-[15px] font-bold text-ink">먼저 이번 달 정산을 해볼까요?</p>
               <p className="mt-1 text-[13px] text-sub">
-                수입·지출을 넣으면 이 화면이 우리 숫자로 살아나요
+                수입·저축을 넣어야 지금 속도가 나와요
               </p>
             </div>
             <ChevronRight size={18} className="shrink-0 text-cap" />
           </div>
         </Card>
-      ) : (
+      ) : !goal || editing ? (
         <>
-          {/* ── ① 저축률 시뮬레이터 (조작) ──────── */}
-          <SavingSimulator income={s.income} currentRate={s.savingInvestRate} currentPace={pace} />
-
-          {/* ── ② 우리 팀 상태 (탭하면 설명) ────── */}
-          <Card>
-            <div className="mb-1 flex items-center justify-between">
-              <p className="text-[15px] font-bold text-ink">우리 팀 상태</p>
-              <span className="text-[12px] font-medium text-cap">눌러서 자세히 보기</span>
-            </div>
-            <p className="mb-3 text-[12.5px] text-cap">통장은 각자, 돈관리는 같이 🤍</p>
-            <div className="space-y-2">
-              {(Object.keys(PILLAR_INFO) as (keyof Pillars)[]).map((key) => (
-                <PillarItem key={key} pillarKey={key} score={pillars[key]} />
-              ))}
-            </div>
-            <div className="mt-4 flex gap-2 rounded-btn bg-bg p-3">
-              <Sparkles size={16} className="mt-0.5 shrink-0 text-brand" />
-              <p className="text-[13.5px] font-medium leading-relaxed text-sub">{diag.headline}</p>
-            </div>
-          </Card>
-
-          {/* ── ③ 이번 주 할 일 (체크) ──────────── */}
-          <WeeklyTask weakest={diag.weakest} />
+          <PaceNowCard pace={pace} />
+          <GoalForm
+            initial={goal}
+            nowYm={nowYm}
+            onSave={saveGoal}
+            onCancel={goal ? () => setEditing(false) : undefined}
+          />
         </>
+      ) : (
+        <GoalView
+          goal={goal}
+          have={have}
+          pace={pace}
+          income={s.income}
+          incomeByMember={incomeByMember(ledger)}
+          memberNames={[profile.member1Name, profile.member2Name]}
+          nowYm={nowYm}
+          onEdit={() => setEditing(true)}
+          onCouple={(patch) => updateProfile({ goal: { ...goal, ...patch } })}
+          assetItems={assetItems}
+        />
       )}
 
-      {/* ── ④ 내집마련 여정 (부드럽게) ─────────── */}
-      <div className="px-1 pt-1">
-        <p className="mb-1 text-[13px] font-bold text-cap">내집마련 여정</p>
-        <p className="text-[12px] text-cap">지금 우리가 어디쯤인지, 다음은 무엇인지 확인해요.</p>
-      </div>
-      <div className="space-y-2.5">
-        {STAGES.map((stage, i) => {
-          const state: 'done' | 'current' | 'future' =
-            i < stageIdx ? 'done' : i === stageIdx ? 'current' : 'future'
-          return (
-            <div
-              key={stage.key}
-              className={`rounded-card border p-4 ${
-                state === 'current' ? 'border-brand bg-brand/[0.04]' : 'border-line bg-card'
-              } ${state === 'future' ? 'opacity-60' : ''}`}
-            >
-              <div className="flex items-start gap-3">
-                <span className="text-[20px] leading-none">{stage.icon}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[15px] font-bold text-ink">{stage.title}</p>
-                    {state === 'current' && (
-                      <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white">
-                        지금 여기
-                      </span>
-                    )}
-                    {state === 'done' && (
-                      <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
-                        지남
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-[13px] leading-relaxed text-sub">{stage.view}</p>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* 연말정산 미리보기 입구는 '올해의 돈' 화면인 연간 리포트로 이동 (10년 로드맵과 주제 분리) */}
-
-      {/* 맞춤 리포트 입구는 닫아 뒀다 (2026-09-03).
-          기능·관리 화면·서버는 그대로 살아 있고 들어오는 길만 막은 상태다.
-          다시 열려면 이 자리에 카드를 되돌리면 된다 — 커밋 기록에 원본이 있다. */}
+      {/* 우리 팀 상태 — 목표 뒤로 물러난다. 진단은 목표가 있어야 뜻이 생긴다 */}
+      {hasIncome && <PillarsFolded pillars={pillars} headline={diag.headline} />}
     </div>
   )
 }
 
-// ── ① 저축률 시뮬레이터 ─────────────────────────
-function SavingSimulator({
-  income,
-  currentRate,
-  currentPace,
-}: {
-  income: number
-  currentRate: number
-  currentPace: number
-}) {
-  const [rate, setRate] = useState(Math.round(currentRate * 100))
-  const monthlySave = Math.round((income * rate) / 100)
-  const tenYear = monthlySave * 120
-  const currentTenYear = currentPace * 120
-  const diff = tenYear - currentTenYear
-  const nowRate = Math.round(currentRate * 100)
-
+// ── 목표 넣기 전: 지금 속도 ─────────────────────
+function PaceNowCard({ pace }: { pace: Pace }) {
+  const yearly = (pace.monthlySaving + pace.monthlySide) * 12
   return (
     <Card>
-      <p className="text-[15px] font-bold text-ink">저축률을 움직여 보세요 🎚</p>
-      <p className="mt-1 text-[12.5px] text-cap">저축률만 조금 올려도 10년이 크게 달라집니다.</p>
+      <p className="text-[13px] font-medium text-cap">지금 속도</p>
+      <p className="tnum mt-1 text-[26px] font-extrabold tracking-tight text-ink">
+        1년에 {abbreviateKRW(yearly)}
+      </p>
+      <p className="tnum mt-1 text-[13px] text-sub">
+        월 저축 {abbreviateKRW(pace.monthlySaving)}
+        {pace.monthlySide > 0 && <> + 부수입 {abbreviateKRW(pace.monthlySide)}</>}
+      </p>
+    </Card>
+  )
+}
 
-      <div className="mt-4 flex items-end justify-between">
-        <span className="tnum text-[32px] font-extrabold leading-none text-brand">{rate}%</span>
-        <span className="tnum text-[13px] font-medium text-sub">
-          월 {abbreviateKRW(monthlySave)} 저축
+// ── 목표 입력 (새로 / 고치기) ───────────────────
+function GoalForm({
+  initial,
+  nowYm,
+  onSave,
+  onCancel,
+}: {
+  initial?: SavingsGoal
+  nowYm: string
+  onSave: (g: SavingsGoal) => void
+  onCancel?: () => void
+}) {
+  const [amount, setAmount] = useState(initial?.amount ?? 100_000_000)
+  const [targetYm, setTargetYm] = useState(initial?.targetYm ?? shiftYm(nowYm, 36))
+  const [name, setName] = useState(initial?.name ?? '')
+  const valid = amount > 0 && targetYm > nowYm
+
+  return (
+    <Card className="border-2 border-dashed border-pink-300 !bg-pink-50/40">
+      <p className="text-[15px] font-bold text-pink-600">
+        {initial ? '목표 고치기' : '얼마를 언제까지 모을까요?'}
+      </p>
+      <p className="mt-1 text-[13px] text-sub">두 칸만 넣으면 닿는 시점을 계산해 드려요</p>
+
+      <div className="mt-4 space-y-3">
+        <div>
+          <label className="mb-1.5 block text-[13px] font-medium text-sub">금액</label>
+          <AmountInput value={amount} onChange={setAmount} />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-[13px] font-medium text-sub">시점</label>
+          <input
+            type="month"
+            value={targetYm}
+            min={shiftYm(nowYm, 1)}
+            onChange={(e) => e.target.value && setTargetYm(e.target.value)}
+            className="tnum w-full rounded-btn border border-line bg-white px-3.5 py-3 text-[15px] text-ink outline-none focus:border-brand"
+          />
+          {targetYm <= nowYm && (
+            <p className="mt-1 text-[12px] text-danger">다음 달 이후로 골라 주세요</p>
+          )}
+        </div>
+        <div>
+          <label className="mb-1.5 block text-[13px] font-medium text-sub">
+            이름 <span className="text-cap">(비워도 돼요)</span>
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="예: 1억, 아이 학자금"
+            maxLength={20}
+            className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
+          />
+        </div>
+      </div>
+
+      <button
+        onClick={() => valid && onSave({ amount, targetYm, name: name.trim() || undefined })}
+        disabled={!valid}
+        className="mt-4 w-full rounded-btn bg-pink-500 py-3.5 text-[15px] font-bold text-white shadow-cta active:bg-pink-600 disabled:opacity-40"
+      >
+        {initial ? '저장' : '로드맵 만들기'}
+      </button>
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className="mt-2 h-10 w-full rounded-btn text-[13.5px] font-semibold text-sub active:bg-line"
+        >
+          그대로 두기
+        </button>
+      )}
+    </Card>
+  )
+}
+
+// ── 목표 넣은 뒤 ─────────────────────────────────
+function GoalView({
+  goal,
+  have,
+  pace,
+  income,
+  incomeByMember: byMember,
+  memberNames,
+  nowYm,
+  onEdit,
+  onCouple,
+  assetItems,
+}: {
+  goal: SavingsGoal
+  have: number
+  pace: Pace
+  income: number
+  incomeByMember: [number, number]
+  memberNames: [string, string]
+  nowYm: string
+  onEdit: () => void
+  onCouple: (patch: Partial<SavingsGoal>) => void
+  assetItems: Parameters<typeof AssetComposition>[0]['items']
+}) {
+  const plan = planGoal(have, goal, pace, nowYm)
+
+  // 슬라이더 — 저축률을 움직이면 D-day가 바뀐다. 기본은 지금 저축률
+  const currentRate = income > 0 ? Math.round(((pace.monthlySaving / income) * 100) as number) : 0
+  const [rate, setRate] = useState(currentRate)
+  const simPace: Pace = {
+    monthlySaving: Math.round((income * rate) / 100),
+    monthlySide: pace.monthlySide,
+  }
+  const sim = rate === currentRate ? plan : planGoal(have, goal, simPace, nowYm)
+
+  return (
+    <>
+      {/* ① 상태 + D-day — 흰 카드. "괜찮은 거야?"에 한 단어로 답한다 */}
+      <Card>
+        <span
+          className={`inline-block rounded-full px-3 py-1 text-[12.5px] font-bold ${STATUS_STYLE[sim.status]}`}
+        >
+          {STATUS_LABEL[sim.status]}
         </span>
-      </div>
-
-      <input
-        type="range"
-        min={0}
-        max={60}
-        value={rate}
-        onChange={(e) => setRate(Number(e.target.value))}
-        className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-line accent-brand"
-      />
-      <div className="mt-1 flex justify-between text-[11px] text-cap">
-        <span>0%</span>
-        <span>지금 {nowRate}%</span>
-        <span>60%</span>
-      </div>
-
-      <div className="mt-4 rounded-btn bg-bg p-3.5">
-        <p className="text-[13px] font-medium text-sub">
-          이 저축률이면 <b className="text-ink">10년 뒤 우리집 밑천</b>
+        <p className="tnum mt-2.5 text-[30px] font-extrabold tracking-tight text-ink">
+          {plan.monthsLeft > 0 ? `D-${plan.monthsLeft}개월` : '목표 달이에요'}
         </p>
-        <p className="tnum mt-1 text-[22px] font-extrabold text-ink">{abbreviateKRW(tenYear)}</p>
-        {diff !== 0 && (
-          <p className={`mt-1 text-[13px] font-bold ${diff > 0 ? 'text-brand' : 'text-danger'}`}>
-            지금보다 {diff > 0 ? '+' : '−'}
-            {abbreviateKRW(Math.abs(diff))} {diff > 0 ? '더 모아요 🔥' : '줄어요'}
+        <p className="mt-1 text-[13px] text-sub">
+          {formatYmKorean(goal.targetYm)}까지 ·{' '}
+          <DelayText plan={sim} simulated={rate !== currentRate} />
+        </p>
+      </Card>
+
+      {/* ② 모을 돈 */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <p className="text-[13px] font-medium text-cap">모을 돈{goal.name ? ` · ${goal.name}` : ''}</p>
+          <button
+            onClick={onEdit}
+            className="flex items-center gap-1 text-[12px] font-bold text-cap active:text-ink"
+            aria-label="목표 고치기"
+          >
+            <Pencil size={12} /> 고치기
+          </button>
+        </div>
+        <p className="tnum mt-1 text-[22px] font-extrabold text-ink">
+          {abbreviateKRW(goal.amount)}
+          <span className="ml-1.5 text-[13px] font-medium text-cap">· {formatYmKorean(goal.targetYm)}까지</span>
+        </p>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-line">
+          <div className="h-full rounded-full bg-brand" style={{ width: `${Math.round(plan.progress * 100)}%` }} />
+        </div>
+        <p className="tnum mt-1.5 text-[13px] text-sub">
+          지금까지 <b className="text-brand">{abbreviateKRW(have)}</b>{' '}
+          <span className="text-cap">({Math.round(plan.progress * 100)}%) · 자산 전체 기준</span>
+        </p>
+      </Card>
+
+      {/* ③ 지금 속도면 — 지렛대 둘 + 슬라이더 */}
+      <Card>
+        <p className="text-[13px] font-medium text-cap">지금 속도면</p>
+        <p className="tnum mt-1 text-[18px] font-extrabold text-ink">
+          {formatYmKorean(goal.targetYm)}에 <span className="text-brand">{abbreviateKRW(sim.projected)}</span>
+        </p>
+        {sim.gap > 0 ? (
+          <>
+            <p className="tnum mt-0.5 text-[14px] font-bold text-pink-600">
+              {abbreviateKRW(sim.gap)} 모자라요
+            </p>
+            {/* 지렛대 — 보여주기만 한다(버튼 아님). 실수로 눌러 목표가 바뀌면 안 된다 */}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Lever
+                top="월 저축을"
+                mid={sim.extraPerMonth !== null ? `+${abbreviateKRW(sim.extraPerMonth)}` : '—'}
+                bottom="더 하거나"
+              />
+              <Lever
+                top="시점을"
+                mid={sim.delayMonths !== null ? `${sim.delayMonths}개월` : '—'}
+                bottom="뒤로 미루거나"
+              />
+            </div>
+          </>
+        ) : (
+          <p className="mt-0.5 text-[14px] font-bold text-emerald-600">
+            이대로면 {sim.reachYm ? formatYmKorean(sim.reachYm) : '제때'}에 닿아요
           </p>
         )}
+
+        <div className="mt-4 border-t border-line pt-3">
+          <div className="flex items-center justify-between text-[12px] text-sub">
+            <span className="tnum">
+              월 저축 <b className="text-ink">{abbreviateKRW(simPace.monthlySaving)}</b> · 저축률 {rate}%
+            </span>
+            <span className="text-cap">움직이면 D-day가 바뀌어요</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={80}
+            step={1}
+            value={rate}
+            onChange={(e) => setRate(Number(e.target.value))}
+            aria-label="저축률"
+            className="mt-2 w-full accent-brand"
+          />
+          {rate !== currentRate && (
+            <button onClick={() => setRate(currentRate)} className="mt-1 text-[12px] font-bold text-brand">
+              지금 저축률({currentRate}%)로 되돌리기
+            </button>
+          )}
+        </div>
+      </Card>
+
+      {/* ④ 연도별 — 같은 속도라면 */}
+      <YearlyCard plan={sim} goalAmount={goal.amount} />
+
+      {/* ⑤ 만약에 — 소득이 있는 사람마다 */}
+      <WhatIfCard goal={goal} have={have} pace={pace} byMember={byMember} memberNames={memberNames} nowYm={nowYm} />
+
+      {/* ⑥ 어디에 담나 — 자산 화면과 같은 막대 */}
+      <AssetComposition items={assetItems} />
+
+      {/* ⑦ 우리 부부 */}
+      <CoupleCard goal={goal} memberNames={memberNames} onChange={onCouple} />
+    </>
+  )
+}
+
+function DelayText({ plan, simulated }: { plan: GoalPlan; simulated: boolean }) {
+  const lead = simulated ? '이 저축률이면' : '지금 속도면'
+  if (plan.delayMonths === null) return <span className="text-danger">저축이 0이라 닿는 날이 없어요</span>
+  if (plan.delayMonths === 0) return <span className="text-emerald-600">{lead} 제때 닿아요</span>
+  return (
+    <span className="text-amber-600">
+      {lead} <b>{plan.delayMonths}개월</b> 늦어요
+    </span>
+  )
+}
+
+function Lever({ top, mid, bottom }: { top: string; mid: string; bottom: string }) {
+  return (
+    <div className="rounded-btn border border-line px-2 py-2.5 text-center">
+      <p className="text-[11.5px] text-sub">{top}</p>
+      <p className="tnum text-[16px] font-extrabold text-brand">{mid}</p>
+      <p className="text-[11.5px] text-sub">{bottom}</p>
+    </div>
+  )
+}
+
+function YearlyCard({ plan, goalAmount }: { plan: GoalPlan; goalAmount: number }) {
+  const top = Math.max(goalAmount, ...plan.yearly.map((y) => y.value)) || 1
+  const goalPct = Math.round((goalAmount / top) * 100)
+  return (
+    <Card>
+      <p className="text-[13px] font-medium text-cap">
+        연도별 <span className="text-cap/70">· 같은 속도라면</span>
+      </p>
+      <div className="relative mt-3 flex h-28 items-end gap-2.5 pt-4">
+        {/* 목표선 — 마지막 막대가 여기 못 닿으면 모자란 것 */}
+        <div
+          className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-pink-400"
+          style={{ bottom: `${goalPct}%` }}
+        />
+        <span className="tnum absolute right-0 top-0 text-[10.5px] font-bold text-pink-500">
+          목표 {abbreviateKRW(goalAmount)}
+        </span>
+        {plan.yearly.map((y, i) => {
+          const last = i === plan.yearly.length - 1
+          const pct = Math.max(4, Math.round((y.value / top) * 100))
+          return (
+            <div key={y.ym} className="flex flex-1 flex-col items-center gap-1">
+              <span className="tnum text-[10.5px] text-sub">{abbreviateKRW(y.value)}</span>
+              <div
+                className={`w-full rounded-t-md ${last ? 'bg-brand/50' : 'bg-brand'}`}
+                style={{ height: `${pct}%` }}
+              />
+              <span className="tnum text-[10.5px] text-cap">
+                {i === 0 ? '지금' : y.ym.replace('-', '.')}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </Card>
   )
 }
 
-// ── ② 4기둥 한 줄 (탭하면 설명 펼침) ────────────
+function WhatIfCard({
+  goal,
+  have,
+  pace,
+  byMember,
+  memberNames,
+  nowYm,
+}: {
+  goal: SavingsGoal
+  have: number
+  pace: Pace
+  byMember: [number, number]
+  memberNames: [string, string]
+  nowYm: string
+}) {
+  const base = planGoal(have, goal, pace, nowYm)
+  const rows = ([0, 1] as const)
+    .filter((i) => byMember[i] > 0)
+    .map((i) => {
+      const cut = paceWithoutIncome(pace, byMember[i])
+      const p = planGoal(have, goal, cut, nowYm)
+      const extra =
+        p.delayMonths === null || base.delayMonths === null ? null : p.delayMonths - base.delayMonths
+      return { name: memberNames[i], saving: cut.monthlySaving, extra, dead: p.delayMonths === null }
+    })
+  if (rows.length === 0) return null
+
+  return (
+    <Card>
+      <p className="text-[13px] font-medium text-cap">만약에</p>
+      <div className="mt-2 space-y-2">
+        {rows.map((r) => (
+          <p key={r.name} className="tnum text-[13.5px] leading-relaxed text-sub">
+            <b className="text-ink">{r.name}</b> 소득이 멈추면 월 저축{' '}
+            <b className="text-ink">
+              {abbreviateKRW(pace.monthlySaving)} → {abbreviateKRW(r.saving)}
+            </b>
+            {r.dead ? (
+              <> · <span className="font-bold text-danger">저축이 멈춰요</span></>
+            ) : r.extra && r.extra > 0 ? (
+              <> · 시점 <span className="font-bold text-pink-600">{r.extra}개월 뒤로</span></>
+            ) : (
+              <> · <span className="font-bold text-emerald-600">그래도 제때 닿아요</span></>
+            )}
+          </p>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function CoupleCard({
+  goal,
+  memberNames,
+  onChange,
+}: {
+  goal: SavingsGoal
+  memberNames: [string, string]
+  onChange: (patch: Partial<SavingsGoal>) => void
+}) {
+  const [role1, setRole1] = useState(goal.role1 ?? '')
+  const [role2, setRole2] = useState(goal.role2 ?? '')
+  const [reason, setReason] = useState(goal.reason ?? '')
+  const field =
+    'w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap'
+
+  return (
+    <Card>
+      <p className="text-[13px] font-medium text-cap">우리 부부</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <div>
+          <label className="mb-1 block text-[12px] text-sub">{memberNames[0]}</label>
+          <input
+            value={role1}
+            onChange={(e) => setRole1(e.target.value)}
+            onBlur={() => role1 !== (goal.role1 ?? '') && onChange({ role1: role1.trim() || undefined })}
+            placeholder="맡는 것"
+            maxLength={30}
+            className={field}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[12px] text-sub">{memberNames[1]}</label>
+          <input
+            value={role2}
+            onChange={(e) => setRole2(e.target.value)}
+            onBlur={() => role2 !== (goal.role2 ?? '') && onChange({ role2: role2.trim() || undefined })}
+            placeholder="맡는 것"
+            maxLength={30}
+            className={field}
+          />
+        </div>
+      </div>
+      <label className="mb-1 mt-3 block text-[12px] text-sub">이 돈을 모으는 이유</label>
+      <input
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        onBlur={() => reason !== (goal.reason ?? '') && onChange({ reason: reason.trim() || undefined })}
+        placeholder="한 줄로"
+        maxLength={60}
+        className={field}
+      />
+    </Card>
+  )
+}
+
+// ── 우리 팀 상태 — 접어서 맨 아래 ────────────────
+function PillarsFolded({ pillars, headline }: { pillars: Pillars; headline: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Card>
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
+        <span>
+          <span className="block text-[15px] font-bold text-ink">우리 팀 상태</span>
+          <span className="mt-0.5 block text-[12.5px] text-cap">절약 · 절세 · 부수입 · 투자</span>
+        </span>
+        <ChevronDown size={18} className={`shrink-0 text-cap transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2 border-t border-line pt-3">
+          {(Object.keys(PILLAR_INFO) as (keyof Pillars)[]).map((key) => (
+            <PillarItem key={key} pillarKey={key} score={pillars[key]} />
+          ))}
+          <div className="mt-2 flex gap-2 rounded-btn bg-bg p-3">
+            <Sparkles size={16} className="mt-0.5 shrink-0 text-brand" />
+            <p className="text-[13.5px] font-medium leading-relaxed text-sub">{headline}</p>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 function PillarItem({ pillarKey, score }: { pillarKey: keyof Pillars; score: number }) {
   const [open, setOpen] = useState(false)
   const info = PILLAR_INFO[pillarKey]
@@ -213,10 +582,7 @@ function PillarItem({ pillarKey, score }: { pillarKey: keyof Pillars; score: num
           </div>
           <div className="mt-1.5 flex gap-1">
             {[0, 1, 2, 3].map((i) => (
-              <span
-                key={i}
-                className={`h-1.5 flex-1 rounded-full ${i < score ? tone : 'bg-line'}`}
-              />
+              <span key={i} className={`h-1.5 flex-1 rounded-full ${i < score ? tone : 'bg-line'}`} />
             ))}
           </div>
         </div>
@@ -238,55 +604,12 @@ function PillarItem({ pillarKey, score }: { pillarKey: keyof Pillars; score: num
     </div>
   )
 }
+
 function InfoLine({ label, text }: { label: string; text: string }) {
   return (
     <div>
       <p className="text-[11px] font-bold text-cap">{label}</p>
       <p className="mt-0.5 text-[13px] leading-relaxed text-sub">{text}</p>
     </div>
-  )
-}
-
-// ── ③ 이번 주 할 일 (체크, 7일 유지) ────────────
-const TASK_KEY = 'roadmap-weekly-task'
-function WeeklyTask({ weakest }: { weakest: keyof Pillars }) {
-  const action = PILLAR_INFO[weakest].action
-  const [done, setDone] = useState(() => {
-    try {
-      const raw = localStorage.getItem(TASK_KEY)
-      if (!raw) return false
-      const o = JSON.parse(raw) as { action: string; ts: number }
-      return o.action === action && Date.now() - o.ts < 7 * 864e5
-    } catch {
-      return false
-    }
-  })
-
-  const toggle = () => {
-    const next = !done
-    setDone(next)
-    if (next) localStorage.setItem(TASK_KEY, JSON.stringify({ action, ts: Date.now() }))
-    else localStorage.removeItem(TASK_KEY)
-  }
-
-  return (
-    <Card>
-      <p className="text-[13px] font-bold text-cap">이번 주 할 일</p>
-      <button onClick={toggle} className="mt-2 flex w-full items-center gap-3 text-left">
-        <span
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
-            done ? 'border-brand bg-brand' : 'border-line'
-          }`}
-        >
-          {done && <Check size={14} className="text-white" />}
-        </span>
-        <span
-          className={`text-[14.5px] font-semibold ${done ? 'text-cap line-through' : 'text-ink'}`}
-        >
-          {action}
-        </span>
-      </button>
-      {done && <p className="mt-2 text-[12.5px] font-medium text-brand">해냈어요! 이게 종잣돈이 돼요 🤍</p>}
-    </Card>
   )
 }

@@ -81,6 +81,8 @@ export async function fetchHouseholdData(householdId: string): Promise<Household
     childNames: (h.child_names as string[] | null) ?? [],
     targetNetWorth: Number(h.target_net_worth),
     startYear: h.start_year,
+    // 칸이 없는 옛 DB(마이그레이션 전)에서도 죽지 않게 — 없으면 '목표 넣기 전'으로 본다
+    goal: (h.goal ?? undefined) as Profile['goal'],
   }
   const ledgers: MonthlyLedger[] = (lg.data ?? []).map((r) => ({
     ym: r.ym,
@@ -217,6 +219,7 @@ export async function pushProfile(householdId: string, profile: Profile) {
       child_names: profile.childNames ?? [],
       target_net_worth: profile.targetNetWorth,
       start_year: profile.startYear,
+      goal: profile.goal ?? null,
     })
     .eq('id', householdId)
   if (error) throw error

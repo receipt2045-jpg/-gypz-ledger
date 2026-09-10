@@ -15,6 +15,8 @@ create table public.households (
   child_names jsonb not null default '[]'::jsonb,
   target_net_worth bigint not null default 1000000000,
   start_year int not null default date_part('year', now()),
+  -- 모을 돈 목표 {amount, targetYm, name?, role1?, role2?, reason?, createdYm?}. 없으면 로드맵이 입력 화면을 띄운다
+  goal jsonb,
   categories jsonb not null default '{
     "income": ["주수입", "부수입", "투자수익", "기타"],
     "saving": ["주택청약", "예금", "적금", "연금", "목적저금", "기타"],

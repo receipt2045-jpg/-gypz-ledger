@@ -1,6 +1,20 @@
 export type CategoryGroup = 'income' | 'saving' | 'investment' | 'fixed' | 'variable'
 // 그룹 라벨: 수입, 저축, 투자, 고정지출, 변동지출
 
+/**
+ * 모을 돈 목표 — 자산 로드맵의 기준점.
+ * 집·집값은 넣지 않는다. 금액과 시점만 사용자가 정하고, 나머지는 정산에서 계산한다.
+ */
+export interface SavingsGoal {
+  amount: number // 목표 금액(원)
+  targetYm: string // 'YYYY-MM'
+  name?: string // 비워도 된다 ("1억", "아이 학자금"…)
+  role1?: string // 이 목표에서 구성원 1이 맡는 것
+  role2?: string
+  reason?: string // 이 돈을 모으는 이유 — 홈에도 한 줄로 띄운다
+  createdYm?: string // 세운 달 — "그때 대비 얼마나 왔나"의 기준
+}
+
 export interface Profile {
   member1Name: string // 기본 "남편"
   member2Name: string // 기본 "아내"
@@ -9,6 +23,7 @@ export interface Profile {
   childNames?: string[] // 자녀 (자산 소유자로 사용, 예: "첫째", "자녀1")
   targetNetWorth: number // 10년 목표 순자산(원)
   startYear: number
+  goal?: SavingsGoal // 없으면 로드맵이 '목표 넣기 전' 화면을 보여준다
 }
 
 export interface BudgetItem {
