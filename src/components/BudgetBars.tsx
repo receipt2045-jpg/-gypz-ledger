@@ -21,8 +21,16 @@ export default function BudgetBars({ items }: { items: BudgetItem[] }) {
     cur.actual += it.actual
     map.set(it.category, cur)
   }
-  // 예산이 잡힌 카테고리만, 예산 큰 순
-  const cats = [...map.values()].filter((c) => c.planned > 0).sort((a, b) => b.planned - a.planned)
+  // 예산이 있거나, 예산은 없어도 쓴 게 있는 카테고리.
+  // 제보(2026-09-11): "예산 대비 지출도 남편 것만 적용된 것 같아요".
+  // 정산 중에 넣은 항목은 planned=0이라 예전엔 여기서 통째로 빠졌다 — 쓴 돈이 화면에서 사라졌다.
+  // 예산 있는 것은 예산 큰 순, 예산 없는 것은 그 뒤에 쓴 돈 큰 순.
+  const cats = [...map.values()]
+    .filter((c) => c.planned > 0 || c.actual > 0)
+    .sort((a, b) => {
+      if (a.planned > 0 !== b.planned > 0) return a.planned > 0 ? -1 : 1
+      return a.planned > 0 ? b.planned - a.planned : b.actual - a.actual
+    })
 
   const totalPlanned = cats.reduce((s, c) => s + c.planned, 0)
   const totalActual = cats.reduce((s, c) => s + c.actual, 0)
@@ -48,15 +56,17 @@ export default function BudgetBars({ items }: { items: BudgetItem[] }) {
         <span
           className={`tnum text-[13px] font-bold ${totalActual > totalPlanned ? 'text-danger' : 'text-brand'}`}
         >
-          {Math.round((totalActual / totalPlanned) * 100)}%
+          {totalPlanned > 0 ? `${Math.round((totalActual / totalPlanned) * 100)}%` : '예산 없음'}
         </span>
       </div>
 
       {/* 카테고리별 막대 */}
       <div className="space-y-2.5">
         {cats.map((c) => {
-          const ratio = c.planned > 0 ? c.actual / c.planned : 0
-          const over = c.actual > c.planned
+          // 예산 없이 쓴 것은 '초과'가 아니라 '예산이 없는 것'이다 — 빨강 대신 회색 꽉 찬 막대
+          const unbudgeted = c.planned === 0
+          const ratio = c.planned > 0 ? c.actual / c.planned : 1
+          const over = !unbudgeted && c.actual > c.planned
           const width = Math.min(ratio, 1) * 100
           return (
             <div key={c.category}>
@@ -64,12 +74,12 @@ export default function BudgetBars({ items }: { items: BudgetItem[] }) {
                 <span className="font-medium text-ink">{c.category}</span>
                 <span className={`tnum ${over ? 'font-bold text-danger' : 'text-sub'}`}>
                   {abbreviateKRW(c.actual)}
-                  <span className="text-cap"> / {abbreviateKRW(c.planned)}</span>
+                  <span className="text-cap"> / {unbudgeted ? '예산 없음' : abbreviateKRW(c.planned)}</span>
                 </span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-line">
                 <div
-                  className={`h-full rounded-full ${over ? 'bg-danger' : 'bg-brand'}`}
+                  className={`h-full rounded-full ${over ? 'bg-danger' : unbudgeted ? 'bg-cap/50' : 'bg-brand'}`}
                   style={{ width: `${over ? 100 : width}%` }}
                 />
               </div>

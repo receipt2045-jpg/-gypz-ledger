@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  effectiveAmount,
   deriveAssetsFromPrevious,
   deriveItemsFromPrevious,
   mergeAssets,
@@ -144,5 +145,23 @@ describe('resolveSnapshot — 이미 불어난 데이터 정리', () => {
     const dup = { id: 'same', kind: 'asset', group: 'stock', name: '미국주식', amount: 13_600_000 } as AssetItem
     const snap = resolveSnapshot([{ ym: '2026-08', items: [dup, { ...dup }, { ...dup }] }], '2026-08')
     expect(snap.items).toHaveLength(1)
+  })
+})
+
+describe('effectiveAmount — 정산한 사람 것은 실제값으로 (제보 2026-09-10·11)', () => {
+  const it0 = (planned: number, actual: number) =>
+    ({ id: 'x', group: 'fixed', category: '보험', member: 2, planned, actual }) as const
+
+  it('결산 완료면 실제값', () => {
+    expect(effectiveAmount(it0(400_000, 600_000), true)).toBe(600_000)
+  })
+
+  it('결산 전이라도 실제값이 있으면 실제값 — 정산 중 넣은 항목(planned 0)이 사라지지 않는다', () => {
+    expect(effectiveAmount(it0(0, 150_000), false)).toBe(150_000)
+    expect(effectiveAmount(it0(400_000, 600_000), false)).toBe(600_000)
+  })
+
+  it('결산 전이고 실제값이 없으면 계획값 — 아직 정산 안 한 사람 것', () => {
+    expect(effectiveAmount(it0(400_000, 0), false)).toBe(400_000)
   })
 })

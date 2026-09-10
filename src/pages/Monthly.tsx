@@ -131,7 +131,7 @@ export default function Monthly() {
 
       {!ledger.closed && (
         <p className="-mt-1 text-center text-[12px] font-medium text-cap">
-          아직 정산 전이에요 · 계획 금액 기준
+          아직 정산 전이에요 · 정산한 사람은 실제, 아직이면 계획 기준
         </p>
       )}
 

@@ -168,8 +168,17 @@ export function resolveSnapshot(snapshots: AssetSnapshot[], ym: string): AssetSn
 }
 
 /** 결산 완료면 actual, 아니면 planned 를 유효값으로 사용 */
+/**
+ * 화면·합계에 쓰는 금액.
+ * 결산 완료면 실제값. 아니면 실제값이 있으면 실제값, 없으면 계획값.
+ *
+ * 예전엔 결산 전이면 무조건 계획값이었다. 그러면 한 사람만 정산한 달에
+ * 그 사람이 정산 중에 넣은 항목(planned=0·actual=금액)이 합계·목록·막대에서
+ * 전부 사라진다. 제보 두 건("고정비 점검에 남편 것만", "예산 대비 지출도 남편 것만")이
+ * 모두 여기서 났다. 정산한 사람 것은 실제값으로, 아직인 사람 것은 계획값으로 본다.
+ */
 export function effectiveAmount(item: BudgetItem, closed: boolean): number {
-  return closed ? item.actual : item.planned
+  return closed ? item.actual : item.actual || item.planned
 }
 
 /** 그룹별 유효 합계 */
