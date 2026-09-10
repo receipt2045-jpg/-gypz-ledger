@@ -219,7 +219,9 @@ export async function pushProfile(householdId: string, profile: Profile) {
       child_names: profile.childNames ?? [],
       target_net_worth: profile.targetNetWorth,
       start_year: profile.startYear,
-      goal: profile.goal ?? null,
+      // goal 칸은 household-goal.sql을 실행해야 생긴다. 칸이 없는 DB에 goal을 보내면
+      // 이름·색·목표 순자산 저장까지 통째로 실패하므로, 목표를 세운 집만 보낸다.
+      ...(profile.goal !== undefined ? { goal: profile.goal } : {}),
     })
     .eq('id', householdId)
   if (error) throw error
