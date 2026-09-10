@@ -4,7 +4,7 @@ import Roadmap from './Roadmap'
 import { renderScreen, seedStore, TEST_YM } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
 import { currentYm, shiftYm } from '../lib/format'
-import type { BudgetItem } from '../types'
+import type { BudgetItem, SavingsGoal } from '../types'
 
 const 만 = 10_000
 const item = (
@@ -16,7 +16,7 @@ const item = (
 ): BudgetItem => ({ id, group, category, member, planned: amount, actual: amount })
 
 /** 목업 숫자: 소득 600(남편 250·아내 350) · 저축 330 · 부수입 30 · 자산 3,100만 */
-function seedCouple(goal?: { amount: number; targetYm: string; name?: string }) {
+function seedCouple(goal?: SavingsGoal) {
   seedStore({
     ledgers: [
       {
@@ -50,6 +50,7 @@ function seedCouple(goal?: { amount: number; targetYm: string; name?: string }) 
 
 // 목표 달은 '오늘'을 기준으로 30달 뒤 — 어느 달에 돌려도 같은 숫자가 나온다
 const TARGET = shiftYm(currentYm(), 30)
+const savedGoal = () => useLedgerStore.getState().profile.goal
 
 describe('자산 로드맵 — 목표 넣기 전', () => {
   it('지금 속도와 입력 칸이 보이고, 상태 배지는 아직 없다', () => {
@@ -69,24 +70,67 @@ describe('자산 로드맵 — 목표 넣기 전', () => {
     expect(screen.getByText(/먼저 이번 달 정산을/)).toBeInTheDocument()
   })
 
-  it('금액·시점을 넣고 만들면 목표가 저장된다', async () => {
+  it('만들면 목표와 함께 "세울 때 자산"이 기준점으로 저장된다', async () => {
     seedCouple()
     const { user } = renderScreen(<Roadmap />)
 
     await user.click(screen.getByRole('button', { name: '로드맵 만들기' }))
 
-    const saved = useLedgerStore.getState().profile.goal
-    expect(saved?.amount).toBe(100_000_000) // 기본값 1억
-    expect(saved?.targetYm).toBe(shiftYm(currentYm(), 36)) // 기본값 3년 뒤
-    expect(saved?.createdYm).toBe(currentYm())
-    // 화면이 목표 넣은 뒤로 바뀐다
-    expect(screen.getByText('모을 돈')).toBeInTheDocument()
+    expect(savedGoal()?.amount).toBe(100_000_000) // 기본값 1억
+    expect(savedGoal()?.targetYm).toBe(shiftYm(currentYm(), 36)) // 기본값 3년 뒤
+    expect(savedGoal()?.createdYm).toBe(currentYm())
+    expect(savedGoal()?.baseAssets).toBe(3_100 * 만) // 지금 자산이 기준점
+    expect(screen.getByText(/^모을 돈/)).toBeInTheDocument()
   })
 })
 
-describe('자산 로드맵 — 목표 넣은 뒤 (목업 숫자)', () => {
-  it('상태·D-day·모자란 돈·지렛대 둘이 목업대로 나온다', () => {
+describe('자산 로드맵 — 모을 돈은 지금 자산 위에 얹는 돈', () => {
+  it('방금 세운 목표는 0%에서 시작한다 — 기존 자산은 세지 않는다', () => {
+    seedCouple({ amount: 18_000 * 만, targetYm: TARGET, baseAssets: 3_100 * 만 })
+    renderScreen(<Roadmap />)
+
+    expect(screen.getByText(/세운 뒤 모은 돈/)).toHaveTextContent('0원')
+    expect(screen.getByText(/\(0%\)/)).toBeInTheDocument()
+    expect(screen.getByText(/세울 때 자산 3,100만원 → 지금 3,100만원/)).toBeInTheDocument()
+  })
+
+  it('세운 뒤 자산이 늘어난 만큼만 진행으로 센다', () => {
+    // 세울 때 0 → 지금 3,100만 = 3,100만 모은 것
+    seedCouple({ amount: 18_000 * 만, targetYm: TARGET, baseAssets: 0 })
+    renderScreen(<Roadmap />)
+    expect(screen.getByText(/세운 뒤 모은 돈/)).toHaveTextContent('3,100만원')
+    expect(screen.getByText(/\(17%\)/)).toBeInTheDocument()
+  })
+
+  it('자산이 세울 때보다 줄었으면 그렇다고 말한다', () => {
+    seedCouple({ amount: 18_000 * 만, targetYm: TARGET, baseAssets: 4_000 * 만 })
+    renderScreen(<Roadmap />)
+    expect(screen.getByText(/그새 줄었어요/)).toBeInTheDocument()
+    expect(screen.getByText(/세운 뒤 모은 돈/)).toHaveTextContent('0원') // 음수는 0으로 보여준다
+  })
+
+  it('기준점 없이 저장된 옛 목표는 지금 자산으로 한 번 채운다', () => {
     seedCouple({ amount: 18_000 * 만, targetYm: TARGET })
+    renderScreen(<Roadmap />)
+    expect(savedGoal()?.baseAssets).toBe(3_100 * 만)
+  })
+
+  it('목표를 고쳐도 기준점은 그대로다 — 고칠 때마다 0%로 돌아가면 안 된다', async () => {
+    seedCouple({ amount: 18_000 * 만, targetYm: TARGET, baseAssets: 0 })
+    const { user } = renderScreen(<Roadmap />)
+
+    await user.click(screen.getByRole('button', { name: '목표 고치기' }))
+    await user.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(savedGoal()?.baseAssets).toBe(0)
+  })
+})
+
+describe('자산 로드맵 — 목표 넣은 뒤 (목업 숫자: 세운 뒤 3,100만 모은 상태)', () => {
+  const mock = { amount: 18_000 * 만, targetYm: TARGET, baseAssets: 0 }
+
+  it('상태·D-day·모자란 돈·지렛대 둘이 목업대로 나온다', () => {
+    seedCouple(mock)
     renderScreen(<Roadmap />)
 
     expect(screen.getByText('조금 모자라요')).toBeInTheDocument()
@@ -94,35 +138,27 @@ describe('자산 로드맵 — 목표 넣은 뒤 (목업 숫자)', () => {
     // ③ 카드와 연도별 마지막 막대에 같이 뜬다 — 둘 다 같은 숫자여야 한다
     expect(screen.getAllByText(/1억 3,900만/).length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText(/4,100만.*모자라요/)).toBeInTheDocument()
-    // 지렛대: 월 +137만 또는 12개월 (12개월은 ① "12개월 늦어요"에도 뜬다 → 둘 다 같은 수여야)
+    // 지렛대: 월 +137만 또는 12개월 (12개월은 ① "12개월 늦어요"에도 뜬다)
     expect(screen.getByText('+137만원')).toBeInTheDocument()
     expect(screen.getAllByText('12개월').length).toBeGreaterThanOrEqual(2)
   })
 
-  it('진행률은 자산 전체 기준이다 — 현금만이 아니라 주식까지', () => {
-    seedCouple({ amount: 18_000 * 만, targetYm: TARGET })
-    renderScreen(<Roadmap />)
-    // 2,500 + 600 = 3,100만 → 17% (② 카드와 연도별 '지금' 막대 양쪽에 뜬다)
-    expect(screen.getAllByText(/3,100만/).length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText(/\(17%\)/)).toBeInTheDocument()
-  })
-
   it('지렛대는 버튼이 아니다 — 눌러서 목표가 바뀌면 안 된다', () => {
-    seedCouple({ amount: 18_000 * 만, targetYm: TARGET })
+    seedCouple(mock)
     renderScreen(<Roadmap />)
     expect(screen.queryByRole('button', { name: /12개월/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /137만/ })).not.toBeInTheDocument()
   })
 
   it('충분히 모으면 잘 가고 있어요', () => {
-    seedCouple({ amount: 1_000 * 만, targetYm: TARGET })
+    seedCouple({ amount: 1_000 * 만, targetYm: TARGET, baseAssets: 0 })
     renderScreen(<Roadmap />)
     expect(screen.getByText('잘 가고 있어요')).toBeInTheDocument()
     expect(screen.queryByText(/모자라요/)).not.toBeInTheDocument()
   })
 
   it('만약에 — 소득이 있는 사람마다 한 줄', () => {
-    seedCouple({ amount: 18_000 * 만, targetYm: TARGET })
+    seedCouple(mock)
     renderScreen(<Roadmap />)
     expect(screen.getByText('만약에')).toBeInTheDocument()
     // 이름이 <b>로 감싸여 있어 한 줄 전체 텍스트로 본다
@@ -134,7 +170,7 @@ describe('자산 로드맵 — 목표 넣은 뒤 (목업 숫자)', () => {
   })
 
   it('고치기를 누르면 입력 화면으로, 그대로 두기로 돌아온다', async () => {
-    seedCouple({ amount: 18_000 * 만, targetYm: TARGET, name: '첫 1억 8천' })
+    seedCouple({ ...mock, name: '첫 1억 8천' })
     const { user } = renderScreen(<Roadmap />)
 
     await user.click(screen.getByRole('button', { name: '목표 고치기' }))
@@ -145,18 +181,18 @@ describe('자산 로드맵 — 목표 넣은 뒤 (목업 숫자)', () => {
   })
 
   it('역할·이유를 적으면 목표에 같이 저장된다', async () => {
-    seedCouple({ amount: 18_000 * 만, targetYm: TARGET })
+    seedCouple(mock)
     const { user } = renderScreen(<Roadmap />)
 
     const reason = screen.getByPlaceholderText('한 줄로')
     await user.type(reason, '아이 학교 옮기지 않기')
     await user.tab() // blur → 저장
 
-    expect(useLedgerStore.getState().profile.goal?.reason).toBe('아이 학교 옮기지 않기')
+    expect(savedGoal()?.reason).toBe('아이 학교 옮기지 않기')
   })
 
   it('우리 팀 상태는 접혀서 맨 아래에 있다', async () => {
-    seedCouple({ amount: 18_000 * 만, targetYm: TARGET })
+    seedCouple(mock)
     const { user } = renderScreen(<Roadmap />)
 
     expect(screen.queryByText('절약', { selector: 'span' })).not.toBeInTheDocument()
@@ -165,7 +201,7 @@ describe('자산 로드맵 — 목표 넣은 뒤 (목업 숫자)', () => {
   })
 
   it('이번 주 할 일과 내집마련 여정은 더 이상 없다', () => {
-    seedCouple({ amount: 18_000 * 만, targetYm: TARGET })
+    seedCouple(mock)
     renderScreen(<Roadmap />)
     expect(screen.queryByText('이번 주 할 일')).not.toBeInTheDocument()
     expect(screen.queryByText('내집마련 여정')).not.toBeInTheDocument()

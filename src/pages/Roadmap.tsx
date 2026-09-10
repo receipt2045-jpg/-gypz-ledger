@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Pencil, Sparkles } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
@@ -71,9 +71,23 @@ export default function Roadmap() {
   const diag = diagnose(pillars)
 
   const saveGoal = (g: SavingsGoal) => {
-    updateProfile({ goal: { ...profile.goal, ...g, createdYm: profile.goal?.createdYm ?? nowYm } })
+    updateProfile({
+      goal: {
+        ...profile.goal,
+        ...g,
+        createdYm: profile.goal?.createdYm ?? nowYm,
+        // 기준점은 처음 세울 때 한 번만 — 고칠 때마다 0%로 돌아가면 안 된다
+        baseAssets: profile.goal?.baseAssets ?? have,
+      },
+    })
     setEditing(false)
   }
+
+  // 기준점 없이 저장된 목표(칸을 나중에 만든 경우)는 지금 자산을 기준으로 한 번 채운다
+  useEffect(() => {
+    if (goal && goal.baseAssets === undefined) updateProfile({ goal: { ...goal, baseAssets: have } })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goal?.baseAssets])
 
   return (
     <div className="animate-fade-up space-y-4 pb-24">
@@ -244,7 +258,10 @@ function GoalView({
   onCouple: (patch: Partial<SavingsGoal>) => void
   assetItems: Parameters<typeof AssetComposition>[0]['items']
 }) {
-  const plan = planGoal(have, goal, pace, nowYm)
+  // '모을 돈'은 지금 자산 위에 얹는 돈 — 세운 뒤로 늘어난 만큼만 진행으로 센다
+  const base = goal.baseAssets ?? have
+  const saved = have - base
+  const plan = planGoal(saved, goal, pace, nowYm)
 
   // 슬라이더 — 저축률을 움직이면 D-day가 바뀐다. 기본은 지금 저축률
   const currentRate = income > 0 ? Math.round(((pace.monthlySaving / income) * 100) as number) : 0
@@ -253,7 +270,7 @@ function GoalView({
     monthlySaving: Math.round((income * rate) / 100),
     monthlySide: pace.monthlySide,
   }
-  const sim = rate === currentRate ? plan : planGoal(have, goal, simPace, nowYm)
+  const sim = rate === currentRate ? plan : planGoal(saved, goal, simPace, nowYm)
 
   return (
     <>
@@ -293,8 +310,12 @@ function GoalView({
           <div className="h-full rounded-full bg-brand" style={{ width: `${Math.round(plan.progress * 100)}%` }} />
         </div>
         <p className="tnum mt-1.5 text-[13px] text-sub">
-          지금까지 <b className="text-brand">{abbreviateKRW(have)}</b>{' '}
-          <span className="text-cap">({Math.round(plan.progress * 100)}%) · 자산 전체 기준</span>
+          세운 뒤 모은 돈 <b className="text-brand">{abbreviateKRW(Math.max(0, saved))}</b>{' '}
+          <span className="text-cap">({Math.round(plan.progress * 100)}%)</span>
+        </p>
+        <p className="tnum mt-0.5 text-[11.5px] text-cap">
+          세울 때 자산 {abbreviateKRW(base)} → 지금 {abbreviateKRW(have)}
+          {saved < 0 && <span className="text-danger"> · 그새 줄었어요</span>}
         </p>
       </Card>
 
@@ -358,7 +379,7 @@ function GoalView({
       <YearlyCard plan={sim} goalAmount={goal.amount} />
 
       {/* ⑤ 만약에 — 소득이 있는 사람마다 */}
-      <WhatIfCard goal={goal} have={have} pace={pace} byMember={byMember} memberNames={memberNames} nowYm={nowYm} />
+      <WhatIfCard goal={goal} saved={saved} pace={pace} byMember={byMember} memberNames={memberNames} nowYm={nowYm} />
 
       {/* ⑥ 어디에 담나 — 자산 화면과 같은 막대 */}
       <AssetComposition items={assetItems} />
@@ -430,25 +451,25 @@ function YearlyCard({ plan, goalAmount }: { plan: GoalPlan; goalAmount: number }
 
 function WhatIfCard({
   goal,
-  have,
+  saved,
   pace,
   byMember,
   memberNames,
   nowYm,
 }: {
   goal: SavingsGoal
-  have: number
+  saved: number // 세운 뒤 모은 돈 — GoalView와 같은 기준
   pace: Pace
   byMember: [number, number]
   memberNames: [string, string]
   nowYm: string
 }) {
-  const base = planGoal(have, goal, pace, nowYm)
+  const base = planGoal(saved, goal, pace, nowYm)
   const rows = ([0, 1] as const)
     .filter((i) => byMember[i] > 0)
     .map((i) => {
       const cut = paceWithoutIncome(pace, byMember[i])
-      const p = planGoal(have, goal, cut, nowYm)
+      const p = planGoal(saved, goal, cut, nowYm)
       const extra =
         p.delayMonths === null || base.delayMonths === null ? null : p.delayMonths - base.delayMonths
       return { name: memberNames[i], saving: cut.monthlySaving, extra, dead: p.delayMonths === null }

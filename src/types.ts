@@ -12,7 +12,13 @@ export interface SavingsGoal {
   role1?: string // 이 목표에서 구성원 1이 맡는 것
   role2?: string
   reason?: string // 이 돈을 모으는 이유 — 홈에도 한 줄로 띄운다
-  createdYm?: string // 세운 달 — "그때 대비 얼마나 왔나"의 기준
+  createdYm?: string // 세운 달
+  /**
+   * 세울 때 자산(원). '모을 돈'은 지금 자산 위에 새로 얹는 돈이라,
+   * 진행은 (지금 자산 − 이 값)으로 센다. 목표를 고쳐도 이 값은 유지한다 —
+   * 고칠 때마다 0%로 돌아가면 안 된다.
+   */
+  baseAssets?: number
 }
 
 export interface Profile {

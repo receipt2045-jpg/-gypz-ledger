@@ -51,21 +51,26 @@ const ceilMan = (won: number) => Math.ceil(won / 10_000) * 10_000
  */
 const SLIGHT_LIMIT = 12
 
-export function planGoal(have: number, goal: Goal, pace: Pace, nowYm: string): GoalPlan {
+/**
+ * @param saved 목표를 세운 뒤 지금까지 새로 모은 돈 (= 지금 자산 − 세울 때 자산).
+ *   '모을 돈'은 기존 자산 위에 얹는 돈이라 세운 날엔 0에서 시작한다.
+ *   자산이 줄었으면 음수로 들어와도 된다 — 그만큼 더 모아야 하는 게 사실이다.
+ */
+export function planGoal(saved: number, goal: Goal, pace: Pace, nowYm: string): GoalPlan {
   const monthsLeft = Math.max(0, monthsBetween(nowYm, goal.targetYm))
   const monthlyPace = Math.max(0, pace.monthlySaving) + Math.max(0, pace.monthlySide)
-  const projected = have + monthlyPace * monthsLeft
+  const projected = saved + monthlyPace * monthsLeft
   const gap = goal.amount - projected
-  const progress = goal.amount > 0 ? Math.min(1, Math.max(0, have / goal.amount)) : 0
+  const progress = goal.amount > 0 ? Math.min(1, Math.max(0, saved / goal.amount)) : 0
 
   // 지금 속도로 닿는 달
   let reachYm: string | null = null
   let delayMonths: number | null = null
-  if (have >= goal.amount) {
+  if (saved >= goal.amount) {
     reachYm = nowYm
     delayMonths = 0
   } else if (monthlyPace > 0) {
-    const need = Math.ceil((goal.amount - have) / monthlyPace)
+    const need = Math.ceil((goal.amount - saved) / monthlyPace)
     reachYm = shiftYm(nowYm, need)
     delayMonths = Math.max(0, need - monthsLeft)
   }
@@ -80,7 +85,7 @@ export function planGoal(have: number, goal: Goal, pace: Pace, nowYm: string): G
   // 연도별 — 지금, 12달마다, 마지막은 목표 달(12의 배수가 아니어도)
   const yearly: { ym: string; value: number }[] = []
   for (let m = 0; m < monthsLeft; m += 12) {
-    yearly.push({ ym: shiftYm(nowYm, m), value: have + monthlyPace * m })
+    yearly.push({ ym: shiftYm(nowYm, m), value: saved + monthlyPace * m })
   }
   yearly.push({ ym: goal.targetYm, value: projected })
 
