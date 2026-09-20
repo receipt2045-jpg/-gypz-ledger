@@ -263,3 +263,33 @@ describe('연간 리포트 — 조회 전용 + 연말정산 입구', () => {
     expect(screen.getByText(/누구 카드로 쓸까/)).toBeInTheDocument()
   })
 })
+
+describe('가계부 탭 — 소비 기록을 남편 · 아내 · 공동으로 나눠 본다', () => {
+  const at = (day: number) => `${currentYm()}-${String(day).padStart(2, '0')}T12:00:00.000Z`
+  const seed = (withShared: boolean) =>
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        { id: 'a', memberNo: 1, category: '식비', kind: 'variable', amount: 10_000, createdAt: at(3) },
+        { id: 'b', memberNo: 2, category: '카페', kind: 'variable', amount: 4_000, createdAt: at(4) },
+        ...(withShared
+          ? [{ id: 'c', memberNo: 2 as const, shared: true, category: '주거', kind: 'fixed' as const, amount: 500_000, createdAt: at(5) }]
+          : []),
+      ],
+    })
+
+  it('공동 기록이 있으면 세 칸 합계가 나온다 — 공동은 적은 사람 합계에 섞이지 않는다', () => {
+    seed(true)
+    renderScreen(<Monthly />)
+    const cell = (name: string) => screen.getByText(name, { selector: 'p' }).parentElement!.textContent
+    expect(cell('남편')).toContain('10,000원')
+    expect(cell('아내')).toContain('4,000원') // 아내가 적은 공동 50만은 여기 안 들어간다
+    expect(cell('공동')).toContain('500,000원')
+  })
+
+  it('공동 기록이 없는 달엔 세 칸을 안 띄운다', () => {
+    seed(false)
+    renderScreen(<Monthly />)
+    expect(screen.queryByText('공동', { selector: 'p' })).not.toBeInTheDocument()
+  })
+})

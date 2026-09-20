@@ -244,6 +244,26 @@ export default function Monthly() {
             </span>
             <span className="tnum text-[15px] font-bold text-ink">{formatWon(logTotal)}</span>
           </button>
+          {/* 남편 · 아내 · 공동 나눠 보기 — 제보: "한 달치 소비기록을 [아내, 남편] + 함께로".
+              공동 기록이 하나라도 있는 달, 함께 보기일 때만 띄운다. */}
+          {member === 0 && monthLog.some((c) => c.shared) && (
+            <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+              {(
+                [
+                  [memberNames[0], monthLog.filter((c) => !c.shared && c.memberNo === 1)],
+                  [memberNames[1], monthLog.filter((c) => !c.shared && c.memberNo === 2)],
+                  ['공동', monthLog.filter((c) => c.shared)],
+                ] as const
+              ).map(([name, list]) => (
+                <div key={name} className="rounded-btn bg-bg px-2 py-2 text-center">
+                  <p className="truncate text-[11.5px] font-bold text-sub">{name}</p>
+                  <p className="tnum mt-0.5 text-[13px] font-bold text-ink">
+                    {formatWon(list.reduce((s, c) => s + c.amount, 0))}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
           {logOpen && (
             <div className="mt-3 space-y-2 border-t border-line pt-3">
               {monthLog.map((c) => {
