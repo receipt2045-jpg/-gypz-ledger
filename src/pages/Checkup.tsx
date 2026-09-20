@@ -766,7 +766,7 @@ function ConfessLog({
                   {d.getMonth() + 1}/{d.getDate()}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
-                  {memberNames[c.memberNo - 1]}
+                  {c.shared ? '공동' : memberNames[c.memberNo - 1]}
                   {c.note && <span className="text-cap"> · {c.note}</span>}
                 </span>
                 <span className="tnum shrink-0 text-[13px] font-semibold text-ink">

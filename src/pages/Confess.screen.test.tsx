@@ -186,3 +186,71 @@ describe('고백 페이지 — 지난 날짜로 적기', () => {
     expect(ymd(new Date(saved[0].createdAt))).toBe(target)
   })
 })
+
+describe('소비 기록 — 남편 · 아내 · 공동', () => {
+  it('쓴 사람 칸에 세 가지가 있다', () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    renderScreen(<Confess />)
+    expect(screen.getByLabelText('쓴 사람 남편')).toBeInTheDocument()
+    expect(screen.getByLabelText('쓴 사람 아내')).toBeInTheDocument()
+    expect(screen.getByLabelText('쓴 사람 공동')).toBeInTheDocument()
+  })
+
+  it('공동을 고르면 적은 사람 번호 + 공동 표시로 저장된다', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+
+    await user.click(screen.getByLabelText('쓴 사람 공동'))
+    await user.click(screen.getByRole('button', { name: '버튼으로 고르기' }))
+    await user.click(screen.getByRole('button', { name: '식비' }))
+    await user.click(screen.getByRole('button', { name: '+10,000' }))
+    await user.click(screen.getByRole('button', { name: '기록하기' }))
+
+    const saved = useLedgerStore.getState().confessions[0]
+    expect(saved.shared).toBe(true)
+    expect(saved.memberNo).toBe(2) // 정산은 사람별 — 적은 사람 몫으로 잡힌다
+  })
+
+  it('공동을 골라도 카드 주인은 멋대로 안 바뀐다', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByLabelText('쓴 사람 공동'))
+    expect(screen.getByLabelText('카드 주인 아내')).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it("공동 상태에선 '안 썼어요' 버튼이 없다 — 공동 무지출은 말이 안 된다", async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+    expect(screen.getByText(/안 썼어요/)).toBeInTheDocument()
+    await user.click(screen.getByLabelText('쓴 사람 공동'))
+    expect(screen.queryByText(/안 썼어요/)).not.toBeInTheDocument()
+  })
+
+  it("사람을 고른 기록엔 공동 표시가 안 붙는다", async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByText(/안 썼어요/))
+    expect(useLedgerStore.getState().confessions[0].shared).toBeUndefined()
+  })
+
+  it("목록에서 공동 기록은 '공동' 이름표를 단다", () => {
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        {
+          id: 's1',
+          memberNo: 2,
+          shared: true,
+          category: '식비',
+          kind: 'variable',
+          amount: 30_000,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+    renderScreen(<Confess />)
+    const row = screen.getByText('식비').closest('div')!
+    expect(row.textContent).toContain('공동')
+    expect(row.textContent).not.toContain('아내')
+  })
+})

@@ -62,7 +62,8 @@ export default function Monthly() {
   // 이번 달 고백 내역 (최근 62일만 로드되므로 오래된 달엔 자연히 비어 있음)
   const monthLog = useMemo(() => {
     const list = monthConfessions(confessions, ym)
-    return member === 0 ? list : list.filter((c) => c.memberNo === member)
+    // 공동 지출은 한 사람 것이 아니라 사람별 보기에선 빼고 '함께 보기'에만 둔다
+    return member === 0 ? list : list.filter((c) => c.memberNo === member && !c.shared)
   }, [confessions, ym, member])
   const [logOpen, setLogOpen] = useState(false)
   const logTotal = monthLog.reduce((sum, c) => sum + c.amount, 0)
@@ -254,9 +255,11 @@ export default function Monthly() {
                       {d.getMonth() + 1}/{d.getDate()}
                     </span>
                     <span
-                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${style.badge}`}
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+                        c.shared ? 'bg-line text-sub' : style.badge
+                      }`}
                     >
-                      {memberNames[c.memberNo - 1]}
+                      {c.shared ? '공동' : memberNames[c.memberNo - 1]}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
                       {c.category}

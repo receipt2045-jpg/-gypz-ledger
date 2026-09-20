@@ -171,14 +171,20 @@ export default function Confess() {
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
 
   // 누구 지출인지 — 한 사람이 부부 것을 몰아서 적는 집이 많아서 골라 적을 수 있게 했다
-  const [spender, setSpender] = useState<1 | 2>(memberNo ?? 1)
+  // '공동'은 한 사람 것으로 가를 수 없는 지출(공동 생활비 등). 저장할 땐 적은 사람 번호 + shared 표시
+  const [spender, setSpender] = useState<1 | 2 | 'shared'>(memberNo ?? 1)
+  const me: 1 | 2 = memberNo ?? 1
+  /** 기록에 남길 사람 번호 — 공동이면 적은 사람 */
+  const spenderNo: 1 | 2 = spender === 'shared' ? me : spender
+  const spenderLabel = spender === 'shared' ? '공동' : memberNames[spender - 1]
   // 누구 카드로 썼는지 — 연말정산 카드 공제가 명의자 기준이라 쌓아두면 추천이 정확해진다
   const [cardOwner, setCardOwner] = useState<1 | 2>(memberNo ?? 1)
   // 카드를 직접 고르기 전까지는 '쓴 사람 = 그 사람 카드'로 따라간다 (대부분 그렇다)
   const [cardPicked, setCardPicked] = useState(false)
-  const pickSpender = (m: 1 | 2) => {
+  const pickSpender = (m: 1 | 2 | 'shared') => {
     setSpender(m)
-    if (!cardPicked) setCardOwner(m)
+    // 공동은 누구 카드인지 짐작할 수 없다 — 카드 선택은 그대로 둔다
+    if (!cardPicked && m !== 'shared') setCardOwner(m)
   }
   const pickCardOwner = (m: 1 | 2) => {
     setCardOwner(m)
@@ -205,10 +211,13 @@ export default function Confess() {
   }, [recent])
 
   // 고른 사람이 그 날 이미 기록했는지 (무지출 버튼 노출 여부)
-  const confessedToday = recent.some(
-    (c) =>
-      c.memberNo === spender && new Date(c.createdAt).toLocaleDateString('sv-SE') === logDate,
-  )
+  // '공동'을 고른 상태에선 무지출 버튼을 안 띄운다 — "공동은 오늘 안 썼어요"는 말이 안 된다
+  const confessedToday =
+    spender === 'shared' ||
+    recent.some(
+      (c) =>
+        c.memberNo === spender && new Date(c.createdAt).toLocaleDateString('sv-SE') === logDate,
+    )
 
   const groups: { title: string; kind: CategoryGroup; cats: string[] }[] = [
     { title: '변동지출', kind: 'variable', cats: sortByFreq(categories.variable) },
@@ -230,8 +239,9 @@ export default function Confess() {
         amount: e.amount,
         note: e.note,
         createdAt,
-        // 고른 사람 지출로 적는다 — 배우자 몫을 대신 적을 수 있다
-        memberNo: spender,
+        // 고른 사람 지출로 적는다 — 배우자 몫을 대신 적을 수 있다. 공동이면 적은 사람 + 표시
+        memberNo: spenderNo,
+        shared: spender === 'shared' ? true : undefined,
         // 카드값이 아닌 것(저축·투자·수입)에는 카드 주인을 남기지 않는다
         cardOwner: e.kind === 'variable' || e.kind === 'fixed' ? cardOwner : undefined,
       })
@@ -243,7 +253,7 @@ export default function Confess() {
     const headline = (spend.length ? spend : entries).reduce((a, b) => (b.amount > a.amount ? b : a))
     const reaction = pickReaction({ category: headline.category, kind: headline.kind, amount: headline.amount }, all)
     // 연속 일수는 '쓴 사람' 기준 — 남편 몫을 적었으면 남편 연속이 이어진다
-    const streak = streakOf(all, spender)
+    const streak = streakOf(all, spenderNo)
     setResult({ reaction, streak, saved: entries.map(({ category, amount, note }) => ({ category, amount, note })) })
   }
 
@@ -637,20 +647,24 @@ export default function Confess() {
           <div className="flex items-center gap-2">
             <span className="w-[104px] shrink-0 text-[13px] font-bold text-sub">누가 썼어요?</span>
             <div className="flex flex-1 gap-1.5">
-              {([1, 2] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => pickSpender(m)}
-                  aria-label={`쓴 사람 ${memberNames[m - 1]}`}
-                  aria-pressed={spender === m}
-                  className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[13px] font-bold transition-colors ${
-                    spender === m ? 'bg-brand text-white' : 'bg-bg text-sub active:bg-line'
-                  }`}
-                >
-                  {memberNames[m - 1]}
-                  {memberNo === m && ' (나)'}
-                </button>
-              ))}
+              {([1, 2, 'shared'] as const).map((m) => {
+                const label = m === 'shared' ? '공동' : memberNames[m - 1]
+                return (
+                  <button
+                    key={m}
+                    onClick={() => pickSpender(m)}
+                    aria-label={`쓴 사람 ${label}`}
+                    aria-pressed={spender === m}
+                    className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[13px] font-bold transition-colors ${
+                      spender === m ? 'bg-brand text-white' : 'bg-bg text-sub active:bg-line'
+                    }`}
+                  >
+                    {label}
+                    {/* 세 칸이라 좁다 — '(나)'는 이름이 짧을 때만 붙인다 */}
+                    {memberNo === m && label.length <= 3 && ' (나)'}
+                  </button>
+                )
+              })}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -674,9 +688,11 @@ export default function Confess() {
             </div>
           </div>
           <p className="text-[11.5px] leading-relaxed text-cap">
-            {spender === memberNo
-              ? '연말정산 카드 공제는 명의자별로 계산돼요. 쌓이면 누구 카드를 쓸지 알려드려요'
-              : `${memberNames[spender - 1]} 지출로 적혀요. 대신 적어주셔도 괜찮아요`}
+            {spender === 'shared'
+              ? '공동 지출로 적혀요. 정산할 땐 적은 사람 항목으로 들어가요'
+              : spender === memberNo
+                ? '연말정산 카드 공제는 명의자별로 계산돼요. 쌓이면 누구 카드를 쓸지 알려드려요'
+                : `${spenderLabel} 지출로 적혀요. 대신 적어주셔도 괜찮아요`}
           </p>
         </div>
 
@@ -731,7 +747,7 @@ export default function Confess() {
               </span>
               {/* 이름 뒤에 조사를 붙이면 받침에 따라 틀린다 — 이름만 두고 뗀다 */}
               <span className="mt-0.5 block text-[12px] text-sub">
-                0원도 기록이에요. {memberNames[spender - 1]} 연속 일수가 안 끊겨요
+                0원도 기록이에요. {spenderLabel} 연속 일수가 안 끊겨요
               </span>
             </span>
             <ChevronRight size={18} className="shrink-0 text-cap" />
@@ -754,9 +770,11 @@ export default function Confess() {
                     {list.map((c) => (
                       <div key={c.id} className="flex items-center gap-2.5 py-2.5">
                         <span
-                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${memberStyle(c.memberNo, profile).badge}`}
+                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+                            c.shared ? 'bg-line text-sub' : memberStyle(c.memberNo, profile).badge
+                          }`}
                         >
-                          {memberNames[c.memberNo - 1]}
+                          {c.shared ? '공동' : memberNames[c.memberNo - 1]}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
                           {c.category}

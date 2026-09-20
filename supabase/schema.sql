@@ -79,6 +79,8 @@ create table public.confessions (
   -- 0원 = 무지출 기록 (안 쓴 날도 남겨야 연속이 안 끊긴다)
   amount bigint not null check (amount >= 0),
   note text,
+  -- 공동 지출 표시. member_no에는 적은 사람이 들어간다(정산은 사람별이라)
+  shared boolean not null default false,
   created_at timestamptz not null default now()
 );
 create index confessions_household_created on public.confessions (household_id, created_at desc);
