@@ -29,7 +29,7 @@ export default function BudgetBars({
    * 이번 달 소비 기록 합계로 채운다. 정산한 사람 몫은 정산 금액이 맞는 값이라 그대로 둔다.
    */
   const settled = new Set(settledMembers)
-  const useLog = (member: 1 | 2) => !!confessed && !closed && !settled.has(member)
+  const fillFromLog = (member: 1 | 2) => !!confessed && !closed && !settled.has(member)
   const applied = new Set<string>() // 같은 키 항목이 둘이면 기록 합계는 한 번만 얹는다
   let fromLog = false
 
@@ -45,7 +45,7 @@ export default function BudgetBars({
     if (it.group !== 'fixed' && it.group !== 'variable') continue
     let actual = it.actual
     const key = `${it.member}:${it.group}:${it.category}`
-    if (useLog(it.member) && !applied.has(key)) {
+    if (fillFromLog(it.member) && !applied.has(key)) {
       const logged = confessed!.get(key) ?? 0
       if (logged > actual) {
         actual = logged
@@ -61,7 +61,7 @@ export default function BudgetBars({
       if (applied.has(key) || amount <= 0) continue
       const [m, group, ...rest] = key.split(':')
       const member = Number(m) as 1 | 2
-      if ((group !== 'fixed' && group !== 'variable') || !useLog(member)) continue
+      if ((group !== 'fixed' && group !== 'variable') || !fillFromLog(member)) continue
       add(rest.join(':'), 0, amount)
       fromLog = true
     }
