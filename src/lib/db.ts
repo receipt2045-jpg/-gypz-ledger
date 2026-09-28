@@ -267,8 +267,13 @@ export async function deleteConfession(id: string) {
   if (error) throw error
 }
 
+/**
+ * 기록 저장 — 새로 적기와 고치기를 한 길로 보낸다(id 기준 upsert).
+ * 고치기도 같은 'confession' 큐 키를 쓰므로, 오프라인에서 적고 고치면
+ * 큐에는 마지막 모습 하나만 남는다.
+ */
 export async function insertConfession(householdId: string, c: Confession) {
-  const { error } = await supabase.from('confessions').insert({
+  const { error } = await supabase.from('confessions').upsert({
     id: c.id,
     household_id: householdId,
     member_no: c.memberNo,

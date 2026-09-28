@@ -12,7 +12,7 @@ import { buildMonthlyCard } from '../lib/monthlyCard'
 import { activeYm, resolveLedger, summarize } from '../lib/carryover'
 import { formatWon, formatYmKorean, shiftYm } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER, TERM_TIP } from '../lib/constants'
-import { monthConfessions } from '../lib/confessLedger'
+import { confessSums, monthConfessions } from '../lib/confessLedger'
 import { memberStyle } from '../lib/memberColors'
 import type { CategoryGroup } from '../types'
 
@@ -66,7 +66,9 @@ export default function Monthly() {
     return member === 0 ? list : list.filter((c) => c.memberNo === member && !c.shared)
   }, [confessions, ym, member])
   const [logOpen, setLogOpen] = useState(false)
-  const logTotal = monthLog.reduce((sum, c) => sum + c.amount, 0)
+  // 소비 합계엔 들어온 돈(수입 기록)을 섞지 않는다 — 수입도 바로 적을 수 있게 된 뒤로 필요해졌다
+  const spendLog = monthLog.filter((c) => c.kind !== 'income')
+  const logTotal = spendLog.reduce((sum, c) => sum + c.amount, 0)
 
   // 비정기 지출 — 보는 달 것만 목록에, 합계는 올해 누적 (연간비 감각 유지)
   const monthOccasions = occasions.filter((o) => o.date.startsWith(ym))
@@ -217,7 +219,12 @@ export default function Monthly() {
       {/* 예산 대비 지출 */}
       <div className="rounded-card bg-card px-5 py-4 shadow-card">
         <h3 className="mb-3 text-[15px] font-bold text-ink">예산 대비 지출</h3>
-        <BudgetBars items={ledger.items} />
+        <BudgetBars
+          items={ledger.items}
+          confessed={confessSums(confessions, ym)}
+          settledMembers={ledger.settledMembers ?? []}
+          closed={ledger.closed}
+        />
       </div>
 
       {/* 부부 토글 */}
@@ -250,9 +257,9 @@ export default function Monthly() {
             <div className="mt-2.5 grid grid-cols-3 gap-1.5">
               {(
                 [
-                  [memberNames[0], monthLog.filter((c) => !c.shared && c.memberNo === 1)],
-                  [memberNames[1], monthLog.filter((c) => !c.shared && c.memberNo === 2)],
-                  ['공동', monthLog.filter((c) => c.shared)],
+                  [memberNames[0], spendLog.filter((c) => !c.shared && c.memberNo === 1)],
+                  [memberNames[1], spendLog.filter((c) => !c.shared && c.memberNo === 2)],
+                  ['공동', spendLog.filter((c) => c.shared)],
                 ] as const
               ).map(([name, list]) => (
                 <div key={name} className="rounded-btn bg-bg px-2 py-2 text-center">
@@ -285,7 +292,10 @@ export default function Monthly() {
                       {c.category}
                       {c.note && <span className="text-cap"> · {c.note}</span>}
                     </span>
-                    <span className="tnum shrink-0 text-[13.5px] font-bold text-ink">
+                    <span
+                      className={`tnum shrink-0 text-[13.5px] font-bold ${c.kind === 'income' ? 'text-brand' : 'text-ink'}`}
+                    >
+                      {c.kind === 'income' ? '+' : ''}
                       {formatWon(c.amount)}
                     </span>
                     {/* 잘못 쓴 고백은 지우고 다시 — 배우자 몫을 대신 적을 수 있으니 대신 지울 수도 있다 */}

@@ -58,3 +58,40 @@ describe('예산 대비 지출 — 정산 중에 넣은 항목도 보인다 (제
     expect(screen.getByText(/예산 세우기/)).toBeInTheDocument()
   })
 })
+
+describe('예산 대비 지출 — 정산 전엔 이번 달 소비 기록으로 채운다 (제보 9/10)', () => {
+  const items = [
+    item('h1', '식비', 1, 500_000, 0),
+    item('w1', '식비', 2, 300_000, 0),
+  ]
+  const confessed = new Map([
+    ['1:variable:식비', 120_000],
+    ['2:variable:식비', 80_000],
+    ['2:variable:카페', 15_000], // 예산 목록엔 없는 카테고리
+  ])
+
+  it('정산 전인 두 사람 몫을 기록 합계로 채운다', () => {
+    render(<BudgetBars items={items} confessed={confessed} />)
+    const row = screen.getByText('식비').closest('div')!.parentElement!
+    expect(row.textContent).toContain('20만') // 12만 + 8만
+    expect(screen.getByText(/소비 기록으로 채웠어요/)).toBeInTheDocument()
+  })
+
+  it('예산 없이 기록만 있는 카테고리도 나온다', () => {
+    render(<BudgetBars items={items} confessed={confessed} />)
+    expect(screen.getByText('카페')).toBeInTheDocument()
+  })
+
+  it('정산한 사람 몫은 정산 금액 그대로 — 기록으로 덮지 않는다', () => {
+    const settledItems = [item('h1', '식비', 1, 500_000, 450_000), item('w1', '식비', 2, 300_000, 0)]
+    render(<BudgetBars items={settledItems} confessed={confessed} settledMembers={[1]} />)
+    const row = screen.getByText('식비').closest('div')!.parentElement!
+    expect(row.textContent).toContain('53만') // 남편 45만(정산) + 아내 8만(기록)
+  })
+
+  it('결산이 끝난 달엔 기록을 쓰지 않는다', () => {
+    render(<BudgetBars items={[item('h1', '식비', 1, 500_000, 450_000)]} confessed={confessed} closed />)
+    expect(screen.queryByText(/소비 기록으로 채웠어요/)).not.toBeInTheDocument()
+    expect(screen.queryByText('카페')).not.toBeInTheDocument()
+  })
+})

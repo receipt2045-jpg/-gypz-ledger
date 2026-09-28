@@ -40,7 +40,7 @@ import { formatComma, formatWon } from '../lib/format'
 import { memberStyle } from '../lib/memberColors'
 import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
 import { GROUP_LABEL, NO_SPEND } from '../lib/constants'
-import type { CategoryGroup } from '../types'
+import type { CategoryGroup, Confession } from '../types'
 
 // 카테고리 아이콘 매핑 (없으면 Coins)
 const ICONS: Record<string, typeof Coins> = {
@@ -125,6 +125,7 @@ export default function Confess() {
     profile,
     addConfession,
     removeConfession,
+    updateConfession,
     learnAliases,
   } = useLedgerStore()
 
@@ -191,14 +192,46 @@ export default function Confess() {
     setCardPicked(true)
   }
 
-  // 우리집 기록 (최근 14일) — 배우자 몫도 대신 적으니 둘 다 보여야 고칠 수 있다
+  // 우리집 기록 (최근 14일 + 지금 고른 날짜) — 배우자 몫도 대신 적으니 둘 다 보여야 고칠 수 있다.
+  //
+  // 제보(9/15·9/16, 3건): "9월 1일 소비를 아무리 입력해도 저장이 안 돼요", "버튼으로 오늘 기록 안 돼요".
+  // 저장은 됐는데 안 보였다. 9월 15일 오후엔 9월 1일 낮 12시 기록이 '최근 14일' 밖이라
+  // 목록에서 빠졌다. 고른 날짜의 기록은 기간과 상관없이 항상 보여준다.
   const recent = useMemo(() => {
     const since = new Date()
     since.setDate(since.getDate() - 14)
     return confessions
-      .filter((c) => new Date(c.createdAt) >= since)
+      .filter(
+        (c) =>
+          new Date(c.createdAt) >= since ||
+          new Date(c.createdAt).toLocaleDateString('sv-SE') === logDate,
+      )
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  }, [confessions])
+  }, [confessions, logDate])
+
+  // 고치는 중인 기록 — 한 번에 하나만
+  const [editing, setEditing] = useState<string | null>(null)
+
+  /** '9월 1일' — 지난 날짜로 적는 중임을 알릴 때 */
+  const logDateLabel = `${Number(logDate.slice(5, 7))}월 ${Number(logDate.slice(8, 10))}일`
+
+  /**
+   * 지난 날짜로 적는 중이면 띠를 띄운다.
+   * 예전엔 줄글 화면에서 날짜를 바꾸면 '버튼으로 고르기'·숫자 입력 화면에선 날짜가 안 보여서,
+   * 오늘 것을 적는다고 생각하고 적은 게 전부 그 지난 날짜로 들어갔다.
+   */
+  const pastDateBanner =
+    logDate === today ? null : (
+      <div className="mx-5 mb-2 flex items-center justify-between gap-2 rounded-btn bg-amber-50 px-3.5 py-2.5">
+        <span className="text-[13px] font-bold text-amber-700">📅 {logDateLabel} 기록으로 적는 중</span>
+        <button
+          onClick={() => setLogDate(today)}
+          className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[12px] font-bold text-amber-700 active:bg-amber-100"
+        >
+          오늘로
+        </button>
+      </div>
+    )
 
   // 날짜별로 묶어서 보여준다
   const recentByDate = useMemo(() => {
@@ -224,6 +257,9 @@ export default function Confess() {
     { title: '고정지출', kind: 'fixed', cats: sortByFreq(categories.fixed) },
     { title: '저축', kind: 'saving', cats: categories.saving },
     { title: '투자', kind: 'investment', cats: categories.investment },
+    // 제보(9/11): "들어온 돈도 바로바로 적고 싶어요. 정산할 때까지 기다리면 까먹어요".
+    // 적어두면 정산 수입 단계에 '이번 달 기록 합계'로 떠서 눌러 반영할 수 있다.
+    { title: '수입 · 들어온 돈', kind: 'income', cats: categories.income },
   ]
 
   // ── 저장 (양쪽 흐름 공통) ───────────────────
@@ -341,7 +377,11 @@ export default function Confess() {
       <Frame>
         <Top onBack={() => navigate('/')} title="오늘의 소비 기록" />
         <div className="flex flex-1 flex-col px-5 pt-2 animate-fade-up">
-          {/* 방금 고백한 내용 */}
+          {/* 지난 날짜로 적었으면 어디로 들어갔는지 분명히 말한다 */}
+          {logDate !== today && (
+            <p className="mb-2 text-[13px] font-bold text-amber-700">📅 {logDateLabel} 기록으로 저장했어요</p>
+          )}
+          {/* 방금 기록한 내용 */}
           <div className="mb-5 rounded-card bg-card px-5 py-4 shadow-card">
             {result.saved.map((e, i) => (
               <div key={i} className="flex items-center justify-between py-1">
@@ -435,6 +475,7 @@ export default function Confess() {
           title="이렇게 기록할까요?"
           subtitle="카테고리와 금액을 눌러 고칠 수 있어요"
         />
+        {pastDateBanner}
         <div className="flex-1 space-y-3 px-5 pb-10 pt-1">
           {drafts.map((d) => {
             const Icon = ICONS[d.category] ?? Coins
@@ -522,6 +563,7 @@ export default function Confess() {
     return (
       <Frame>
         <Top onBack={() => setSel(null)} title={sel.category} />
+        {pastDateBanner}
         <div className="flex flex-1 flex-col px-5">
           <p className="tnum py-6 text-center text-[36px] font-extrabold text-ink">
             {amount === 0 ? <span className="text-cap">0</span> : formatComma(amount)}
@@ -578,6 +620,7 @@ export default function Confess() {
     return (
       <Frame>
         <Top onBack={() => setMode('text')} title="무엇에 썼나요?" subtitle="기록하면 모아·불리가 바로 반응해요" />
+        {pastDateBanner}
         <div className="flex-1 space-y-5 px-5 pb-10 pt-1">
           <WeeklyCostCard confessions={confessions} />
           {groups.map(
@@ -758,7 +801,7 @@ export default function Confess() {
         {recentByDate.length > 0 && (
           <div className="rounded-card bg-card px-4 py-3.5 shadow-card">
             <p className="mb-2 text-[13px] font-bold text-cap">
-              우리집 기록 · 잘못 썼으면 지우고 다시 적어요
+              우리집 기록 · 눌러서 고치거나 지울 수 있어요
             </p>
             <div className="space-y-3">
               {recentByDate.map(([date, list]) => (
@@ -767,31 +810,55 @@ export default function Confess() {
                     {date === today ? '오늘' : date.slice(5).replace('-', '월 ') + '일'}
                   </p>
                   <div className="divide-y divide-line/70">
-                    {list.map((c) => (
-                      <div key={c.id} className="flex items-center gap-2.5 py-2.5">
-                        <span
-                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-                            c.shared ? 'bg-line text-sub' : memberStyle(c.memberNo, profile).badge
-                          }`}
-                        >
-                          {c.shared ? '공동' : memberNames[c.memberNo - 1]}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
-                          {c.category}
-                          {c.note && <span className="text-cap"> · {c.note}</span>}
-                        </span>
-                        <span className="tnum shrink-0 text-[14px] font-bold text-ink">
-                          {formatWon(c.amount)}
-                        </span>
-                        <button
-                          onClick={() => removeConfession(c.id)}
-                          aria-label="기록 삭제"
-                          className="shrink-0 text-cap active:text-danger"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    ))}
+                    {list.map((c) =>
+                      editing === c.id ? (
+                        <EditRow
+                          key={c.id}
+                          c={c}
+                          categories={categories}
+                          onSave={(patch) => {
+                            updateConfession(c.id, patch)
+                            setEditing(null)
+                          }}
+                          onCancel={() => setEditing(null)}
+                        />
+                      ) : (
+                        <div key={c.id} className="flex items-center gap-2.5 py-2.5">
+                          <button
+                            onClick={() => setEditing(c.id)}
+                            aria-label={`${c.category} 기록 고치기`}
+                            className="flex min-w-0 flex-1 items-center gap-2.5 text-left active:opacity-60"
+                          >
+                            <span
+                              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+                                c.shared ? 'bg-line text-sub' : memberStyle(c.memberNo, profile).badge
+                              }`}
+                            >
+                              {c.shared ? '공동' : memberNames[c.memberNo - 1]}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
+                              {c.category}
+                              {c.note && <span className="text-cap"> · {c.note}</span>}
+                            </span>
+                            <span
+                              className={`tnum shrink-0 text-[14px] font-bold ${
+                                c.kind === 'income' ? 'text-brand' : 'text-ink'
+                              }`}
+                            >
+                              {c.kind === 'income' ? '+' : ''}
+                              {formatWon(c.amount)}
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => removeConfession(c.id)}
+                            aria-label="기록 삭제"
+                            className="shrink-0 text-cap active:text-danger"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      ),
+                    )}
                   </div>
                 </div>
               ))}
@@ -813,6 +880,97 @@ export default function Confess() {
 }
 
 // ── 레이아웃 헬퍼 ─────────────────────────────
+/**
+ * 기록 고치기 — 금액·항목·메모.
+ * 제보 4건(8/9, 8/11×2, 9/9): "잘못 썼을 때 삭제하고 다시 작성하는 게 번거로워요".
+ * 누가 썼는지·날짜는 여기서 안 바꾼다 — 그건 지우고 다시 적는 편이 헷갈리지 않는다.
+ */
+function EditRow({
+  c,
+  categories,
+  onSave,
+  onCancel,
+}: {
+  c: Confession
+  categories: Record<CategoryGroup, string[]>
+  onSave: (patch: { amount: number; category: string; kind: CategoryGroup; note?: string }) => void
+  onCancel: () => void
+}) {
+  const [amount, setAmount] = useState(c.amount)
+  const [pick, setPick] = useState(`${c.kind}:${c.category}`)
+  const [note, setNote] = useState(c.note ?? '')
+  const groups: CategoryGroup[] = ['variable', 'fixed', 'income', 'saving', 'investment']
+
+  const save = () => {
+    const i = pick.indexOf(':')
+    onSave({
+      kind: pick.slice(0, i) as CategoryGroup,
+      category: pick.slice(i + 1),
+      amount,
+      note: note.trim() || undefined,
+    })
+  }
+
+  return (
+    <div className="space-y-2 rounded-btn bg-bg px-3 py-3">
+      <div className="flex items-center gap-2">
+        <select
+          value={pick}
+          onChange={(e) => setPick(e.target.value)}
+          aria-label="항목"
+          className="min-w-0 flex-1 rounded-btn border border-line bg-white px-2 py-1.5 text-[14px] font-bold text-ink outline-none focus:border-brand"
+        >
+          {groups.map((g) => (
+            <optgroup key={g} label={GROUP_LABEL[g]}>
+              {/* 지금 항목이 카테고리 목록에서 빠졌어도(지운 카테고리) 고르던 값은 남긴다 */}
+              {(g === c.kind && !categories[g].includes(c.category)
+                ? [c.category, ...categories[g]]
+                : categories[g]
+              ).map((cat) => (
+                <option key={`${g}:${cat}`} value={`${g}:${cat}`}>
+                  {cat}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        <input
+          inputMode="numeric"
+          aria-label="금액"
+          value={formatComma(amount)}
+          onChange={(e) =>
+            setAmount(Math.min(Number(e.target.value.replace(/[^\d]/g, '')) || 0, 999_999_999))
+          }
+          className="tnum w-28 shrink-0 rounded-btn border border-line bg-white px-2 py-1.5 text-right text-[15px] font-bold text-ink outline-none focus:border-brand"
+        />
+        <span className="text-[13px] text-sub">원</span>
+      </div>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="메모 (선택)"
+        aria-label="메모"
+        maxLength={40}
+        className="w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="h-9 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub active:bg-line"
+        >
+          그대로 두기
+        </button>
+        <button
+          onClick={save}
+          className="h-9 flex-1 rounded-btn bg-brand text-[13px] font-bold text-white active:bg-brand-dark"
+        >
+          고치기
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen justify-center bg-[#e6e9ed]">

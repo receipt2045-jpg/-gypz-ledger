@@ -11,15 +11,60 @@ interface CatBudget {
  * 카테고리별 예산 대비 지출 막대 (호호양·구채희 홈의 대표 만족 요소).
  * 예산(계획) 대비 실제 사용률을 가로 막대로. 초과는 빨강.
  */
-export default function BudgetBars({ items }: { items: BudgetItem[] }) {
+export default function BudgetBars({
+  items,
+  confessed,
+  settledMembers = [],
+  closed = false,
+}: {
+  items: BudgetItem[]
+  /** (구성원:그룹:카테고리) → 이번 달 소비 기록 합계. 정산 전인 사람 몫을 채우는 데 쓴다 */
+  confessed?: Map<string, number> | null
+  settledMembers?: (1 | 2)[]
+  closed?: boolean
+}) {
+  /**
+   * 제보(9/10): "지출에서 각 카테고리별로 현재 얼마나 사용했는지 알 수 있었으면".
+   * 정산 전엔 실제값이 0이라 막대가 늘 비어 있었다. 아직 정산 안 한 사람 몫은
+   * 이번 달 소비 기록 합계로 채운다. 정산한 사람 몫은 정산 금액이 맞는 값이라 그대로 둔다.
+   */
+  const settled = new Set(settledMembers)
+  const useLog = (member: 1 | 2) => !!confessed && !closed && !settled.has(member)
+  const applied = new Set<string>() // 같은 키 항목이 둘이면 기록 합계는 한 번만 얹는다
+  let fromLog = false
+
   // 지출(고정+변동) 카테고리별로 계획·실제 합산
   const map = new Map<string, CatBudget>()
+  const add = (category: string, planned: number, actual: number) => {
+    const cur = map.get(category) ?? { category, planned: 0, actual: 0 }
+    cur.planned += planned
+    cur.actual += actual
+    map.set(category, cur)
+  }
   for (const it of items) {
     if (it.group !== 'fixed' && it.group !== 'variable') continue
-    const cur = map.get(it.category) ?? { category: it.category, planned: 0, actual: 0 }
-    cur.planned += it.planned
-    cur.actual += it.actual
-    map.set(it.category, cur)
+    let actual = it.actual
+    const key = `${it.member}:${it.group}:${it.category}`
+    if (useLog(it.member) && !applied.has(key)) {
+      const logged = confessed!.get(key) ?? 0
+      if (logged > actual) {
+        actual = logged
+        fromLog = true
+      }
+      applied.add(key)
+    }
+    add(it.category, it.planned, actual)
+  }
+  // 목록엔 없는데 기록만 있는 지출도 보여준다 (예산 없이 쓴 돈)
+  if (confessed) {
+    for (const [key, amount] of confessed) {
+      if (applied.has(key) || amount <= 0) continue
+      const [m, group, ...rest] = key.split(':')
+      const member = Number(m) as 1 | 2
+      if ((group !== 'fixed' && group !== 'variable') || !useLog(member)) continue
+      add(rest.join(':'), 0, amount)
+      fromLog = true
+    }
   }
   // 예산이 있거나, 예산은 없어도 쓴 게 있는 카테고리.
   // 제보(2026-09-11): "예산 대비 지출도 남편 것만 적용된 것 같아요".
@@ -59,6 +104,10 @@ export default function BudgetBars({ items }: { items: BudgetItem[] }) {
           {totalPlanned > 0 ? `${Math.round((totalActual / totalPlanned) * 100)}%` : '예산 없음'}
         </span>
       </div>
+
+      {fromLog && (
+        <p className="-mt-1 text-[11.5px] text-cap">정산 전인 분은 이번 달 소비 기록으로 채웠어요</p>
+      )}
 
       {/* 카테고리별 막대 */}
       <div className="space-y-2.5">

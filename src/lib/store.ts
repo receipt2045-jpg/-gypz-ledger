@@ -119,6 +119,10 @@ interface LedgerState extends AppData {
     },
   ) => Confession
   removeConfession: (id: string) => void
+  updateConfession: (
+    id: string,
+    patch: Partial<Pick<Confession, 'amount' | 'category' | 'kind' | 'note'>>,
+  ) => void
   // 줄글 고백 학습 별칭 (단어 → 카테고리)
   aliases: Record<string, string>
   learnAliases: (patch: Record<string, string>) => void
@@ -229,6 +233,19 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       db.insertConfession(s.householdId, full).catch(onSaveFailed(op))
     }
     return full
+  },
+
+  updateConfession: (id, patch) => {
+    const s = get()
+    const target = s.confessions.find((c) => c.id === id)
+    if (!target) return
+    // 제보 4건: "잘못 썼을 때 지우고 다시 쓰는 게 번거로워요" — 금액·항목·메모만 고친다
+    const next: Confession = { ...target, ...patch }
+    set({ confessions: s.confessions.map((c) => (c.id === id ? next : c)) })
+    if (s.householdId && s.memberNo) {
+      const op: PendingOp = { kind: 'confession', key: `confession:${id}`, payload: next }
+      db.insertConfession(s.householdId, next).catch(onSaveFailed(op))
+    }
   },
 
   removeConfession: (id) => {
