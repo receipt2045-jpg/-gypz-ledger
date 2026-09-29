@@ -47,13 +47,7 @@ export default function ParentalLeave() {
     <div className="flex min-h-screen justify-center bg-bg">
       <div className="w-full max-w-app px-5 pb-16 pt-6">
         {/* ── 한 줄 결론 */}
-        <header className="px-1">
-          <div
-            className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-[26px]"
-            aria-hidden
-          >
-            🍼
-          </div>
+        <header className="px-1 pt-2">
           <h1 className="text-[23px] font-bold leading-[1.6] text-ink">
             {r.monthlyNow >= 0 ? (
               <>
@@ -65,7 +59,8 @@ export default function ParentalLeave() {
               </>
             )}
             <br />
-            육아휴직하면 한 달에
+            육아휴직하면 한 달에{' '}
+            <span aria-hidden>🍼</span>
           </h1>
         </header>
 

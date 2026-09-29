@@ -8,7 +8,7 @@ describe('육아휴직 계산기 화면', () => {
   it('처음 열면 예시 숫자로 한 줄 결론과 구간 칸이 바로 보인다', () => {
     render(<ParentalLeave />)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
-      '매달 160만원 모으던 우리집,육아휴직하면 한 달에',
+      '매달 160만원 모으던 우리집,육아휴직하면 한 달에 🍼',
     )
     expect(screen.getAllByText('120만').length).toBeGreaterThan(0)
     expect(screen.getAllByText('모여요')).toHaveLength(3)
