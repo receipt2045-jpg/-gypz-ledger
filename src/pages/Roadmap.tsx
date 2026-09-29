@@ -386,12 +386,35 @@ function GoalView({
       {/* ⑤ 만약에 — 소득이 있는 사람마다 */}
       <WhatIfCard goal={goal} saved={saved} pace={pace} byMember={byMember} memberNames={memberNames} nowYm={nowYm} />
 
+      {/* ⑤-2 만약에 육아휴직을 하면 — 공개 계산기(/leave)로 */}
+      <LeaveBanner />
+
       {/* ⑥ 어디에 담나 — 자산 화면과 같은 막대 */}
       <AssetComposition items={assetItems} />
 
       {/* ⑦ 우리 부부 */}
       <CoupleCard goal={goal} memberNames={memberNames} onChange={onCouple} />
     </>
+  )
+}
+
+/** 육아휴직 계산기로 가는 입구. 계산기는 로그인 밖(/leave)에 있어 영상 링크로도 열린다 */
+function LeaveBanner() {
+  const navigate = useNavigate()
+  return (
+    <button
+      onClick={() => navigate('/leave')}
+      className="mt-4 flex w-full items-center gap-3 rounded-card bg-white p-4 text-left"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-[20px]" aria-hidden>
+        🍼
+      </span>
+      <span className="flex-1">
+        <span className="block text-[14.5px] font-bold text-ink">육아휴직하면 우리집은?</span>
+        <span className="mt-0.5 block text-[12.5px] text-sub">휴직 중 달마다 모이는 돈을 미리 봐요</span>
+      </span>
+      <ChevronRight size={18} className="shrink-0 text-cap" />
+    </button>
   )
 }
 
