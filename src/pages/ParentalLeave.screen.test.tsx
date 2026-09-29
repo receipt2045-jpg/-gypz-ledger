@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import ParentalLeave from './ParentalLeave'
+import { DEFAULT_INPUT } from '../lib/parentalLeave'
+import { encodeLeave } from '../lib/leaveShare'
 
 describe('육아휴직 계산기 화면', () => {
   beforeEach(() => localStorage.clear())
@@ -55,6 +57,23 @@ describe('육아휴직 계산기 화면', () => {
     render(<ParentalLeave />)
     expect(screen.getByRole('button', { name: /우리집 숫자로 바꿔보세요/ })).toBeInTheDocument()
     expect(screen.getByText(/지금 보이는 건 예시 숫자예요/)).toBeInTheDocument()
+  })
+
+  it('남편이 보낸 링크로 열면 그 숫자로 계산한다', () => {
+    window.location.hash = `#/leave?s=${encodeLeave({ ...DEFAULT_INPUT, who: 'husband' })}`
+    render(<ParentalLeave />)
+    expect(screen.getByRole('button', { name: '남편' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText(/공유받은 숫자로 계산했어요/)).toBeInTheDocument()
+    window.location.hash = ''
+  })
+
+  it('공유가 안 되는 브라우저면 링크를 복사한다', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    render(<ParentalLeave />)
+    fireEvent.click(screen.getByRole('button', { name: /남편한테 공유하기/ }))
+    expect(await screen.findByText(/링크를 복사했어요/)).toBeInTheDocument()
+    expect(writeText.mock.calls[0][0]).toContain('/#/leave?s=')
   })
 
   it('원팀프로젝트 링크와 모아불리 시작하기가 있다', () => {

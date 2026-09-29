@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
-import { ArrowRight, ChevronDown } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowRight, ChevronDown, Download, Share2, X } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import Card from '../components/Card'
 import {
+  DEFAULT_INPUT,
   LEAVE_SAVE_KEY,
   MONTH_OPTIONS,
   MONTHS_MAX,
@@ -18,6 +19,8 @@ import {
   type Order,
   type Who,
 } from '../lib/parentalLeave'
+import { encodeLeave, shareLeaveLink, sharedFromHash } from '../lib/leaveShare'
+import { leaveCardFile } from '../lib/leaveCard'
 
 const ONETEAM_URL = 'https://oneteamm.netlify.app'
 
@@ -31,7 +34,9 @@ const man = (n: number) => Math.round(Math.abs(n) / 10_000).toLocaleString('ko-K
  * 우리집 숫자 → 고치기 → 원팀프로젝트.
  */
 export default function ParentalLeave() {
-  const [v, setV] = useState<LeaveInput>(readLeaveInput)
+  // 남편·아내가 보낸 링크(#/leave?s=...)로 들어오면 그 숫자로 연다
+  const [fromShare] = useState(() => sharedFromHash(window.location.hash))
+  const [v, setV] = useState<LeaveInput>(() => fromShare ?? readLeaveInput())
   const [openAdjust, setOpenAdjust] = useState(false)
 
   const set = (patch: Partial<LeaveInput>) => {
@@ -88,7 +93,11 @@ export default function ParentalLeave() {
           <Card>
             <p className="text-[15px] font-bold text-ink">우리집 숫자로 바꿔보세요</p>
             <p className="mt-1 text-[12.5px] text-cap">
-              지금 보이는 건 예시 숫자예요. 바꾸면 위 결과가 바로 달라져요.
+              {encodeLeave(v) === encodeLeave(DEFAULT_INPUT)
+                ? '지금 보이는 건 예시 숫자예요. 바꾸면 위 결과가 바로 달라져요.'
+                : fromShare
+                  ? '공유받은 숫자로 계산했어요. 바꾸면 위 결과가 바로 달라져요.'
+                  : '바꾸면 위 결과가 바로 달라져요.'}
             </p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Field label="아내 월 실수령">
@@ -217,6 +226,9 @@ export default function ParentalLeave() {
           )}
         </Card>
 
+        {/* ── 나누기 */}
+        <ShareBox input={v} result={r} showWho={both} />
+
         {/* ── 원팀프로젝트 */}
         <div className="mt-5 rounded-card border-[1.5px] border-brand bg-white p-5">
           <p className="text-[12px] font-bold text-brand">결영이네 원팀프로젝트</p>
@@ -273,6 +285,132 @@ export default function ParentalLeave() {
             보는 용도로만 쓰시고, 정확한 금액은 고용보험에서 확인하세요.
           </p>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/** 남편한테 링크로 보내기 · 결과를 이미지로 저장하기 */
+function ShareBox({
+  input,
+  result,
+  showWho,
+}: {
+  input: LeaveInput
+  result: ReturnType<typeof simulate>
+  showWho: boolean
+}) {
+  const [msg, setMsg] = useState<string | null>(null)
+  const [image, setImage] = useState<File | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const onShare = async () => {
+    const res = await shareLeaveLink(input)
+    setMsg(
+      res === 'copied'
+        ? '링크를 복사했어요. 카톡에 붙여넣어 보내세요.'
+        : res === 'failed'
+          ? '공유가 안 되는 브라우저예요. 주소창의 링크를 복사해 보내주세요.'
+          : null,
+    )
+  }
+
+  const onImage = async () => {
+    setBusy(true)
+    const file = await leaveCardFile(result, showWho)
+    setBusy(false)
+    if (!file) setMsg('이 브라우저에서는 이미지를 만들 수 없어요.')
+    else setImage(file)
+  }
+
+  return (
+    <>
+      <div className="mt-5 grid grid-cols-2 gap-2.5">
+        <button
+          onClick={onShare}
+          className="flex items-center justify-center gap-1.5 rounded-btn bg-white py-3.5 text-[14.5px] font-bold text-ink"
+        >
+          <Share2 size={17} className="text-brand" />
+          남편한테 공유하기
+        </button>
+        <button
+          onClick={onImage}
+          disabled={busy}
+          className="flex items-center justify-center gap-1.5 rounded-btn bg-white py-3.5 text-[14.5px] font-bold text-ink disabled:opacity-60"
+        >
+          <Download size={17} className="text-brand" />
+          이미지로 저장하기
+        </button>
+      </div>
+      {msg && <p className="mt-2 text-center text-[12.5px] text-sub">{msg}</p>}
+      {image && <ImageSheet file={image} onClose={() => setImage(null)} />}
+    </>
+  )
+}
+
+/** 만든 이미지를 보여주고 저장 — 카톡 안 브라우저처럼 다운로드가 막힌 곳은 길게 눌러 저장 */
+function ImageSheet({ file, onClose }: { file: File; onClose: () => void }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    const u = URL.createObjectURL(file)
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [file])
+
+  const canShareFile =
+    typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
+
+  const onSave = async () => {
+    if (canShareFile) {
+      try {
+        await navigator.share({ files: [file], title: '모아불리 육아휴직 계산' })
+        return
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+      }
+    }
+    if (!url) return
+    const a = document.createElement('a')
+    a.href = url
+    a.download = file.name
+    a.click()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="이미지로 저장하기"
+    >
+      <div
+        className="w-full max-w-app rounded-t-card bg-white p-5 pb-8 sm:rounded-card"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-[15px] font-bold text-ink">이미지로 저장하기</p>
+          <button onClick={onClose} aria-label="닫기" className="text-cap">
+            <X size={20} />
+          </button>
+        </div>
+        {url && (
+          <img
+            src={url}
+            alt="육아휴직 계산 결과 이미지"
+            className="mt-3 w-full rounded-btn border border-line"
+          />
+        )}
+        <button
+          onClick={onSave}
+          className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white"
+        >
+          <Download size={17} />
+          {canShareFile ? '사진에 저장하거나 보내기' : '이미지 저장하기'}
+        </button>
+        <p className="mt-2 text-center text-[12px] text-cap">
+          저장이 안 되면 이미지를 길게 눌러 저장하세요.
+        </p>
       </div>
     </div>
   )
