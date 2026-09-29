@@ -27,6 +27,8 @@ export const RULES = {
   /** 어린이집에 다니면 보육료를 빼고 남는 현금. 0세 = 100만 − 기본보육료 58.4만, 1세는 남는 게 없다 */
   parentPayDaycare0: 416_000,
   parentPayDaycare1: 0,
+  /** 두 돌 뒤(24개월~)엔 부모급여가 끝나고, 집에서 보면 가정양육수당 월 10만원 */
+  homeCareAllowance: 100_000,
   /** 아동수당 (만 9세 미만) */
   childAllowance: 100_000,
   /**
@@ -41,7 +43,15 @@ export type Order = 'seq' | 'sim'
 /** 어린이집을 몇 개월째부터 보내나. 0 = 안 보낸다 */
 export type DaycareFrom = 0 | 7 | 13
 
-export const MONTH_OPTIONS = [3, 6, 12] as const
+/**
+ * 한 사람이 쉴 수 있는 기간. 한 명만 쉬면 12개월까지,
+ * 부부가 각자 3개월 이상 쉬면 한 사람당 18개월까지 (2025-02 개정, 늘어난 6개월도 유급).
+ */
+export const MONTH_OPTIONS_SOLO = [3, 6, 12] as const
+export const MONTH_OPTIONS_BOTH = [3, 6, 12, 18] as const
+const MAX_SOLO = 12
+/** 6+6 특례: 아이가 태어난 지 18개월 안에 부부가 둘 다 휴직을 시작해야 한다 */
+const SIX_SIX_WITHIN = 18
 
 export interface LeaveInput {
   /** 아내 월 실수령 */
@@ -101,10 +111,11 @@ export function leavePayAt(k: number, pay: number, bothParents: boolean): number
   return Math.max(RULES.payFloor, v)
 }
 
-/** 아이가 태어난 지 t번째 달에 나라에서 현금으로 들어오는 돈 (부모급여 + 아동수당) */
+/** 아이가 태어난 지 t번째 달에 나라에서 현금으로 들어오는 돈 (부모급여·양육수당 + 아동수당) */
 export function govAt(t: number, daycareFrom: DaycareFrom): number {
   const age0 = t <= 12
   const daycare = daycareFrom > 0 && t >= daycareFrom
+  if (t > 24) return (daycare ? 0 : RULES.homeCareAllowance) + RULES.childAllowance
   const parentPay = age0
     ? daycare
       ? RULES.parentPayDaycare0
@@ -146,8 +157,15 @@ export interface LeaveResult {
   runs: LeaveRun[]
 }
 
+/** 한 명만 쉬면 18개월을 골라 뒀어도 12개월로 본다 */
+export function effectiveMonths(v: LeaveInput): { monthsWife: number; monthsHusband: number } {
+  const cap = v.who === 'both' ? Infinity : MAX_SOLO
+  return { monthsWife: Math.min(v.monthsWife, cap), monthsHusband: Math.min(v.monthsHusband, cap) }
+}
+
 function leaveWindows(input: LeaveInput): { wife: [number, number] | null; husband: [number, number] | null } {
-  const { who, monthsWife, monthsHusband, order } = input
+  const { who, order } = input
+  const { monthsWife, monthsHusband } = effectiveMonths(input)
   const wife: [number, number] | null = who === 'husband' ? null : [1, monthsWife]
   let husband: [number, number] | null = null
   if (who === 'husband') husband = [1, monthsHusband]
@@ -162,8 +180,10 @@ const man = (n: number) => Math.round(n / 10_000)
 export function simulate(v: LeaveInput): LeaveResult {
   const spend = v.fixed + v.variable
   const monthlyNow = v.payWife + v.payHusband - spend
-  const both = v.who === 'both'
   const win = leaveWindows(v)
+  // 6+6은 둘 다 18개월 안에 휴직을 시작할 때만. 아내가 18개월 쉬고 남편이 이어 쉬면 해당이 없다
+  const both =
+    v.who === 'both' && !!win.husband && !!win.wife && Math.max(win.wife[0], win.husband[0]) <= SIX_SIX_WITHIN
   const last = Math.max(win.wife?.[1] ?? 0, win.husband?.[1] ?? 0)
 
   const months: LeaveMonth[] = []

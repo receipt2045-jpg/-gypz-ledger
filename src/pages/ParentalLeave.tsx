@@ -4,8 +4,10 @@ import AmountInput from '../components/AmountInput'
 import Card from '../components/Card'
 import {
   LEAVE_SAVE_KEY,
-  MONTH_OPTIONS,
+  MONTH_OPTIONS_BOTH,
+  MONTH_OPTIONS_SOLO,
   RULES,
+  effectiveMonths,
   readLeaveInput,
   simulate,
   type DaycareFrom,
@@ -42,6 +44,7 @@ export default function ParentalLeave() {
 
   const r = useMemo(() => simulate(v), [v])
   const both = v.who === 'both'
+  const shown = effectiveMonths(v)
 
   return (
     <div className="flex min-h-screen justify-center bg-bg">
@@ -116,17 +119,23 @@ export default function ParentalLeave() {
             <div className="mt-4 space-y-4">
               {v.who !== 'husband' && (
                 <Field label="아내 휴직 기간">
-                  <MonthSegment value={v.monthsWife} onChange={(monthsWife) => set({ monthsWife })} />
+                  <MonthSegment both={both} value={shown.monthsWife} onChange={(monthsWife) => set({ monthsWife })} />
                 </Field>
               )}
               {v.who !== 'wife' && (
                 <Field label="남편 휴직 기간">
                   <MonthSegment
-                    value={v.monthsHusband}
+                    both={both}
+                    value={shown.monthsHusband}
                     onChange={(monthsHusband) => set({ monthsHusband })}
                   />
                 </Field>
               )}
+              <Note>
+                {both
+                  ? '둘 다 3개월 이상 쉬면 한 사람당 18개월까지 돼요. 13개월째부터도 월급의 80%, 최대 160만원이 나와요.'
+                  : '한 명만 쉬면 12개월까지예요. 둘 다 3개월 이상 쉬면 한 사람당 18개월까지 늘어나요.'}
+              </Note>
               {both && (
                 <Field label="어떻게 쉬어요?">
                   <Segment<Order>
@@ -138,7 +147,8 @@ export default function ParentalLeave() {
                     ]}
                   />
                   <Note>
-                    둘 다 쉬면 각자 첫 6개월은 급여 상한이 250만원에서 450만원까지 올라가요.
+                    둘 다 쉬면 각자 첫 6개월은 급여 상한이 250만원에서 450만원까지 올라가요. 아이가
+                    태어난 지 18개월 안에 둘 다 휴직을 시작할 때만이에요.
                   </Note>
                 </Field>
               )}
@@ -196,13 +206,17 @@ export default function ParentalLeave() {
           <p className="font-semibold text-sub">이 숫자는 어디서 왔나요</p>
           <ul className="mt-1.5 space-y-1">
             <li>
+              · 육아휴직 기간 — 한 명만 쉬면 12개월, 부부가 각자 3개월 이상 쉬면 한 사람당 18개월
+            </li>
+            <li>
               · 육아휴직급여 — 한 명만 쉬면 1~3개월 최대 250만원, 4~6개월 최대 200만원, 7개월부터
               월급의 80% 최대 160만원. 부부가 둘 다 쉬면 각자 첫 6개월 최대 250·250·300·350·400·450만원.
               최소 70만원. 고용노동부 고용보험
             </li>
             <li>
               · 부모급여 — 만 0세 월 100만원, 만 1세 월 50만원. 어린이집에 다니면 보육료를 빼고 0세는
-              41.6만원, 1세는 0원. 아동수당 월 10만원. 보건복지부
+              41.6만원, 1세는 0원. 두 돌 뒤 집에서 보면 가정양육수당 월 10만원. 아동수당 월 10만원.
+              보건복지부
             </li>
             <li>
               · 양육비 — 육아정책연구소 KICCE 소비실태조사 2025, 2024년 가구당 양육비용 월 149.8만원.
@@ -367,7 +381,7 @@ function CalcTable({ runs }: { runs: LeaveRun[] }) {
               ))}
             </tr>
             <tr>
-              <td className="py-1 pl-1">부모급여·아동수당</td>
+              <td className="py-1 pl-1">부모급여·수당</td>
               {runs.map((run) => (
                 <td key={run.from} className={cell}>
                   {man(run.month.gov)}
@@ -411,7 +425,8 @@ function CalcTable({ runs }: { runs: LeaveRun[] }) {
       </div>
       <Note>
         육아휴직급여는 한 명만 쉬면 첫 3개월 최대 250만, 4~6개월 200만, 이후 월급의 80% 최대 160만원이에요.
-        부모급여는 만 0세 100만원, 돌 지나면 50만원이고 아동수당 10만원을 더했어요.
+        부모급여는 만 0세 100만원, 돌 지나면 50만원이고 두 돌 뒤엔 집에서 보면 양육수당 10만원이에요.
+        아동수당 10만원을 더했어요.
       </Note>
     </Card>
   )
@@ -454,12 +469,21 @@ function Segment<T extends string | number>({
   )
 }
 
-function MonthSegment({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+function MonthSegment({
+  both,
+  value,
+  onChange,
+}: {
+  both: boolean
+  value: number
+  onChange: (n: number) => void
+}) {
+  const options = both ? MONTH_OPTIONS_BOTH : MONTH_OPTIONS_SOLO
   return (
     <Segment<number>
       value={value}
       onChange={onChange}
-      options={MONTH_OPTIONS.map((m) => [m, `${m}개월`])}
+      options={options.map((m) => [m, `${m}개월`])}
     />
   )
 }

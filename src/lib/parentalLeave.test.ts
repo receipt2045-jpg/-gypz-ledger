@@ -89,6 +89,32 @@ describe('simulate — 평균 없이 달마다', () => {
     expect(r.months[12].gov).toBe(600_000)
   })
 
+  it('한 명만 쉬면 18개월을 골라 뒀어도 12개월까지만', () => {
+    const r = simulate({ ...base, who: 'wife', monthsWife: 18 })
+    expect(r.months).toHaveLength(12)
+  })
+
+  it('둘 다 쉬면 한 사람당 18개월 — 13개월째부터도 80%·160 상한', () => {
+    const r = simulate({ ...base, who: 'both', order: 'sim', monthsWife: 18, monthsHusband: 3 })
+    expect(r.months).toHaveLength(18)
+    expect(r.months[17].wifeOnLeave).toBe(true)
+    expect(r.months[17].wife).toBe(1_600_000) // 250만의 80% = 200만 → 상한 160만
+  })
+
+  it('아내 18개월 뒤 남편이 이어 쉬면 19개월째 시작이라 6+6이 안 된다', () => {
+    const payHusband = 5_000_000
+    const late = simulate({ ...base, payHusband, who: 'both', order: 'seq', monthsWife: 18, monthsHusband: 6 })
+    expect(late.months[18].husbandOnLeave).toBe(true)
+    expect(late.months[18 + 5].husband).toBe(2_000_000) // 6번째 달: 일반 상한 200만
+    const early = simulate({ ...base, payHusband, who: 'both', order: 'seq', monthsWife: 12, monthsHusband: 6 })
+    expect(early.months[12 + 5].husband).toBe(4_500_000) // 6+6 상한 450만
+  })
+
+  it('두 돌 뒤엔 부모급여가 끝나고 집에서 보면 양육수당 10만 + 아동수당 10만', () => {
+    expect(govAt(25, 0)).toBe(200_000)
+    expect(govAt(25, 13)).toBe(100_000)
+  })
+
   it('고정비·변동비는 그대로 쓴다고 본다', () => {
     const r = simulate({ ...base, who: 'wife', monthsWife: 3 })
     expect(r.months.every((m) => m.spend === 3_600_000)).toBe(true)
