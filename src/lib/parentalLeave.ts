@@ -38,18 +38,18 @@ export const RULES = {
   childCostDefault: 1_500_000,
 } as const
 
+
 export type Who = 'wife' | 'husband' | 'both'
 export type Order = 'seq' | 'sim'
 /** 어린이집을 몇 개월째부터 보내나. 0 = 안 보낸다 */
 export type DaycareFrom = 0 | 7 | 13
 
-/**
- * 한 사람이 쉴 수 있는 기간. 한 명만 쉬면 12개월까지,
- * 부부가 각자 3개월 이상 쉬면 한 사람당 18개월까지 (2025-02 개정, 늘어난 6개월도 유급).
- */
-export const MONTH_OPTIONS_SOLO = [3, 6, 12] as const
-export const MONTH_OPTIONS_BOTH = [3, 6, 12, 18] as const
-const MAX_SOLO = 12
+/** 휴직 기간 버튼. 마지막 '24개월~'은 고르면 개월 수를 직접 적는다 */
+export const MONTH_OPTIONS = [3, 6, 12, 18, 24] as const
+export const MONTHS_MAX = 36
+/** 급여가 나오는 기간: 한 명만(또는 한 사람이 급여 대상이 아니면) 12개월, 둘 다 급여 대상이면 한 사람당 18개월 */
+const PAID_SOLO = 12
+const PAID_BOTH = 18
 /** 6+6 특례: 아이가 태어난 지 18개월 안에 부부가 둘 다 휴직을 시작해야 한다 */
 const SIX_SIX_WITHIN = 18
 
@@ -71,6 +71,12 @@ export interface LeaveInput {
   /** 늘어나는 양육비 (월) */
   childCost: number
   daycareFrom: DaycareFrom
+  /** 육아휴직급여를 받을 수 있나 (고용보험 180일 이상). 프리랜서·자영업자는 false */
+  insuredWife: boolean
+  insuredHusband: boolean
+  /** 급여를 못 받는 사람이 쉬는 동안에도 버는 돈 (월) */
+  sideWife: number
+  sideHusband: number
 }
 
 /** 처음 열었을 때 결과가 바로 보이도록 예시 숫자로 채워 둔다 */
@@ -85,6 +91,10 @@ export const DEFAULT_INPUT: LeaveInput = {
   order: 'seq',
   childCost: RULES.childCostDefault,
   daycareFrom: 0,
+  insuredWife: true,
+  insuredHusband: true,
+  sideWife: 0,
+  sideHusband: 0,
 }
 
 export function readLeaveInput(): LeaveInput {
@@ -98,7 +108,7 @@ export function readLeaveInput(): LeaveInput {
 }
 
 /**
- * 휴직 k번째 달의 육아휴직급여.
+ * 휴직 k번째 달의 육아휴직급여 (급여가 나오는 기간 안일 때).
  * 법정 기준은 통상임금(세전)인데 입력은 실수령이라, 실제로는 이보다 같거나 조금 많다.
  */
 export function leavePayAt(k: number, pay: number, bothParents: boolean): number {
@@ -126,15 +136,21 @@ export function govAt(t: number, daycareFrom: DaycareFrom): number {
   return parentPay + RULES.childAllowance
 }
 
+/**
+ * 한 사람이 그달 어떤 상태인가.
+ * work = 일한다 · paid = 육아휴직급여 · unpaid = 급여 기간이 끝난 무급 휴직 · side = 급여 대상이 아니라 쉬면서 버는 돈만
+ */
+export type EarnerState = 'work' | 'paid' | 'unpaid' | 'side'
+
 export interface LeaveMonth {
   /** 아이가 태어난 지 몇 번째 달 (1부터) */
   t: number
-  wifeOnLeave: boolean
-  husbandOnLeave: boolean
-  /** 그달 아내 몫 수입 — 휴직 중이면 육아휴직급여 */
+  wifeState: EarnerState
+  husbandState: EarnerState
+  /** 그달 아내 몫 수입 */
   wife: number
   husband: number
-  /** 부모급여 + 아동수당 */
+  /** 부모급여·양육수당 + 아동수당 */
   gov: number
   /** 고정비 + 변동비 */
   spend: number
@@ -142,6 +158,8 @@ export interface LeaveMonth {
   /** 그달 모이는 돈 (음수면 적자) */
   saved: number
 }
+
+export const onLeave = (s: EarnerState) => s !== 'work'
 
 /** 같은 숫자가 이어지는 달을 한 칸으로 묶은 것 */
 export interface LeaveRun {
@@ -153,62 +171,85 @@ export interface LeaveRun {
 export interface LeaveResult {
   /** 지금 매달 모으는 돈 */
   monthlyNow: number
+  /** 한 사람당 육아휴직급여가 나오는 최대 개월 수 (12 또는 18) */
+  paidLimit: number
+  /** 6+6 특례가 붙나 */
+  sixSix: boolean
   months: LeaveMonth[]
   runs: LeaveRun[]
 }
 
-/** 한 명만 쉬면 18개월을 골라 뒀어도 12개월로 본다 */
-export function effectiveMonths(v: LeaveInput): { monthsWife: number; monthsHusband: number } {
-  const cap = v.who === 'both' ? Infinity : MAX_SOLO
-  return { monthsWife: Math.min(v.monthsWife, cap), monthsHusband: Math.min(v.monthsHusband, cap) }
-}
+type Win = [number, number] | null
 
-function leaveWindows(input: LeaveInput): { wife: [number, number] | null; husband: [number, number] | null } {
-  const { who, order } = input
-  const { monthsWife, monthsHusband } = effectiveMonths(input)
-  const wife: [number, number] | null = who === 'husband' ? null : [1, monthsWife]
-  let husband: [number, number] | null = null
+function leaveWindows(v: LeaveInput): { wife: Win; husband: Win } {
+  const { who, monthsWife, monthsHusband, order } = v
+  const wife: Win = who === 'husband' ? null : [1, monthsWife]
+  let husband: Win = null
   if (who === 'husband') husband = [1, monthsHusband]
   else if (who === 'both')
     husband = order === 'seq' ? [monthsWife + 1, monthsWife + monthsHusband] : [1, monthsHusband]
   return { wife, husband }
 }
 
-const inWin = (w: [number, number] | null, t: number) => !!w && t >= w[0] && t <= w[1]
+const inWin = (w: Win, t: number) => !!w && t >= w[0] && t <= w[1]
 const man = (n: number) => Math.round(n / 10_000)
+
+/**
+ * 18개월 연장과 6+6은 부부가 둘 다 '육아휴직'(고용보험)을 쓸 때만이다.
+ * 한 사람이 프리랜서라 급여 대상이 아니면 다른 사람은 12개월, 일반 상한으로 본다.
+ */
+export function leaveRules(v: LeaveInput): { paidLimit: number; sixSix: boolean } {
+  const bothInsured = v.who === 'both' && v.insuredWife && v.insuredHusband
+  const win = leaveWindows(v)
+  const sixSix =
+    bothInsured && !!win.wife && !!win.husband && Math.max(win.wife[0], win.husband[0]) <= SIX_SIX_WITHIN
+  return { paidLimit: bothInsured ? PAID_BOTH : PAID_SOLO, sixSix }
+}
+
+function earner(
+  t: number,
+  win: Win,
+  pay: number,
+  insured: boolean,
+  side: number,
+  paidLimit: number,
+  sixSix: boolean,
+): { state: EarnerState; amount: number } {
+  if (!inWin(win, t)) return { state: 'work', amount: pay }
+  if (!insured) return { state: 'side', amount: side }
+  const k = t - win![0] + 1
+  if (k > paidLimit) return { state: 'unpaid', amount: 0 }
+  return { state: 'paid', amount: leavePayAt(k, pay, sixSix) }
+}
 
 export function simulate(v: LeaveInput): LeaveResult {
   const spend = v.fixed + v.variable
   const monthlyNow = v.payWife + v.payHusband - spend
   const win = leaveWindows(v)
-  // 6+6은 둘 다 18개월 안에 휴직을 시작할 때만. 아내가 18개월 쉬고 남편이 이어 쉬면 해당이 없다
-  const both =
-    v.who === 'both' && !!win.husband && !!win.wife && Math.max(win.wife[0], win.husband[0]) <= SIX_SIX_WITHIN
+  const { paidLimit, sixSix } = leaveRules(v)
   const last = Math.max(win.wife?.[1] ?? 0, win.husband?.[1] ?? 0)
 
   const months: LeaveMonth[] = []
   for (let t = 1; t <= last; t++) {
-    const wOn = inWin(win.wife, t)
-    const hOn = inWin(win.husband, t)
-    const wife = wOn ? leavePayAt(t - win.wife![0] + 1, v.payWife, both) : v.payWife
-    const husband = hOn ? leavePayAt(t - win.husband![0] + 1, v.payHusband, both) : v.payHusband
+    const w = earner(t, win.wife, v.payWife, v.insuredWife, v.sideWife, paidLimit, sixSix)
+    const h = earner(t, win.husband, v.payHusband, v.insuredHusband, v.sideHusband, paidLimit, sixSix)
     const gov = govAt(t, v.daycareFrom)
     months.push({
       t,
-      wifeOnLeave: wOn,
-      husbandOnLeave: hOn,
-      wife,
-      husband,
+      wifeState: w.state,
+      husbandState: h.state,
+      wife: w.amount,
+      husband: h.amount,
       gov,
       spend,
       childCost: v.childCost,
-      saved: wife + husband + gov - spend - v.childCost,
+      saved: w.amount + h.amount + gov - spend - v.childCost,
     })
   }
 
   // 화면에 만원 단위로 같게 보이는 달은 한 칸으로 묶는다
   const key = (m: LeaveMonth) =>
-    [m.wifeOnLeave, m.husbandOnLeave, man(m.wife), man(m.husband), man(m.gov), man(m.saved)].join('|')
+    [m.wifeState, m.husbandState, man(m.wife), man(m.husband), man(m.gov), man(m.saved)].join('|')
   const runs: LeaveRun[] = []
   for (const m of months) {
     const prev = runs[runs.length - 1]
@@ -216,5 +257,5 @@ export function simulate(v: LeaveInput): LeaveResult {
     else runs.push({ from: m.t, to: m.t, month: m })
   }
 
-  return { monthlyNow, months, runs }
+  return { monthlyNow, paidLimit, sixSix, months, runs }
 }

@@ -23,6 +23,25 @@ describe('육아휴직 계산기 화면', () => {
     expect(screen.getAllByText('둘 다 휴직').length).toBeGreaterThan(0)
   })
 
+  it('24개월 이상을 고르면 −/+로 개월 수를 고르고, 무급 기간을 알려준다', () => {
+    render(<ParentalLeave />)
+    fireEvent.click(screen.getByRole('button', { name: /우리집에 맞게 고치기/ }))
+    fireEvent.click(screen.getByRole('button', { name: '24개월 이상' }))
+    expect(screen.getAllByText('24개월').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: '한 달 늘리기' }))
+    expect(screen.getByRole('button', { name: '한 달 줄이기' }).nextSibling?.textContent).toBe('25개월')
+    expect(screen.getByText('13~25개월째는 무급이에요.')).toBeInTheDocument()
+    expect(screen.getAllByText('무급').length).toBeGreaterThan(0)
+  })
+
+  it('육아휴직급여를 못 받아요를 고르면 쉬는 동안 버는 돈 칸이 열린다', () => {
+    render(<ParentalLeave />)
+    fireEvent.click(screen.getByRole('button', { name: /우리집에 맞게 고치기/ }))
+    fireEvent.click(screen.getByRole('button', { name: '못 받아요' }))
+    expect(screen.getByText('쉬는 동안 버는 돈 (월)')).toBeInTheDocument()
+    expect(screen.getAllByText('쉬는 중').length).toBeGreaterThan(0)
+  })
+
   it('원팀프로젝트 링크와 모아불리 시작하기가 있다', () => {
     render(<ParentalLeave />)
     expect(screen.getByRole('link', { name: /원팀프로젝트 보러가기/ })).toHaveAttribute(

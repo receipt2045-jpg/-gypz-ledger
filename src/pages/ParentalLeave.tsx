@@ -4,13 +4,14 @@ import AmountInput from '../components/AmountInput'
 import Card from '../components/Card'
 import {
   LEAVE_SAVE_KEY,
-  MONTH_OPTIONS_BOTH,
-  MONTH_OPTIONS_SOLO,
+  MONTH_OPTIONS,
+  MONTHS_MAX,
   RULES,
-  effectiveMonths,
+  onLeave,
   readLeaveInput,
   simulate,
   type DaycareFrom,
+  type EarnerState,
   type LeaveInput,
   type LeaveMonth,
   type LeaveRun,
@@ -44,7 +45,6 @@ export default function ParentalLeave() {
 
   const r = useMemo(() => simulate(v), [v])
   const both = v.who === 'both'
-  const shown = effectiveMonths(v)
 
   return (
     <div className="flex min-h-screen justify-center bg-bg">
@@ -118,23 +118,43 @@ export default function ParentalLeave() {
           {openAdjust && (
             <div className="mt-4 space-y-4">
               {v.who !== 'husband' && (
-                <Field label="아내 휴직 기간">
-                  <MonthSegment both={both} value={shown.monthsWife} onChange={(monthsWife) => set({ monthsWife })} />
-                </Field>
+                <PersonLeave
+                  name="아내"
+                  months={v.monthsWife}
+                  insured={v.insuredWife}
+                  side={v.sideWife}
+                  paidLimit={r.paidLimit}
+                  onChange={(p) =>
+                    set({
+                      ...(p.months !== undefined && { monthsWife: p.months }),
+                      ...(p.insured !== undefined && { insuredWife: p.insured }),
+                      ...(p.side !== undefined && { sideWife: p.side }),
+                    })
+                  }
+                />
               )}
               {v.who !== 'wife' && (
-                <Field label="남편 휴직 기간">
-                  <MonthSegment
-                    both={both}
-                    value={shown.monthsHusband}
-                    onChange={(monthsHusband) => set({ monthsHusband })}
-                  />
-                </Field>
+                <PersonLeave
+                  name="남편"
+                  months={v.monthsHusband}
+                  insured={v.insuredHusband}
+                  side={v.sideHusband}
+                  paidLimit={r.paidLimit}
+                  onChange={(p) =>
+                    set({
+                      ...(p.months !== undefined && { monthsHusband: p.months }),
+                      ...(p.insured !== undefined && { insuredHusband: p.insured }),
+                      ...(p.side !== undefined && { sideHusband: p.side }),
+                    })
+                  }
+                />
               )}
               <Note>
-                {both
-                  ? '둘 다 3개월 이상 쉬면 한 사람당 18개월까지 돼요. 13개월째부터도 월급의 80%, 최대 160만원이 나와요.'
-                  : '한 명만 쉬면 12개월까지예요. 둘 다 3개월 이상 쉬면 한 사람당 18개월까지 늘어나요.'}
+                {r.paidLimit === 18
+                  ? '둘 다 3개월 이상 육아휴직을 쓰면 한 사람당 18개월까지 급여가 나와요. 13개월째부터도 월급의 80%, 최대 160만원이에요.'
+                  : both
+                    ? '한 사람이 급여를 못 받으면 다른 사람도 12개월까지만 급여가 나와요.'
+                    : '한 명만 쉬면 12개월까지 급여가 나와요. 둘 다 3개월 이상 쉬면 한 사람당 18개월까지 늘어나요.'}
               </Note>
               {both && (
                 <Field label="어떻게 쉬어요?">
@@ -272,8 +292,10 @@ const periodLabel = (run: LeaveRun) =>
   run.from === run.to ? `${run.from}개월` : `${run.from}~${run.to}개월`
 
 function whoLabel(m: LeaveMonth): string {
-  if (m.wifeOnLeave && m.husbandOnLeave) return '둘 다 휴직'
-  return m.wifeOnLeave ? '아내 휴직' : '남편 휴직'
+  const w = onLeave(m.wifeState)
+  const h = onLeave(m.husbandState)
+  if (w && h) return '둘 다 휴직'
+  return w ? '아내 휴직' : '남편 휴직'
 }
 
 /** 달마다 막대 — 회색은 지금 모으는 돈, 파랑은 휴직 중 모이는 돈, 빨강은 적자 */
@@ -307,7 +329,7 @@ function MonthBars({ months, now }: { months: LeaveMonth[]; now: number }) {
               )}
               {tick && (
                 <text
-                  x={Math.min(x + bw / 2, W - 20)}
+                  x={Math.max(20, Math.min(x + bw / 2, W - 20))}
                   y={166}
                   textAnchor="middle"
                   className="fill-cap text-[11px]"
@@ -323,6 +345,7 @@ function MonthBars({ months, now }: { months: LeaveMonth[]; now: number }) {
       <div className="mt-1.5 flex justify-center gap-4 text-[12px] text-sub">
         <Legend className="bg-[#D1D6DB]" label="지금" />
         <Legend className="bg-brand" label="육아휴직하면" />
+        {values.some((x) => x < 0) && <Legend className="bg-danger" label="적자" />}
       </div>
     </Card>
   )
@@ -341,10 +364,12 @@ function Legend({ className, label }: { className: string; label: string }) {
 function CalcTable({ runs }: { runs: LeaveRun[] }) {
   if (runs.length === 0) return null
   const cell = 'tnum px-1.5 py-1 text-right'
-  const earner = (amount: number, onLeave: boolean) => (
-    <span className={onLeave ? 'text-brand' : ''}>
+  const earner = (amount: number, state: EarnerState) => (
+    <span className={state === 'paid' ? 'text-brand' : state === 'work' ? '' : 'text-danger'}>
       {man(amount)}
-      {onLeave && <span className="block text-[10.5px] leading-tight">휴직급여</span>}
+      {state !== 'work' && (
+        <span className="block text-[10.5px] leading-tight">{STATE_TAG[state]}</span>
+      )}
     </span>
   )
   return (
@@ -368,7 +393,7 @@ function CalcTable({ runs }: { runs: LeaveRun[] }) {
               <td className="py-1 pl-1">아내</td>
               {runs.map((run) => (
                 <td key={run.from} className={cell}>
-                  {earner(run.month.wife, run.month.wifeOnLeave)}
+                  {earner(run.month.wife, run.month.wifeState)}
                 </td>
               ))}
             </tr>
@@ -376,7 +401,7 @@ function CalcTable({ runs }: { runs: LeaveRun[] }) {
               <td className="py-1 pl-1">남편</td>
               {runs.map((run) => (
                 <td key={run.from} className={cell}>
-                  {earner(run.month.husband, run.month.husbandOnLeave)}
+                  {earner(run.month.husband, run.month.husbandState)}
                 </td>
               ))}
             </tr>
@@ -469,22 +494,119 @@ function Segment<T extends string | number>({
   )
 }
 
-function MonthSegment({
-  both,
-  value,
+const STATE_TAG: Record<Exclude<EarnerState, 'work'>, string> = {
+  paid: '휴직급여',
+  unpaid: '무급',
+  side: '쉬는 중',
+}
+
+/** 한 사람의 휴직 — 기간, 급여를 받을 수 있나, 못 받으면 쉬는 동안 버는 돈 */
+function PersonLeave({
+  name,
+  months,
+  insured,
+  side,
+  paidLimit,
   onChange,
 }: {
-  both: boolean
-  value: number
-  onChange: (n: number) => void
+  name: string
+  months: number
+  insured: boolean
+  side: number
+  paidLimit: number
+  onChange: (p: { months?: number; insured?: boolean; side?: number }) => void
 }) {
-  const options = both ? MONTH_OPTIONS_BOTH : MONTH_OPTIONS_SOLO
   return (
-    <Segment<number>
-      value={value}
-      onChange={onChange}
-      options={options.map((m) => [m, `${m}개월`])}
-    />
+    <div className="space-y-3 rounded-btn bg-bg p-3.5">
+      <Field label={`${name} 휴직 기간 (개월)`}>
+        <MonthPicker value={months} onChange={(m) => onChange({ months: m })} />
+        {insured && months > paidLimit && (
+          <Note>
+            {paidLimit + 1 === months
+              ? `${months}개월째는 무급이에요.`
+              : `${paidLimit + 1}~${months}개월째는 무급이에요.`}
+          </Note>
+        )}
+      </Field>
+      <Field label={`${name} 육아휴직급여`}>
+        <Segment<'yes' | 'no'>
+          value={insured ? 'yes' : 'no'}
+          onChange={(x) => onChange({ insured: x === 'yes' })}
+          options={[
+            ['yes', '받아요'],
+            ['no', '못 받아요'],
+          ]}
+        />
+        <Note>프리랜서·자영업자이거나 고용보험 가입이 180일이 안 되면 못 받아요.</Note>
+      </Field>
+      {!insured && (
+        <Field label="쉬는 동안 버는 돈 (월)">
+          <AmountInput value={side} onChange={(n) => onChange({ side: n })} />
+          <Note>쉬면서도 조금씩 일하면 적어 주세요. 없으면 0원으로 둬요.</Note>
+        </Field>
+      )}
+    </div>
+  )
+}
+
+/** 3 · 6 · 12 · 18 · 24~ (개월) — 마지막을 고르면 −/+로 개월 수를 고른다 */
+function MonthPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const long = value >= 24
+  return (
+    <>
+      <div className="flex gap-1.5">
+        {MONTH_OPTIONS.map((m) => {
+          const on = m === 24 ? long : value === m
+          return (
+            <button
+              key={m}
+              onClick={() => onChange(m)}
+              aria-pressed={on}
+              aria-label={m === 24 ? '24개월 이상' : `${m}개월`}
+              className={`flex-1 whitespace-nowrap rounded-btn border py-2.5 text-[14px] font-semibold ${
+                on ? 'border-brand bg-brand/5 text-brand' : 'border-line bg-white text-sub'
+              }`}
+            >
+              {m === 24 ? '24~' : m}
+            </button>
+          )
+        })}
+      </div>
+      {long && (
+        <div className="mt-2 flex items-center justify-center gap-3">
+          <StepButton label="한 달 줄이기" disabled={value <= 24} onClick={() => onChange(value - 1)}>
+            −
+          </StepButton>
+          <span className="tnum w-16 text-center text-[16px] font-bold text-ink">{value}개월</span>
+          <StepButton label="한 달 늘리기" disabled={value >= MONTHS_MAX} onClick={() => onChange(value + 1)}>
+            +
+          </StepButton>
+        </div>
+      )}
+    </>
+  )
+}
+
+function StepButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string
+  disabled: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="h-9 w-9 rounded-full border border-line bg-white text-[18px] font-bold text-sub disabled:opacity-40"
+    >
+      {children}
+    </button>
   )
 }
 
