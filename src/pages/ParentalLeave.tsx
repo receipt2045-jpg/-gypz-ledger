@@ -27,7 +27,8 @@ const man = (n: number) => Math.round(Math.abs(n) / 10_000).toLocaleString('ko-K
 /**
  * 육아휴직 하면 우리 집은 어떻게 될까 — 로그인 없이 열리는 공개 계산기.
  * 영상·SNS에서 바로 들어오는 자리라 가입을 요구하지 않는다.
- * 위에서부터: 한 줄 결론 + 구간 칸 → 달마다 막대 → 한 달 계산 표 → 우리집 숫자 → 고치기 → 원팀프로젝트.
+ * 위에서부터: 한 줄 결론 + 구간 칸 → 우리집 숫자로 바꿔보라는 안내 → 달마다 막대 → (접힌) 자세히 보기 →
+ * 우리집 숫자 → 고치기 → 원팀프로젝트.
  */
 export default function ParentalLeave() {
   const [v, setV] = useState<LeaveInput>(readLeaveInput)
@@ -62,44 +63,60 @@ export default function ParentalLeave() {
               </>
             )}
             <br />
-            육아휴직하면 한 달에{' '}
-            <span aria-hidden>🍼</span>
+            육아휴직하면 한 달에 <span aria-hidden>🍼</span>
           </h1>
         </header>
 
         <RunBoxes runs={r.runs} showWho={both} />
+        {/* 처음 온 사람은 위 숫자가 예시라는 걸 모른다 — 어디를 고치면 되는지 바로 알려준다 */}
+        <button
+          onClick={() =>
+            document
+              .getElementById('our-numbers')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+          className="mt-3 flex w-full items-center justify-center gap-1 rounded-btn bg-white py-3 text-[14px] font-bold text-brand"
+        >
+          우리집 숫자로 바꿔보세요
+          <ChevronDown size={17} />
+        </button>
         <MonthBars months={r.months} now={r.monthlyNow} />
         <CalcTable runs={r.runs} />
 
         {/* ── 우리집 숫자 */}
-        <Card className="mt-4">
-          <p className="text-[15px] font-bold text-ink">우리집 숫자</p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Field label="아내 월 실수령">
-              <AmountInput value={v.payWife} onChange={(n) => set({ payWife: n })} />
-            </Field>
-            <Field label="남편 월 실수령">
-              <AmountInput value={v.payHusband} onChange={(n) => set({ payHusband: n })} />
-            </Field>
-            <Field label="월 고정비">
-              <AmountInput value={v.fixed} onChange={(n) => set({ fixed: n })} />
-            </Field>
-            <Field label="월 변동비">
-              <AmountInput value={v.variable} onChange={(n) => set({ variable: n })} />
-            </Field>
-          </div>
+        <div id="our-numbers" className="mt-4 scroll-mt-4">
+          <Card>
+            <p className="text-[15px] font-bold text-ink">우리집 숫자로 바꿔보세요</p>
+            <p className="mt-1 text-[12.5px] text-cap">
+              지금 보이는 건 예시 숫자예요. 바꾸면 위 결과가 바로 달라져요.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Field label="아내 월 실수령">
+                <AmountInput value={v.payWife} onChange={(n) => set({ payWife: n })} />
+              </Field>
+              <Field label="남편 월 실수령">
+                <AmountInput value={v.payHusband} onChange={(n) => set({ payHusband: n })} />
+              </Field>
+              <Field label="월 고정비">
+                <AmountInput value={v.fixed} onChange={(n) => set({ fixed: n })} />
+              </Field>
+              <Field label="월 변동비">
+                <AmountInput value={v.variable} onChange={(n) => set({ variable: n })} />
+              </Field>
+            </div>
 
-          <p className="mb-1.5 mt-4 text-[13.5px] font-medium text-sub">누가 쉬어요?</p>
-          <Segment<Who>
-            value={v.who}
-            onChange={(who) => set({ who })}
-            options={[
-              ['wife', '아내'],
-              ['husband', '남편'],
-              ['both', '둘 다'],
-            ]}
-          />
-        </Card>
+            <p className="mb-1.5 mt-4 text-[13.5px] font-medium text-sub">누가 쉬어요?</p>
+            <Segment<Who>
+              value={v.who}
+              onChange={(who) => set({ who })}
+              options={[
+                ['wife', '아내'],
+                ['husband', '남편'],
+                ['both', '둘 다'],
+              ]}
+            />
+          </Card>
+        </div>
 
         {/* ── 고치기 */}
         <Card className="mt-4">
@@ -127,7 +144,9 @@ export default function ParentalLeave() {
                   onChange={(p) =>
                     set({
                       ...(p.months !== undefined && { monthsWife: p.months }),
-                      ...(p.insured !== undefined && { insuredWife: p.insured }),
+                      ...(p.insured !== undefined && {
+                        insuredWife: p.insured,
+                      }),
                       ...(p.side !== undefined && { sideWife: p.side }),
                     })
                   }
@@ -142,8 +161,12 @@ export default function ParentalLeave() {
                   paidLimit={r.paidLimit}
                   onChange={(p) =>
                     set({
-                      ...(p.months !== undefined && { monthsHusband: p.months }),
-                      ...(p.insured !== undefined && { insuredHusband: p.insured }),
+                      ...(p.months !== undefined && {
+                        monthsHusband: p.months,
+                      }),
+                      ...(p.insured !== undefined && {
+                        insuredHusband: p.insured,
+                      }),
                       ...(p.side !== undefined && { sideHusband: p.side }),
                     })
                   }
@@ -230,24 +253,24 @@ export default function ParentalLeave() {
             </li>
             <li>
               · 육아휴직급여 — 한 명만 쉬면 1~3개월 최대 250만원, 4~6개월 최대 200만원, 7개월부터
-              월급의 80% 최대 160만원. 부부가 둘 다 쉬면 각자 첫 6개월 최대 250·250·300·350·400·450만원.
-              최소 70만원. 고용노동부 고용보험
+              월급의 80% 최대 160만원. 부부가 둘 다 쉬면 각자 첫 6개월 최대
+              250·250·300·350·400·450만원. 최소 70만원. 고용노동부 고용보험
             </li>
             <li>
-              · 부모급여 — 만 0세 월 100만원, 만 1세 월 50만원. 어린이집에 다니면 보육료를 빼고 0세는
-              41.6만원, 1세는 0원. 두 돌 뒤 집에서 보면 가정양육수당 월 10만원. 아동수당 월 10만원.
-              보건복지부
+              · 부모급여 — 만 0세 월 100만원, 만 1세 월 50만원. 어린이집에 다니면 보육료를 빼고
+              0세는 41.6만원, 1세는 0원. 두 돌 뒤 집에서 보면 가정양육수당 월 10만원. 아동수당 월
+              10만원. 보건복지부
             </li>
             <li>
-              · 양육비 — 육아정책연구소 KICCE 소비실태조사 2025, 2024년 가구당 양육비용 월 149.8만원.
-              집 안 모든 자녀에게 든 돈의 합이에요
+              · 양육비 — 육아정책연구소 KICCE 소비실태조사 2025, 2024년 가구당 양육비용 월
+              149.8만원. 집 안 모든 자녀에게 든 돈의 합이에요
             </li>
             <li>· 기준일 {RULES.updated}</li>
           </ul>
           <p className="mt-3">
             아이가 태어나자마자 휴직을 시작하고, 고정비·변동비는 지금 그대로 쓴다고 봤어요. 급여는
-            세전 월급(통상임금) 기준이라 실수령으로 넣으면 실제로는 같거나 조금 더 받아요. 방향을 보는
-            용도로만 쓰시고, 정확한 금액은 고용보험에서 확인하세요.
+            세전 월급(통상임금) 기준이라 실수령으로 넣으면 실제로는 같거나 조금 더 받아요. 방향을
+            보는 용도로만 쓰시고, 정확한 금액은 고용보험에서 확인하세요.
           </p>
         </div>
       </div>
@@ -314,14 +337,26 @@ function MonthBars({ months, now }: { months: LeaveMonth[]; now: number }) {
 
   return (
     <Card className="mt-4">
-      <svg viewBox={`0 0 ${W} 170`} className="block w-full" role="img" aria-label="달마다 모이는 돈">
+      <svg
+        viewBox={`0 0 ${W} 170`}
+        className="block w-full"
+        role="img"
+        aria-label="달마다 모이는 돈"
+      >
         {months.map((m, i) => {
           const x = i * slot + (slot - bw) / 2
           const h = Math.abs(m.saved) * scale
           const tick = i === 0 || (i + 1) % 6 === 0
           return (
             <g key={m.t}>
-              <rect x={x} y={zeroY - nowH} width={bw} height={nowH} rx={2.5} className="fill-[#D1D6DB]" />
+              <rect
+                x={x}
+                y={zeroY - nowH}
+                width={bw}
+                height={nowH}
+                rx={2.5}
+                className="fill-[#D1D6DB]"
+              />
               {m.saved >= 0 ? (
                 <rect x={x} y={zeroY - h} width={bw} height={h} rx={2.5} className="fill-brand" />
               ) : (
@@ -362,6 +397,7 @@ function Legend({ className, label }: { className: string; label: string }) {
 
 /** 한 달에 들어오고 나가는 돈 — 평균 없이 칸마다 실제 금액 */
 function CalcTable({ runs }: { runs: LeaveRun[] }) {
+  const [open, setOpen] = useState(false)
   if (runs.length === 0) return null
   const cell = 'tnum px-1.5 py-1 text-right'
   const earner = (amount: number, state: EarnerState) => (
@@ -374,85 +410,99 @@ function CalcTable({ runs }: { runs: LeaveRun[] }) {
   )
   return (
     <Card className="mt-4">
-      <p className="text-[15px] font-bold text-ink">한 달 계산</p>
-      <div className="-mx-1 mt-2 overflow-x-auto">
-        <table className="w-full min-w-max text-[12.5px] text-sub">
-          <thead>
-            <tr className="text-[11.5px] text-cap">
-              <th className="py-1 pl-1 text-left font-medium">만원</th>
-              {runs.map((run) => (
-                <th key={run.from} className="px-1.5 py-1 text-right font-medium">
-                  {periodLabel(run)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <GroupRow label="들어오는 돈" span={runs.length} />
-            <tr>
-              <td className="py-1 pl-1">아내</td>
-              {runs.map((run) => (
-                <td key={run.from} className={cell}>
-                  {earner(run.month.wife, run.month.wifeState)}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td className="py-1 pl-1">남편</td>
-              {runs.map((run) => (
-                <td key={run.from} className={cell}>
-                  {earner(run.month.husband, run.month.husbandState)}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td className="py-1 pl-1">부모급여·수당</td>
-              {runs.map((run) => (
-                <td key={run.from} className={cell}>
-                  {man(run.month.gov)}
-                </td>
-              ))}
-            </tr>
-            <GroupRow label="나가는 돈" span={runs.length} />
-            <tr>
-              <td className="py-1 pl-1">고정비·변동비</td>
-              {runs.map((run) => (
-                <td key={run.from} className={cell}>
-                  {man(run.month.spend)}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td className="py-1 pl-1">늘어나는 양육비</td>
-              {runs.map((run) => (
-                <td key={run.from} className={cell}>
-                  {man(run.month.childCost)}
-                </td>
-              ))}
-            </tr>
-            <tr className="border-t border-line">
-              <td className="py-1.5 pl-1 font-bold text-ink">모이는 돈</td>
-              {runs.map((run) => {
-                const deficit = run.month.saved < 0
-                return (
-                  <td
-                    key={run.from}
-                    className={`${cell} py-1.5 font-bold ${deficit ? 'text-danger' : 'text-brand'}`}
-                  >
-                    {deficit ? '−' : ''}
-                    {man(run.month.saved)}
-                  </td>
-                )
-              })}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <Note>
-        육아휴직급여는 한 명만 쉬면 첫 3개월 최대 250만, 4~6개월 200만, 이후 월급의 80% 최대 160만원이에요.
-        부모급여는 만 0세 100만원, 돌 지나면 50만원이고 두 돌 뒤엔 집에서 보면 양육수당 10만원이에요.
-        아동수당 10만원을 더했어요.
-      </Note>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between"
+        aria-expanded={open}
+      >
+        <span className="text-[15px] font-bold text-ink">자세히 보기</span>
+        <ChevronDown
+          size={18}
+          className={`text-cap transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <>
+          <div className="-mx-1 mt-2 overflow-x-auto">
+            <table className="w-full min-w-max text-[12.5px] text-sub">
+              <thead>
+                <tr className="text-[11.5px] text-cap">
+                  <th className="py-1 pl-1 text-left font-medium">만원</th>
+                  {runs.map((run) => (
+                    <th key={run.from} className="px-1.5 py-1 text-right font-medium">
+                      {periodLabel(run)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <GroupRow label="들어오는 돈" span={runs.length} />
+                <tr>
+                  <td className="py-1 pl-1">아내</td>
+                  {runs.map((run) => (
+                    <td key={run.from} className={cell}>
+                      {earner(run.month.wife, run.month.wifeState)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="py-1 pl-1">남편</td>
+                  {runs.map((run) => (
+                    <td key={run.from} className={cell}>
+                      {earner(run.month.husband, run.month.husbandState)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="py-1 pl-1">부모급여·수당</td>
+                  {runs.map((run) => (
+                    <td key={run.from} className={cell}>
+                      {man(run.month.gov)}
+                    </td>
+                  ))}
+                </tr>
+                <GroupRow label="나가는 돈" span={runs.length} />
+                <tr>
+                  <td className="py-1 pl-1">고정비·변동비</td>
+                  {runs.map((run) => (
+                    <td key={run.from} className={cell}>
+                      {man(run.month.spend)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="py-1 pl-1">늘어나는 양육비</td>
+                  {runs.map((run) => (
+                    <td key={run.from} className={cell}>
+                      {man(run.month.childCost)}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-t border-line">
+                  <td className="py-1.5 pl-1 font-bold text-ink">모이는 돈</td>
+                  {runs.map((run) => {
+                    const deficit = run.month.saved < 0
+                    return (
+                      <td
+                        key={run.from}
+                        className={`${cell} py-1.5 font-bold ${deficit ? 'text-danger' : 'text-brand'}`}
+                      >
+                        {deficit ? '−' : ''}
+                        {man(run.month.saved)}
+                      </td>
+                    )
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <Note>
+            육아휴직급여는 한 명만 쉬면 첫 3개월 최대 250만, 4~6개월 200만, 이후 월급의 80% 최대
+            160만원이에요. 부모급여는 만 0세 100만원, 돌 지나면 50만원이고 두 돌 뒤엔 집에서 보면
+            양육수당 10만원이에요. 아동수당 10만원을 더했어요.
+          </Note>
+        </>
+      )}
     </Card>
   )
 }
@@ -574,11 +624,19 @@ function MonthPicker({ value, onChange }: { value: number; onChange: (n: number)
       </div>
       {long && (
         <div className="mt-2 flex items-center justify-center gap-3">
-          <StepButton label="한 달 줄이기" disabled={value <= 24} onClick={() => onChange(value - 1)}>
+          <StepButton
+            label="한 달 줄이기"
+            disabled={value <= 24}
+            onClick={() => onChange(value - 1)}
+          >
             −
           </StepButton>
           <span className="tnum w-16 text-center text-[16px] font-bold text-ink">{value}개월</span>
-          <StepButton label="한 달 늘리기" disabled={value >= MONTHS_MAX} onClick={() => onChange(value + 1)}>
+          <StepButton
+            label="한 달 늘리기"
+            disabled={value >= MONTHS_MAX}
+            onClick={() => onChange(value + 1)}
+          >
             +
           </StepButton>
         </div>

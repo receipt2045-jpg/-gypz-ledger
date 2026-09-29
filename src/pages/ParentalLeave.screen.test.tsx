@@ -31,6 +31,7 @@ describe('육아휴직 계산기 화면', () => {
     fireEvent.click(screen.getByRole('button', { name: '한 달 늘리기' }))
     expect(screen.getByRole('button', { name: '한 달 줄이기' }).nextSibling?.textContent).toBe('25개월')
     expect(screen.getByText('13~25개월째는 무급이에요.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '자세히 보기' }))
     expect(screen.getAllByText('무급').length).toBeGreaterThan(0)
   })
 
@@ -39,7 +40,21 @@ describe('육아휴직 계산기 화면', () => {
     fireEvent.click(screen.getByRole('button', { name: /우리집에 맞게 고치기/ }))
     fireEvent.click(screen.getByRole('button', { name: '못 받아요' }))
     expect(screen.getByText('쉬는 동안 버는 돈 (월)')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '자세히 보기' }))
     expect(screen.getAllByText('쉬는 중').length).toBeGreaterThan(0)
+  })
+
+  it('자세히 보기는 처음엔 접혀 있고, 누르면 한 달 계산 표가 열린다', () => {
+    render(<ParentalLeave />)
+    expect(screen.queryByText('들어오는 돈')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '자세히 보기' }))
+    expect(screen.getByText('들어오는 돈')).toBeInTheDocument()
+  })
+
+  it('처음 온 사람에게 우리집 숫자로 바꿔보라고 알려준다', () => {
+    render(<ParentalLeave />)
+    expect(screen.getByRole('button', { name: /우리집 숫자로 바꿔보세요/ })).toBeInTheDocument()
+    expect(screen.getByText(/지금 보이는 건 예시 숫자예요/)).toBeInTheDocument()
   })
 
   it('원팀프로젝트 링크와 모아불리 시작하기가 있다', () => {
