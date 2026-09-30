@@ -18,6 +18,7 @@ import {
   resolveLedger,
   resolveSnapshot,
   summarize,
+  totalAssets,
 } from '../lib/carryover'
 import {
   abbreviateKRW,
@@ -145,6 +146,16 @@ export default function Home() {
           지난달보다 {delta.zero ? '변동 없음' : delta.text}
         </p>
       </header>
+
+      {/* 자산 로드맵을 뺀 뒤(2026-09-30) — 목표를 세워 둔 집은 여기서 한 줄로 이어서 본다 */}
+      {profile.goal && (
+        <GoalLine
+          name={profile.goal.name}
+          amount={profile.goal.amount}
+          targetYm={profile.goal.targetYm}
+          saved={totalAssets(snapshot) - (profile.goal.baseAssets ?? totalAssets(snapshot))}
+        />
+      )}
 
       {/* 새로운 기능 알림 — 한 번 닫거나 들어가 보면 다시 안 뜬다 */}
       <NewFeatureBanner />
@@ -369,5 +380,36 @@ function GuideStep({
       </span>
       {!done && <ChevronRight size={16} className="shrink-0 text-cap" />}
     </button>
+  )
+}
+
+/** 세워 둔 목표 한 줄 — 세운 뒤 늘어난 자산 / 목표 금액 */
+function GoalLine({
+  name,
+  amount,
+  targetYm,
+  saved,
+}: {
+  name?: string
+  amount: number
+  targetYm: string
+  saved: number
+}) {
+  const pct = amount > 0 ? Math.max(0, Math.min(100, Math.round((saved / amount) * 100))) : 0
+  return (
+    <div className="rounded-card bg-white px-4 py-3.5 shadow-card">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="min-w-0 truncate text-[14px] font-bold text-ink">
+          🎯 {name || '모을 돈'} {abbreviateKRW(amount)}
+        </p>
+        <p className="shrink-0 text-[12.5px] text-cap">{formatYmKorean(targetYm)}까지</p>
+      </div>
+      <div className="mt-2 flex items-center gap-2.5">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-line">
+          <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
+        </div>
+        <span className="tnum shrink-0 text-[13px] font-bold text-brand">{pct}%</span>
+      </div>
+    </div>
   )
 }

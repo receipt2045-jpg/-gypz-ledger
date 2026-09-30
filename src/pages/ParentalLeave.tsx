@@ -331,7 +331,7 @@ function useMyLedgers(): MonthlyLedger[] | null {
 
 const manLabel = (n: number) => `${Math.round(n / 10_000).toLocaleString('ko-KR')}만`
 
-/** 앱 안(자산 로드맵·홈 알림)에서 들어왔으면 돌아갈 길 — 이 화면엔 탭 바가 없다 */
+/** 앱 안(정보 탭·홈 알림)에서 들어왔으면 돌아갈 길 — 이 화면엔 탭 바가 없다 */
 function BackToApp() {
   const inApp = useLedgerStore((st) => st.status === 'ready')
   if (!inApp) return null

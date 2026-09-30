@@ -1,21 +1,21 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Map, Mic, MessagesSquare, Settings } from 'lucide-react'
+import { BookOpen, Home, Landmark, Newspaper, Settings } from 'lucide-react'
 import { useLedgerStore } from '../lib/store'
 
 /**
- * 하단 탭 (2026-09-09 개편).
+ * 하단 탭 (2026-09-30 개편).
  *
- * 자산·가계부 탭을 뺐다. 둘 다 홈에서 바로 들어갈 수 있고(순자산 카드 → 자산,
- * 정산 카드 → 가계부), 탭 자리는 매일 여는 것에 줘야 한다.
- * 왼쪽은 '어디로 가나(로드맵)'와 '오늘 뭐 했나(소비 기록)', 오른쪽은 사람들과 설정.
+ * 자산 로드맵을 뺐다 — 카드가 많고 같은 말을 반복해서 무엇을 하라는 건지 흐렸다.
+ * 소비 기록은 가계부 안으로 들어갔다(가계부 맨 위 '오늘의 소비 기록'). 오늘 기록 전이면
+ * 가계부 탭에 빨간 점. 게시판은 공지·계산기·정보를 모은 '정보' 탭이 됐다.
  */
 const LEFT = [
-  { to: '/roadmap', label: '자산 로드맵', Icon: Map },
-  { to: '/confess', label: '오늘의 소비 기록', Icon: Mic },
+  { to: '/monthly', label: '가계부', Icon: BookOpen },
+  { to: '/assets', label: '자산', Icon: Landmark },
 ] as const
 
 const RIGHT = [
-  { to: '/board', label: '게시판', Icon: MessagesSquare },
+  { to: '/info', label: '정보', Icon: Newspaper },
   { to: '/settings', label: '설정', Icon: Settings },
 ] as const
 
@@ -48,8 +48,7 @@ function Tab({
                 <span className="absolute -right-1.5 -top-0.5 h-2 w-2 rounded-full bg-danger ring-2 ring-white" />
               )}
             </span>
-            {/* 긴 라벨('오늘의 소비 기록')은 좁은 폰에서 두 줄로 접힌다 — 줄 간격을 좁혀 높이를 맞춘다 */}
-            <span
+                        <span
               className={`text-center text-[11px] leading-tight ${pending ? 'font-bold' : 'font-medium'} ${tone}`}
             >
               {label}
@@ -64,7 +63,7 @@ function Tab({
 export default function TabBar() {
   const { confessions, memberNo } = useLedgerStore()
 
-  // 오늘 내가 기록했는지 — 안 했으면 소비 기록 탭에 빨간 점
+  // 오늘 내가 기록했는지 — 안 했으면 가계부 탭에 빨간 점 (소비 기록이 가계부 안에 있다)
   const today = dayKey(new Date())
   const me = memberNo ?? 1
   const confessedToday = confessions.some(
@@ -75,7 +74,7 @@ export default function TabBar() {
     <nav className="fixed bottom-0 left-1/2 z-30 w-full max-w-app -translate-x-1/2 border-t border-line bg-white/95 backdrop-blur">
       <div className="grid grid-cols-5 items-start px-1 pb-[env(safe-area-inset-bottom)] pt-1.5">
         {LEFT.map((t) => (
-          <Tab key={t.to} {...t} pending={t.to === '/confess' && !confessedToday} />
+          <Tab key={t.to} {...t} pending={t.to === '/monthly' && !confessedToday} />
         ))}
 
         {/* 가운데 홈 — 모든 화면의 허브 */}

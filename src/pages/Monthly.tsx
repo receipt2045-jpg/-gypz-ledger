@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Mic, Trash2, X } from 'lucide-react'
 import BudgetBars from '../components/BudgetBars'
 import FixedCostCheck from '../components/FixedCostCheck'
 import InfoTip from '../components/InfoTip'
@@ -36,6 +36,13 @@ export default function Monthly() {
     removeMonth,
   } = useLedgerStore()
   const [ym, setYm] = useState(() => activeYm(ledgers))
+  // 오늘 내가 소비 기록을 했는지 — 탭 바와 같은 기준(로컬 날짜)
+  const todayKey = new Date().toLocaleDateString('sv-SE')
+  const confessedToday = confessions.some(
+    (c) =>
+      c.memberNo === (memberNo ?? 1) &&
+      new Date(c.createdAt).toLocaleDateString('sv-SE') === todayKey,
+  )
   const [member, setMember] = useState<MemberFilter>(0)
   // 개념 안내 배너 (브리프 P0 1.2) — 닫으면 이 기기에서 다시 안 뜸
   const [showBanner, setShowBanner] = useState(() => !localStorage.getItem(BANNER_KEY))
@@ -100,9 +107,9 @@ export default function Monthly() {
       {showBanner && (
         <div className="flex items-start justify-between gap-3 rounded-card bg-brand/10 px-4 py-3">
           <div>
-            <p className="text-[14px] font-bold text-ink">매일 적는 앱이 아니에요 ❗️</p>
+            <p className="text-[14px] font-bold text-ink">매일은 소비 기록만, 월말엔 정산 ❗️</p>
             <p className="mt-0.5 text-[13px] text-sub">
-              월말에 '정산하기'로 한 번에 정리합니다
+              쓴 돈은 그날그날 말로 남기고, 월말에 '정산하기'로 한 번에 정리해요
             </p>
           </div>
           <button onClick={closeBanner} className="shrink-0 pt-0.5 text-cap" aria-label="배너 닫기">
@@ -137,6 +144,28 @@ export default function Monthly() {
           아직 정산 전이에요 · 정산한 사람은 실제, 아직이면 계획 기준
         </p>
       )}
+
+      {/* 오늘의 소비 기록 — 탭에서 가계부 안으로 들어왔다 (2026-09-30) */}
+      <button
+        onClick={() => navigate('/confess')}
+        className="flex w-full items-center gap-3 rounded-card bg-white px-4 py-3.5 text-left shadow-card active:bg-line"
+      >
+        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10">
+          <Mic size={20} className="text-brand" />
+          {!confessedToday && (
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-white" />
+          )}
+        </span>
+        <span className="flex-1">
+          <span className="block text-[14.5px] font-bold text-ink">오늘의 소비 기록</span>
+          <span className="mt-0.5 block text-[12.5px] text-sub">
+            {confessedToday ? '오늘 기록 끝 ✅ · 더 적을 게 있으면 눌러요' : '오늘 쓴 돈을 말해주세요'}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center text-[13px] font-bold text-brand">
+          기록하기 <ChevronRight size={15} />
+        </span>
+      </button>
 
       {/* 기록하기 — 예산 세우기(월초) / 정산하기(월말) */}
       <div className="flex gap-2">

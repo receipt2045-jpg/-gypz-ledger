@@ -10,18 +10,18 @@ const labels = () =>
     .map((a) => a.textContent?.trim())
     .filter(Boolean)
 
-describe('하단 탭 — 2026-09-09 개편', () => {
-  it('왼쪽부터 자산 로드맵 · 소비 기록 · 홈 · 게시판 · 설정 순이다', () => {
+describe('하단 탭 — 2026-09-30 개편', () => {
+  it('왼쪽부터 가계부 · 자산 · 홈 · 정보 · 설정 순이다', () => {
     seedStore({})
     renderScreen(<TabBar />)
-    expect(labels()).toEqual(['자산 로드맵', '오늘의 소비 기록', '홈', '게시판', '설정'])
+    expect(labels()).toEqual(['가계부', '자산', '홈', '정보', '설정'])
   })
 
-  it('자산·가계부 탭은 없다 — 홈에서 들어간다', () => {
+  it('자산 로드맵·게시판 탭은 없다', () => {
     seedStore({})
     renderScreen(<TabBar />)
-    expect(screen.queryByRole('link', { name: '자산' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '가계부' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '자산 로드맵' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '게시판' })).not.toBeInTheDocument()
   })
 
   it('각 탭이 맞는 화면으로 간다', () => {
@@ -29,17 +29,16 @@ describe('하단 탭 — 2026-09-09 개편', () => {
     renderScreen(<TabBar />)
     const href = (name: string | RegExp) =>
       screen.getByRole('link', { name }).getAttribute('href')
-    expect(href('자산 로드맵')).toBe('/roadmap')
-    expect(href('오늘의 소비 기록')).toBe('/confess')
-    expect(href('게시판')).toBe('/board')
+    expect(href('가계부')).toBe('/monthly')
+    expect(href('자산')).toBe('/assets')
+    expect(href('정보')).toBe('/info')
     expect(href('설정')).toBe('/settings')
   })
 
-  it('오늘 기록을 안 했으면 소비 기록 탭이 굵어진다', () => {
+  it('오늘 소비 기록을 안 했으면 가계부 탭이 굵어진다', () => {
     seedStore({ memberNo: 2, confessions: [] })
     renderScreen(<TabBar />)
-    const label = screen.getByText('오늘의 소비 기록')
-    expect(label).toHaveClass('font-bold')
+    expect(screen.getByText('가계부')).toHaveClass('font-bold')
   })
 
   it('오늘 기록했으면 강조가 빠진다', () => {
@@ -57,6 +56,6 @@ describe('하단 탭 — 2026-09-09 개편', () => {
       ],
     })
     renderScreen(<TabBar />)
-    expect(screen.getByText('오늘의 소비 기록')).not.toHaveClass('font-bold')
+    expect(screen.getByText('가계부')).not.toHaveClass('font-bold')
   })
 })

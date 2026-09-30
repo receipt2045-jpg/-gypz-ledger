@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { attachSourceToUser, captureSource } from './lib/source'
@@ -17,8 +17,7 @@ import Yearly from './pages/Yearly'
 import Settings from './pages/Settings'
 import Checkup from './pages/Checkup'
 import Confess from './pages/Confess'
-import Roadmap from './pages/Roadmap'
-import Board from './pages/Board'
+import Info from './pages/Info'
 import AdminFeedback from './pages/AdminFeedback'
 import AdminReports from './pages/AdminReports'
 import AssetSetup from './pages/AssetSetup'
@@ -152,8 +151,10 @@ function AppRoutes() {
       <Routes>
         <Route element={<AppFrame />}>
           <Route path="/" element={<Home />} />
-          <Route path="/roadmap" element={<Roadmap />} />
-          <Route path="/board" element={<Board />} />
+          <Route path="/info" element={<Info />} />
+          {/* 옛 탭 주소(2026-09-30 개편 전) — 홈 화면 바로가기·링크가 깨지지 않게 */}
+          <Route path="/board" element={<Navigate to="/info" replace />} />
+          <Route path="/roadmap" element={<Navigate to="/" replace />} />
           <Route path="/monthly" element={<Monthly />} />
           <Route path="/assets" element={<Assets />} />
           <Route path="/yearly" element={<Yearly />} />
