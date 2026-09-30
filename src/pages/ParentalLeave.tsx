@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, ChevronDown, Download, Share2, X } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, ChevronLeft, Download, Share2, X } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import Card from '../components/Card'
 import {
@@ -21,6 +21,12 @@ import {
 } from '../lib/parentalLeave'
 import { encodeLeave, shareLeaveLink, sharedFromHash } from '../lib/leaveShare'
 import { leaveCardFile } from '../lib/leaveCard'
+import { leaveNumbersFromLedgers, type LedgerNumbers } from '../lib/leaveFromLedger'
+import { useLedgerStore } from '../lib/store'
+import { supabase } from '../lib/supabase'
+import { fetchHouseholdData, getMyMembership } from '../lib/db'
+import { formatMonthKorean } from '../lib/format'
+import type { MonthlyLedger } from '../types'
 
 const ONETEAM_URL = 'https://oneteamm.netlify.app'
 
@@ -56,6 +62,10 @@ export default function ParentalLeave() {
     <div className="flex min-h-screen justify-center bg-bg">
       <div className="w-full max-w-app px-5 pb-16 pt-6">
         {/* ── 한 줄 결론 */}
+        <BackToApp />
+        {/* 이미 가계부를 쓰는 사람 — 내 숫자로 한 번에 채운다 */}
+        <LedgerImport input={v} onApply={(patch) => set(patch)} />
+
         <header className="px-1 pt-2">
           <h1 className="text-[23px] font-bold leading-[1.6] text-ink">
             {r.monthlyNow >= 0 ? (
@@ -286,6 +296,122 @@ export default function ParentalLeave() {
           </p>
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * 로그인한 사람의 가계부 숫자. 계산기는 로그인 밖 화면이라,
+ * 앱 안에서 넘어왔으면 이미 불러온 가계부를 쓰고, 링크로 바로 열었으면 로그인돼 있을 때만 따로 읽는다.
+ */
+function useMyLedgers(): MonthlyLedger[] | null {
+  const storeLedgers = useLedgerStore((st) =>
+    st.status === 'ready' ? st.ledgers : null,
+  )
+  const [fetched, setFetched] = useState<MonthlyLedger[] | null>(null)
+  useEffect(() => {
+    if (storeLedgers) return
+    let live = true
+    ;(async () => {
+      const { data } = await supabase.auth.getSession()
+      if (!data.session) return
+      const m = await getMyMembership()
+      if (!m) return
+      const hh = await fetchHouseholdData(m.householdId)
+      if (live) setFetched(hh.ledgers)
+    })().catch(() => {
+      /* 못 읽으면 카드를 띄우지 않는다 — 계산기는 그대로 쓸 수 있다 */
+    })
+    return () => {
+      live = false
+    }
+  }, [storeLedgers])
+  return storeLedgers ?? fetched
+}
+
+const manLabel = (n: number) => `${Math.round(n / 10_000).toLocaleString('ko-KR')}만`
+
+/** 앱 안(자산 로드맵·홈 알림)에서 들어왔으면 돌아갈 길 — 이 화면엔 탭 바가 없다 */
+function BackToApp() {
+  const inApp = useLedgerStore((st) => st.status === 'ready')
+  if (!inApp) return null
+  return (
+    <button
+      onClick={() => window.history.back()}
+      className="-ml-1 mb-3 flex items-center gap-0.5 text-[14px] font-semibold text-sub"
+    >
+      <ChevronLeft size={19} />
+      가계부로 돌아가기
+    </button>
+  )
+}
+
+/** 내 가계부 숫자로 계산하기 — 누르기 전엔 아무것도 바꾸지 않는다 */
+function LedgerImport({
+  input,
+  onApply,
+}: {
+  input: LeaveInput
+  onApply: (patch: Partial<LeaveInput>) => void
+}) {
+  const ledgers = useMyLedgers()
+  const nums: LedgerNumbers | null = useMemo(
+    () => (ledgers ? leaveNumbersFromLedgers(ledgers) : null),
+    [ledgers],
+  )
+  const [before, setBefore] = useState<Partial<LeaveInput> | null>(null)
+  if (!nums) return null
+
+  const month = formatMonthKorean(nums.ym)
+  const basis = nums.closed ? `${month} 정산 기준` : `${month} 예산 기준`
+
+  if (before) {
+    return (
+      <div className="mb-4 flex items-center gap-2 rounded-card bg-white px-4 py-3">
+        <Check size={17} className="shrink-0 text-emerald-600" />
+        <span className="flex-1 text-[13.5px] font-medium text-ink">
+          {month} 가계부 숫자로 계산했어요
+        </span>
+        <button
+          onClick={() => {
+            onApply(before)
+            setBefore(null)
+          }}
+          className="shrink-0 text-[12.5px] font-bold text-brand"
+        >
+          되돌리기
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mb-4 rounded-card bg-brand/10 p-4">
+      <p className="text-[14.5px] font-bold text-brand">📒 내 가계부 숫자로 계산할까요?</p>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-brand">
+        {basis} · 아내 {manLabel(nums.payWife)} · 남편 {manLabel(nums.payHusband)}
+        <br />
+        고정비 {manLabel(nums.fixed)} · 변동비 {manLabel(nums.variable)}
+      </p>
+      <button
+        onClick={() => {
+          setBefore({
+            payWife: input.payWife,
+            payHusband: input.payHusband,
+            fixed: input.fixed,
+            variable: input.variable,
+          })
+          onApply({
+            payWife: nums.payWife,
+            payHusband: nums.payHusband,
+            fixed: nums.fixed,
+            variable: nums.variable,
+          })
+        }}
+        className="mt-3 w-full rounded-btn bg-brand py-3 text-[14px] font-bold text-white"
+      >
+        내 가계부 숫자로 계산하기
+      </button>
     </div>
   )
 }

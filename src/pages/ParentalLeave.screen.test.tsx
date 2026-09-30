@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import ParentalLeave from './ParentalLeave'
 import { DEFAULT_INPUT } from '../lib/parentalLeave'
 import { encodeLeave } from '../lib/leaveShare'
+import { useLedgerStore } from '../lib/store'
 
 describe('육아휴직 계산기 화면', () => {
   beforeEach(() => localStorage.clear())
@@ -74,6 +75,35 @@ describe('육아휴직 계산기 화면', () => {
     fireEvent.click(screen.getByRole('button', { name: /남편한테 공유하기/ }))
     expect(await screen.findByText(/링크를 복사했어요/)).toBeInTheDocument()
     expect(writeText.mock.calls[0][0]).toContain('/#/leave?s=')
+  })
+
+  it('가계부를 쓰는 사람은 내 가계부 숫자로 채울 수 있다', () => {
+    useLedgerStore.setState({
+      status: 'ready',
+      sample: false,
+      ledgers: [
+        {
+          ym: '2026-08',
+          closed: true,
+          items: [
+            { id: 'a', group: 'income', category: '월급', member: 1, planned: 0, actual: 3_000_000 },
+            { id: 'b', group: 'income', category: '월급', member: 2, planned: 0, actual: 2_000_000 },
+            { id: 'c', group: 'fixed', category: '주거', member: 1, planned: 0, actual: 1_000_000 },
+            { id: 'd', group: 'variable', category: '식비', member: 2, planned: 0, actual: 1_000_000 },
+          ],
+        },
+      ],
+    })
+    render(<ParentalLeave />)
+    expect(screen.getByText(/8월 정산 기준/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /가계부로 돌아가기/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '내 가계부 숫자로 계산하기' }))
+    expect(screen.getByText('8월 가계부 숫자로 계산했어요')).toBeInTheDocument()
+    // 500만 − 200만 = 매달 300만
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('매달 300만원')
+    fireEvent.click(screen.getByRole('button', { name: '되돌리기' }))
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('매달 160만원')
+    useLedgerStore.setState({ status: 'idle', ledgers: [] })
   })
 
   it('원팀프로젝트 링크와 모아불리 시작하기가 있다', () => {

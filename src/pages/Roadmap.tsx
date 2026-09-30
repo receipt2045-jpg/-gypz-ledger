@@ -137,6 +137,9 @@ export default function Roadmap() {
 
       {/* 우리 팀 상태 — 목표 뒤로 물러난다. 진단은 목표가 있어야 뜻이 생긴다 */}
       {hasIncome && <PillarsFolded pillars={pillars} headline={diag.headline} />}
+
+      {/* 목표 화면이 아니어도(정산 전·목표 세우기 전) 육아휴직 계산기 입구는 늘 보인다 */}
+      {!(hasIncome && goal && !editing) && <LeaveBanner />}
     </div>
   )
 }
