@@ -7,7 +7,7 @@
  * 방향을 잡는 계산이고, 기본값은 화면에서 모두 고칠 수 있다.
  */
 import type { Profile, Roadmap, RoadmapEvent, RoadmapEventKind } from '../types'
-import { abbreviateKRW, shiftYm } from './format'
+import { shiftYm } from './format'
 import { RULES, govAt, leavePayAt } from './parentalLeave'
 
 export const RETURN_PRESETS = [
@@ -146,7 +146,7 @@ export interface RoadmapResult {
   onTrack: RoadmapPoint[] | null // 목표 연도에 맞춘 속도 (이미 맞으면 null)
   reachYm: string | null // 지금 속도로 목표에 닿는 달 (40년 안에 못 닿으면 null)
   extraNeeded: number // 목표 연도에 맞추려면 매달 더 모아야 하는 돈 (만 원 단위 올림)
-  milestones: { amount: number; ym: string | null }[]
+  milestones: { amount: number; ym: string | null }[] // 지금과 목표 사이 1·2·3·5·10·20·30·50억
 }
 
 export function computeRoadmap(input: RoadmapInput): RoadmapResult {
@@ -169,36 +169,82 @@ export function computeRoadmap(input: RoadmapInput): RoadmapResult {
     onTrack = project(input, extraNeeded)
   }
 
-  const milestones = MILESTONES.filter((m) => m > input.netWorth && m < input.target)
-    .slice(0, 3)
-    .map((amount) => ({ amount, ym: reachOf(points, amount) }))
+  const milestones = MILESTONES.filter((m) => m > input.netWorth && m < input.target).map((amount) => ({ amount, ym: reachOf(points, amount) }))
 
   return { points, onTrack, reachYm, extraNeeded, milestones }
 }
 
-/** 계획 목록 한 줄 설명 */
-export function eventSummary(ev: RoadmapEvent, names: [string, string]): string {
-  const man = (n = 0) => abbreviateKRW(n).replace(/원$/, '')
-  const when = ev.ym.replace('-', '.')
-  switch (ev.kind) {
-    case 'house':
-      return `${when} · ${man(ev.price)} · 대출 ${man(ev.loan)}`
-    case 'child':
-      return `${when} 출생 · 양육비 월 ${man(ev.monthly ?? RULES.childCostDefault)}`
-    case 'leave':
-      return `${when}부터 ${ev.months ?? 12}개월 · ${names[(ev.member ?? 2) - 1]}`
-    case 'car':
-      return `${when} · ${man(ev.once)}`
-    case 'job': {
-      const m = -(ev.monthly ?? 0)
-      return `${when}부터 · 월 ${m >= 0 ? '+' : '-'}${man(Math.abs(m))}`
-    }
-    case 'parents':
-    case 'custom': {
-      const parts = [when]
-      if (ev.once) parts.push(man(ev.once))
-      if (ev.monthly) parts.push(`월 ${man(ev.monthly)}${ev.months ? ` · ${ev.months}개월` : ''}`)
-      return parts.join(' · ')
-    }
+/** "3억 2천", "8,500만" — 타임라인용 짧은 금액 */
+export function compactKRW(n: number): string {
+  const v = Math.max(0, Math.round(n))
+  if (v < 100_000_000) return `${Math.round(v / 10_000).toLocaleString('ko-KR')}만`
+  let eok = Math.floor(v / 100_000_000)
+  let chun = Math.round((v % 100_000_000) / 10_000_000)
+  if (chun === 10) {
+    eok += 1
+    chun = 0
   }
+  return chun ? `${eok.toLocaleString('ko-KR')}억 ${chun}천` : `${eok.toLocaleString('ko-KR')}억`
+}
+
+export type TimelineRow =
+  | {
+      kind: 'year'
+      year: number
+      value: number // 그해 말 예상 재산 (올해는 지금 재산)
+      isNow: boolean
+      isTarget: boolean // 목표한 해
+      reached: boolean // 이 해에 목표 도착
+      events: RoadmapEvent[]
+      milestones: number[] // 이 해에 넘는 마일스톤
+    }
+  | { kind: 'quiet'; from: number; to: number; perYear: number } // 아무 일 없는 해 묶음
+
+/**
+ * 연도별 길. 계획·마일스톤·목표가 있는 해만 한 줄씩, 그 사이 조용한 해는 한 줄로 묶는다.
+ * 목표한 해와 목표에 닿는 해 중 늦은 쪽까지 (최대 30년).
+ */
+export function buildTimeline(input: RoadmapInput, result: RoadmapResult, maxYears = 30): TimelineRow[] {
+  const startYear = Number(input.startYm.slice(0, 4))
+  const targetYear = Number(input.targetYm.slice(0, 4))
+  const reachYear = result.reachYm ? Number(result.reachYm.slice(0, 4)) : null
+  const endYear = Math.min(startYear + maxYears, Math.max(targetYear, reachYear ?? targetYear))
+  const valueOf = (y: number) => {
+    if (y <= startYear) return input.netWorth
+    const i = Math.min(monthsBetween(input.startYm, `${y}-12`), result.points.length - 1)
+    return result.points[i].value
+  }
+  const yearOf = (ym: string) => Math.max(startYear, Number(ym.slice(0, 4)))
+
+  const rows: TimelineRow[] = []
+  let quietFrom: number | null = null
+  const flushQuiet = (to: number) => {
+    if (quietFrom === null) return
+    const n = to - quietFrom + 1
+    rows.push({ kind: 'quiet', from: quietFrom, to, perYear: (valueOf(to) - valueOf(quietFrom - 1)) / n })
+    quietFrom = null
+  }
+  for (let y = startYear; y <= endYear; y++) {
+    const events = input.events.filter((e) => yearOf(e.ym) === y)
+    const milestones = result.milestones.filter((m) => m.ym && yearOf(m.ym) === y).map((m) => m.amount)
+    const reached = reachYear === y && input.netWorth < input.target
+    const notable =
+      y === startYear || y === endYear || y === targetYear || reached || events.length > 0 || milestones.length > 0
+    if (!notable) {
+      if (quietFrom === null) quietFrom = y
+      continue
+    }
+    flushQuiet(y - 1)
+    rows.push({
+      kind: 'year',
+      year: y,
+      value: valueOf(y),
+      isNow: y === startYear,
+      isTarget: y === targetYear,
+      reached,
+      events,
+      milestones,
+    })
+  }
+  return rows
 }

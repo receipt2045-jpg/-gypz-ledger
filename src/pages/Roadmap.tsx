@@ -8,25 +8,27 @@ import { abbreviateKRW, currentYm, shiftYm } from '../lib/format'
 import {
   EVENT_META,
   GROWTH_PRESETS,
-  MAX_MONTHS,
   RETURN_PRESETS,
+  buildTimeline,
+  compactKRW,
   computeRoadmap,
-  eventSummary,
   monthsBetween,
   roadmapInput,
-  type RoadmapPoint,
-  type RoadmapResult,
+  type TimelineRow,
 } from '../lib/roadmap'
 import { RULES } from '../lib/parentalLeave'
 import type { Roadmap as RoadmapData, RoadmapEvent, RoadmapEventKind } from '../types'
 
 /**
- * 자산 로드맵 (2026-10-05) — 설정·홈 목표 카드에서 들어온다. 탭에는 두지 않는다.
+ * 자산 로드맵 (2026-10-06 타임라인으로) — 설정·홈 목표 카드에서 들어온다. 탭에는 두지 않는다.
  *
- * 9/30에 뺀 옛 로드맵 탭은 카드가 많고 같은 말을 반복했다. 이번엔 맨 위에 답 하나
- * ('언제 닿는지 · 매달 얼마 더'), 그 아래 그래프 하나, 계획 목록. 목표·가정처럼
- * 한 번 정하면 잘 안 고치는 값은 맨 아래로 내렸다. 계획은 바텀시트에서 넣고 고친다.
+ * 그래프+입력칸 버전은 계산기 같았고, 맨 위에 '30억까지 17년 늦어요'가 떠서 열 때마다 혼났다.
+ * 이제 맨 위는 바로 다음 목표(5억까지 몇 년), 가운데는 연도별 길(그해 재산·계획·마일스톤),
+ * 숫자 설정은 맨 아래 한 줄 → 시트. 한 달에 모을 돈을 아직 안 적었으면 예시 숫자로 길을 먼저 그려 준다.
  */
+const EXAMPLE_SAVING = 2_000_000
+const EXAMPLE_TARGET = 3_000_000_000
+
 export default function Roadmap() {
   const navigate = useNavigate()
   const { profile, snapshots, updateProfile } = useLedgerStore()
@@ -36,18 +38,18 @@ export default function Roadmap() {
 
   const nowYm = currentYm()
   const netWorth = netWorthOf(resolveSnapshot(snapshots, nowYm))
-  const input = roadmapInput(profile, netWorth, nowYm)
-  const result = useMemo(() => computeRoadmap(input), [JSON.stringify(input)]) // eslint-disable-line react-hooks/exhaustive-deps
-  const targetYear = Number(input.targetYm.slice(0, 4))
+  const isExample = !(roadmap.monthlySaving && roadmap.monthlySaving > 0)
+  const real = roadmapInput(profile, netWorth, nowYm)
+  const input = isExample
+    ? { ...real, monthlySaving: EXAMPLE_SAVING, target: real.target || EXAMPLE_TARGET }
+    : real
+  const key = JSON.stringify(input)
+  const result = useMemo(() => computeRoadmap(input), [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  const rows = useMemo(() => buildTimeline(input, result), [key, result]) // eslint-disable-line react-hooks/exhaustive-deps
   const names: [string, string] = [profile.member1Name, profile.member2Name]
 
-  // 실제 기록 — 최근 2년 스냅샷
-  const actual: RoadmapPoint[] = snapshots
-    .filter((s) => s.ym <= nowYm && s.items.length > 0)
-    .slice(-24)
-    .map((s) => ({ ym: s.ym, value: netWorthOf(s) }))
-
   const [sheet, setSheet] = useState<RoadmapEvent | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const saveEvent = (ev: RoadmapEvent) => {
     const exists = roadmap.events.some((e) => e.id === ev.id)
     const events = exists
@@ -72,148 +74,53 @@ export default function Roadmap() {
           >
             <ChevronLeft size={24} />
           </button>
-          <h1 className="text-[18px] font-bold text-ink">우리집 자산 로드맵</h1>
+          <h1 className="text-[18px] font-bold text-ink">우리집 로드맵</h1>
         </div>
 
         <div className="space-y-3 px-5 pt-3">
-          <Answer result={result} input={input} targetYear={targetYear} hasSaving={input.monthlySaving > 0} />
+          <NextGoal
+            netWorth={netWorth}
+            target={input.target}
+            result={result}
+            isExample={isExample}
+            onSetup={() => setSettingsOpen(true)}
+          />
 
-          {input.target > 0 && input.monthlySaving > 0 && (
-            <Section title="예상 흐름">
-              <Chart
-                result={result}
-                actual={actual}
-                events={roadmap.events}
+          <Box>
+            <h2 className="mb-4 text-[15px] font-bold text-ink">우리집이 가는 길</h2>
+            {rows.map((row, i) => (
+              <Step
+                key={row.kind === 'year' ? row.year : `q${row.from}`}
+                row={row}
+                last={i === rows.length - 1}
                 target={input.target}
-                startYm={nowYm}
-                targetYm={input.targetYm}
+                extraNeeded={result.extraNeeded}
+                names={names}
+                onEvent={setSheet}
               />
-              {result.milestones.length > 0 && (
-                <div className="mt-3 flex gap-1.5">
-                  {result.milestones.map((m) => (
-                    <div key={m.amount} className="flex-1 rounded-btn bg-bg px-2 py-2 text-center">
-                      <p className="text-[12px] text-cap">{short(m.amount)}</p>
-                      <p className="tnum mt-0.5 text-[13px] font-bold text-ink">
-                        {m.ym ? m.ym.replace('-', '.') : '40년 뒤'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Section>
-          )}
-
-          <Section title="우리집 계획">
-            {roadmap.events.length === 0 && (
-              <p className="pb-1 text-[13px] leading-relaxed text-sub">
-                집, 아이, 차처럼 큰돈이 드는 일을 넣으면 그래프에 같이 그려져요.
-              </p>
-            )}
-            {roadmap.events.map((ev) => (
-              <button
-                key={ev.id}
-                onClick={() => setSheet(ev)}
-                className="flex w-full items-center gap-3 border-t border-line py-2.5 text-left first-of-type:border-t-0"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-[18px]">
-                  {EVENT_META[ev.kind].emoji}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px] font-bold text-ink">{eventTitle(ev)}</span>
-                  <span className="tnum block truncate text-[12px] text-cap">{eventSummary(ev, names)}</span>
-                </span>
-                <ChevronRight size={16} className="shrink-0 text-cap" />
-              </button>
             ))}
             <button
               onClick={() => setSheet(newEvent('house', nowYm))}
-              className="mt-2 flex w-full items-center justify-center gap-1 rounded-btn border-[1.5px] border-dashed border-line py-3 text-[13px] font-bold text-brand active:bg-bg"
+              className="mt-1 flex w-full items-center justify-center gap-1 rounded-btn border-[1.5px] border-dashed border-line py-3 text-[13px] font-bold text-brand active:bg-bg"
             >
-              <Plus size={15} /> 계획 추가
+              <Plus size={15} /> 길에 계획 넣기
             </button>
-          </Section>
+          </Box>
 
-          <Section title="우리집 목표와 지금">
-            <Row label="모으고 싶은 돈" hint="빚을 빼고 남는 재산 기준">
-              <AmountInput
-                value={profile.targetNetWorth}
-                onChange={(n) => updateProfile({ targetNetWorth: n })}
-                className="w-[170px]"
-              />
-            </Row>
-            <Row label="언제까지 모을까요">
-              <select
-                value={targetYear}
-                onChange={(e) => setRoadmap({ targetYear: Number(e.target.value) })}
-                className="rounded-btn border border-line bg-white px-3 py-2.5 text-[15px] font-semibold text-ink outline-none focus:border-brand"
-              >
-                {Array.from({ length: 31 }, (_, i) => Number(nowYm.slice(0, 4)) + i).map((y) => (
-                  <option key={y} value={y}>
-                    {y}년
-                  </option>
-                ))}
-              </select>
-            </Row>
-            <Row label="지금 우리집 재산" hint="가진 돈에서 빚을 뺀 금액">
-              <button
-                onClick={() => navigate('/asset-setup')}
-                className="tnum text-[15px] font-bold text-ink"
-              >
-                {abbreviateKRW(netWorth)}
-              </button>
-            </Row>
-            <Row label="한 달에 모을 돈" hint="저축·투자에 넣을 돈">
-              <AmountInput
-                value={roadmap.monthlySaving ?? 0}
-                onChange={(n) => setRoadmap({ monthlySaving: n })}
-                className="w-[150px]"
-              />
-            </Row>
-            {/* 월소득은 육아휴직 계획에만 쓰여서, 그 계획이 있을 때만 묻는다 */}
-            {roadmap.events.some((e) => e.kind === 'leave') &&
-              ([1, 2] as const).map((m) => (
-                <Row key={m} label={`${names[m - 1]} 한 달 수입`} hint="육아휴직 때 줄어드는 돈 계산용">
-                  <AmountInput
-                    value={(m === 1 ? roadmap.income1 : roadmap.income2) ?? 0}
-                    onChange={(n) => setRoadmap(m === 1 ? { income1: n } : { income2: n })}
-                    className="w-[150px]"
-                  />
-                </Row>
-              ))}
-          </Section>
-
-          <Section title="계산 기준">
-            <p className="mb-1.5 text-[12px] text-cap">모은 돈이 1년에 불어나는 정도</p>
-            <Chips
-              options={RETURN_PRESETS.map((p) => ({ key: p.rate, label: `${p.label} ${Math.round(p.rate * 100)}%` }))}
-              value={input.returnRate}
-              onPick={(rate) => setRoadmap({ returnRate: rate })}
-            />
-            <p className="mb-1.5 mt-3 text-[12px] text-cap">월급이 1년에 오르는 정도 · 남는 돈도 같이 늘어요</p>
-            <Chips
-              options={GROWTH_PRESETS.map((g) => ({ key: g, label: `${Math.round(g * 100)}%` }))}
-              value={input.incomeGrowth}
-              onPick={(g) => setRoadmap({ incomeGrowth: g })}
-            />
-            <button
-              onClick={() => setRoadmap({ realTerms: !input.realTerms })}
-              className="mt-3 flex w-full items-center justify-between border-t border-line pt-3"
-              role="switch"
-              aria-checked={input.realTerms}
-            >
-              <span className="text-left">
-                <span className="block text-[14px] text-sub">물가 빼고 보기</span>
-                <span className="block text-[12px] text-cap">물가가 오르는 만큼 빼고, 지금 돈 가치로 보여줘요</span>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="flex w-full items-center justify-between rounded-card bg-card p-5 text-left shadow-card active:bg-bg"
+          >
+            <span>
+              <span className="block text-[14px] font-bold text-ink">계산 기준</span>
+              <span className="mt-0.5 block text-[12px] text-cap">
+                {isExample
+                  ? '아직 우리집 숫자를 안 넣었어요'
+                  : `월 ${short(input.monthlySaving)} 모으기 · 연 ${Math.round(input.returnRate * 100)}% 불리기 · 목표 ${short(input.target)}`}
               </span>
-              <span
-                className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${input.realTerms ? 'bg-brand' : 'bg-line'}`}
-              >
-                <span
-                  className={`absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white transition-all ${input.realTerms ? 'right-[3px]' : 'left-[3px]'}`}
-                />
-              </span>
-            </button>
-          </Section>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-cap" />
+          </button>
 
           <p className="px-1 pt-1 text-center text-[11.5px] leading-relaxed text-cap">
             방향을 잡기 위한 예상이에요. 집을 사면 취득세·중개비 3%와 대출 이자(연 4%)를, 아이는
@@ -233,195 +140,311 @@ export default function Roadmap() {
           onDelete={deleteEvent}
         />
       )}
+
+      {settingsOpen && (
+        <Sheet title="계산 기준" onClose={() => setSettingsOpen(false)}>
+          <Label>모으고 싶은 돈 · 빚을 빼고 남는 재산 기준</Label>
+          <AmountInput
+            value={profile.targetNetWorth}
+            onChange={(n) => updateProfile({ targetNetWorth: n })}
+          />
+          <Label>언제까지 모을까요</Label>
+          <select
+            value={Number(real.targetYm.slice(0, 4))}
+            onChange={(e) => setRoadmap({ targetYear: Number(e.target.value) })}
+            className={TEXT_INPUT}
+          >
+            {Array.from({ length: 31 }, (_, i) => Number(nowYm.slice(0, 4)) + i).map((y) => (
+              <option key={y} value={y}>
+                {y}년
+              </option>
+            ))}
+          </select>
+          <Label>한 달에 모을 돈 · 저축·투자에 넣을 돈</Label>
+          <AmountInput
+            value={roadmap.monthlySaving ?? 0}
+            onChange={(n) => setRoadmap({ monthlySaving: n })}
+          />
+          {/* 월소득은 육아휴직 계획에만 쓰여서, 그 계획이 있을 때만 묻는다 */}
+          {roadmap.events.some((e) => e.kind === 'leave') &&
+            ([1, 2] as const).map((m) => (
+              <div key={m}>
+                <Label>{names[m - 1]} 한 달 수입 · 육아휴직 때 줄어드는 돈 계산용</Label>
+                <AmountInput
+                  value={(m === 1 ? roadmap.income1 : roadmap.income2) ?? 0}
+                  onChange={(n) => setRoadmap(m === 1 ? { income1: n } : { income2: n })}
+                />
+              </div>
+            ))}
+          <div className="mt-4 flex items-center justify-between rounded-btn bg-bg px-3.5 py-3">
+            <span className="text-[13px] text-sub">지금 우리집 재산</span>
+            <button
+              onClick={() => navigate('/asset-setup')}
+              className="flex items-center gap-0.5 text-[14px] font-bold text-ink"
+            >
+              {abbreviateKRW(netWorth)}
+              <ChevronRight size={15} className="text-cap" />
+            </button>
+          </div>
+          <Label>모은 돈이 1년에 불어나는 정도</Label>
+          <Chips
+            options={RETURN_PRESETS.map((p) => ({ key: p.rate, label: `${p.label} ${Math.round(p.rate * 100)}%` }))}
+            value={real.returnRate}
+            onPick={(rate) => setRoadmap({ returnRate: rate })}
+          />
+          <Label>월급이 1년에 오르는 정도 · 모을 돈도 같이 늘어요</Label>
+          <Chips
+            options={GROWTH_PRESETS.map((g) => ({ key: g, label: `${Math.round(g * 100)}%` }))}
+            value={real.incomeGrowth}
+            onPick={(g) => setRoadmap({ incomeGrowth: g })}
+          />
+          <button
+            onClick={() => setRoadmap({ realTerms: !real.realTerms })}
+            className="mt-4 flex w-full items-center justify-between"
+            role="switch"
+            aria-checked={real.realTerms}
+          >
+            <span className="text-left">
+              <span className="block text-[14px] text-sub">물가 빼고 보기</span>
+              <span className="block text-[12px] text-cap">물가가 오르는 만큼 빼고, 지금 돈 가치로 보여줘요</span>
+            </span>
+            <span
+              className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${real.realTerms ? 'bg-brand' : 'bg-line'}`}
+            >
+              <span
+                className={`absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white transition-all ${real.realTerms ? 'right-[3px]' : 'left-[3px]'}`}
+              />
+            </span>
+          </button>
+          <button
+            onClick={() => setSettingsOpen(false)}
+            className="mt-5 w-full rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white active:bg-brand-dark"
+          >
+            다 됐어요
+          </button>
+        </Sheet>
+      )}
     </div>
   )
 }
 
-/* ───────── 맨 위 답 ───────── */
+/* ───────── 맨 위: 다음 목표 ───────── */
 
-function Answer({
+function NextGoal({
+  netWorth,
+  target,
   result,
-  input,
-  targetYear,
-  hasSaving,
+  isExample,
+  onSetup,
 }: {
-  result: RoadmapResult
-  input: ReturnType<typeof roadmapInput>
-  targetYear: number
-  hasSaving: boolean
+  netWorth: number
+  target: number
+  result: ReturnType<typeof computeRoadmap>
+  isExample: boolean
+  onSetup: () => void
 }) {
-  if (input.target <= 0) {
+  const nowYm = currentYm()
+  const example = isExample && (
+    <button
+      onClick={onSetup}
+      className="mb-3 flex w-full items-center justify-between gap-2 rounded-btn bg-brand/10 px-3.5 py-2.5 text-left"
+    >
+      <span className="text-[12.5px] leading-snug text-brand">
+        예시예요. 한 달 {short(EXAMPLE_SAVING)} 원씩 모은다고 하고 그렸어요.
+      </span>
+      <span className="flex shrink-0 items-center text-[12.5px] font-bold text-brand">
+        우리집 숫자로 <ChevronRight size={14} />
+      </span>
+    </button>
+  )
+
+  if (netWorth >= target) {
     return (
       <Box>
-        <p className="text-[17px] font-bold text-ink">모으고 싶은 돈부터 정해 주세요</p>
-        <p className="mt-1 text-[13px] text-sub">아래에 금액을 넣으면 언제쯤 모이는지 계산해 드려요.</p>
-      </Box>
-    )
-  }
-  if (input.netWorth >= input.target) {
-    return (
-      <Box>
+        {example}
         <p className="text-[20px] font-extrabold text-ink">
-          <span className="text-brand">{short(input.target)}</span>, 이미 도착했어요 🎉
+          <span className="text-brand">{short(target)}</span>, 이미 도착했어요 🎉
         </p>
-        <p className="mt-1 text-[13px] text-sub">다음 목표를 올려 보세요.</p>
+        <p className="mt-1 text-[13px] text-sub">계산 기준에서 다음 목표를 올려 보세요.</p>
       </Box>
     )
   }
-  if (!hasSaving) {
-    return (
-      <Box>
-        <p className="text-[17px] font-bold text-ink">한 달에 얼마씩 모을지 적어 주세요</p>
-        <p className="mt-1 text-[13px] text-sub">
-          아래 '한 달에 모을 돈'을 넣으면 {short(input.target)}까지 언제쯤 닿는지 보여드려요.
-        </p>
-      </Box>
-    )
-  }
-  const diff = result.reachYm ? monthsBetween(input.targetYm, result.reachYm) : null
+
+  // 바로 다음 마일스톤. 없으면 목표 자체
+  const next = result.milestones[0] ?? { amount: target, ym: result.reachYm }
+  const isFinal = next.amount === target
+  const months = next.ym ? monthsBetween(nowYm, next.ym) : null
+  const ratio = Math.min(1, Math.max(0, netWorth / next.amount))
   return (
     <Box>
-      <p className="text-[12px] text-cap">지금 속도라면</p>
-      {result.reachYm ? (
-        <p className="mt-1 text-[21px] font-extrabold leading-snug text-ink">
-          {ymText(result.reachYm)}, <span className="text-brand">{short(input.target)}</span> 도착
+      {example}
+      <p className="text-[12px] text-cap">{isFinal ? '목표' : '다음 목표'}</p>
+      <p className="mt-1 text-[22px] font-extrabold leading-snug text-ink">
+        <span className="text-brand">{short(next.amount)}</span>
+        {months === null ? '까지는 아직 멀어요' : months <= 0 ? ', 이번 달 도착' : `까지 ${spanText(months)}`}
+      </p>
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-bg">
+        <div className="h-full rounded-full bg-brand" style={{ width: `${Math.round(ratio * 100)}%` }} />
+      </div>
+      <div className="mt-1.5 flex justify-between text-[12px] text-cap">
+        <span>지금 {compactKRW(netWorth)}</span>
+        {next.ym && <span>{ymText(next.ym)}쯤</span>}
+      </div>
+      {!isFinal && (
+        <p className="mt-3 border-t border-line pt-3 text-[13px] text-sub">
+          큰 목표 <b className="text-ink">{short(target)}</b>은{' '}
+          {result.reachYm ? (
+            <>
+              이 속도면 <b className="text-ink">{result.reachYm.slice(0, 4)}년</b>쯤이에요
+            </>
+          ) : (
+            '지금 속도로는 40년 넘게 걸려요'
+          )}
         </p>
-      ) : (
-        <p className="mt-1 text-[19px] font-extrabold leading-snug text-ink">40년 안에는 닿기 어려워요</p>
-      )}
-      {diff !== null && diff !== 0 && (
-        <p className="mt-1 text-[13px] text-sub">
-          목표({targetYear}년 말)보다{' '}
-          <b className={diff > 0 ? 'text-danger' : 'text-brand'}>{spanText(Math.abs(diff))}</b>{' '}
-          {diff > 0 ? '늦어요' : '빨라요'}
-        </p>
-      )}
-      {diff === 0 && <p className="mt-1 text-[13px] text-sub">목표({targetYear}년 말)에 딱 맞춰 가고 있어요</p>}
-      {result.extraNeeded > 0 && (
-        <div className="mt-3 rounded-btn bg-bg px-3.5 py-3 text-[13px] text-sub">
-          {targetYear}년에 맞추려면 매달{' '}
-          <b className="tnum text-brand">{abbreviateKRW(result.extraNeeded).replace(/원$/, '')} 원</b> 더 모으면 돼요
-        </div>
       )}
     </Box>
   )
 }
 
-/* ───────── 그래프 ───────── */
+/* ───────── 가운데: 연도별 길 ───────── */
 
-const W = 320
-const H = 170
-const PAD = { l: 30, r: 8, t: 18, b: 22 }
-
-function Chart({
-  result,
-  actual,
-  events,
+function Step({
+  row,
+  last,
   target,
-  startYm,
-  targetYm,
+  extraNeeded,
+  names,
+  onEvent,
 }: {
-  result: RoadmapResult
-  actual: RoadmapPoint[]
-  events: RoadmapEvent[]
+  row: TimelineRow
+  last: boolean
   target: number
-  startYm: string
-  targetYm: string
+  extraNeeded: number
+  names: [string, string]
+  onEvent: (ev: RoadmapEvent) => void
 }) {
-  const firstYm = actual.length ? actual[0].ym : startYm
-  const lastYm = (() => {
-    const far = result.reachYm && result.reachYm > targetYm ? result.reachYm : targetYm
-    const end = shiftYm(far, 12)
-    const cap = shiftYm(startYm, MAX_MONTHS)
-    return end > cap ? cap : end
-  })()
-  const span = Math.max(1, monthsBetween(firstYm, lastYm))
-  const inWindow = (p: RoadmapPoint) => p.ym <= lastYm
-  const proj = result.points.filter(inWindow)
-  // 목표에 맞춘 선은 목표 연도까지만 — 그 뒤로 그리면 눈금이 찌그러진다
-  const track = result.onTrack?.filter((p) => p.ym <= targetYm) ?? null
+  if (row.kind === 'quiet') {
+    const label = row.to > row.from ? `${row.from} – ${row.to}` : String(row.from)
+    return (
+      <div className="flex gap-3">
+        <Rail dot="h-2.5 w-2.5 bg-line" line={last ? null : 'dash'} />
+        <div className="flex-1 pb-4">
+          <p className="tnum text-[13px] font-bold text-cap">{label}</p>
+          <p className="mt-0.5 text-[12.5px] text-cap">
+            {row.perYear >= 0
+              ? `조용히 모으는 해 · 1년에 ${compactKRW(row.perYear)}씩`
+              : `나가는 돈이 많은 해 · 1년에 ${compactKRW(-row.perYear)}씩 줄어요`}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
-  const all = [...actual, ...proj, ...(track ?? [])].map((p) => p.value)
-  const yMax = Math.max(target, ...all) * 1.06
-  const yMin = Math.min(0, ...all)
-  const x = (ym: string) => PAD.l + (monthsBetween(firstYm, ym) / span) * (W - PAD.l - PAD.r)
-  const y = (v: number) => PAD.t + (1 - (v - yMin) / (yMax - yMin)) * (H - PAD.t - PAD.b)
-  const path = (pts: RoadmapPoint[]) =>
-    pts
-      .filter((_, i) => i % 3 === 0 || i === pts.length - 1)
-      .map((p, i) => `${i ? 'L' : 'M'}${x(p.ym).toFixed(1)} ${y(p.value).toFixed(1)}`)
-      .join(' ')
-
-  const step = niceStep(yMax / 4)
-  // 목표선 라벨과 겹치는 눈금은 뺀다
-  const ticks = Array.from({ length: 8 }, (_, i) => (i + 1) * step).filter(
-    (t) => t < yMax && Math.abs(t - target) > yMax * 0.08,
-  )
-  // 연도 눈금 — 처음·목표·끝. 서로 붙으면(40px 안) 목표 쪽만 남긴다
-  const yearMarks = [
-    { ym: firstYm, anchor: 'start' as const },
-    { ym: targetYm, anchor: 'middle' as const },
-    { ym: lastYm, anchor: 'end' as const },
-  ].filter((m, i, arr) => i === 1 || arr.every((o, j) => j === i || j !== 1 || Math.abs(x(o.ym) - x(m.ym)) > 40))
-  const valueAt = (ym: string) => proj.find((p) => p.ym === ym)?.value
-
+  const dot = row.isTarget
+    ? 'h-4 w-4 bg-danger'
+    : row.isNow
+      ? 'h-3 w-3 bg-ink'
+      : 'h-3 w-3 border-[2.5px] border-brand bg-white'
   return (
-    <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="순자산 예상 그래프">
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={PAD.l} x2={W - PAD.r} y1={y(t)} y2={y(t)} stroke="#F2F4F6" />
-            <text x={PAD.l - 4} y={y(t) + 3} textAnchor="end" fontSize="9" fill="#8B95A1">
-              {short(t)}
-            </text>
-          </g>
-        ))}
-        <line x1={PAD.l} x2={W - PAD.r} y1={y(target)} y2={y(target)} stroke="#F04452" strokeDasharray="4 4" />
-        <text x={PAD.l + 2} y={y(target) - 5} fontSize="10" fill="#F04452">
-          목표 {short(target)}
-        </text>
-        {track && (
-          <path d={path(track)} fill="none" stroke="#3182F6" strokeOpacity="0.45" strokeWidth="1.5" strokeDasharray="3 3" />
+    <div className="flex gap-3">
+      <Rail dot={dot} line={last ? null : 'solid'} />
+      <div className="min-w-0 flex-1 pb-5">
+        <p className={`tnum text-[13px] font-bold ${row.isTarget ? 'text-danger' : 'text-cap'}`}>
+          {row.year}
+          {row.isNow && ' · 지금'}
+          {row.isTarget && ' · 목표한 해'}
+        </p>
+        <p className="tnum mt-0.5 text-[17px] font-extrabold text-ink">
+          {compactKRW(row.value)}
+          {row.isTarget && <span className="text-[13px] font-semibold text-cap"> / {short(target)}</span>}
+        </p>
+        {(row.events.length > 0 || row.milestones.length > 0 || row.reached) && (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {row.events.map((ev) => (
+              <button
+                key={ev.id}
+                onClick={() => onEvent(ev)}
+                className="flex items-center gap-1 rounded-[10px] bg-bg px-2.5 py-1.5 text-[12.5px] font-bold text-sub active:bg-line"
+              >
+                {EVENT_META[ev.kind].emoji} {chipLabel(ev, names)}
+              </button>
+            ))}
+            {row.milestones.map((m) => (
+              <span key={m} className="rounded-[10px] bg-brand/10 px-2.5 py-1.5 text-[12.5px] font-bold text-brand">
+                🎉 {short(m)} 달성
+              </span>
+            ))}
+            {row.reached && (
+              <span className="rounded-[10px] bg-brand px-2.5 py-1.5 text-[12.5px] font-bold text-white">
+                🎉 {short(target)} 도착
+              </span>
+            )}
+          </div>
         )}
-        <path d={path(proj)} fill="none" stroke="#3182F6" strokeWidth="2.5" strokeLinejoin="round" />
-        {actual.length > 1 && <path d={path(actual)} fill="none" stroke="#191F28" strokeWidth="2.5" />}
-        <circle cx={x(startYm)} cy={y(proj[0].value)} r="3.5" fill="#191F28" />
-        {events
-          .filter((ev) => ev.ym >= startYm && ev.ym <= lastYm)
-          .map((ev, i, arr) => {
-            const v = valueAt(ev.ym)
-            if (v === undefined) return null
-            // 같은 달 계획이 여럿이면 위로 쌓는다
-            const cy = y(v) - 20 * arr.slice(0, i).filter((o) => o.ym === ev.ym).length
-            return (
-              <g key={ev.id}>
-                <circle cx={x(ev.ym)} cy={cy} r="9" fill="#fff" stroke="#3182F6" />
-                <text x={x(ev.ym)} y={cy + 3.5} textAnchor="middle" fontSize="10">
-                  {EVENT_META[ev.kind].emoji}
-                </text>
-              </g>
-            )
-          })}
-        {yearMarks.map((m) => (
-          <text key={m.ym} x={x(m.ym)} y={H - 6} textAnchor={m.anchor} fontSize="9" fill="#8B95A1">
-            {m.ym.slice(0, 4)}
-          </text>
-        ))}
-      </svg>
-      <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-cap">
-        {actual.length > 1 && (
-          <span>
-            <b className="text-ink">━</b> 실제 기록
-          </span>
+        {row.isTarget && row.value < target && extraNeeded > 0 && (
+          <p className="mt-1.5 text-[12.5px] text-sub">
+            매달 <b className="text-brand">{short(extraNeeded)} 원</b> 더 모으면 딱 맞아요
+          </p>
         )}
-        <span>
-          <b className="text-brand">━</b> 지금 속도
-        </span>
-        {track && (
-          <span>
-            <b className="text-brand/50">┅</b> 목표에 맞춘 속도
-          </span>
-        )}
+      </div>
+    </div>
+  )
+}
+
+function Rail({ dot, line }: { dot: string; line: 'solid' | 'dash' | null }) {
+  return (
+    <div className="flex w-5 shrink-0 flex-col items-center">
+      <span className={`mt-1 shrink-0 rounded-full ${dot}`} />
+      {line && (
+        <span
+          className={`my-1 w-0.5 flex-1 ${line === 'solid' ? 'bg-brand/20' : 'border-l-2 border-dashed border-brand/20'}`}
+        />
+      )}
+    </div>
+  )
+}
+
+function chipLabel(ev: RoadmapEvent, names: [string, string]): string {
+  switch (ev.kind) {
+    case 'house':
+      return ev.price ? `내 집 마련 ${compactKRW(ev.price)}` : '내 집 마련'
+    case 'child':
+      return `${ev.title || '아이'} 태어남`
+    case 'leave':
+      return `${names[(ev.member ?? 2) - 1]} 육아휴직 ${ev.months ?? 12}개월`
+    case 'car':
+      return ev.once ? `차 바꾸기 ${compactKRW(ev.once)}` : '차 바꾸기'
+    case 'job':
+      return '이직·창업'
+    case 'parents':
+      return '부모님 지원'
+    case 'custom':
+      return ev.title || '직접 입력'
+  }
+}
+
+/** 바텀시트 껍데기 — 바깥을 누르면 닫힌다 */
+function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div
+        className="max-h-[88vh] w-full max-w-app overflow-y-auto rounded-t-card bg-white px-5 pb-8 pt-2.5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
+        <div className="flex items-center justify-between">
+          <p className="text-[17px] font-bold text-ink">{title}</p>
+          <button onClick={onClose} aria-label="닫기" className="text-cap">
+            <X size={20} />
+          </button>
+        </div>
+        {children}
       </div>
     </div>
   )
@@ -468,187 +491,168 @@ function EventSheet({
   const jobUp = (ev.monthly ?? 0) <= 0 // 이직·창업: 수입이 느는 쪽인지
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="계획 추가"
-    >
-      <div
-        className="max-h-[88vh] w-full max-w-app overflow-y-auto rounded-t-card bg-white px-5 pb-8 pt-2.5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
-        <div className="flex items-center justify-between">
-          <p className="text-[17px] font-bold text-ink">{isNew ? '계획 추가' : '계획 고치기'}</p>
-          <button onClick={onClose} aria-label="닫기" className="text-cap">
-            <X size={20} />
-          </button>
-        </div>
+    <Sheet title={isNew ? '계획 추가' : '계획 고치기'} onClose={onClose}>
+      {isNew && (
+        <>
+          <Label>어떤 계획인가요</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {KINDS.map((k) => (
+              <button
+                key={k}
+                onClick={() => pickKind(k)}
+                className={`rounded-btn px-3 py-2 text-[13px] font-bold ${ev.kind === k ? 'bg-brand/10 text-brand' : 'bg-bg text-sub'}`}
+              >
+                {EVENT_META[k].emoji} {EVENT_META[k].label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
-        {isNew && (
-          <>
-            <Label>어떤 계획인가요</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {KINDS.map((k) => (
+      {(ev.kind === 'custom' || ev.kind === 'child') && (
+        <>
+          <Label>{ev.kind === 'child' ? '아이 이름' : '이름'}</Label>
+          {ev.kind === 'child' && childNames.length > 0 && (
+            <div className="mb-1.5 flex flex-wrap gap-1.5">
+              {childNames.map((c) => (
                 <button
-                  key={k}
-                  onClick={() => pickKind(k)}
-                  className={`rounded-btn px-3 py-2 text-[13px] font-bold ${ev.kind === k ? 'bg-brand/10 text-brand' : 'bg-bg text-sub'}`}
+                  key={c}
+                  onClick={() => set({ title: c })}
+                  className={`rounded-full px-3 py-1.5 text-[13px] font-bold ${ev.title === c ? 'bg-amber-100 text-amber-700' : 'bg-bg text-sub'}`}
                 >
-                  {EVENT_META[k].emoji} {EVENT_META[k].label}
+                  {c}
                 </button>
               ))}
             </div>
-          </>
-        )}
+          )}
+          <input
+            type="text"
+            value={ev.title ?? ''}
+            onChange={(e) => set({ title: e.target.value })}
+            placeholder={ev.kind === 'child' ? '첫째' : '세계여행'}
+            className={TEXT_INPUT}
+          />
+        </>
+      )}
 
-        {(ev.kind === 'custom' || ev.kind === 'child') && (
-          <>
-            <Label>{ev.kind === 'child' ? '아이 이름' : '이름'}</Label>
-            {ev.kind === 'child' && childNames.length > 0 && (
-              <div className="mb-1.5 flex flex-wrap gap-1.5">
-                {childNames.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => set({ title: c })}
-                    className={`rounded-full px-3 py-1.5 text-[13px] font-bold ${ev.title === c ? 'bg-amber-100 text-amber-700' : 'bg-bg text-sub'}`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
-            <input
-              type="text"
-              value={ev.title ?? ''}
-              onChange={(e) => set({ title: e.target.value })}
-              placeholder={ev.kind === 'child' ? '첫째' : '세계여행'}
-              className={TEXT_INPUT}
-            />
-          </>
-        )}
+      {ev.kind === 'leave' && (
+        <>
+          <Label>누가 쉬나요</Label>
+          <Chips
+            options={[1, 2].map((m) => ({ key: m as 1 | 2, label: names[m - 1] }))}
+            value={ev.member ?? 2}
+            onPick={(m) => set({ member: m })}
+          />
+        </>
+      )}
 
-        {ev.kind === 'leave' && (
-          <>
-            <Label>누가 쉬나요</Label>
-            <Chips
-              options={[1, 2].map((m) => ({ key: m as 1 | 2, label: names[m - 1] }))}
-              value={ev.member ?? 2}
-              onPick={(m) => set({ member: m })}
-            />
-          </>
-        )}
+      <Label>{ev.kind === 'child' ? '태어난 달 (예정)' : WHEN_LABEL[ev.kind]}</Label>
+      <input
+        type="month"
+        value={ev.ym}
+        onChange={(e) => e.target.value && set({ ym: e.target.value })}
+        className={TEXT_INPUT}
+      />
 
-        <Label>{ev.kind === 'child' ? '태어난 달 (예정)' : WHEN_LABEL[ev.kind]}</Label>
-        <input
-          type="month"
-          value={ev.ym}
-          onChange={(e) => e.target.value && set({ ym: e.target.value })}
-          className={TEXT_INPUT}
-        />
-
-        {ev.kind === 'house' && (
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Label>집값</Label>
-              <AmountInput value={ev.price ?? 0} onChange={(n) => set({ price: n })} />
-            </div>
-            <div className="flex-1">
-              <Label>그중 대출</Label>
-              <AmountInput value={ev.loan ?? 0} onChange={(n) => set({ loan: n })} />
-            </div>
+      {ev.kind === 'house' && (
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Label>집값</Label>
+            <AmountInput value={ev.price ?? 0} onChange={(n) => set({ price: n })} />
           </div>
-        )}
+          <div className="flex-1">
+            <Label>그중 대출</Label>
+            <AmountInput value={ev.loan ?? 0} onChange={(n) => set({ loan: n })} />
+          </div>
+        </div>
+      )}
 
-        {ev.kind === 'child' && (
-          <>
-            <Label>한 달 양육비</Label>
-            <AmountInput value={ev.monthly ?? 0} onChange={(n) => set({ monthly: n })} />
-            <p className="mt-1 text-[12px] text-cap">
-              기본값은 가구 평균 150만 원이에요. 부모급여·아동수당은 알아서 빼요.
-            </p>
-          </>
-        )}
+      {ev.kind === 'child' && (
+        <>
+          <Label>한 달 양육비</Label>
+          <AmountInput value={ev.monthly ?? 0} onChange={(n) => set({ monthly: n })} />
+          <p className="mt-1 text-[12px] text-cap">
+            기본값은 가구 평균 150만 원이에요. 부모급여·아동수당은 알아서 빼요.
+          </p>
+        </>
+      )}
 
-        {ev.kind === 'leave' && (
-          <>
-            <Label>얼마나</Label>
-            <Chips
-              options={[3, 6, 12, 18, 24].map((m) => ({ key: m, label: `${m}개월` }))}
-              value={ev.months ?? 12}
-              onPick={(m) => set({ months: m })}
+      {ev.kind === 'leave' && (
+        <>
+          <Label>얼마나</Label>
+          <Chips
+            options={[3, 6, 12, 18, 24].map((m) => ({ key: m, label: `${m}개월` }))}
+            value={ev.months ?? 12}
+            onPick={(m) => set({ months: m })}
+          />
+          <p className="mt-1.5 text-[12px] text-cap">
+            월소득에서 육아휴직 급여를 뺀 만큼 덜 모인다고 봐요.
+          </p>
+        </>
+      )}
+
+      {ev.kind === 'car' && (
+        <>
+          <Label>얼마</Label>
+          <AmountInput value={ev.once ?? 0} onChange={(n) => set({ once: n })} />
+        </>
+      )}
+
+      {ev.kind === 'job' && (
+        <>
+          <Label>한 달 수입이</Label>
+          <Chips
+            options={[
+              { key: 'up', label: '늘어요' },
+              { key: 'down', label: '줄어요' },
+            ]}
+            value={jobUp ? 'up' : 'down'}
+            onPick={(d) => set({ monthly: (d === 'up' ? -1 : 1) * Math.abs(ev.monthly ?? 0) })}
+          />
+          <div className="mt-2">
+            <AmountInput
+              value={Math.abs(ev.monthly ?? 0)}
+              onChange={(n) => set({ monthly: jobUp ? -n : n })}
             />
-            <p className="mt-1.5 text-[12px] text-cap">
-              월소득에서 육아휴직 급여를 뺀 만큼 덜 모인다고 봐요.
-            </p>
-          </>
-        )}
+          </div>
+        </>
+      )}
 
-        {ev.kind === 'car' && (
-          <>
-            <Label>얼마</Label>
-            <AmountInput value={ev.once ?? 0} onChange={(n) => set({ once: n })} />
-          </>
-        )}
-
-        {ev.kind === 'job' && (
-          <>
-            <Label>한 달 수입이</Label>
-            <Chips
-              options={[
-                { key: 'up', label: '늘어요' },
-                { key: 'down', label: '줄어요' },
-              ]}
-              value={jobUp ? 'up' : 'down'}
-              onPick={(d) => set({ monthly: (d === 'up' ? -1 : 1) * Math.abs(ev.monthly ?? 0) })}
-            />
-            <div className="mt-2">
+      {(ev.kind === 'parents' || ev.kind === 'custom') && (
+        <>
+          <Label>한 번에 드는 돈</Label>
+          <AmountInput value={ev.once ?? 0} onChange={(n) => set({ once: n || undefined })} />
+          <Label>매달 드는 돈</Label>
+          <AmountInput value={ev.monthly ?? 0} onChange={(n) => set({ monthly: n || undefined })} />
+          {(ev.monthly ?? 0) > 0 && (
+            <>
+              <Label>몇 달 동안</Label>
               <AmountInput
-                value={Math.abs(ev.monthly ?? 0)}
-                onChange={(n) => set({ monthly: jobUp ? -n : n })}
+                value={ev.months ?? 0}
+                onChange={(n) => set({ months: n || undefined })}
+                suffix="개월"
+                placeholder="비우면 계속"
               />
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </>
+      )}
 
-        {(ev.kind === 'parents' || ev.kind === 'custom') && (
-          <>
-            <Label>한 번에 드는 돈</Label>
-            <AmountInput value={ev.once ?? 0} onChange={(n) => set({ once: n || undefined })} />
-            <Label>매달 드는 돈</Label>
-            <AmountInput value={ev.monthly ?? 0} onChange={(n) => set({ monthly: n || undefined })} />
-            {(ev.monthly ?? 0) > 0 && (
-              <>
-                <Label>몇 달 동안</Label>
-                <AmountInput
-                  value={ev.months ?? 0}
-                  onChange={(n) => set({ months: n || undefined })}
-                  suffix="개월"
-                  placeholder="비우면 계속"
-                />
-              </>
-            )}
-          </>
-        )}
-
+      <button
+        onClick={() => onSave(ev)}
+        className="mt-5 w-full rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white active:bg-brand-dark"
+      >
+        {isNew ? '추가하기' : '저장하기'}
+      </button>
+      {!isNew && (
         <button
-          onClick={() => onSave(ev)}
-          className="mt-5 w-full rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white active:bg-brand-dark"
+          onClick={() => onDelete(ev.id)}
+          className="mt-2 w-full py-2 text-[13px] font-bold text-danger"
         >
-          {isNew ? '추가하기' : '저장하기'}
+          이 계획 지우기
         </button>
-        {!isNew && (
-          <button
-            onClick={() => onDelete(ev.id)}
-            className="mt-2 w-full py-2 text-[13px] font-bold text-danger"
-          >
-            이 계획 지우기
-          </button>
-        )}
-      </div>
-    </div>
+      )}
+    </Sheet>
   )
 }
 
@@ -667,37 +671,8 @@ const TEXT_INPUT =
 
 /* ───────── 작은 부품 ───────── */
 
-function eventTitle(ev: RoadmapEvent): string {
-  if (ev.kind === 'child') return ev.title ? `${ev.title} 양육비` : '아이 양육비'
-  if (ev.kind === 'custom') return ev.title || '직접 입력'
-  if (ev.kind === 'parents') return '부모님 지원'
-  if (ev.kind === 'car') return '차 사기'
-  return EVENT_META[ev.kind].label
-}
-
 function Box({ children }: { children: ReactNode }) {
   return <div className="rounded-card bg-card p-5 shadow-card">{children}</div>
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <Box>
-      <h2 className="mb-2 text-[15px] font-bold text-ink">{title}</h2>
-      {children}
-    </Box>
-  )
-}
-
-function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-t border-line py-2.5 first-of-type:border-t-0">
-      <span className="min-w-0 flex-1">
-        <span className="block text-[14px] text-sub">{label}</span>
-        {hint && <span className="block text-[11.5px] text-cap">{hint}</span>}
-      </span>
-      {children}
-    </div>
-  )
 }
 
 function Chips<T extends string | number>({
@@ -733,13 +708,6 @@ function Label({ children }: { children: ReactNode }) {
 /** "30억", "1억 2,000만" — 원 없이 */
 function short(n: number): string {
   return abbreviateKRW(n).replace(/원$/, '')
-}
-
-/** 눈금 간격 — 1·2·5 × 10^k 중 가까운 값 */
-function niceStep(n: number): number {
-  const pow = Math.pow(10, Math.floor(Math.log10(Math.max(n, 1))))
-  const f = n / pow
-  return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * pow
 }
 
 function ymText(ym: string): string {

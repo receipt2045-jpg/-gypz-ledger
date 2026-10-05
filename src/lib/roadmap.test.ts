@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeRoadmap, flowAt, monthsBetween, project, type RoadmapInput } from './roadmap'
+import { buildTimeline, compactKRW, computeRoadmap, flowAt, monthsBetween, project, type RoadmapInput } from './roadmap'
 
 const base: RoadmapInput = {
   startYm: '2026-10',
@@ -54,8 +54,30 @@ describe('roadmap', () => {
     expect(flowAt(ev, '2028-03', base)).toBe(0)
   })
 
-  it('마일스톤은 지금보다 크고 목표보다 작은 것 셋까지', () => {
+  it('마일스톤은 지금보다 크고 목표보다 작은 것', () => {
     const r = computeRoadmap({ ...base, target: 3_000_000_000 })
-    expect(r.milestones.map((m) => m.amount)).toEqual([200_000_000, 300_000_000, 500_000_000])
+    expect(r.milestones.map((m) => m.amount)).toEqual([
+      200_000_000, 300_000_000, 500_000_000, 1_000_000_000, 2_000_000_000,
+    ])
+  })
+
+  it('compactKRW', () => {
+    expect(compactKRW(320_000_000)).toBe('3억 2천')
+    expect(compactKRW(1_996_000_000)).toBe('20억')
+    expect(compactKRW(85_000_000)).toBe('8,500만')
+  })
+
+  it('타임라인: 일 있는 해만 한 줄, 조용한 해는 묶는다', () => {
+    const input = {
+      ...base,
+      events: [{ id: 'c', kind: 'car' as const, ym: '2029-05', once: 10_000_000 }],
+    }
+    const rows = buildTimeline(input, computeRoadmap(input))
+    const shape = rows.map((r) => (r.kind === 'quiet' ? `${r.from}-${r.to}` : String(r.year)))
+    // 첫 줄은 올해, 차를 사는 2029는 따로, 마지막은 목표한 해
+    expect(shape[0]).toBe('2026')
+    expect(shape).toContain('2029')
+    expect(shape[shape.length - 1]).toBe('2036')
+    expect(rows.some((r) => r.kind === 'quiet')).toBe(true)
   })
 })
