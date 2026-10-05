@@ -6,8 +6,7 @@
  * 대출 이자가 빠진다(원금 상환은 빚이 줄어드는 거라 순자산을 깎지 않는다).
  * 방향을 잡는 계산이고, 기본값은 화면에서 모두 고칠 수 있다.
  */
-import type { MonthlyLedger, Profile, Roadmap, RoadmapEvent, RoadmapEventKind } from '../types'
-import { effectiveAmount, summarize } from './carryover'
+import type { Profile, Roadmap, RoadmapEvent, RoadmapEventKind } from '../types'
 import { abbreviateKRW, shiftYm } from './format'
 import { RULES, govAt, leavePayAt } from './parentalLeave'
 
@@ -46,36 +45,6 @@ export function monthsBetween(a: string, b: string): number {
   return (by - ay) * 12 + (bm - am)
 }
 
-/** 최근 가계부(수입이 적힌 달) 최대 6개월 평균 — 한 달 저축, 사람별 월소득 */
-export function ledgerAverages(ledgers: MonthlyLedger[]): {
-  saving: number
-  income1: number
-  income2: number
-  months: number
-} {
-  const recent = [...ledgers]
-    .sort((a, b) => a.ym.localeCompare(b.ym))
-    .filter((l) => summarize(l).income > 0)
-    .slice(-6)
-  if (!recent.length) return { saving: 0, income1: 0, income2: 0, months: 0 }
-  const avg = (f: (l: MonthlyLedger) => number) =>
-    Math.round(recent.reduce((acc, l) => acc + f(l), 0) / recent.length)
-  const incomeOf = (l: MonthlyLedger, m: 1 | 2) =>
-    l.items
-      .filter((it) => it.group === 'income' && it.member === m)
-      .reduce((acc, it) => acc + effectiveAmount(it, l.closed), 0)
-  return {
-    // 수입 − 지출 = 저축 + 투자 + 남은 돈. 셋 다 순자산으로 쌓인다
-    saving: avg((l) => {
-      const s = summarize(l)
-      return s.income - s.expense
-    }),
-    income1: avg((l) => incomeOf(l, 1)),
-    income2: avg((l) => incomeOf(l, 2)),
-    months: recent.length,
-  }
-}
-
 export interface RoadmapInput {
   startYm: string
   netWorth: number
@@ -90,24 +59,21 @@ export interface RoadmapInput {
   events: RoadmapEvent[]
 }
 
-/** 프로필·가계부로 계산 입력을 채운다. 사용자가 적은 값이 있으면 그걸 쓴다 */
-export function roadmapInput(
-  profile: Profile,
-  ledgers: MonthlyLedger[],
-  netWorth: number,
-  startYm: string,
-): RoadmapInput {
+/**
+ * 프로필로 계산 입력을 채운다. 가계부 기록은 가져오지 않는다(2026-10-06) —
+ * 로드맵은 앞으로의 계획이라 사용자가 직접 적은 값만 쓴다. 지금 재산만 자산 탭에서 온다.
+ */
+export function roadmapInput(profile: Profile, netWorth: number, startYm: string): RoadmapInput {
   const r: Roadmap = profile.roadmap ?? { events: [] }
-  const auto = ledgerAverages(ledgers)
   const targetYear = r.targetYear ?? profile.startYear + 10
   return {
     startYm,
     netWorth,
     target: profile.targetNetWorth,
     targetYm: `${targetYear}-12`,
-    monthlySaving: r.monthlySaving ?? auto.saving,
-    income1: r.income1 ?? auto.income1,
-    income2: r.income2 ?? auto.income2,
+    monthlySaving: r.monthlySaving ?? 0,
+    income1: r.income1 ?? 0,
+    income2: r.income2 ?? 0,
     returnRate: r.returnRate ?? DEFAULT_RETURN,
     incomeGrowth: r.incomeGrowth ?? DEFAULT_GROWTH,
     realTerms: r.realTerms ?? false,

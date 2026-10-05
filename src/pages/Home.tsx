@@ -66,9 +66,9 @@ export default function Home() {
   // 목표 카드 한 줄 — 로드맵 페이지와 같은 계산 (지금 달 기준)
   const reachYm = useMemo(() => {
     const now = currentYm()
-    const input = roadmapInput(profile, ledgers, netWorthOf(resolveSnapshot(snapshots, now)), now)
+    const input = roadmapInput(profile, netWorthOf(resolveSnapshot(snapshots, now)), now)
     return input.target > 0 && input.monthlySaving > 0 ? computeRoadmap(input).reachYm : null
-  }, [profile, ledgers, snapshots])
+  }, [profile, snapshots])
   const settledMembers = ledger.settledMembers ?? []
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
 

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeRoadmap, flowAt, ledgerAverages, monthsBetween, project, type RoadmapInput } from './roadmap'
-import type { MonthlyLedger } from '../types'
+import { computeRoadmap, flowAt, monthsBetween, project, type RoadmapInput } from './roadmap'
 
 const base: RoadmapInput = {
   startYm: '2026-10',
@@ -58,18 +57,5 @@ describe('roadmap', () => {
   it('마일스톤은 지금보다 크고 목표보다 작은 것 셋까지', () => {
     const r = computeRoadmap({ ...base, target: 3_000_000_000 })
     expect(r.milestones.map((m) => m.amount)).toEqual([200_000_000, 300_000_000, 500_000_000])
-  })
-
-  it('가계부 평균: 수입 적힌 달만, 최근 6개월', () => {
-    const lg = (ym: string, income: number, expense: number): MonthlyLedger => ({
-      ym,
-      closed: true,
-      items: [
-        { id: ym + 'i', group: 'income', category: '주수입', member: 1, planned: 0, actual: income },
-        { id: ym + 'e', group: 'variable', category: '식비', member: 1, planned: 0, actual: expense },
-      ],
-    })
-    const a = ledgerAverages([lg('2026-08', 5_000_000, 2_000_000), lg('2026-09', 5_000_000, 3_000_000), lg('2026-10', 0, 0)])
-    expect(a).toEqual({ saving: 2_500_000, income1: 5_000_000, income2: 0, months: 2 })
   })
 })

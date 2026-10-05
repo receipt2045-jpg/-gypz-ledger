@@ -12,7 +12,6 @@ import {
   RETURN_PRESETS,
   computeRoadmap,
   eventSummary,
-  ledgerAverages,
   monthsBetween,
   roadmapInput,
   type RoadmapPoint,
@@ -30,15 +29,14 @@ import type { Roadmap as RoadmapData, RoadmapEvent, RoadmapEventKind } from '../
  */
 export default function Roadmap() {
   const navigate = useNavigate()
-  const { profile, ledgers, snapshots, updateProfile } = useLedgerStore()
+  const { profile, snapshots, updateProfile } = useLedgerStore()
   const roadmap: RoadmapData = profile.roadmap ?? { events: [] }
   const setRoadmap = (patch: Partial<RoadmapData>) =>
     updateProfile({ roadmap: { ...roadmap, ...patch } })
 
   const nowYm = currentYm()
   const netWorth = netWorthOf(resolveSnapshot(snapshots, nowYm))
-  const auto = useMemo(() => ledgerAverages(ledgers), [ledgers])
-  const input = roadmapInput(profile, ledgers, netWorth, nowYm)
+  const input = roadmapInput(profile, netWorth, nowYm)
   const result = useMemo(() => computeRoadmap(input), [JSON.stringify(input)]) // eslint-disable-line react-hooks/exhaustive-deps
   const targetYear = Number(input.targetYm.slice(0, 4))
   const names: [string, string] = [profile.member1Name, profile.member2Name]
@@ -80,7 +78,7 @@ export default function Roadmap() {
         <div className="space-y-3 px-5 pt-3">
           <Answer result={result} input={input} targetYear={targetYear} hasSaving={input.monthlySaving > 0} />
 
-          {input.target > 0 && (
+          {input.target > 0 && input.monthlySaving > 0 && (
             <Section title="예상 흐름">
               <Chart
                 result={result}
@@ -136,9 +134,6 @@ export default function Roadmap() {
           </Section>
 
           <Section title="우리집 목표와 지금">
-            <p className="-mt-1 mb-1 text-[12.5px] leading-relaxed text-cap">
-              가계부에 적은 걸로 미리 채워 뒀어요. 실제와 다르면 고쳐 주세요.
-            </p>
             <Row label="모으고 싶은 돈" hint="빚을 빼고 남는 재산 기준">
               <AmountInput
                 value={profile.targetNetWorth}
@@ -167,32 +162,24 @@ export default function Roadmap() {
                 {abbreviateKRW(netWorth)}
               </button>
             </Row>
-            <AutoRow
-              label="한 달에 남는 돈"
-              autoValue={auto.saving}
-              autoHint={auto.months ? `최근 ${auto.months}개월 수입 − 지출` : '수입 − 지출'}
-              value={roadmap.monthlySaving}
-              onChange={(n) => setRoadmap({ monthlySaving: n })}
-            />
+            <Row label="한 달에 모을 돈" hint="저축·투자에 넣을 돈">
+              <AmountInput
+                value={roadmap.monthlySaving ?? 0}
+                onChange={(n) => setRoadmap({ monthlySaving: n })}
+                className="w-[150px]"
+              />
+            </Row>
             {/* 월소득은 육아휴직 계획에만 쓰여서, 그 계획이 있을 때만 묻는다 */}
-            {roadmap.events.some((e) => e.kind === 'leave') && (
-              <>
-                <AutoRow
-                  label={`${names[0]} 한 달 수입`}
-                  autoValue={auto.income1}
-                  autoHint="육아휴직 때 줄어드는 돈 계산용"
-                  value={roadmap.income1}
-                  onChange={(n) => setRoadmap({ income1: n })}
-                />
-                <AutoRow
-                  label={`${names[1]} 한 달 수입`}
-                  autoValue={auto.income2}
-                  autoHint="육아휴직 때 줄어드는 돈 계산용"
-                  value={roadmap.income2}
-                  onChange={(n) => setRoadmap({ income2: n })}
-                />
-              </>
-            )}
+            {roadmap.events.some((e) => e.kind === 'leave') &&
+              ([1, 2] as const).map((m) => (
+                <Row key={m} label={`${names[m - 1]} 한 달 수입`} hint="육아휴직 때 줄어드는 돈 계산용">
+                  <AmountInput
+                    value={(m === 1 ? roadmap.income1 : roadmap.income2) ?? 0}
+                    onChange={(n) => setRoadmap(m === 1 ? { income1: n } : { income2: n })}
+                    className="w-[150px]"
+                  />
+                </Row>
+              ))}
           </Section>
 
           <Section title="계산 기준">
@@ -281,6 +268,16 @@ function Answer({
       </Box>
     )
   }
+  if (!hasSaving) {
+    return (
+      <Box>
+        <p className="text-[17px] font-bold text-ink">한 달에 얼마씩 모을지 적어 주세요</p>
+        <p className="mt-1 text-[13px] text-sub">
+          아래 '한 달에 모을 돈'을 넣으면 {short(input.target)}까지 언제쯤 닿는지 보여드려요.
+        </p>
+      </Box>
+    )
+  }
   const diff = result.reachYm ? monthsBetween(input.targetYm, result.reachYm) : null
   return (
     <Box>
@@ -305,11 +302,6 @@ function Answer({
           {targetYear}년에 맞추려면 매달{' '}
           <b className="tnum text-brand">{abbreviateKRW(result.extraNeeded).replace(/원$/, '')} 원</b> 더 모으면 돼요
         </div>
-      )}
-      {!hasSaving && (
-        <p className="mt-2 text-[12px] text-danger">
-          한 달에 남는 돈이 0원으로 잡혀 있어요. 아래에서 적어 주세요.
-        </p>
       )}
     </Box>
   )
@@ -346,7 +338,8 @@ function Chart({
   const span = Math.max(1, monthsBetween(firstYm, lastYm))
   const inWindow = (p: RoadmapPoint) => p.ym <= lastYm
   const proj = result.points.filter(inWindow)
-  const track = result.onTrack?.filter(inWindow) ?? null
+  // 목표에 맞춘 선은 목표 연도까지만 — 그 뒤로 그리면 눈금이 찌그러진다
+  const track = result.onTrack?.filter((p) => p.ym <= targetYm) ?? null
 
   const all = [...actual, ...proj, ...(track ?? [])].map((p) => p.value)
   const yMax = Math.max(target, ...all) * 1.06
@@ -359,8 +352,11 @@ function Chart({
       .map((p, i) => `${i ? 'L' : 'M'}${x(p.ym).toFixed(1)} ${y(p.value).toFixed(1)}`)
       .join(' ')
 
-  const step = niceStep(target / 4)
-  const ticks = Array.from({ length: 8 }, (_, i) => (i + 1) * step).filter((t) => t < target * 0.92)
+  const step = niceStep(yMax / 4)
+  // 목표선 라벨과 겹치는 눈금은 뺀다
+  const ticks = Array.from({ length: 8 }, (_, i) => (i + 1) * step).filter(
+    (t) => t < yMax && Math.abs(t - target) > yMax * 0.08,
+  )
   // 연도 눈금 — 처음·목표·끝. 서로 붙으면(40px 안) 목표 쪽만 남긴다
   const yearMarks = [
     { ym: firstYm, anchor: 'start' as const },
@@ -701,38 +697,6 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
       </span>
       {children}
     </div>
-  )
-}
-
-/** 가계부로 자동 채운 값. 고치면 그 값을 쓰고, '자동으로'를 누르면 다시 가계부 값으로 */
-function AutoRow({
-  label,
-  autoValue,
-  autoHint,
-  value,
-  onChange,
-}: {
-  label: string
-  autoValue: number
-  autoHint: string
-  value: number | undefined
-  onChange: (n: number | undefined) => void
-}) {
-  const manual = value !== undefined
-  return (
-    <Row
-      label={label}
-      hint={manual ? undefined : autoHint}
-    >
-      <div className="flex flex-col items-end">
-        <AmountInput value={value ?? autoValue} onChange={(n) => onChange(n)} className="w-[150px]" />
-        {manual && (
-          <button onClick={() => onChange(undefined)} className="mt-1 text-[11.5px] font-bold text-brand">
-            가계부 값으로 되돌리기 ({short(autoValue)})
-          </button>
-        )}
-      </div>
-    </Row>
   )
 }
 
