@@ -80,3 +80,15 @@ describe('부탁 한 줄은 글에서 뺀다 (2026-10-06 제보)', () => {
     )
   })
 })
+
+describe('날짜 줄 — [결영이네]가 없어도 (루틴 원문)', () => {
+  it('"10월 6일"만 있어도 날짜로 읽는다', () => {
+    const d = parsePasted('10월 6일\n오늘의 경제 뉴스\n\n본문', new Date(2026, 9, 6))
+    expect(d.postDate).toBe('2026-10-06')
+    expect(d.title).toBe('오늘의 경제 뉴스')
+  })
+  it('날짜 뒤에 다른 말이 붙은 줄은 날짜 줄이 아니다', () => {
+    const d = parsePasted('10월 6일 오늘의 경제 뉴스\n본문', new Date(2026, 9, 6))
+    expect(d.title).toBe('10월 6일 오늘의 경제 뉴스')
+  })
+})

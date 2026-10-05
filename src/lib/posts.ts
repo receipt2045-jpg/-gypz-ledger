@@ -73,10 +73,11 @@ export function parsePasted(text: string, today: Date = new Date()): PostDraft {
   nonEmpty()
 
   let postDate = isoDate(today)
-  const dateLine = lines[0]?.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/)
-  if (dateLine && /^\s*\[/.test(lines[0])) {
-    const m = Number(dateLine[1])
-    const d = Number(dateLine[2])
+  // 날짜 줄: "[결영이네] 10월 2일" 또는 "10월 2일" (루틴 원문은 [결영이네] 없이 온다)
+  const dateLine = lines[0]?.match(/^\s*(\[[^\]]*\]\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*$/)
+  if (dateLine) {
+    const m = Number(dateLine[2])
+    const d = Number(dateLine[3])
     // 1월에 12월 글을 올리면 작년
     const year = m > today.getMonth() + 1 + 1 ? today.getFullYear() - 1 : today.getFullYear()
     postDate = `${year}-${pad(m)}-${pad(d)}`
