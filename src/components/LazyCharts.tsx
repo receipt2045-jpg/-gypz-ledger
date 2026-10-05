@@ -1,6 +1,5 @@
 import { Suspense, lazy } from 'react'
 import type { MonthPoint } from './MonthlyCombo'
-import type { NetWorthPoint } from './NetWorthChart'
 import type { RatePoint } from './SavingRateBars'
 
 /**
@@ -17,30 +16,12 @@ function Placeholder({ className }: { className: string }) {
 }
 
 const MonthlyCombo = lazy(() => import('./MonthlyCombo'))
-const AssetDonut = lazy(() => import('./AssetDonut'))
-const NetWorthChart = lazy(() => import('./NetWorthChart'))
 const SavingRateBars = lazy(() => import('./SavingRateBars'))
 
 export function LazyMonthlyCombo({ data }: { data: MonthPoint[] }) {
   return (
     <Suspense fallback={<Placeholder className="h-[180px] w-full" />}>
       <MonthlyCombo data={data} />
-    </Suspense>
-  )
-}
-
-export function LazyAssetDonut({ assets, debts }: { assets: number; debts: number }) {
-  return (
-    <Suspense fallback={<Placeholder className="h-[200px] w-full" />}>
-      <AssetDonut assets={assets} debts={debts} />
-    </Suspense>
-  )
-}
-
-export function LazyNetWorthChart({ series }: { series: NetWorthPoint[] }) {
-  return (
-    <Suspense fallback={<Placeholder className="h-full w-full" />}>
-      <NetWorthChart series={series} />
     </Suspense>
   )
 }
