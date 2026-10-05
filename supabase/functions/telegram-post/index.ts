@@ -28,6 +28,18 @@ function seoulToday(): Date {
   return new Date(Date.now() + 9 * 60 * 60 * 1000);
 }
 
+// 글 맨 앞·맨 끝의 짧은 부탁 한 줄("이렇게 바꿔서 올려")은 글이 아니다 — src/lib/posts.ts의 stripCommand와 같다
+const COMMAND_LINE = /^.{0,15}올려(줘|주세요)?[.!~ ]*$/;
+function stripCommand(text: string): string {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  let end = -1;
+  for (let i = lines.length - 1; i >= 0; i--) if (lines[i].trim()) { end = i; break; }
+  if (end >= 0 && COMMAND_LINE.test(lines[end].trim())) lines.splice(end, 1);
+  const start = lines.findIndex((l) => l.trim());
+  if (start >= 0 && COMMAND_LINE.test(lines[start].trim())) lines.splice(start, 1);
+  return lines.join("\n").trim();
+}
+
 function parsePasted(text: string) {
   const today = seoulToday();
   const lines = text.replace(/\r\n/g, "\n").split("\n");
@@ -54,7 +66,7 @@ function parsePasted(text: string) {
 }
 
 function kakaoText(original: string) {
-  return `${original.trim()}\n\n📱 지난 글은 모아불리에서 모아 봐요\nhttps://moabuli.com/info`;
+  return `${original.trim()}\n\n📱 지난 글은 모아불리에서 모아 봐요\nhttps://moabuli.com/news`;
 }
 
 async function reply(chatId: number, text: string, replyTo?: number) {
@@ -114,7 +126,7 @@ Deno.serve(async (req) => {
     }
 
     // 답장으로 "올려" → 답장한 원래 글을 올린다. 아니면 보낸 글 자체를 올린다
-    const source = POST_WORDS.test(text) ? (msg.reply_to_message?.text ?? "") : text;
+    const source = stripCommand(POST_WORDS.test(text) ? (msg.reply_to_message?.text ?? "") : text);
     if (!source || source.length < 20) {
       await reply(
         chatId,

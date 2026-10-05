@@ -45,8 +45,28 @@ export const isoDate = (d: Date) =>
  *   오늘의 경제 뉴스          ← 제목 ('증시'가 들어가면 증시 정리)
  *   (나머지 전부 본문)
  */
-export function parsePasted(text: string, today: Date = new Date()): PostDraft {
+/**
+ * 글 맨 앞이나 맨 끝에 붙인 짧은 부탁 한 줄("이렇게 바꿔서 올려", "올려줘")은 글이 아니다.
+ * 2026-10-06 제보: 고친 글 끝의 "이렇게 바꿔서 올려"까지 앱에 올라갔다.
+ */
+const COMMAND_LINE = /^.{0,15}올려(줘|주세요)?[.!~ ]*$/
+
+export function stripCommand(text: string): string {
   const lines = text.replace(/\r\n/g, '\n').split('\n')
+  const firstIdx = () => lines.findIndex((l) => l.trim())
+  const lastIdx = () => {
+    for (let i = lines.length - 1; i >= 0; i--) if (lines[i].trim()) return i
+    return -1
+  }
+  const end = lastIdx()
+  if (end >= 0 && COMMAND_LINE.test(lines[end].trim())) lines.splice(end, 1)
+  const start = firstIdx()
+  if (start >= 0 && COMMAND_LINE.test(lines[start].trim())) lines.splice(start, 1)
+  return lines.join('\n').trim()
+}
+
+export function parsePasted(text: string, today: Date = new Date()): PostDraft {
+  const lines = stripCommand(text).split('\n')
   const nonEmpty = () => {
     while (lines.length && !lines[0].trim()) lines.shift()
   }
@@ -92,7 +112,7 @@ export function linkify(text: string): Segment[] {
 export function kakaoText(original: string, withAppLink: boolean): string {
   const base = original.trim()
   return withAppLink
-    ? `${base}\n\n📱 지난 글은 모아불리에서 모아 봐요\nhttps://moabuli.com/info`
+    ? `${base}\n\n📱 지난 글은 모아불리에서 모아 봐요\nhttps://moabuli.com/news`
     : base
 }
 
@@ -135,6 +155,12 @@ export async function insertPost(d: PostDraft): Promise<Post> {
     .single()
   if (error) throw error
   return fromRow(data as PostRow)
+}
+
+export async function fetchPost(id: string): Promise<Post | null> {
+  const { data, error } = await supabase.from('posts').select('*').eq('id', id).maybeSingle()
+  if (error) throw error
+  return data ? fromRow(data as PostRow) : null
 }
 
 export async function deletePost(id: string): Promise<void> {

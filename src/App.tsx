@@ -18,6 +18,7 @@ import Settings from './pages/Settings'
 import Checkup from './pages/Checkup'
 import Confess from './pages/Confess'
 import Info from './pages/Info'
+import PostDetail from './pages/PostDetail'
 import AdminPosts from './pages/AdminPosts'
 import AdminFeedback from './pages/AdminFeedback'
 import AdminReports from './pages/AdminReports'
@@ -29,6 +30,7 @@ import Onboarding from './pages/Onboarding'
 import IntroSlides from './pages/IntroSlides'
 import Legal from './pages/Legal'
 import ParentalLeave from './pages/ParentalLeave'
+import PublicNews from './pages/PublicNews'
 
 export default function App() {
   return (
@@ -40,6 +42,9 @@ export default function App() {
         <Route path="/legal/:doc" element={<Legal />} />
         {/* 육아휴직 계산기 — 영상·SNS에서 바로 들어오는 자리라 로그인 밖에 둔다 */}
         <Route path="/leave" element={<ParentalLeave />} />
+        {/* 오늘의 경제 — 카톡 톡방 링크로 들어오는 자리라 로그인 밖에 둔다 */}
+        <Route path="/news" element={<PublicNews />} />
+        <Route path="/news/:id" element={<PublicNews />} />
         <Route path="*" element={<AuthGate />} />
       </Routes>
     </>
@@ -153,6 +158,7 @@ function AppRoutes() {
         <Route element={<AppFrame />}>
           <Route path="/" element={<Home />} />
           <Route path="/info" element={<Info />} />
+          <Route path="/info/:id" element={<PostDetail />} />
           {/* 옛 탭 주소(2026-09-30 개편 전) — 홈 화면 바로가기·링크가 깨지지 않게 */}
           <Route path="/board" element={<Navigate to="/info" replace />} />
           <Route path="/roadmap" element={<Navigate to="/" replace />} />

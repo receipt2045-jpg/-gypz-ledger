@@ -51,8 +51,8 @@ export default function Info() {
       {posts && posts.length > 0 && (
         <section aria-label="오늘의 경제" className="space-y-3">
           <SectionTitle>오늘의 경제</SectionTitle>
-          {visible.map((p, i) => (
-            <PostCard key={p.id} post={p} defaultOpen={i === 0} />
+          {visible.map((p) => (
+            <PostCard key={p.id} post={p} />
           ))}
           {posts.length > 3 && (
             <button

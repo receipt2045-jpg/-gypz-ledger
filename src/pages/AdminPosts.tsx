@@ -165,7 +165,7 @@ export default function AdminPosts() {
                     />
                   </label>
                   <p className="pt-1 text-[12.5px] font-medium text-sub">앱에서 이렇게 보여요</p>
-                  <PostCard post={{ ...draft, id: 'preview', createdAt: '' }} defaultOpen={false} />
+                  <PostCard post={{ ...draft, id: 'preview', createdAt: '' }} preview />
                 </div>
               )}
 

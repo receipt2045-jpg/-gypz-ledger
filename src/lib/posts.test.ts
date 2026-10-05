@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kakaoText, linkify, parsePasted } from './posts'
+import { kakaoText, linkify, parsePasted, stripCommand } from './posts'
 
 const NEWS = `[결영이네] 10월 2일
 오늘의 경제 뉴스
@@ -54,6 +54,29 @@ describe('본문 링크', () => {
 describe('톡방에도 보내기', () => {
   it('원문 그대로 + 원하면 앱 링크 한 줄', () => {
     expect(kakaoText(' 글 ', false)).toBe('글')
-    expect(kakaoText('글', true)).toContain('https://moabuli.com/info')
+    expect(kakaoText('글', true)).toContain('https://moabuli.com/news')
+  })
+})
+
+describe('부탁 한 줄은 글에서 뺀다 (2026-10-06 제보)', () => {
+  it('끝에 붙인 "이렇게 바꿔서 올려"는 빠진다', () => {
+    const d = parsePasted(
+      '[결영이네] 10월 6일\n오늘의 경제 뉴스\n\n본문 첫 줄\n본문 둘째 줄\n\n이렇게 바꿔서 올려',
+      new Date(2026, 9, 6),
+    )
+    expect(d.body).toBe('본문 첫 줄\n본문 둘째 줄')
+  })
+
+  it('맨 앞의 "올려줘"도 빠진다', () => {
+    expect(stripCommand('올려줘\n[결영이네] 10월 6일\n제목\n본문')).toBe(
+      '[결영이네] 10월 6일\n제목\n본문',
+    )
+  })
+
+  it('본문 속 평범한 문장은 그대로', () => {
+    expect(stripCommand('제목\n금리를 올려요')).toBe('제목\n금리를 올려요')
+    expect(stripCommand('제목\n중앙은행이 기준금리를 크게 올려서 시장이 놀랐어요 올려')).toContain(
+      '놀랐어요',
+    )
   })
 })
