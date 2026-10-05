@@ -135,15 +135,18 @@ export default function Roadmap() {
             </button>
           </Section>
 
-          <Section title="목표와 출발점">
-            <Row label="목표 순자산">
+          <Section title="우리집 목표와 지금">
+            <p className="-mt-1 mb-1 text-[12.5px] leading-relaxed text-cap">
+              가계부에 적은 걸로 미리 채워 뒀어요. 실제와 다르면 고쳐 주세요.
+            </p>
+            <Row label="모으고 싶은 돈" hint="빚을 빼고 남는 재산 기준">
               <AmountInput
                 value={profile.targetNetWorth}
                 onChange={(n) => updateProfile({ targetNetWorth: n })}
-                className="w-[180px]"
+                className="w-[170px]"
               />
             </Row>
-            <Row label="언제까지">
+            <Row label="언제까지 모을까요">
               <select
                 value={targetYear}
                 onChange={(e) => setRoadmap({ targetYear: Number(e.target.value) })}
@@ -156,7 +159,7 @@ export default function Roadmap() {
                 ))}
               </select>
             </Row>
-            <Row label="지금 순자산" hint="자산 탭 기준">
+            <Row label="지금 우리집 재산" hint="가진 돈에서 빚을 뺀 금액">
               <button
                 onClick={() => navigate('/asset-setup')}
                 className="tnum text-[15px] font-bold text-ink"
@@ -165,36 +168,41 @@ export default function Roadmap() {
               </button>
             </Row>
             <AutoRow
-              label="한 달 저축"
+              label="한 달에 남는 돈"
               autoValue={auto.saving}
-              autoHint={auto.months ? `가계부 ${auto.months}개월 평균` : '가계부 기록이 없어요'}
+              autoHint={auto.months ? `최근 ${auto.months}개월 수입 − 지출` : '수입 − 지출'}
               value={roadmap.monthlySaving}
               onChange={(n) => setRoadmap({ monthlySaving: n })}
             />
-            <AutoRow
-              label={`${names[0]} 월소득`}
-              autoValue={auto.income1}
-              autoHint="육아휴직 계산에 써요"
-              value={roadmap.income1}
-              onChange={(n) => setRoadmap({ income1: n })}
-            />
-            <AutoRow
-              label={`${names[1]} 월소득`}
-              autoValue={auto.income2}
-              autoHint="육아휴직 계산에 써요"
-              value={roadmap.income2}
-              onChange={(n) => setRoadmap({ income2: n })}
-            />
+            {/* 월소득은 육아휴직 계획에만 쓰여서, 그 계획이 있을 때만 묻는다 */}
+            {roadmap.events.some((e) => e.kind === 'leave') && (
+              <>
+                <AutoRow
+                  label={`${names[0]} 한 달 수입`}
+                  autoValue={auto.income1}
+                  autoHint="육아휴직 때 줄어드는 돈 계산용"
+                  value={roadmap.income1}
+                  onChange={(n) => setRoadmap({ income1: n })}
+                />
+                <AutoRow
+                  label={`${names[1]} 한 달 수입`}
+                  autoValue={auto.income2}
+                  autoHint="육아휴직 때 줄어드는 돈 계산용"
+                  value={roadmap.income2}
+                  onChange={(n) => setRoadmap({ income2: n })}
+                />
+              </>
+            )}
           </Section>
 
-          <Section title="가정">
-            <p className="mb-1.5 text-[12px] text-cap">투자 수익률 (연)</p>
+          <Section title="계산 기준">
+            <p className="mb-1.5 text-[12px] text-cap">모은 돈이 1년에 불어나는 정도</p>
             <Chips
               options={RETURN_PRESETS.map((p) => ({ key: p.rate, label: `${p.label} ${Math.round(p.rate * 100)}%` }))}
               value={input.returnRate}
               onPick={(rate) => setRoadmap({ returnRate: rate })}
             />
-            <p className="mb-1.5 mt-3 text-[12px] text-cap">소득 상승률 (연) · 저축도 같이 는다고 봐요</p>
+            <p className="mb-1.5 mt-3 text-[12px] text-cap">월급이 1년에 오르는 정도 · 남는 돈도 같이 늘어요</p>
             <Chips
               options={GROWTH_PRESETS.map((g) => ({ key: g, label: `${Math.round(g * 100)}%` }))}
               value={input.incomeGrowth}
@@ -208,7 +216,7 @@ export default function Roadmap() {
             >
               <span className="text-left">
                 <span className="block text-[14px] text-sub">물가 빼고 보기</span>
-                <span className="block text-[12px] text-cap">미래 금액을 지금 돈 가치로 바꿔요 (연 2.5%)</span>
+                <span className="block text-[12px] text-cap">물가가 오르는 만큼 빼고, 지금 돈 가치로 보여줘요</span>
               </span>
               <span
                 className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${input.realTerms ? 'bg-brand' : 'bg-line'}`}
@@ -258,8 +266,8 @@ function Answer({
   if (input.target <= 0) {
     return (
       <Box>
-        <p className="text-[17px] font-bold text-ink">목표 순자산부터 정해 주세요</p>
-        <p className="mt-1 text-[13px] text-sub">아래 '목표와 출발점'에 금액을 넣으면 언제 닿는지 계산해요.</p>
+        <p className="text-[17px] font-bold text-ink">모으고 싶은 돈부터 정해 주세요</p>
+        <p className="mt-1 text-[13px] text-sub">아래에 금액을 넣으면 언제쯤 모이는지 계산해 드려요.</p>
       </Box>
     )
   }
@@ -300,7 +308,7 @@ function Answer({
       )}
       {!hasSaving && (
         <p className="mt-2 text-[12px] text-danger">
-          한 달 저축이 0원으로 잡혀 있어요. 아래에서 적어 주세요.
+          한 달에 남는 돈이 0원으로 잡혀 있어요. 아래에서 적어 주세요.
         </p>
       )}
     </Box>
@@ -687,7 +695,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 border-t border-line py-2.5 first-of-type:border-t-0">
-      <span className="shrink-0">
+      <span className="min-w-0 flex-1">
         <span className="block text-[14px] text-sub">{label}</span>
         {hint && <span className="block text-[11.5px] text-cap">{hint}</span>}
       </span>
@@ -717,10 +725,10 @@ function AutoRow({
       hint={manual ? undefined : autoHint}
     >
       <div className="flex flex-col items-end">
-        <AmountInput value={value ?? autoValue} onChange={(n) => onChange(n)} className="w-[160px]" />
+        <AmountInput value={value ?? autoValue} onChange={(n) => onChange(n)} className="w-[150px]" />
         {manual && (
           <button onClick={() => onChange(undefined)} className="mt-1 text-[11.5px] font-bold text-brand">
-            가계부 평균으로 ({short(autoValue)})
+            가계부 값으로 되돌리기 ({short(autoValue)})
           </button>
         )}
       </div>
