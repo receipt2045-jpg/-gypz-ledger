@@ -19,12 +19,14 @@ export const GROUP_ACCENT: Record<CategoryGroup, string> = {
   variable: 'text-ink',
 }
 
+// 이름은 쉬운 말로(2026-10-05). 저장된 값(cash·stock…)은 그대로라 이미 넣은 자산은 다시 넣을 필요 없다.
+// '집' = 전월세 보증금 + 내 집. 통계청은 보증금을 금융자산으로 세지만, 부부가 보기엔 '집에 들어간 돈'이다.
 export const ASSET_GROUP_LABEL: Record<AssetGroup, string> = {
-  cash: '현금성',
-  stock: '주식/코인',
-  realestate: '부동산',
-  pension: '연금/보험',
-  consumable: '소비재',
+  cash: '예적금',
+  stock: '투자',
+  realestate: '집',
+  pension: '연금',
+  consumable: '기타',
 }
 
 export const ASSET_GROUP_ORDER: AssetGroup[] = ['cash', 'stock', 'realestate', 'pension', 'consumable']
@@ -91,7 +93,7 @@ export const TERM_TIP = {
   surplus: '수입에서 저축·투자·지출을 빼고 남은 돈이에요',
   savingRate: '번 돈 중 저축·투자로 간 비율입니다',
   purposeSaving: '여행·비상금처럼 목적을 정해 모으는 돈이에요',
-  cash: '바로 꺼내 쓸 수 있는 예금·현금입니다',
+  cash: '통장·예금·적금·청약처럼 모아 둔 돈이에요',
 } as const
 
 // 비정기 지출 — 매달은 아니지만 반드시 오는 돈 (공동 카드·계좌 지출이 주로 여기 담긴다)

@@ -24,8 +24,15 @@ const COLOR: Record<string, string> = {
 }
 
 const colorOf = (s: CompoSlice) => COLOR[s.group ?? 'other'] ?? COLOR.other
+// '보증금'이라는 말은 쓰지 않는다(2026-10-05) — 전월세는 '전월세 집', 산 집은 '내 집'
 const labelOf = (s: CompoSlice) =>
-  s.group === null ? '기타' : s.group === DEPOSIT ? '보증금' : ASSET_GROUP_LABEL[s.group]
+  s.group === null
+    ? '기타'
+    : s.group === DEPOSIT
+      ? '전월세 집'
+      : s.group === 'realestate'
+        ? '내 집'
+        : ASSET_GROUP_LABEL[s.group]
 
 export default function AssetComposition({ items }: { items: AssetItem[] }) {
   const c = buildComposition(items)

@@ -50,7 +50,7 @@ export interface MonthlyLedger {
 }
 
 export type AssetGroup = 'cash' | 'stock' | 'realestate' | 'pension' | 'consumable'
-// 라벨: 현금성, 주식/코인, 부동산, 연금/보험, 소비재(자동차 등)
+// 라벨: 예적금, 투자, 집(전월세 보증금·내 집), 연금, 기타(자동차 등) — constants.ASSET_GROUP_LABEL
 
 export interface AssetItem {
   id: string

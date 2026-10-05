@@ -152,6 +152,6 @@ describe('자산 구성 — 소비재가 절반 넘으면 판단을 얹지 않�
     const c = buildComposition([a('자동차', 'consumable', 14_250_000), a('청약', 'cash', 6_500_000)])
     const note = compositionNote(c)
     expect(note).not.toContain('모으는 데 집중')
-    expect(note).toContain('소비재')
+    expect(note).toContain('기타')
   })
 })

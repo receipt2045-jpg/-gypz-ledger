@@ -117,7 +117,7 @@ export function compositionNote(c: Composition): string {
   // 차·가전(기타)이 절반을 넘으면 모으는/불리는 비율로 뭐라 말할 자격이 없다.
   // 남편 탭에서 자동차 69%인데 "모으는 데 집중하고 있어요"가 뜨던 걸 막는다.
   const otherPercent = 100 - c.savePercent - c.growPercent
-  if (otherPercent >= 50) return `${head} · 소비재 ${otherPercent}%. 차·가전 같은 소비재가 큰 편이에요`
+  if (otherPercent >= 50) return `${head} · 기타 ${otherPercent}%. 차·가전 같은 물건이 큰 편이에요`
   if (c.growPercent === 0) return `${head}. 아직은 모으는 데 집중하고 있어요`
   if (c.savePercent >= 70) return `${head}. 현금이 많은 편이에요. 신혼 초엔 자연스러운 모습이에요`
   if (c.growPercent >= 60) return `${head}. 불리는 쪽 비중이 큰 편이에요`
