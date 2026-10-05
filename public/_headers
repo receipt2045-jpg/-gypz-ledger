@@ -9,3 +9,10 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Permissions-Policy: geolocation=(), camera=(), payment=()
+
+# 서비스 워커는 늘 새로 받아야 한다 — 오래 저장하면 고친 내용이 안 퍼진다
+/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
