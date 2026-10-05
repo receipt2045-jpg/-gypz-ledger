@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import Card from './Card'
 import { groupRows, isOwned, memberTable, ownerRows, type TableRow } from '../lib/assetGlance'
 import { abbreviateKRW, formatMonthKorean, formatYmKorean } from '../lib/format'
@@ -85,10 +86,11 @@ function Together({
             {abbreviateKRW(Math.abs(delta))}
           </p>
         )}
-        <div className="mt-3 space-y-2.5">
+        {/* 모든 줄이 칸 하나를 같이 쓴다 — 금액이 길어도(11억 2,000만) 줄바꿈 없이, 막대가 대신 줄어든다 */}
+        <div className="mt-3 grid grid-cols-[auto_minmax(24px,1fr)_auto_auto] items-center gap-x-2 gap-y-2.5">
           {rows.map((r) => (
-            <div key={r.group} className="grid grid-cols-[64px_1fr_72px_34px] items-center gap-2">
-              <span className="text-[13px] font-medium text-ink">
+            <Fragment key={r.group}>
+              <span className="whitespace-nowrap text-[13px] font-medium text-ink">
                 {r.emoji} {r.label}
               </span>
               <div className="h-2.5 overflow-hidden rounded-full">
@@ -97,11 +99,13 @@ function Together({
                   style={{ width: `${Math.max(2, (r.amount / max) * 100)}%`, background: r.color }}
                 />
               </div>
-              <span className="tnum text-right text-[13px] font-bold text-ink">
+              <span className="tnum whitespace-nowrap text-right text-[13px] font-bold text-ink">
                 {short(r.amount)}
               </span>
-              <span className="tnum text-right text-[12px] text-cap">{r.pct}%</span>
-            </div>
+              <span className="tnum whitespace-nowrap text-right text-[12px] text-cap">
+                {r.pct}%
+              </span>
+            </Fragment>
           ))}
         </div>
       </Card>
@@ -122,7 +126,7 @@ function Together({
           </div>
           <div className="mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-[12px] text-sub">
             {byOwner.map((o) => (
-              <span key={o.name} className="flex items-center gap-1">
+              <span key={o.name} className="flex items-center gap-1 whitespace-nowrap">
                 <span
                   className="inline-block h-2 w-2 rounded-sm"
                   style={{ background: OWNER_COLOR[owners.indexOf(o.name)] ?? OWNER_COLOR[2] }}
@@ -137,11 +141,11 @@ function Together({
       <Trend series={series} />
 
       {debts > 0 && (
-        <div className="flex items-center justify-between rounded-card bg-card px-4 py-3 text-[13px] text-sub shadow-card">
-          <span>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-card bg-card px-4 py-3 text-[13px] text-sub shadow-card">
+          <span className="whitespace-nowrap">
             부채 <b className="tnum font-bold text-danger">{short(debts)}</b>
           </span>
-          <span>
+          <span className="whitespace-nowrap">
             빼면 순자산 <b className="tnum font-bold text-ink">{short(total - debts)}</b>
           </span>
         </div>
