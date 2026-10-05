@@ -1,22 +1,69 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Gift, MessagesSquare } from 'lucide-react'
+import { ChevronRight, Gift, MessagesSquare, PenLine } from 'lucide-react'
 import Card from '../components/Card'
+import PostCard from '../components/PostCard'
 import { NOTICES, type Notice } from '../lib/notices'
+import { amIAdmin, fetchPosts, type Post } from '../lib/posts'
 
 /**
  * 정보 탭 (2026-09-30, 게시판 + 자산 로드맵 자리를 합쳤다).
- * 위에서부터: 공지(새 기능 소식) → 계산기 → 정보·혜택(준비 중) → 이야기(준비 중).
+ * 위에서부터: 오늘의 경제(결영이네 매일 글) → 공지(새 기능 소식) → 계산기 → 정보·혜택(준비 중) → 이야기(준비 중).
  *
  * 이야기(글쓰기·신고)는 누가 쓰고 누가 지우는지 정한 뒤에 연다.
  * 4,000명 단톡방이 그대로 들어오면 관리 없이는 못 버틴다.
  */
 export default function Info() {
   const navigate = useNavigate()
+  const [posts, setPosts] = useState<Post[] | null>(null)
+  const [admin, setAdmin] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+
+  useEffect(() => {
+    let live = true
+    fetchPosts(20)
+      .then((p) => live && setPosts(p))
+      .catch(() => live && setPosts([])) // 못 읽으면 칸을 숨긴다 — 나머지 정보는 그대로 본다
+    amIAdmin()
+      .then((a) => live && setAdmin(a))
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [])
+
+  const visible = posts ? (showAll ? posts : posts.slice(0, 3)) : []
+
   return (
     <div className="animate-fade-up space-y-5">
-      <header className="px-1 pt-2">
+      <header className="flex items-center justify-between px-1 pt-2">
         <h1 className="text-[18px] font-bold text-ink">정보</h1>
+        {admin && (
+          <button
+            onClick={() => navigate('/admin/posts')}
+            className="flex items-center gap-1 rounded-full bg-brand/10 px-3 py-1.5 text-[12px] font-bold text-brand"
+          >
+            <PenLine size={13} /> 글 올리기
+          </button>
+        )}
       </header>
+
+      {posts && posts.length > 0 && (
+        <section aria-label="오늘의 경제" className="space-y-3">
+          <SectionTitle>오늘의 경제</SectionTitle>
+          {visible.map((p, i) => (
+            <PostCard key={p.id} post={p} defaultOpen={i === 0} />
+          ))}
+          {posts.length > 3 && (
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              className="w-full rounded-btn bg-white py-3 text-[13.5px] font-bold text-sub shadow-card"
+            >
+              {showAll ? '접기' : `지난 글 ${posts.length - 3}개 더 보기`}
+            </button>
+          )}
+        </section>
+      )}
 
       <section aria-label="공지" className="space-y-3">
         <SectionTitle>공지</SectionTitle>

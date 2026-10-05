@@ -1,0 +1,149 @@
+import { supabase } from './supabase'
+
+/**
+ * 정보 탭 '오늘의 경제' — 결영이네가 매일 톡방에 올리는 글을 앱에도 쌓는다 (2026-10-05).
+ *
+ * 쓰는 사람은 운영자 한 명. 톡방에 올리는 글을 그대로 붙여넣으면
+ * 첫 줄 "[결영이네] 10월 2일"에서 날짜, 둘째 줄 "오늘의 경제 뉴스"에서 제목·종류를 뽑는다.
+ * 읽기는 로그인한 사람 모두, 쓰기는 운영자만 (supabase/posts.sql의 RLS).
+ */
+
+export const ADMIN_EMAIL = 'receipt2045@gmail.com'
+
+export type PostKind = 'news' | 'market' | 'notice'
+
+export const POST_KIND_LABEL: Record<PostKind, string> = {
+  news: '경제 뉴스',
+  market: '증시 정리',
+  notice: '소식',
+}
+
+export interface Post {
+  id: string
+  kind: PostKind
+  title: string
+  body: string
+  /** YYYY-MM-DD */
+  postDate: string
+  createdAt: string
+}
+
+export interface PostDraft {
+  kind: PostKind
+  title: string
+  body: string
+  postDate: string
+}
+
+const pad = (n: number) => String(n).padStart(2, '0')
+export const isoDate = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+/**
+ * 톡방 글을 그대로 붙여넣으면 날짜·제목·종류·본문으로 나눈다.
+ *   [결영이네] 10월 2일      ← 날짜 (없으면 오늘)
+ *   오늘의 경제 뉴스          ← 제목 ('증시'가 들어가면 증시 정리)
+ *   (나머지 전부 본문)
+ */
+export function parsePasted(text: string, today: Date = new Date()): PostDraft {
+  const lines = text.replace(/\r\n/g, '\n').split('\n')
+  const nonEmpty = () => {
+    while (lines.length && !lines[0].trim()) lines.shift()
+  }
+  nonEmpty()
+
+  let postDate = isoDate(today)
+  const dateLine = lines[0]?.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/)
+  if (dateLine && /^\s*\[/.test(lines[0])) {
+    const m = Number(dateLine[1])
+    const d = Number(dateLine[2])
+    // 1월에 12월 글을 올리면 작년
+    const year = m > today.getMonth() + 1 + 1 ? today.getFullYear() - 1 : today.getFullYear()
+    postDate = `${year}-${pad(m)}-${pad(d)}`
+    lines.shift()
+    nonEmpty()
+  }
+
+  const title = (lines.shift() ?? '').trim() || '오늘의 경제'
+  nonEmpty()
+  const body = lines.join('\n').trim()
+  const kind: PostKind = /증시|마감/.test(title) ? 'market' : 'news'
+  return { kind, title, body, postDate }
+}
+
+export type Segment = { type: 'text'; text: string } | { type: 'link'; href: string }
+
+/** 본문 속 기사 주소를 눌러지는 링크로 */
+export function linkify(text: string): Segment[] {
+  const out: Segment[] = []
+  const re = /https?:\/\/[^\s<>"')\]]+/g
+  let last = 0
+  for (const m of text.matchAll(re)) {
+    const i = m.index ?? 0
+    if (i > last) out.push({ type: 'text', text: text.slice(last, i) })
+    out.push({ type: 'link', href: m[0] })
+    last = i + m[0].length
+  }
+  if (last < text.length) out.push({ type: 'text', text: text.slice(last) })
+  return out
+}
+
+/** 톡방에도 보낼 글 — 붙여넣은 원문 그대로 + (원하면) 앱 링크 한 줄 */
+export function kakaoText(original: string, withAppLink: boolean): string {
+  const base = original.trim()
+  return withAppLink
+    ? `${base}\n\n📱 지난 글은 모아불리에서 모아 봐요\nhttps://moabuli.com/info`
+    : base
+}
+
+// ── DB ────────────────────────────────────────
+
+interface PostRow {
+  id: string
+  kind: PostKind
+  title: string
+  body: string
+  post_date: string
+  created_at: string
+}
+
+const fromRow = (r: PostRow): Post => ({
+  id: r.id,
+  kind: r.kind,
+  title: r.title,
+  body: r.body,
+  postDate: r.post_date,
+  createdAt: r.created_at,
+})
+
+export async function fetchPosts(limit = 20): Promise<Post[]> {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .order('post_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data as PostRow[]).map(fromRow)
+}
+
+export async function insertPost(d: PostDraft): Promise<Post> {
+  const { data, error } = await supabase
+    .from('posts')
+    .insert({ kind: d.kind, title: d.title, body: d.body, post_date: d.postDate })
+    .select('*')
+    .single()
+  if (error) throw error
+  return fromRow(data as PostRow)
+}
+
+export async function deletePost(id: string): Promise<void> {
+  const { error } = await supabase.from('posts').delete().eq('id', id)
+  if (error) throw error
+}
+
+/** 지금 로그인한 사람이 운영자인지 — 화면에 버튼을 보일지만 정한다(진짜 막는 건 RLS) */
+export async function amIAdmin(): Promise<boolean> {
+  const { data } = await supabase.auth.getUser()
+  return data.user?.email?.toLowerCase() === ADMIN_EMAIL
+}

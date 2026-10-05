@@ -18,6 +18,7 @@ import Settings from './pages/Settings'
 import Checkup from './pages/Checkup'
 import Confess from './pages/Confess'
 import Info from './pages/Info'
+import AdminPosts from './pages/AdminPosts'
 import AdminFeedback from './pages/AdminFeedback'
 import AdminReports from './pages/AdminReports'
 import AssetSetup from './pages/AssetSetup'
@@ -161,6 +162,7 @@ function AppRoutes() {
           <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="/admin/feedback" element={<AdminFeedback />} />
+        <Route path="/admin/posts" element={<AdminPosts />} />
         <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/checkup" element={<Checkup />} />
         <Route path="/confess" element={<Confess />} />
