@@ -30,6 +30,35 @@ export interface Profile {
   targetNetWorth: number // 10년 목표 순자산(원)
   startYear: number
   goal?: SavingsGoal // 없으면 로드맵이 '목표 넣기 전' 화면을 보여준다
+  roadmap?: Roadmap // 자산 로드맵 페이지(/roadmap)의 가정·계획. 없으면 기본값으로 계산한다
+}
+
+/** 로드맵에 넣는 큰일. 종류마다 쓰는 칸이 다르다 — lib/roadmap.flowAt 참고 */
+export type RoadmapEventKind = 'house' | 'child' | 'leave' | 'car' | 'job' | 'parents' | 'custom'
+
+export interface RoadmapEvent {
+  id: string
+  kind: RoadmapEventKind
+  ym: string // 시작 달 'YYYY-MM' (자녀는 태어난 달)
+  title?: string // 직접 입력·자녀 이름
+  once?: number // 한 번에 나가는 돈(원) — 차, 부모님 목돈, 직접 입력
+  monthly?: number // 매달 덜 모이는 돈(원). 이직처럼 더 모이면 음수
+  months?: number // 기간(개월). 없으면 계속 — 육아휴직·부모님 지원·직접 입력
+  price?: number // 집값
+  loan?: number // 대출
+  member?: 1 | 2 // 육아휴직 쓰는 사람
+}
+
+/** 자산 로드맵 가정. 비워 둔 값은 가계부 기록으로 채운다 */
+export interface Roadmap {
+  targetYear?: number // 목표 연도 (없으면 startYear + 10)
+  monthlySaving?: number // 한 달 저축 직접 입력 (없으면 최근 가계부 평균)
+  income1?: number // 월소득 직접 입력 (없으면 최근 가계부 평균)
+  income2?: number
+  returnRate?: number // 연 수익률 (기본 0.05)
+  incomeGrowth?: number // 연 소득 상승률 — 저축도 같이 는다고 본다 (기본 0.03)
+  realTerms?: boolean // 물가 빼고 지금 돈 가치로 보기
+  events: RoadmapEvent[]
 }
 
 export interface BudgetItem {

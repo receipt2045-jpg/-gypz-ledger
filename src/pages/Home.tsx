@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart3, Check, ChevronLeft, ChevronRight, Settings, TrendingUp } from 'lucide-react'
 import Card from '../components/Card'
@@ -31,6 +31,7 @@ import {
   signedAbbrev,
 } from '../lib/format'
 import { TERM_TIP } from '../lib/constants'
+import { computeRoadmap, roadmapInput } from '../lib/roadmap'
 
 /**
  * 홈 = 대시보드만. 기록(고백·예산·정산·자산 등록)은 각 탭에서:
@@ -62,6 +63,12 @@ export default function Home() {
   }))
 
   const targetRatio = profile.targetNetWorth > 0 ? netWorth / profile.targetNetWorth : 0
+  // 목표 카드 한 줄 — 로드맵 페이지와 같은 계산 (지금 달 기준)
+  const reachYm = useMemo(() => {
+    const now = currentYm()
+    const input = roadmapInput(profile, ledgers, netWorthOf(resolveSnapshot(snapshots, now)), now)
+    return input.target > 0 && input.monthlySaving > 0 ? computeRoadmap(input).reachYm : null
+  }, [profile, ledgers, snapshots])
   const settledMembers = ledger.settledMembers ?? []
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
 
@@ -297,7 +304,7 @@ export default function Home() {
       </Card>
 
       {/* 10년 목표 진행바 */}
-      <Card onClick={() => navigate('/assets')}>
+      <Card onClick={() => navigate('/roadmap')}>
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[15px] font-bold text-ink">10년 목표 순자산</p>
           <ChevronRight size={18} className="text-cap" />
@@ -314,7 +321,8 @@ export default function Home() {
         {profile.targetNetWorth > netWorth && (
           <p className="mt-2 text-[13px] font-medium text-sub">
             목표까지 <b className="tnum text-brand">{abbreviateKRW(profile.targetNetWorth - netWorth)}</b>{' '}
-            남았어요. 이 속도라면 곧 도착이에요 💪
+            남았어요.{' '}
+            {reachYm ? `지금 속도면 ${formatYmKorean(reachYm)} 도착이에요` : '로드맵에서 길을 그려 보세요'}
           </p>
         )}
         {profile.targetNetWorth > 0 && netWorth >= profile.targetNetWorth && (

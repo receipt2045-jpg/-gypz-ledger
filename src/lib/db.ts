@@ -83,6 +83,7 @@ export async function fetchHouseholdData(householdId: string): Promise<Household
     startYear: h.start_year,
     // 칸이 없는 옛 DB(마이그레이션 전)에서도 죽지 않게 — 없으면 '목표 넣기 전'으로 본다
     goal: (h.goal ?? undefined) as Profile['goal'],
+    roadmap: (h.roadmap ?? undefined) as Profile['roadmap'],
   }
   const ledgers: MonthlyLedger[] = (lg.data ?? []).map((r) => ({
     ym: r.ym,
@@ -222,6 +223,8 @@ export async function pushProfile(householdId: string, profile: Profile) {
       // goal 칸은 household-goal.sql을 실행해야 생긴다. 칸이 없는 DB에 goal을 보내면
       // 이름·색·목표 순자산 저장까지 통째로 실패하므로, 목표를 세운 집만 보낸다.
       ...(profile.goal !== undefined ? { goal: profile.goal } : {}),
+      // roadmap 칸도 같은 이유로 — household-roadmap.sql을 실행한 DB에서 로드맵을 만진 집만 보낸다
+      ...(profile.roadmap !== undefined ? { roadmap: profile.roadmap } : {}),
     })
     .eq('id', householdId)
   if (error) throw error

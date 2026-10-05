@@ -31,6 +31,7 @@ import IntroSlides from './pages/IntroSlides'
 import Legal from './pages/Legal'
 import ParentalLeave from './pages/ParentalLeave'
 import PublicNews from './pages/PublicNews'
+import Roadmap from './pages/Roadmap'
 
 export default function App() {
   return (
@@ -161,7 +162,6 @@ function AppRoutes() {
           <Route path="/info/:id" element={<PostDetail />} />
           {/* 옛 탭 주소(2026-09-30 개편 전) — 홈 화면 바로가기·링크가 깨지지 않게 */}
           <Route path="/board" element={<Navigate to="/info" replace />} />
-          <Route path="/roadmap" element={<Navigate to="/" replace />} />
           <Route path="/monthly" element={<Monthly />} />
           <Route path="/assets" element={<Assets />} />
           <Route path="/yearly" element={<Yearly />} />
@@ -174,6 +174,8 @@ function AppRoutes() {
         <Route path="/confess" element={<Confess />} />
         <Route path="/asset-setup" element={<AssetSetup />} />
         <Route path="/year-end-tax" element={<YearEndTax />} />
+        {/* 자산 로드맵 (2026-10-05 다시) — 탭 밖, 설정·홈 목표 카드에서 들어온다 */}
+        <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/report" element={<Report />} />
       </Routes>
     </>
