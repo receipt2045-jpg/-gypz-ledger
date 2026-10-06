@@ -1,4 +1,5 @@
 ﻿import { useMemo, useState } from 'react'
+import PcShell from '../components/PcShell'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Check,
@@ -59,8 +60,18 @@ const STEPS: StepDef[] = [
     groups: ['saving', 'investment'],
     sameAsLast: true,
   },
-  { title: '고정지출', subtitle: '매달 비슷하게 나가는 돈이에요', groups: ['fixed'], sameAsLast: true },
-  { title: '변동지출', subtitle: '이번 달 실제 쓴 금액을 입력해요', groups: ['variable'], sameAsLast: false },
+  {
+    title: '고정지출',
+    subtitle: '매달 비슷하게 나가는 돈이에요',
+    groups: ['fixed'],
+    sameAsLast: true,
+  },
+  {
+    title: '변동지출',
+    subtitle: '이번 달 실제 쓴 금액을 입력해요',
+    groups: ['variable'],
+    sameAsLast: false,
+  },
 ]
 // 빈 화면에 보여줄 예시 (뭘 넣어야 할지 감 잡게)
 const EXAMPLES: Record<CategoryGroup, string> = {
@@ -130,8 +141,8 @@ export default function Checkup() {
   const [items, setItems] = useState<BudgetItem[]>(() =>
     resolveLedger(ledgers, ym).items.map((it) => ({ ...it })),
   )
-  const [assets, setAssets] = useState<AssetItem[]>(
-    () => resolveSnapshot(snapshots, ym).items.map((it) => ({ ...it })),
+  const [assets, setAssets] = useState<AssetItem[]>(() =>
+    resolveSnapshot(snapshots, ym).items.map((it) => ({ ...it })),
   )
 
   const prevNetWorth = useMemo(
@@ -166,7 +177,8 @@ export default function Checkup() {
   // 훅은 조기 return(구성원 선택·완료 화면)보다 반드시 위에 있어야 한다.
   const stepDef = STEPS[step - 1] // 금액 스텝이 아닐 땐 undefined
   const missingConfessed = useMemo(
-    () => (member && stepDef ? missingConfessedItems(confessHints, member, stepDef.groups, items) : []),
+    () =>
+      member && stepDef ? missingConfessedItems(confessHints, member, stepDef.groups, items) : [],
     [confessHints, member, stepDef, items],
   )
 
@@ -204,9 +216,7 @@ export default function Checkup() {
   const setAmount = (id: string, v: number) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: v } : it)))
   const setNote = (id: string, note: string) =>
-    setItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)),
-    )
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)))
   const addItem = (group: CategoryGroup, category: string, forMember: 1 | 2) => {
     setItems((prev) => [
       ...prev,
@@ -217,7 +227,9 @@ export default function Checkup() {
   const addFromConfession = (group: CategoryGroup, category: string, amount: number) => {
     if (!member) return
     setItems((prev) => {
-      if (prev.some((it) => it.member === member && it.group === group && it.category === category)) {
+      if (
+        prev.some((it) => it.member === member && it.group === group && it.category === category)
+      ) {
         return prev
       }
       const base = emptyItem(group, category, member)
@@ -294,9 +306,9 @@ export default function Checkup() {
         settledMembers: base.settledMembers ?? [],
       })
     } else {
-      const merged = (bothMode
-        ? [1, 2]
-        : Array.from(new Set([...(base.settledMembers ?? []), member]))) as (1 | 2)[]
+      const merged = (
+        bothMode ? [1, 2] : Array.from(new Set([...(base.settledMembers ?? []), member]))
+      ) as (1 | 2)[]
       const closed = merged.includes(1) && merged.includes(2)
       saveLedger({ ym, items: mergedItems, closed, settledMembers: merged })
       // 자산은 자산 탭에서 관리하지만, 이 달의 순자산 스냅샷은 이어지도록 저장.
@@ -450,7 +462,10 @@ export default function Checkup() {
             </p>
             <div className="mt-7 w-full space-y-2.5 rounded-card bg-card p-5 text-left shadow-card">
               <ResultRow label="계획 수입" value={formatWon(planned.income)} accent />
-              <ResultRow label="계획 저축·투자" value={formatWon(planned.saving + planned.investment)} />
+              <ResultRow
+                label="계획 저축·투자"
+                value={formatWon(planned.saving + planned.investment)}
+              />
               <ResultRow label="계획 지출" value={formatWon(planned.expense)} />
               <ResultRow
                 label="예상 잉여현금"
@@ -472,8 +487,7 @@ export default function Checkup() {
     }
 
     // 방금 두 사람 몫을 다 넣었으면 저장 반영을 기다리지 않고 바로 완료로 본다
-    const bothDone =
-      bothMode || (settledMembers.includes(1) && settledMembers.includes(2))
+    const bothDone = bothMode || (settledMembers.includes(1) && settledMembers.includes(2))
     const s = summarize({ ym, items, closed: true })
     const newNetWorth = netWorthOf({ ym, items: assets })
     const nwDelta = newNetWorth - prevNetWorth
@@ -484,9 +498,7 @@ export default function Checkup() {
             <PartyPopper size={40} className="text-brand" />
           </div>
           <h1 className="text-[24px] font-extrabold text-ink">
-            {bothDone
-              ? `${formatMonthKorean(ym)} 정산 완료 🎉`
-              : `${memberName} 정산 완료 🙌`}
+            {bothDone ? `${formatMonthKorean(ym)} 정산 완료 🎉` : `${memberName} 정산 완료 🙌`}
           </h1>
           <p className="mt-2 text-[14px] text-sub">
             {bothDone
@@ -496,11 +508,7 @@ export default function Checkup() {
 
           <div className="mt-7 w-full space-y-2.5 rounded-card bg-card p-5 text-left shadow-card">
             <ResultRow label="저축·투자율" value={formatPercent(s.savingInvestRate)} accent />
-            <ResultRow
-              label="잉여현금"
-              value={formatWon(s.surplus)}
-              danger={s.surplus < 0}
-            />
+            <ResultRow label="잉여현금" value={formatWon(s.surplus)} danger={s.surplus < 0} />
             <ResultRow
               label="순자산 증감"
               value={`${nwDelta >= 0 ? '+' : '−'}${abbreviateKRW(Math.abs(nwDelta))}`}
@@ -520,7 +528,6 @@ export default function Checkup() {
               data={buildMonthlyCard({ ym, items, closed: true }, snapshots, profile)}
             />
           )}
-
         </div>
         <BottomBar>
           <button
@@ -558,7 +565,12 @@ export default function Checkup() {
   }
 
   const stepSubtitle = isBudget
-    ? { 수입: '이번 달 예상 수입', 저축·투자: '이번 달 계획한 저축·투자', 고정지출: '매달 나가는 고정지출', 변동지출: '이번 달 예상 지출' }[def.title] ?? '이번 달 예산'
+    ? ({
+        수입: '이번 달 예상 수입',
+        저축·투자: '이번 달 계획한 저축·투자',
+        고정지출: '매달 나가는 고정지출',
+        변동지출: '이번 달 예상 지출',
+      }[def.title] ?? '이번 달 예산')
     : def.subtitle
 
   return (
@@ -618,7 +630,13 @@ export default function Checkup() {
             disabled={committing}
             className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-60"
           >
-            {committing ? '저장하는 중…' : isLastStep ? (isBudget ? '예산 세우기 완료' : '정산 완료하기') : '다음'}
+            {committing
+              ? '저장하는 중…'
+              : isLastStep
+                ? isBudget
+                  ? '예산 세우기 완료'
+                  : '정산 완료하기'
+                : '다음'}
           </button>
           {def.sameAsLast &&
             (hasPrevLedger ? (
@@ -645,12 +663,15 @@ export default function Checkup() {
 
 // ── 레이아웃 헬퍼 ─────────────────────────────
 function Frame({ children }: { children: React.ReactNode }) {
+  // PC: 왼쪽 메뉴 + 가운데 720px (2026-10-06)
   return (
-    <div className="flex min-h-screen justify-center bg-[#e6e9ed]">
-      <div className="relative flex min-h-screen w-full max-w-app flex-col bg-bg shadow-[0_0_60px_rgba(0,0,0,0.06)]">
-        {children}
+    <PcShell active="/monthly">
+      <div className="flex min-h-screen justify-center bg-[#e6e9ed] lg:bg-bg">
+        <div className="relative flex min-h-screen w-full max-w-app flex-col bg-bg shadow-[0_0_60px_rgba(0,0,0,0.06)] lg:max-w-[720px] lg:shadow-none">
+          {children}
+        </div>
       </div>
-    </div>
+    </PcShell>
   )
 }
 
@@ -689,7 +710,7 @@ function Header({
 
 function BottomBar({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-app -translate-x-1/2 border-t border-line/60 bg-bg/95 px-5 pb-4 pt-3 backdrop-blur">
+    <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-app -translate-x-1/2 border-t border-line/60 bg-bg/95 px-5 pb-4 pt-3 backdrop-blur lg:left-[calc(50%+110px)] lg:max-w-[720px]">
       {children}
     </div>
   )
@@ -885,7 +906,9 @@ function MoneyStep({
             ))}
           </div>
           <button
-            onClick={() => missingConfessed.forEach((m) => onAddConfessed(m.group, m.category, m.amount))}
+            onClick={() =>
+              missingConfessed.forEach((m) => onAddConfessed(m.group, m.category, m.amount))
+            }
             className="mt-2 h-11 w-full rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark"
           >
             {missingConfessed.length}개 모두 넣기
@@ -921,8 +944,10 @@ function MoneyStep({
                 {/* 두 사람 몫을 한 화면에서 넣을 땐 누구 것인지가 제일 중요하다 */}
                 {(showMember || groups.length > 1) && (
                   <p className="mt-0.5 truncate text-[11px] text-cap">
-                    {[showMember ? memberNames[it.member - 1] : null,
-                      groups.length > 1 ? GROUP_LABEL[it.group] : null]
+                    {[
+                      showMember ? memberNames[it.member - 1] : null,
+                      groups.length > 1 ? GROUP_LABEL[it.group] : null,
+                    ]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
@@ -1051,9 +1076,7 @@ function MoneyStep({
               }`}
             />
           )}
-          {nameError && (
-            <p className="text-[12.5px] font-medium text-danger">{nameError}</p>
-          )}
+          {nameError && <p className="text-[12.5px] font-medium text-danger">{nameError}</p>}
           <div className="flex gap-2 pt-1">
             <button
               onClick={() => {

@@ -1,4 +1,5 @@
 ﻿import { useState } from 'react'
+import PcShell from '../components/PcShell'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Baby, ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
 import AssetEditor from '../components/AssetEditor'
@@ -40,9 +41,7 @@ export default function AssetSetup() {
   const setAmount = (id: string, amount: number) =>
     setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, amount } : it)))
   const setNote = (id: string, note: string) =>
-    setAssets((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)),
-    )
+    setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)))
   const updateAsset = (id: string, patch: Partial<Omit<AssetItem, 'id'>>) =>
     setAssets((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
   const addAsset = (asset: Omit<AssetItem, 'id'>) =>
@@ -84,7 +83,11 @@ export default function AssetSetup() {
   if (!selName) {
     return (
       <Frame>
-        <Header onBack={() => navigate(-1)} title="자산 등록" subtitle="어떤 통장에 얼마 있는지 확인해 봐요" />
+        <Header
+          onBack={() => navigate(-1)}
+          title="자산 등록"
+          subtitle="어떤 통장에 얼마 있는지 확인해 봐요"
+        />
         <div className="flex-1 space-y-3 px-5 pt-4">
           {([1, 2] as const).map((m) => {
             const count = assets.filter(
@@ -113,7 +116,9 @@ export default function AssetSetup() {
                     )}
                   </p>
                   <p className="mt-0.5 text-[13px] text-sub">
-                    {count > 0 ? `등록된 계좌 ${count}개 · 수정할 수 있어요` : '아직 등록한 계좌가 없어요'}
+                    {count > 0
+                      ? `등록된 계좌 ${count}개 · 수정할 수 있어요`
+                      : '아직 등록한 계좌가 없어요'}
                   </p>
                 </div>
                 <ChevronRight size={20} className="text-cap" />
@@ -136,7 +141,9 @@ export default function AssetSetup() {
                 <div className="flex-1">
                   <p className="text-[17px] font-bold text-ink">{c}</p>
                   <p className="mt-0.5 text-[13px] text-sub">
-                    {count > 0 ? `등록된 계좌 ${count}개 · 수정할 수 있어요` : '아직 등록한 계좌가 없어요'}
+                    {count > 0
+                      ? `등록된 계좌 ${count}개 · 수정할 수 있어요`
+                      : '아직 등록한 계좌가 없어요'}
                   </p>
                 </div>
                 <ChevronRight size={20} className="text-cap" />
@@ -160,10 +167,7 @@ export default function AssetSetup() {
     ? assets.filter((a) => a.owner === selName)
     : assets.filter(
         (a) =>
-          !a.owner ||
-          a.owner === '공동' ||
-          a.owner === selName ||
-          childNames.includes(a.owner),
+          !a.owner || a.owner === '공동' || a.owner === selName || childNames.includes(a.owner),
       )
   const netWorth = netWorthOf({ ym, items: assets })
 
@@ -190,7 +194,7 @@ export default function AssetSetup() {
           onRemove={removeAsset}
         />
       </div>
-      <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-app -translate-x-1/2 border-t border-line/60 bg-bg/95 px-5 pb-4 pt-3 backdrop-blur">
+      <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-app -translate-x-1/2 border-t border-line/60 bg-bg/95 px-5 pb-4 pt-3 backdrop-blur lg:left-[calc(50%+110px)] lg:max-w-[720px]">
         <p className="mb-2 text-center text-[12px] text-sub">
           우리집 순자산 <b className="tnum text-ink">{abbreviateKRW(netWorth)}</b>
         </p>
@@ -206,12 +210,15 @@ export default function AssetSetup() {
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
+  // PC: 왼쪽 메뉴 + 가운데 720px (2026-10-06)
   return (
-    <div className="flex min-h-screen justify-center bg-[#e6e9ed]">
-      <div className="relative flex min-h-screen w-full max-w-app flex-col bg-bg shadow-[0_0_60px_rgba(0,0,0,0.06)]">
-        {children}
+    <PcShell active="/assets">
+      <div className="flex min-h-screen justify-center bg-[#e6e9ed] lg:bg-bg">
+        <div className="relative flex min-h-screen w-full max-w-app flex-col bg-bg shadow-[0_0_60px_rgba(0,0,0,0.06)] lg:max-w-[720px] lg:shadow-none">
+          {children}
+        </div>
       </div>
-    </div>
+    </PcShell>
   )
 }
 

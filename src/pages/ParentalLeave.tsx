@@ -60,240 +60,247 @@ export default function ParentalLeave() {
 
   return (
     <div className="flex min-h-screen justify-center bg-bg">
-      <div className="w-full max-w-app px-5 pb-16 pt-6">
-        {/* ── 한 줄 결론 */}
-        <BackToApp />
-        {/* 이미 가계부를 쓰는 사람 — 내 숫자로 한 번에 채운다 */}
-        <LedgerImport input={v} onApply={(patch) => set(patch)} />
+      <div className="w-full max-w-app px-5 pb-16 pt-6 lg:max-w-[1040px] lg:px-10">
+        {/* PC: 왼쪽 결과, 오른쪽 우리집 숫자·고치기·나누기 (2026-10-06). 폰은 그대로 한 줄 */}
+        <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+          <div className="min-w-0">
+            {/* ── 한 줄 결론 */}
+            <BackToApp />
+            {/* 이미 가계부를 쓰는 사람 — 내 숫자로 한 번에 채운다 */}
+            <LedgerImport input={v} onApply={(patch) => set(patch)} />
 
-        <header className="px-1 pt-2">
-          <h1 className="text-[23px] font-bold leading-[1.6] text-ink">
-            {r.monthlyNow >= 0 ? (
-              <>
-                매달 <Blank>{man(r.monthlyNow)}</Blank>만원 모으던 우리집,
-              </>
-            ) : (
-              <>
-                지금도 매달 <Blank>{man(r.monthlyNow)}</Blank>만원 적자인 우리집,
-              </>
-            )}
-            <br />
-            육아휴직하면 한 달에 <span aria-hidden>🍼</span>
-          </h1>
-        </header>
+            <header className="px-1 pt-2">
+              <h1 className="text-[23px] font-bold leading-[1.6] text-ink">
+                {r.monthlyNow >= 0 ? (
+                  <>
+                    매달 <Blank>{man(r.monthlyNow)}</Blank>만원 모으던 우리집,
+                  </>
+                ) : (
+                  <>
+                    지금도 매달 <Blank>{man(r.monthlyNow)}</Blank>만원 적자인 우리집,
+                  </>
+                )}
+                <br />
+                육아휴직하면 한 달에 <span aria-hidden>🍼</span>
+              </h1>
+            </header>
 
-        <RunBoxes runs={r.runs} showWho={both} />
-        {/* 처음 온 사람은 위 숫자가 예시라는 걸 모른다 — 어디를 고치면 되는지 바로 알려준다 */}
-        <button
-          onClick={() =>
-            document
-              .getElementById('our-numbers')
-              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-          className="mt-3 flex w-full items-center justify-center gap-1 rounded-btn bg-white py-3 text-[14px] font-bold text-brand"
-        >
-          우리집 숫자로 바꿔보세요
-          <ChevronDown size={17} />
-        </button>
-        <MonthBars months={r.months} now={r.monthlyNow} />
-        <CalcTable runs={r.runs} />
+            <RunBoxes runs={r.runs} showWho={both} />
+            {/* 처음 온 사람은 위 숫자가 예시라는 걸 모른다 — 어디를 고치면 되는지 바로 알려준다 */}
+            <button
+              onClick={() =>
+                document
+                  .getElementById('our-numbers')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              className="mt-3 flex w-full items-center justify-center gap-1 rounded-btn bg-white py-3 text-[14px] font-bold text-brand"
+            >
+              우리집 숫자로 바꿔보세요
+              <ChevronDown size={17} />
+            </button>
+            <MonthBars months={r.months} now={r.monthlyNow} />
+            <CalcTable runs={r.runs} />
+          </div>
+          <div className="min-w-0 lg:[&>*:first-child]:mt-0">
+            {/* ── 우리집 숫자 */}
+            <div id="our-numbers" className="mt-4 scroll-mt-4">
+              <Card>
+                <p className="text-[15px] font-bold text-ink">우리집 숫자로 바꿔보세요</p>
+                <p className="mt-1 text-[12.5px] text-cap">
+                  {encodeLeave(v) === encodeLeave(DEFAULT_INPUT)
+                    ? '지금 보이는 건 예시 숫자예요. 바꾸면 위 결과가 바로 달라져요.'
+                    : fromShare
+                      ? '공유받은 숫자로 계산했어요. 바꾸면 위 결과가 바로 달라져요.'
+                      : '바꾸면 위 결과가 바로 달라져요.'}
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <Field label="아내 월 실수령">
+                    <AmountInput value={v.payWife} onChange={(n) => set({ payWife: n })} />
+                  </Field>
+                  <Field label="남편 월 실수령">
+                    <AmountInput value={v.payHusband} onChange={(n) => set({ payHusband: n })} />
+                  </Field>
+                  <Field label="월 고정비">
+                    <AmountInput value={v.fixed} onChange={(n) => set({ fixed: n })} />
+                  </Field>
+                  <Field label="월 변동비">
+                    <AmountInput value={v.variable} onChange={(n) => set({ variable: n })} />
+                  </Field>
+                </div>
 
-        {/* ── 우리집 숫자 */}
-        <div id="our-numbers" className="mt-4 scroll-mt-4">
-          <Card>
-            <p className="text-[15px] font-bold text-ink">우리집 숫자로 바꿔보세요</p>
-            <p className="mt-1 text-[12.5px] text-cap">
-              {encodeLeave(v) === encodeLeave(DEFAULT_INPUT)
-                ? '지금 보이는 건 예시 숫자예요. 바꾸면 위 결과가 바로 달라져요.'
-                : fromShare
-                  ? '공유받은 숫자로 계산했어요. 바꾸면 위 결과가 바로 달라져요.'
-                  : '바꾸면 위 결과가 바로 달라져요.'}
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Field label="아내 월 실수령">
-                <AmountInput value={v.payWife} onChange={(n) => set({ payWife: n })} />
-              </Field>
-              <Field label="남편 월 실수령">
-                <AmountInput value={v.payHusband} onChange={(n) => set({ payHusband: n })} />
-              </Field>
-              <Field label="월 고정비">
-                <AmountInput value={v.fixed} onChange={(n) => set({ fixed: n })} />
-              </Field>
-              <Field label="월 변동비">
-                <AmountInput value={v.variable} onChange={(n) => set({ variable: n })} />
-              </Field>
-            </div>
-
-            <p className="mb-1.5 mt-4 text-[13.5px] font-medium text-sub">누가 쉬어요?</p>
-            <Segment<Who>
-              value={v.who}
-              onChange={(who) => set({ who })}
-              options={[
-                ['wife', '아내'],
-                ['husband', '남편'],
-                ['both', '둘 다'],
-              ]}
-            />
-          </Card>
-        </div>
-
-        {/* ── 고치기 */}
-        <Card className="mt-4">
-          <button
-            onClick={() => setOpenAdjust((o) => !o)}
-            className="flex w-full items-center justify-between"
-            aria-expanded={openAdjust}
-          >
-            <span className="text-[15px] font-bold text-ink">우리집에 맞게 고치기</span>
-            <ChevronDown
-              size={18}
-              className={`text-cap transition-transform ${openAdjust ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {openAdjust && (
-            <div className="mt-4 space-y-4">
-              {v.who !== 'husband' && (
-                <PersonLeave
-                  name="아내"
-                  months={v.monthsWife}
-                  insured={v.insuredWife}
-                  side={v.sideWife}
-                  paidLimit={r.paidLimit}
-                  onChange={(p) =>
-                    set({
-                      ...(p.months !== undefined && { monthsWife: p.months }),
-                      ...(p.insured !== undefined && {
-                        insuredWife: p.insured,
-                      }),
-                      ...(p.side !== undefined && { sideWife: p.side }),
-                    })
-                  }
-                />
-              )}
-              {v.who !== 'wife' && (
-                <PersonLeave
-                  name="남편"
-                  months={v.monthsHusband}
-                  insured={v.insuredHusband}
-                  side={v.sideHusband}
-                  paidLimit={r.paidLimit}
-                  onChange={(p) =>
-                    set({
-                      ...(p.months !== undefined && {
-                        monthsHusband: p.months,
-                      }),
-                      ...(p.insured !== undefined && {
-                        insuredHusband: p.insured,
-                      }),
-                      ...(p.side !== undefined && { sideHusband: p.side }),
-                    })
-                  }
-                />
-              )}
-              <Note>
-                {r.paidLimit === 18
-                  ? '둘 다 3개월 이상 육아휴직을 쓰면 한 사람당 18개월까지 급여가 나와요. 13개월째부터도 월급의 80%, 최대 160만원이에요.'
-                  : both
-                    ? '한 사람이 급여를 못 받으면 다른 사람도 12개월까지만 급여가 나와요.'
-                    : '한 명만 쉬면 12개월까지 급여가 나와요. 둘 다 3개월 이상 쉬면 한 사람당 18개월까지 늘어나요.'}
-              </Note>
-              {both && (
-                <Field label="어떻게 쉬어요?">
-                  <Segment<Order>
-                    value={v.order}
-                    onChange={(order) => set({ order })}
-                    options={[
-                      ['seq', '번갈아 (아내 먼저)'],
-                      ['sim', '같이'],
-                    ]}
-                  />
-                  <Note>
-                    둘 다 쉬면 각자 첫 6개월은 급여 상한이 250만원에서 450만원까지 올라가요. 아이가
-                    태어난 지 18개월 안에 둘 다 휴직을 시작할 때만이에요.
-                  </Note>
-                </Field>
-              )}
-
-              <Field label="늘어나는 양육비 (월)">
-                <AmountInput value={v.childCost} onChange={(childCost) => set({ childCost })} />
-                <Note>영유아 키우는 집 평균 150만원이에요. 우리집 예상으로 바꿔도 돼요.</Note>
-              </Field>
-
-              <Field label="어린이집은 언제부터?">
-                <Segment<DaycareFrom>
-                  value={v.daycareFrom}
-                  onChange={(daycareFrom) => set({ daycareFrom })}
+                <p className="mb-1.5 mt-4 text-[13.5px] font-medium text-sub">누가 쉬어요?</p>
+                <Segment<Who>
+                  value={v.who}
+                  onChange={(who) => set({ who })}
                   options={[
-                    [0, '안 보내요'],
-                    [7, '7개월부터'],
-                    [13, '돌 지나서'],
+                    ['wife', '아내'],
+                    ['husband', '남편'],
+                    ['both', '둘 다'],
                   ]}
                 />
-                <Note>어린이집에 다니는 달엔 부모급여가 보육료만큼 줄어요.</Note>
-              </Field>
+              </Card>
             </div>
-          )}
-        </Card>
 
-        {/* ── 나누기 */}
-        <ShareBox input={v} result={r} showWho={both} />
+            {/* ── 고치기 */}
+            <Card className="mt-4">
+              <button
+                onClick={() => setOpenAdjust((o) => !o)}
+                className="flex w-full items-center justify-between"
+                aria-expanded={openAdjust}
+              >
+                <span className="text-[15px] font-bold text-ink">우리집에 맞게 고치기</span>
+                <ChevronDown
+                  size={18}
+                  className={`text-cap transition-transform ${openAdjust ? 'rotate-180' : ''}`}
+                />
+              </button>
 
-        {/* ── 원팀프로젝트 */}
-        <div className="mt-5 rounded-card border-[1.5px] border-brand bg-white p-5">
-          <p className="text-[12px] font-bold text-brand">결영이네 원팀프로젝트</p>
-          <p className="mt-1 text-[18px] font-bold leading-snug text-ink">
-            적자 나는 달, 없도록 미리 공부해요.
-          </p>
-          <p className="mt-1.5 text-[14px] leading-relaxed text-sub">
-            <b className="font-bold text-ink">부부가 함께</b> 재테크 시작하면 돈 모으는 속도가
-            빨라져요.
-          </p>
-          <a
-            href={ONETEAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white"
-          >
-            원팀프로젝트 보러가기
-            <ArrowRight size={17} />
-          </a>
-        </div>
-        <p className="mt-3 text-center text-[12.5px] text-cap">
-          가계부부터 써보고 싶다면{' '}
-          <a href="#/" className="font-semibold text-brand">
-            모아불리 시작하기
-          </a>
-        </p>
+              {openAdjust && (
+                <div className="mt-4 space-y-4">
+                  {v.who !== 'husband' && (
+                    <PersonLeave
+                      name="아내"
+                      months={v.monthsWife}
+                      insured={v.insuredWife}
+                      side={v.sideWife}
+                      paidLimit={r.paidLimit}
+                      onChange={(p) =>
+                        set({
+                          ...(p.months !== undefined && { monthsWife: p.months }),
+                          ...(p.insured !== undefined && {
+                            insuredWife: p.insured,
+                          }),
+                          ...(p.side !== undefined && { sideWife: p.side }),
+                        })
+                      }
+                    />
+                  )}
+                  {v.who !== 'wife' && (
+                    <PersonLeave
+                      name="남편"
+                      months={v.monthsHusband}
+                      insured={v.insuredHusband}
+                      side={v.sideHusband}
+                      paidLimit={r.paidLimit}
+                      onChange={(p) =>
+                        set({
+                          ...(p.months !== undefined && {
+                            monthsHusband: p.months,
+                          }),
+                          ...(p.insured !== undefined && {
+                            insuredHusband: p.insured,
+                          }),
+                          ...(p.side !== undefined && { sideHusband: p.side }),
+                        })
+                      }
+                    />
+                  )}
+                  <Note>
+                    {r.paidLimit === 18
+                      ? '둘 다 3개월 이상 육아휴직을 쓰면 한 사람당 18개월까지 급여가 나와요. 13개월째부터도 월급의 80%, 최대 160만원이에요.'
+                      : both
+                        ? '한 사람이 급여를 못 받으면 다른 사람도 12개월까지만 급여가 나와요.'
+                        : '한 명만 쉬면 12개월까지 급여가 나와요. 둘 다 3개월 이상 쉬면 한 사람당 18개월까지 늘어나요.'}
+                  </Note>
+                  {both && (
+                    <Field label="어떻게 쉬어요?">
+                      <Segment<Order>
+                        value={v.order}
+                        onChange={(order) => set({ order })}
+                        options={[
+                          ['seq', '번갈아 (아내 먼저)'],
+                          ['sim', '같이'],
+                        ]}
+                      />
+                      <Note>
+                        둘 다 쉬면 각자 첫 6개월은 급여 상한이 250만원에서 450만원까지 올라가요.
+                        아이가 태어난 지 18개월 안에 둘 다 휴직을 시작할 때만이에요.
+                      </Note>
+                    </Field>
+                  )}
 
-        {/* ── 출처 */}
-        <div className="mt-8 px-1 text-[12px] leading-relaxed text-cap">
-          <p className="font-semibold text-sub">이 숫자는 어디서 왔나요</p>
-          <ul className="mt-1.5 space-y-1">
-            <li>
-              · 육아휴직 기간 — 한 명만 쉬면 12개월, 부부가 각자 3개월 이상 쉬면 한 사람당 18개월
-            </li>
-            <li>
-              · 육아휴직급여 — 한 명만 쉬면 1~3개월 최대 250만원, 4~6개월 최대 200만원, 7개월부터
-              월급의 80% 최대 160만원. 부부가 둘 다 쉬면 각자 첫 6개월 최대
-              250·250·300·350·400·450만원. 최소 70만원. 고용노동부 고용보험
-            </li>
-            <li>
-              · 부모급여 — 만 0세 월 100만원, 만 1세 월 50만원. 어린이집에 다니면 보육료를 빼고
-              0세는 41.6만원, 1세는 0원. 두 돌 뒤 집에서 보면 가정양육수당 월 10만원. 아동수당 월
-              10만원. 보건복지부
-            </li>
-            <li>
-              · 양육비 — 육아정책연구소 KICCE 소비실태조사 2025, 2024년 가구당 양육비용 월
-              149.8만원. 집 안 모든 자녀에게 든 돈의 합이에요
-            </li>
-            <li>· 기준일 {RULES.updated}</li>
-          </ul>
-          <p className="mt-3">
-            아이가 태어나자마자 휴직을 시작하고, 고정비·변동비는 지금 그대로 쓴다고 봤어요. 급여는
-            세전 월급(통상임금) 기준이라 실수령으로 넣으면 실제로는 같거나 조금 더 받아요. 방향을
-            보는 용도로만 쓰시고, 정확한 금액은 고용보험에서 확인하세요.
-          </p>
+                  <Field label="늘어나는 양육비 (월)">
+                    <AmountInput value={v.childCost} onChange={(childCost) => set({ childCost })} />
+                    <Note>영유아 키우는 집 평균 150만원이에요. 우리집 예상으로 바꿔도 돼요.</Note>
+                  </Field>
+
+                  <Field label="어린이집은 언제부터?">
+                    <Segment<DaycareFrom>
+                      value={v.daycareFrom}
+                      onChange={(daycareFrom) => set({ daycareFrom })}
+                      options={[
+                        [0, '안 보내요'],
+                        [7, '7개월부터'],
+                        [13, '돌 지나서'],
+                      ]}
+                    />
+                    <Note>어린이집에 다니는 달엔 부모급여가 보육료만큼 줄어요.</Note>
+                  </Field>
+                </div>
+              )}
+            </Card>
+
+            {/* ── 나누기 */}
+            <ShareBox input={v} result={r} showWho={both} />
+
+            {/* ── 원팀프로젝트 */}
+            <div className="mt-5 rounded-card border-[1.5px] border-brand bg-white p-5">
+              <p className="text-[12px] font-bold text-brand">결영이네 원팀프로젝트</p>
+              <p className="mt-1 text-[18px] font-bold leading-snug text-ink">
+                적자 나는 달, 없도록 미리 공부해요.
+              </p>
+              <p className="mt-1.5 text-[14px] leading-relaxed text-sub">
+                <b className="font-bold text-ink">부부가 함께</b> 재테크 시작하면 돈 모으는 속도가
+                빨라져요.
+              </p>
+              <a
+                href={ONETEAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white"
+              >
+                원팀프로젝트 보러가기
+                <ArrowRight size={17} />
+              </a>
+            </div>
+            <p className="mt-3 text-center text-[12.5px] text-cap">
+              가계부부터 써보고 싶다면{' '}
+              <a href="#/" className="font-semibold text-brand">
+                모아불리 시작하기
+              </a>
+            </p>
+
+            {/* ── 출처 */}
+            <div className="mt-8 px-1 text-[12px] leading-relaxed text-cap">
+              <p className="font-semibold text-sub">이 숫자는 어디서 왔나요</p>
+              <ul className="mt-1.5 space-y-1">
+                <li>
+                  · 육아휴직 기간 — 한 명만 쉬면 12개월, 부부가 각자 3개월 이상 쉬면 한 사람당
+                  18개월
+                </li>
+                <li>
+                  · 육아휴직급여 — 한 명만 쉬면 1~3개월 최대 250만원, 4~6개월 최대 200만원,
+                  7개월부터 월급의 80% 최대 160만원. 부부가 둘 다 쉬면 각자 첫 6개월 최대
+                  250·250·300·350·400·450만원. 최소 70만원. 고용노동부 고용보험
+                </li>
+                <li>
+                  · 부모급여 — 만 0세 월 100만원, 만 1세 월 50만원. 어린이집에 다니면 보육료를 빼고
+                  0세는 41.6만원, 1세는 0원. 두 돌 뒤 집에서 보면 가정양육수당 월 10만원. 아동수당
+                  월 10만원. 보건복지부
+                </li>
+                <li>
+                  · 양육비 — 육아정책연구소 KICCE 소비실태조사 2025, 2024년 가구당 양육비용 월
+                  149.8만원. 집 안 모든 자녀에게 든 돈의 합이에요
+                </li>
+                <li>· 기준일 {RULES.updated}</li>
+              </ul>
+              <p className="mt-3">
+                아이가 태어나자마자 휴직을 시작하고, 고정비·변동비는 지금 그대로 쓴다고 봤어요.
+                급여는 세전 월급(통상임금) 기준이라 실수령으로 넣으면 실제로는 같거나 조금 더
+                받아요. 방향을 보는 용도로만 쓰시고, 정확한 금액은 고용보험에서 확인하세요.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -305,9 +312,7 @@ export default function ParentalLeave() {
  * 앱 안에서 넘어왔으면 이미 불러온 가계부를 쓰고, 링크로 바로 열었으면 로그인돼 있을 때만 따로 읽는다.
  */
 function useMyLedgers(): MonthlyLedger[] | null {
-  const storeLedgers = useLedgerStore((st) =>
-    st.status === 'ready' ? st.ledgers : null,
-  )
+  const storeLedgers = useLedgerStore((st) => (st.status === 'ready' ? st.ledgers : null))
   const [fetched, setFetched] = useState<MonthlyLedger[] | null>(null)
   useEffect(() => {
     if (storeLedgers) return

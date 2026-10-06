@@ -1,3 +1,4 @@
+import PcShell from '../components/PcShell'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -82,8 +83,7 @@ const QUICK_CHIPS = [1_000, 5_000, 10_000, 50_000]
 function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   const w = window as unknown as Record<string, unknown>
   const ctor = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as
-    | (new () => SpeechRecognitionLike)
-    | undefined
+    (new () => SpeechRecognitionLike) | undefined
   if (!ctor) return null
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
   const standalone =
@@ -223,7 +223,9 @@ export default function Confess() {
   const pastDateBanner =
     logDate === today ? null : (
       <div className="mx-5 mb-2 flex items-center justify-between gap-2 rounded-btn bg-amber-50 px-3.5 py-2.5">
-        <span className="text-[13px] font-bold text-amber-700">📅 {logDateLabel} 기록으로 적는 중</span>
+        <span className="text-[13px] font-bold text-amber-700">
+          📅 {logDateLabel} 기록으로 적는 중
+        </span>
         <button
           onClick={() => setLogDate(today)}
           className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[12px] font-bold text-amber-700 active:bg-amber-100"
@@ -263,7 +265,9 @@ export default function Confess() {
   ]
 
   // ── 저장 (양쪽 흐름 공통) ───────────────────
-  const finishSave = (entries: { category: string; kind: CategoryGroup; amount: number; note?: string }[]) => {
+  const finishSave = (
+    entries: { category: string; kind: CategoryGroup; amount: number; note?: string }[],
+  ) => {
     // 지난 날짜를 골랐으면 그 날 낮 12시로 — 시간대가 밀려 하루 어긋나는 걸 막는다
     const createdAt =
       logDate === today ? new Date().toISOString() : new Date(`${logDate}T12:00:00`).toISOString()
@@ -286,11 +290,20 @@ export default function Confess() {
     const all = useLedgerStore.getState().confessions
     // 여러 건이면 지출(변동·고정) 중 최고액을 저격 대상으로
     const spend = entries.filter((e) => e.kind === 'variable' || e.kind === 'fixed')
-    const headline = (spend.length ? spend : entries).reduce((a, b) => (b.amount > a.amount ? b : a))
-    const reaction = pickReaction({ category: headline.category, kind: headline.kind, amount: headline.amount }, all)
+    const headline = (spend.length ? spend : entries).reduce((a, b) =>
+      b.amount > a.amount ? b : a,
+    )
+    const reaction = pickReaction(
+      { category: headline.category, kind: headline.kind, amount: headline.amount },
+      all,
+    )
     // 연속 일수는 '쓴 사람' 기준 — 남편 몫을 적었으면 남편 연속이 이어진다
     const streak = streakOf(all, spenderNo)
-    setResult({ reaction, streak, saved: entries.map(({ category, amount, note }) => ({ category, amount, note })) })
+    setResult({
+      reaction,
+      streak,
+      saved: entries.map(({ category, amount, note }) => ({ category, amount, note })),
+    })
   }
 
   // ── 무지출: 0원으로 바로 저장 (확인 단계 없음) ─
@@ -379,7 +392,9 @@ export default function Confess() {
         <div className="flex flex-1 flex-col px-5 pt-2 animate-fade-up">
           {/* 지난 날짜로 적었으면 어디로 들어갔는지 분명히 말한다 */}
           {logDate !== today && (
-            <p className="mb-2 text-[13px] font-bold text-amber-700">📅 {logDateLabel} 기록으로 저장했어요</p>
+            <p className="mb-2 text-[13px] font-bold text-amber-700">
+              📅 {logDateLabel} 기록으로 저장했어요
+            </p>
           )}
           {/* 방금 기록한 내용 */}
           <div className="mb-5 rounded-card bg-card px-5 py-4 shadow-card">
@@ -414,7 +429,9 @@ export default function Confess() {
                   </p>
                   <div
                     className={`inline-block rounded-2xl px-4 py-3 text-left text-[14px] leading-relaxed shadow-card ${
-                      b.who === '모아' ? 'rounded-tl-sm bg-card text-ink' : 'rounded-tr-sm bg-brand text-white'
+                      b.who === '모아'
+                        ? 'rounded-tl-sm bg-card text-ink'
+                        : 'rounded-tr-sm bg-brand text-white'
                     }`}
                   >
                     {b.text}
@@ -487,7 +504,10 @@ export default function Confess() {
                     <select
                       value={`${d.kind}:${d.category}`}
                       onChange={(e) => {
-                        const [kind, category] = e.target.value.split(':') as [CategoryGroup, string]
+                        const [kind, category] = e.target.value.split(':') as [
+                          CategoryGroup,
+                          string,
+                        ]
                         setDrafts((prev) =>
                           prev!.map((x) => (x.key === d.key ? { ...x, kind, category } : x)),
                         )
@@ -512,8 +532,13 @@ export default function Confess() {
                     inputMode="numeric"
                     value={formatComma(d.amount)}
                     onChange={(e) => {
-                      const v = Math.min(Number(e.target.value.replace(/[^\d]/g, '')) || 0, 999_999_999)
-                      setDrafts((prev) => prev!.map((x) => (x.key === d.key ? { ...x, amount: v } : x)))
+                      const v = Math.min(
+                        Number(e.target.value.replace(/[^\d]/g, '')) || 0,
+                        999_999_999,
+                      )
+                      setDrafts((prev) =>
+                        prev!.map((x) => (x.key === d.key ? { ...x, amount: v } : x)),
+                      )
                     }}
                     className="tnum w-24 shrink-0 rounded-btn border border-line bg-white px-2 py-1.5 text-right text-[15px] font-bold text-ink outline-none focus:border-brand"
                   />
@@ -558,7 +583,9 @@ export default function Confess() {
   if (mode === 'picker' && sel) {
     const save = () => {
       if (!sel || amount <= 0) return
-      finishSave([{ category: sel.category, kind: sel.kind, amount, note: note.trim() || undefined }])
+      finishSave([
+        { category: sel.category, kind: sel.kind, amount, note: note.trim() || undefined },
+      ])
     }
     return (
       <Frame>
@@ -619,7 +646,11 @@ export default function Confess() {
   if (mode === 'picker') {
     return (
       <Frame>
-        <Top onBack={() => setMode('text')} title="무엇에 썼나요?" subtitle="기록하면 모아·불리가 바로 반응해요" />
+        <Top
+          onBack={() => setMode('text')}
+          title="무엇에 썼나요?"
+          subtitle="기록하면 모아·불리가 바로 반응해요"
+        />
         {pastDateBanner}
         <div className="flex-1 space-y-5 px-5 pb-10 pt-1">
           <WeeklyCostCard confessions={confessions} />
@@ -762,7 +793,9 @@ export default function Confess() {
                 onClick={toggleMic}
                 aria-label="음성으로 입력"
                 className={`flex h-11 w-11 items-center justify-center rounded-full shadow-card transition-colors ${
-                  listening ? 'animate-pulse bg-red-500 text-white' : 'bg-brand text-white active:bg-brand-dark'
+                  listening
+                    ? 'animate-pulse bg-red-500 text-white'
+                    : 'bg-brand text-white active:bg-brand-dark'
                 }`}
               >
                 <Mic size={19} />
@@ -831,7 +864,9 @@ export default function Confess() {
                           >
                             <span
                               className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-                                c.shared ? 'bg-line text-sub' : memberStyle(c.memberNo, profile).badge
+                                c.shared
+                                  ? 'bg-line text-sub'
+                                  : memberStyle(c.memberNo, profile).badge
                               }`}
                             >
                               {c.shared ? '공동' : memberNames[c.memberNo - 1]}
@@ -972,12 +1007,15 @@ function EditRow({
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
+  // PC: 왼쪽 메뉴 + 가운데 720px (2026-10-06)
   return (
-    <div className="flex min-h-screen justify-center bg-[#e6e9ed]">
-      <div className="relative flex min-h-screen w-full max-w-app flex-col bg-bg pb-28 shadow-[0_0_60px_rgba(0,0,0,0.06)]">
-        {children}
+    <PcShell active="/monthly">
+      <div className="flex min-h-screen justify-center bg-[#e6e9ed] lg:bg-bg">
+        <div className="relative flex min-h-screen w-full max-w-app flex-col bg-bg pb-28 shadow-[0_0_60px_rgba(0,0,0,0.06)] lg:max-w-[720px] lg:shadow-none">
+          {children}
+        </div>
       </div>
-    </div>
+    </PcShell>
   )
 }
 
@@ -1003,7 +1041,7 @@ function Top({
 
 function BottomBar({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-app -translate-x-1/2 border-t border-line/60 bg-bg/95 px-5 pb-4 pt-3 backdrop-blur">
+    <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-app -translate-x-1/2 border-t border-line/60 bg-bg/95 px-5 pb-4 pt-3 backdrop-blur lg:left-[calc(50%+110px)] lg:max-w-[720px]">
       {children}
     </div>
   )

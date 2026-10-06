@@ -1,3 +1,5 @@
+import PcColumns from '../components/PcColumns'
+import PcShell from '../components/PcShell'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, ChevronLeft } from 'lucide-react'
@@ -106,179 +108,197 @@ export default function Report() {
   }
 
   return (
-    <div className="min-h-screen bg-bg pb-16">
-      <div className="mx-auto w-full max-w-app">
-        <div className="flex items-center gap-1 px-3 pt-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-sub active:bg-line"
-            aria-label="뒤로"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-[18px] font-bold text-ink">우리 부부 맞춤 리포트</h1>
-        </div>
-
-        <div className="space-y-4 px-5 pt-3">
-          <p className="text-[13.5px] leading-relaxed text-sub">
-            결영이네가 <b className="text-ink">우리집 숫자를 직접 보고</b> 씁니다. 자동으로 만드는 게
-            아니라 사람이 읽고 쓰는 리포트예요.
-          </p>
-
-          {/* 무엇이 들어가는지 */}
-          <div className="rounded-card bg-card px-5 py-4 shadow-card">
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-[15px] font-bold text-ink">리포트에 담기는 것</h2>
-              <span className="tnum text-[16px] font-extrabold text-brand">{PRICE}</span>
-            </div>
-            <ul className="space-y-2">
-              {CONTENTS.map((c) => (
-                <li key={c} className="flex items-start gap-2 text-[13.5px] leading-relaxed text-sub">
-                  <Check size={16} className="mt-0.5 shrink-0 text-brand" />
-                  {c}
-                </li>
-              ))}
-            </ul>
+    <PcShell active="/settings">
+      <div className="min-h-screen bg-bg pb-16">
+        <div className="mx-auto w-full max-w-app lg:max-w-[1040px] lg:px-5 lg:pt-5">
+          <div className="flex items-center gap-1 px-3 pt-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-sub active:bg-line"
+              aria-label="뒤로"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <h1 className="text-[18px] font-bold text-ink">우리 부부 맞춤 리포트</h1>
           </div>
 
-          {/* 예시 리포트 — 신청 전에 실물을 보여준다 */}
-          <SampleReport />
-
-          {active ? (
-            /* 이미 신청함 — 상태와 철회 */
-            <div className="rounded-card bg-card px-5 py-4 shadow-card">
-              <h2 className="text-[15px] font-bold text-ink">신청하셨어요</h2>
-              <p className="mt-1.5 text-[13.5px] text-sub">
-                상태: <b className="text-ink">{STATUS_LABEL[active.status]}</b>
-              </p>
-              <p className="mt-1 text-[12.5px] text-cap">
-                받으실 곳: {active.email} · 동의{' '}
-                {new Date(active.consentAt).toLocaleDateString('ko-KR')}
-              </p>
-
-              {/* 결제 — 링크가 준비되면 버튼이 켜진다 */}
-              {!active.paidAt && active.status !== 'done' && (
-                PAYMENT_URL ? (
-                  <a
-                    href={PAYMENT_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 flex h-12 w-full items-center justify-center rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
-                  >
-                    {PRICE} 결제하기
-                  </a>
-                ) : (
-                  <p className="mt-3 rounded-btn bg-bg px-3.5 py-3 text-[12.5px] leading-relaxed text-sub">
-                    결제 방법은 메일로 안내해 드릴게요.
+          <div className="space-y-4 px-5 pt-3">
+            {/* PC: 왼쪽 무엇이 들어가는지·예시, 오른쪽 신청 (2026-10-06) */}
+            <PcColumns
+              left={
+                <>
+                  <p className="text-[13.5px] leading-relaxed text-sub">
+                    결영이네가 <b className="text-ink">우리집 숫자를 직접 보고</b> 씁니다. 자동으로
+                    만드는 게 아니라 사람이 읽고 쓰는 리포트예요.
                   </p>
-                )
-              )}
 
-              <button
-                onClick={() => revoke(active.id)}
-                disabled={busy}
-                className="mt-3 h-11 w-full rounded-btn bg-bg text-[13.5px] font-bold text-sub active:bg-line disabled:opacity-50"
-              >
-                신청 취소하고 열람 동의 철회하기
-              </button>
-              <p className="mt-2 text-[12px] leading-relaxed text-cap">
-                철회하시면 저희는 더 이상 가계부를 열어보지 않아요.
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* 데이터 열람 동의 */}
-              <div className="rounded-card bg-card px-5 py-4 shadow-card">
-                <h2 className="text-[15px] font-bold text-ink">데이터 공유 동의</h2>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-sub">
-                  리포트를 쓰려면 결영이네가 우리집 가계부를 열어봐야 해요. 보는 건 이것뿐입니다.
-                </p>
-                <ul className="mt-2.5 space-y-1.5">
-                  {DATA_SCOPE.map((d) => (
-                    <li key={d} className="flex items-start gap-2 text-[13px] text-sub">
-                      <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                      {d}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-2.5 text-[12px] leading-relaxed text-cap">
-                  매일 남기신 <b className="font-semibold">고백 기록은 보지 않아요.</b> 리포트를
-                  드린 뒤에는 열람하지 않고, 언제든 이 화면에서 철회하실 수 있어요.
-                </p>
+                  {/* 무엇이 들어가는지 */}
+                  <div className="rounded-card bg-card px-5 py-4 shadow-card">
+                    <div className="mb-3 flex items-baseline justify-between">
+                      <h2 className="text-[15px] font-bold text-ink">리포트에 담기는 것</h2>
+                      <span className="tnum text-[16px] font-extrabold text-brand">{PRICE}</span>
+                    </div>
+                    <ul className="space-y-2">
+                      {CONTENTS.map((c) => (
+                        <li
+                          key={c}
+                          className="flex items-start gap-2 text-[13.5px] leading-relaxed text-sub"
+                        >
+                          <Check size={16} className="mt-0.5 shrink-0 text-brand" />
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
-                <button
-                  onClick={() => setAgreed((v) => !v)}
-                  className={`mt-3 flex w-full items-center gap-2.5 rounded-btn border px-3.5 py-3 text-left transition-colors ${
-                    agreed ? 'border-brand bg-brand/5' : 'border-line bg-white'
-                  }`}
-                >
-                  <span
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-                      agreed ? 'border-brand bg-brand text-white' : 'border-line bg-white'
-                    }`}
-                  >
-                    {agreed && <Check size={13} strokeWidth={3} />}
-                  </span>
-                  <span className="text-[13.5px] font-semibold text-ink">
-                    위 내용에 동의하고 가계부 열람을 허용합니다
-                  </span>
-                </button>
-              </div>
+                  {/* 예시 리포트 — 신청 전에 실물을 보여준다 */}
+                  <SampleReport />
+                </>
+              }
+              right={
+                <>
+                  {active ? (
+                    /* 이미 신청함 — 상태와 철회 */
+                    <div className="rounded-card bg-card px-5 py-4 shadow-card">
+                      <h2 className="text-[15px] font-bold text-ink">신청하셨어요</h2>
+                      <p className="mt-1.5 text-[13.5px] text-sub">
+                        상태: <b className="text-ink">{STATUS_LABEL[active.status]}</b>
+                      </p>
+                      <p className="mt-1 text-[12.5px] text-cap">
+                        받으실 곳: {active.email} · 동의{' '}
+                        {new Date(active.consentAt).toLocaleDateString('ko-KR')}
+                      </p>
 
-              {/* 연락처 */}
-              <div className="rounded-card bg-card px-5 py-4 shadow-card">
-                <h2 className="text-[15px] font-bold text-ink">어디로 보내드릴까요?</h2>
-                <p className="mt-1 text-[12.5px] text-cap">리포트는 메일로 보내드려요.</p>
-                <input
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="이메일 주소"
-                  className={`mt-2.5 w-full rounded-btn border bg-white px-3.5 py-3 text-[14px] text-ink outline-none placeholder:text-cap ${
-                    email && !isEmailLike(email) ? 'border-danger' : 'border-line focus:border-brand'
-                  }`}
-                />
-                {email && !isEmailLike(email) && (
-                  <p className="mt-1 text-[12px] font-medium text-danger">
-                    이메일 주소를 다시 확인해 주세요
-                  </p>
-                )}
-                <input
-                  type="text"
-                  value={contact}
-                  onChange={(e) => setContact(e.target.value)}
-                  placeholder="카톡 닉네임 (선택)"
-                  className="mt-2 w-full rounded-btn border border-line bg-white px-3.5 py-3 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
-                />
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows={3}
-                  placeholder="특히 궁금한 점이 있으면 적어주세요 (선택)"
-                  className="mt-2 w-full resize-none rounded-btn border border-line bg-white px-3.5 py-3 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
-                />
-              </div>
+                      {/* 결제 — 링크가 준비되면 버튼이 켜진다 */}
+                      {!active.paidAt &&
+                        active.status !== 'done' &&
+                        (PAYMENT_URL ? (
+                          <a
+                            href={PAYMENT_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 flex h-12 w-full items-center justify-center rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
+                          >
+                            {PRICE} 결제하기
+                          </a>
+                        ) : (
+                          <p className="mt-3 rounded-btn bg-bg px-3.5 py-3 text-[12.5px] leading-relaxed text-sub">
+                            결제 방법은 메일로 안내해 드릴게요.
+                          </p>
+                        ))}
 
-              {error && <p className="px-1 text-[13px] font-bold text-danger">{error}</p>}
+                      <button
+                        onClick={() => revoke(active.id)}
+                        disabled={busy}
+                        className="mt-3 h-11 w-full rounded-btn bg-bg text-[13.5px] font-bold text-sub active:bg-line disabled:opacity-50"
+                      >
+                        신청 취소하고 열람 동의 철회하기
+                      </button>
+                      <p className="mt-2 text-[12px] leading-relaxed text-cap">
+                        철회하시면 저희는 더 이상 가계부를 열어보지 않아요.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* 데이터 열람 동의 */}
+                      <div className="rounded-card bg-card px-5 py-4 shadow-card">
+                        <h2 className="text-[15px] font-bold text-ink">데이터 공유 동의</h2>
+                        <p className="mt-1.5 text-[13px] leading-relaxed text-sub">
+                          리포트를 쓰려면 결영이네가 우리집 가계부를 열어봐야 해요. 보는 건
+                          이것뿐입니다.
+                        </p>
+                        <ul className="mt-2.5 space-y-1.5">
+                          {DATA_SCOPE.map((d) => (
+                            <li key={d} className="flex items-start gap-2 text-[13px] text-sub">
+                              <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+                              {d}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-2.5 text-[12px] leading-relaxed text-cap">
+                          매일 남기신 <b className="font-semibold">고백 기록은 보지 않아요.</b>{' '}
+                          리포트를 드린 뒤에는 열람하지 않고, 언제든 이 화면에서 철회하실 수 있어요.
+                        </p>
 
-              <button
-                onClick={submit}
-                disabled={!canSubmit}
-                className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
-              >
-                {busy ? '보내는 중…' : '신청하기'}
-              </button>
-              <p className="px-1 text-[12px] leading-relaxed text-cap">
-                {PAYMENT_URL
-                  ? '신청하신 뒤 결제하시면 순서대로 작성해 드려요.'
-                  : '신청하시면 결영이네가 메일로 연락드려요. 결제는 그때 안내해 드립니다.'}
-              </p>
-            </>
-          )}
+                        <button
+                          onClick={() => setAgreed((v) => !v)}
+                          className={`mt-3 flex w-full items-center gap-2.5 rounded-btn border px-3.5 py-3 text-left transition-colors ${
+                            agreed ? 'border-brand bg-brand/5' : 'border-line bg-white'
+                          }`}
+                        >
+                          <span
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                              agreed ? 'border-brand bg-brand text-white' : 'border-line bg-white'
+                            }`}
+                          >
+                            {agreed && <Check size={13} strokeWidth={3} />}
+                          </span>
+                          <span className="text-[13.5px] font-semibold text-ink">
+                            위 내용에 동의하고 가계부 열람을 허용합니다
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* 연락처 */}
+                      <div className="rounded-card bg-card px-5 py-4 shadow-card">
+                        <h2 className="text-[15px] font-bold text-ink">어디로 보내드릴까요?</h2>
+                        <p className="mt-1 text-[12.5px] text-cap">리포트는 메일로 보내드려요.</p>
+                        <input
+                          type="email"
+                          inputMode="email"
+                          autoComplete="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="이메일 주소"
+                          className={`mt-2.5 w-full rounded-btn border bg-white px-3.5 py-3 text-[14px] text-ink outline-none placeholder:text-cap ${
+                            email && !isEmailLike(email)
+                              ? 'border-danger'
+                              : 'border-line focus:border-brand'
+                          }`}
+                        />
+                        {email && !isEmailLike(email) && (
+                          <p className="mt-1 text-[12px] font-medium text-danger">
+                            이메일 주소를 다시 확인해 주세요
+                          </p>
+                        )}
+                        <input
+                          type="text"
+                          value={contact}
+                          onChange={(e) => setContact(e.target.value)}
+                          placeholder="카톡 닉네임 (선택)"
+                          className="mt-2 w-full rounded-btn border border-line bg-white px-3.5 py-3 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
+                        />
+                        <textarea
+                          value={note}
+                          onChange={(e) => setNote(e.target.value)}
+                          rows={3}
+                          placeholder="특히 궁금한 점이 있으면 적어주세요 (선택)"
+                          className="mt-2 w-full resize-none rounded-btn border border-line bg-white px-3.5 py-3 text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
+                        />
+                      </div>
+
+                      {error && <p className="px-1 text-[13px] font-bold text-danger">{error}</p>}
+
+                      <button
+                        onClick={submit}
+                        disabled={!canSubmit}
+                        className="h-14 w-full rounded-btn bg-brand text-[16px] font-bold text-white shadow-cta active:bg-brand-dark disabled:opacity-40"
+                      >
+                        {busy ? '보내는 중…' : '신청하기'}
+                      </button>
+                      <p className="px-1 text-[12px] leading-relaxed text-cap">
+                        {PAYMENT_URL
+                          ? '신청하신 뒤 결제하시면 순서대로 작성해 드려요.'
+                          : '신청하시면 결영이네가 메일로 연락드려요. 결제는 그때 안내해 드립니다.'}
+                      </p>
+                    </>
+                  )}
+                </>
+              }
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </PcShell>
   )
 }

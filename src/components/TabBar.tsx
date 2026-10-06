@@ -114,7 +114,7 @@ const SIDE = [
 ] as const
 
 /** PC(가로 1024px 이상) 왼쪽 메뉴 — 아래 탭과 같은 다섯 칸 (2026-10-06) */
-export function SideNav() {
+export function SideNav({ active }: { active?: string } = {}) {
   const confessedToday = useConfessedToday()
   return (
     <nav
@@ -133,11 +133,12 @@ export function SideNav() {
               key={to}
               to={to}
               end={end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] transition-colors ${
+              className={({ isActive: on }) => {
+                const isActive = on || to === active
+                return `flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] transition-colors ${
                   isActive ? 'bg-brand/10 font-bold text-brand' : 'font-medium text-sub hover:bg-bg'
                 }`
-              }
+              }}
             >
               <span className="relative">
                 <Icon size={20} />
