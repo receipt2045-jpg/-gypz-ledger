@@ -7,7 +7,7 @@ import { useLedgerStore } from '../lib/store'
  *
  * 자산 로드맵을 뺐다 — 카드가 많고 같은 말을 반복해서 무엇을 하라는 건지 흐렸다.
  * 소비 기록은 가계부 안으로 들어갔다(가계부 맨 위 '오늘의 소비 기록'). 오늘 기록 전이면
- * 가계부 탭에 빨간 점. 게시판은 공지·계산기·정보를 모은 '정보' 탭이 됐다.
+ * 가계부 탭에 빨간 점. 게시판은 공지·계산기·정보를 모은 '정보' 탭이 됐다 → 2026-10-06 이름을 '돈 공부'로.
  */
 const LEFT = [
   { to: '/monthly', label: '가계부', Icon: BookOpen },
@@ -15,7 +15,7 @@ const LEFT = [
 ] as const
 
 const RIGHT = [
-  { to: '/info', label: '정보', Icon: Newspaper },
+  { to: '/info', label: '돈 공부', Icon: Newspaper },
   { to: '/settings', label: '설정', Icon: Settings },
 ] as const
 
@@ -109,7 +109,7 @@ const SIDE = [
   { to: '/', label: '홈', Icon: Home, end: true },
   { to: '/monthly', label: '가계부', Icon: BookOpen, end: false },
   { to: '/assets', label: '자산', Icon: Landmark, end: false },
-  { to: '/info', label: '정보', Icon: Newspaper, end: false },
+  { to: '/info', label: '돈 공부', Icon: Newspaper, end: false },
   { to: '/settings', label: '설정', Icon: Settings, end: false },
 ] as const
 

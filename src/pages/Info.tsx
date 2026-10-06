@@ -8,7 +8,7 @@ import { NOTICES, type Notice } from '../lib/notices'
 import { amIAdmin, fetchNewsMeta, fetchPosts, type NewsMeta, type Post } from '../lib/posts'
 
 /**
- * 정보 탭 (2026-09-30, 게시판 + 자산 로드맵 자리를 합쳤다).
+ * 돈 공부 탭 (2026-09-30 '정보'로 시작 — 게시판 + 자산 로드맵 자리를 합쳤다. 2026-10-06 이름을 '돈 공부'로).
  * 위에서부터: 오늘의 경제(결영이네 매일 글) → 계산기 → 공지(새 기능 소식) → 정보·혜택(준비 중) → 이야기(준비 중).
  *
  * 이야기(글쓰기·신고)는 누가 쓰고 누가 지우는지 정한 뒤에 연다.
@@ -39,7 +39,7 @@ export default function Info() {
   return (
     <div className="animate-fade-up space-y-5">
       <header className="flex items-center justify-between px-1 pt-2">
-        <h1 className="text-[18px] font-bold text-ink">정보</h1>
+        <h1 className="text-[18px] font-bold text-ink">돈 공부</h1>
         {admin && (
           <button
             onClick={() => navigate('/admin/posts')}

@@ -45,7 +45,7 @@ vi.mock('../lib/posts', async (orig) => ({
   ]),
 }))
 
-describe('정보 탭 — 공지 · 계산기 · 정보·혜택 · 이야기', () => {
+describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기', () => {
   const renderInfo = () =>
     render(
       <MemoryRouter initialEntries={['/info']}>

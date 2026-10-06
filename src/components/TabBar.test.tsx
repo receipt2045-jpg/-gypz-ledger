@@ -14,7 +14,7 @@ describe('하단 탭 — 2026-09-30 개편', () => {
   it('왼쪽부터 가계부 · 자산 · 홈 · 정보 · 설정 순이다', () => {
     seedStore({})
     renderScreen(<TabBar />)
-    expect(labels()).toEqual(['가계부', '자산', '홈', '정보', '설정'])
+    expect(labels()).toEqual(['가계부', '자산', '홈', '돈 공부', '설정'])
   })
 
   it('자산 로드맵·게시판 탭은 없다', () => {
@@ -31,7 +31,7 @@ describe('하단 탭 — 2026-09-30 개편', () => {
       screen.getByRole('link', { name }).getAttribute('href')
     expect(href('가계부')).toBe('/monthly')
     expect(href('자산')).toBe('/assets')
-    expect(href('정보')).toBe('/info')
+    expect(href('돈 공부')).toBe('/info')
     expect(href('설정')).toBe('/settings')
   })
 
