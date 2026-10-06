@@ -205,6 +205,91 @@ export function groupByDay(posts: Post[]): DayGroup[] {
   return days.sort((a, b) => (a.date < b.date ? 1 : -1))
 }
 
+// ── 경제 뉴스 기사 하나씩 (2026-10-06, 재개발뷰 '뉴스/소식'처럼) ──
+
+export interface Article {
+  /** 글 id + 순번 — 화면 key */
+  id: string
+  postId: string
+  postDate: string
+  /** ■ 주식 / ■ 부동산 */
+  section: string
+  headline: string
+  /** "→ 美 장기금리 22년 만 최고" — 우리가 붙인 한 줄 */
+  note: string | null
+  url: string
+  /** 🔰 "오늘 딱 하나만 읽는다면 부동산 2번 뉴스" 가 가리키는 기사 */
+  pick: boolean
+}
+
+const ARTICLE_URL = /https?:\/\/[^\s<>"')\]]+/
+
+/**
+ * 경제 뉴스 글 → 기사 목록. 기사 주소를 기준으로 자른다 —
+ * 번호("1.")가 빠지거나 제목과 주소가 한 줄에 붙은 9월 초 글도 읽히게.
+ */
+export function parseArticles(post: Post): Article[] {
+  const lines = post.body.replace(/\r\n/g, '\n').split('\n')
+  const pickM = postSummaryHead(post.body)
+  const out: Article[] = []
+  let section = ''
+  let buf: string[] = []
+  let no = 0
+  for (const raw of lines) {
+    const line = raw.trim()
+    const sec = line.match(/^■\s*(.+)$/)
+    if (sec) {
+      section = sec[1].trim()
+      buf = []
+      no = 0
+      continue
+    }
+    const m = line.match(ARTICLE_URL)
+    if (!m) {
+      if (line && section) buf.push(line)
+      continue
+    }
+    const sameLine = line.slice(0, m.index).trim()
+    const text = [...buf, ...(sameLine ? [sameLine] : [])]
+    const note = text.find((l) => l.startsWith('→'))
+    const head = text.find((l) => !l.startsWith('→'))
+    buf = []
+    if (!section || !head) continue
+    no += 1
+    out.push({
+      id: `${post.id}#${out.length}`,
+      postId: post.id,
+      postDate: post.postDate,
+      section,
+      headline: head.replace(/^\d+\.\s*/, ''),
+      note: note ? note.replace(/^→\s*/, '') : null,
+      url: m[0],
+      pick: !!pickM && pickM.section === section && pickM.no === no,
+    })
+  }
+  return out
+}
+
+/** "부동산 2번 뉴스" → { section: '부동산', no: 2 } */
+function postSummaryHead(body: string): { section: string; no: number } | null {
+  const lines = body.replace(/\r\n/g, '\n').split('\n')
+  const mark = lines.findIndex((l) => l.trim().startsWith('🔰'))
+  if (mark < 0) return null
+  const next = lines.slice(mark + 1).find((l) => l.trim())
+  const m = next?.match(/(\S+)\s*(\d+)\s*번\s*뉴스/)
+  return m ? { section: m[1], no: Number(m[2]) } : null
+}
+
+export interface NewsMeta {
+  image: string | null
+  press: string | null
+}
+
+/** 기사 사진 크기 — 네이버 사진 주소 끝 type=w800을 바꾼다 */
+export function sizedImage(url: string, width: 300 | 647): string {
+  return url.replace(/([?&]type=)w\d+/, `$1w${width}`)
+}
+
 // ── DB ────────────────────────────────────────
 
 interface PostRow {
@@ -236,11 +321,13 @@ export async function fetchPosts(limit = 20): Promise<Post[]> {
   return (data as PostRow[]).map(fromRow)
 }
 
-/** 지금까지 올린 글 수 — 정보 탭의 '지난 글 달별로 보기 N개' */
-export async function fetchPostCount(): Promise<number> {
-  const { count, error } = await supabase.from('posts').select('id', { count: 'exact', head: true })
-  if (error) throw error
-  return count ?? 0
+/** 기사 주소 → 사진·언론사 (supabase/news-meta.sql). 못 읽으면 빈 칸 — 사진 없이 그린다 */
+export async function fetchNewsMeta(): Promise<Record<string, NewsMeta>> {
+  const { data, error } = await supabase.from('news_meta').select('url,image,press').limit(5000)
+  if (error) return {}
+  const out: Record<string, NewsMeta> = {}
+  for (const r of data as ({ url: string } & NewsMeta)[]) out[r.url] = { image: r.image, press: r.press }
+  return out
 }
 
 export async function insertPost(d: PostDraft): Promise<Post> {

@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Gift, MessagesSquare, PenLine } from 'lucide-react'
 import Card from '../components/Card'
-import { DayCard } from '../components/NewsArchive'
+import EconomySection from '../components/EconomySection'
 import { NOTICES, type Notice } from '../lib/notices'
-import { amIAdmin, fetchPostCount, fetchPosts, groupByDay, type Post } from '../lib/posts'
+import { amIAdmin, fetchNewsMeta, fetchPosts, type NewsMeta, type Post } from '../lib/posts'
 
 /**
  * 정보 탭 (2026-09-30, 게시판 + 자산 로드맵 자리를 합쳤다).
- * 위에서부터: 오늘의 경제(결영이네 매일 글) → 공지(새 기능 소식) → 계산기 → 정보·혜택(준비 중) → 이야기(준비 중).
+ * 위에서부터: 오늘의 경제(결영이네 매일 글) → 계산기 → 공지(새 기능 소식) → 정보·혜택(준비 중) → 이야기(준비 중).
  *
  * 이야기(글쓰기·신고)는 누가 쓰고 누가 지우는지 정한 뒤에 연다.
  * 4,000명 단톡방이 그대로 들어오면 관리 없이는 못 버틴다.
@@ -17,15 +17,15 @@ export default function Info() {
   const navigate = useNavigate()
   const [posts, setPosts] = useState<Post[] | null>(null)
   const [admin, setAdmin] = useState(false)
-  const [total, setTotal] = useState<number | null>(null)
+  const [meta, setMeta] = useState<Record<string, NewsMeta>>({})
 
   useEffect(() => {
     let live = true
-    fetchPosts(6)
+    fetchPosts(12)
       .then((p) => live && setPosts(p))
       .catch(() => live && setPosts([])) // 못 읽으면 칸을 숨긴다 — 나머지 정보는 그대로 본다
-    fetchPostCount()
-      .then((n) => live && setTotal(n))
+    fetchNewsMeta()
+      .then((m) => live && setMeta(m))
       .catch(() => {})
     amIAdmin()
       .then((a) => live && setAdmin(a))
@@ -34,9 +34,6 @@ export default function Info() {
       live = false
     }
   }, [])
-
-  // 가장 최근 하루치만 — 지난 글은 달별 화면에서. 아래 계산기가 밀려나지 않게 (2026-10-06)
-  const latest = posts && posts.length > 0 ? groupByDay(posts)[0] : null
 
   return (
     <div className="animate-fade-up space-y-5">
@@ -52,27 +49,8 @@ export default function Info() {
         )}
       </header>
 
-      {latest && (
-        <section aria-label="오늘의 경제" className="space-y-3">
-          <SectionTitle>오늘의 경제</SectionTitle>
-          <DayCard
-            day={latest}
-            basePath="/info"
-            footer={
-              <button
-                onClick={() => navigate('/info/archive')}
-                className="flex w-full items-center justify-between border-t border-bg px-4 py-3 text-[13.5px] font-bold text-sub"
-              >
-                지난 글 달별로 보기
-                <span className="flex items-center gap-0.5 font-normal text-cap">
-                  {total ? `${total}개` : ''}
-                  <ChevronRight size={15} />
-                </span>
-              </button>
-            }
-          />
-        </section>
-      )}
+      {/* 경제 뉴스는 기사 하나씩, 증시 정리는 최근 하루치 — 바로 아래 계산기가 밀려나지 않게 (2026-10-06) */}
+      {posts && posts.length > 0 && <EconomySection posts={posts} meta={meta} />}
 
       <section aria-label="계산기" className="space-y-3">
         <SectionTitle>계산기</SectionTitle>

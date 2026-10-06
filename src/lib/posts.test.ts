@@ -4,8 +4,10 @@ import {
   groupByMonth,
   kakaoText,
   linkify,
+  parseArticles,
   parsePasted,
   postSummary,
+  sizedImage,
   stripCommand,
   type Post,
 } from './posts'
@@ -179,5 +181,72 @@ describe('카톡에서 옮긴 글 — 한 줄 정리가 여러 줄로 끊겨 있
       ['10월 6일 화요일', 'new'],
       ['10월 1일 목요일', 'mor,eve'],
     ])
+  })
+})
+
+describe('경제 뉴스 글 → 기사 하나씩', () => {
+  const post = (body: string): Post => ({
+    id: 'n',
+    kind: 'news',
+    title: '오늘의 경제 뉴스',
+    body,
+    postDate: '2026-10-06',
+    createdAt: '',
+  })
+
+  it('분야·제목·한 줄·주소, 🔰가 가리키는 기사는 픽', () => {
+    const a = parseArticles(
+      post(
+        [
+          '🔰 오늘 딱 하나만 읽는다면',
+          '부동산 2번 뉴스, 전세 매물이 말라요.',
+          '',
+          '■ 주식',
+          '1. 나스닥 최고치',
+          '→ 장기금리 최고',
+          'https://n.news.naver.com/a/1',
+          '',
+          '■ 부동산',
+          '1. 재산세 76%',
+          '→ 재산세 평균 54%↑',
+          'https://n.news.naver.com/a/2',
+          '',
+          '2. 매물 고갈된 전세 시장',
+          '→ 전세 매물 실종',
+          'https://n.news.naver.com/a/3',
+        ].join('\n'),
+      ),
+    )
+    expect(a.map((x) => [x.section, x.headline, x.note, x.url.slice(-1), x.pick])).toEqual([
+      ['주식', '나스닥 최고치', '장기금리 최고', '1', false],
+      ['부동산', '재산세 76%', '재산세 평균 54%↑', '2', false],
+      ['부동산', '매물 고갈된 전세 시장', '전세 매물 실종', '3', true],
+    ])
+  })
+
+  it('9월 초 옛 형식 — 번호 빠짐, 제목과 주소가 한 줄', () => {
+    const a = parseArticles(
+      post(
+        [
+          '■ 주식',
+          '',
+          '"금리 오를수록 빛난다" https://n.news.naver.com/a/9?cds=news_my',
+          '',
+          '■ 부동산',
+          '오세훈 "평균월세 162만원"',
+          'https://n.news.naver.com/a/8',
+        ].join('\n'),
+      ),
+    )
+    expect(a.map((x) => [x.section, x.headline, x.note, x.url])).toEqual([
+      ['주식', '"금리 오를수록 빛난다"', null, 'https://n.news.naver.com/a/9?cds=news_my'],
+      ['부동산', '오세훈 "평균월세 162만원"', null, 'https://n.news.naver.com/a/8'],
+    ])
+  })
+
+  it('사진 크기는 주소 끝 type으로', () => {
+    expect(sizedImage('https://imgnews.pstatic.net/a.jpg?type=w800', 300)).toBe(
+      'https://imgnews.pstatic.net/a.jpg?type=w300',
+    )
   })
 })

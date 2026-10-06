@@ -87,7 +87,47 @@ async function savePost(db: SupabaseClient, source: string) {
     ? await db.from("posts").update({ kind: post.kind, body: post.body }).eq("id", existing.id)
     : await db.from("posts").insert(post);
   if (error) return { ok: false as const, reason: error.message };
+  if (post.kind === "news") await saveNewsMeta(db, post.body).catch(console.error);
   return { ok: true as const, replaced: !!existing, post };
+}
+
+// ── 기사 사진·언론사 (2026-10-06) — 앱 '오늘의 경제' 기사 카드에 쓴다 (supabase/news-meta.sql) ──
+const URL_RE = /https?:\/\/[^\s<>"')\]]+/g;
+const decode = (s: string) =>
+  s.replace(/&#x3D;/g, "=").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+
+/** 처음 보는 기사 주소만 열어서 대표 사진(og:image)과 언론사 이름을 저장한다. 못 열면 다음 글 때 다시 */
+async function saveNewsMeta(db: SupabaseClient, body: string) {
+  const urls = [...new Set(body.match(URL_RE) ?? [])];
+  if (!urls.length) return;
+  const { data: have } = await db.from("news_meta").select("url").in("url", urls);
+  const known = new Set((have ?? []).map((r: { url: string }) => r.url));
+  const rows = await Promise.all(
+    urls
+      .filter((u) => !known.has(u))
+      .map(async (url) => {
+        try {
+          const res = await fetch(url, {
+            headers: { "user-agent": "Mozilla/5.0 (compatible; moabuli-news/1.0)" },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (!res.ok) return null;
+          const html = await res.text();
+          const pick = (re: RegExp) => {
+            const m = html.match(re);
+            return m ? decode(m[1]) : null;
+          };
+          let image = pick(/<meta property="og:image" content="([^"]+)"/);
+          // 사진 없는 기사는 네이버 기본 그림이 온다 — 앱에서 빈칸으로 그리게 비워 둔다
+          if (image?.includes("static.news/image/news/ogtag")) image = null;
+          return { url, image, press: pick(/<meta name="twitter:creator" content="([^"]+)"/) };
+        } catch {
+          return null;
+        }
+      }),
+  );
+  const ok = rows.filter((r) => r !== null);
+  if (ok.length) await db.from("news_meta").upsert(ok);
 }
 
 function kakaoText(original: string) {
