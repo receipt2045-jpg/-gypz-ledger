@@ -1,3 +1,4 @@
+import FeedbackFab from './FeedbackFab'
 import { Outlet } from 'react-router-dom'
 import TabBar, { SideNav } from './TabBar'
 
@@ -14,6 +15,7 @@ export default function AppFrame() {
           <Outlet />
         </main>
         <TabBar />
+        <FeedbackFab />
       </div>
     </div>
   )

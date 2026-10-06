@@ -1,3 +1,4 @@
+import SiteFooter from '../components/SiteFooter'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowRight, Check, ChevronDown, ChevronLeft, Download, Share2, X } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
@@ -302,6 +303,7 @@ export default function ParentalLeave() {
             </div>
           </div>
         </div>
+        <SiteFooter />
       </div>
     </div>
   )

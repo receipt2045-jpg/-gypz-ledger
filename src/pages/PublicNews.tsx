@@ -1,3 +1,4 @@
+import SiteFooter from '../components/SiteFooter'
 import { useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import AssetGlance from '../components/AssetGlance'
@@ -18,6 +19,7 @@ export default function PublicNews() {
       <div className="w-full max-w-app px-5 pb-16 pt-6">
         {id ? <PostDetail publicView /> : <NewsList />}
         <StartCta />
+        <SiteFooter news />
       </div>
     </div>
   )

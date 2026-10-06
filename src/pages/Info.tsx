@@ -1,3 +1,4 @@
+import SiteFooter from '../components/SiteFooter'
 import PcColumns from '../components/PcColumns'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -110,6 +111,7 @@ export default function Info() {
           </>
         }
       />
+      <SiteFooter />
     </div>
   )
 }

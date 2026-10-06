@@ -1,3 +1,4 @@
+import SiteFooter from '../components/SiteFooter'
 import PcColumns from '../components/PcColumns'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -452,6 +453,7 @@ export default function Settings() {
           </>
         }
       />
+      <SiteFooter />
       <p className="pb-2 text-center text-[12px] text-cap">모아불리 · v1.0</p>
     </div>
   )
