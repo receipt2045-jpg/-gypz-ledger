@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  groupByDay,
   groupByMonth,
   kakaoText,
   linkify,
@@ -147,6 +148,36 @@ describe('지난 글 목록 — 한 줄 정리와 달별 묶기', () => {
     expect(g.map((x) => [x.label, x.posts.map((y) => y.id).join('')])).toEqual([
       ['2026년 10월', 'ac'],
       ['2026년 9월', 'b'],
+    ])
+  })
+})
+
+describe('카톡에서 옮긴 글 — 한 줄 정리가 여러 줄로 끊겨 있어도', () => {
+  it('빈 줄까지 이어 붙인다', () => {
+    expect(
+      postSummary(
+        '🔰 오늘 딱 하나만 읽는다면\n부동산 3번 뉴스, 오피스텔 평균 월세도\n100만원에 육박한다는 기사에요\n\n■ 주식',
+      ),
+    ).toBe('오피스텔 평균 월세도 100만원에 육박한다는 기사에요')
+  })
+
+  it('날짜별로 묶고, 같은 날은 올린 순서(아침 → 저녁)', () => {
+    const p = (id: string, postDate: string, createdAt: string): Post => ({
+      id,
+      kind: 'news',
+      title: 't',
+      body: 'b',
+      postDate,
+      createdAt,
+    })
+    const g = groupByDay([
+      p('eve', '2026-10-01', '2026-10-01T11:10:00Z'),
+      p('mor', '2026-10-01', '2026-10-01T08:18:00Z'),
+      p('new', '2026-10-06', '2026-10-06T08:17:00Z'),
+    ])
+    expect(g.map((d) => [d.label, d.posts.map((x) => x.id).join(',')])).toEqual([
+      ['10월 6일 화요일', 'new'],
+      ['10월 1일 목요일', 'mor,eve'],
     ])
   })
 })

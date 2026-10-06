@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { fetchPosts, groupByMonth, postSummary, type Post, type PostKind } from '../lib/posts'
+import {
+  fetchPosts,
+  groupByDay,
+  groupByMonth,
+  postSummary,
+  type DayGroup,
+  type PostKind,
+  type Post,
+} from '../lib/posts'
 
-/** 펼친 달에서 처음 보이는 글 수 — 나머지는 'N월 글 더 보기' */
-const FIRST_ROWS = 3
-const WEEKDAY = '일월화수목금토'
+/** 펼친 달에서 처음 보이는 날 수 — 나머지는 'N월 글 더 보기' */
+const FIRST_DAYS = 3
 
 type Filter = 'all' | Exclude<PostKind, 'notice'>
 const FILTERS: { key: Filter; label: string }[] = [
@@ -16,7 +23,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 /**
  * '오늘의 경제' 지난 글 모아 보기 (2026-10-06).
- * 달별로 묶고 맨 위 달만 펼친다. 한 줄은 날짜·제목·🔰 한 줄 정리 — 누르면 전체 글.
+ * 달별로 묶고 맨 위 달만 펼친다. 달 안에서는 날짜별로 — 같은 날 글은 한 묶음.
  * 공개 화면(/news)과 앱 정보 탭(/info/archive)이 같이 쓴다.
  */
 export default function NewsArchive({ basePath }: { basePath: '/news' | '/info' }) {
@@ -35,8 +42,11 @@ export default function NewsArchive({ basePath }: { basePath: '/news' | '/info' 
     }
   }, [])
 
-  const groups = useMemo(
-    () => groupByMonth((posts ?? []).filter((p) => filter === 'all' || p.kind === filter)),
+  const months = useMemo(
+    () =>
+      groupByMonth((posts ?? []).filter((p) => filter === 'all' || p.kind === filter)).map(
+        (g) => ({ ...g, days: groupByDay(g.posts) }),
+      ),
     [posts, filter],
   )
 
@@ -59,18 +69,16 @@ export default function NewsArchive({ basePath }: { basePath: '/news' | '/info' 
   const isOpen = (ym: string, i: number) => open[ym] ?? i === 0
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <p className="px-1 text-[13px] text-sub">지금까지 {posts.length}개 글을 모아 뒀어요</p>
-      <div className="flex gap-1.5 px-0.5 pb-1 pt-1" role="group" aria-label="글 종류">
+      <div className="flex gap-1.5 px-0.5 pb-1" role="group" aria-label="글 종류">
         {FILTERS.map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
             aria-pressed={filter === f.key}
             className={`rounded-full border px-3 py-1.5 text-[12.5px] font-bold ${
-              filter === f.key
-                ? 'border-ink bg-ink text-white'
-                : 'border-line bg-white text-sub'
+              filter === f.key ? 'border-ink bg-ink text-white' : 'border-line bg-white text-sub'
             }`}
           >
             {f.label}
@@ -78,18 +86,20 @@ export default function NewsArchive({ basePath }: { basePath: '/news' | '/info' 
         ))}
       </div>
 
-      {groups.map((g, i) => {
+      {months.map((g, i) => {
         const opened = isOpen(g.ym, i)
-        const rows = opened && !expanded[g.ym] ? g.posts.slice(0, FIRST_ROWS) : g.posts
-        const rest = g.posts.length - FIRST_ROWS
+        const days = expanded[g.ym] ? g.days : g.days.slice(0, FIRST_DAYS)
+        const hidden = g.days.length - days.length
         return (
-          <section key={g.ym} className="overflow-hidden rounded-card bg-white shadow-card">
+          <section key={g.ym} className="space-y-2.5">
             <button
               onClick={() => setOpen((o) => ({ ...o, [g.ym]: !opened }))}
               aria-expanded={opened}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
+              className={`flex w-full items-center justify-between rounded-card px-4 py-3.5 text-left ${
+                opened ? '' : 'bg-white shadow-card'
+              }`}
             >
-              <span className="text-[15px] font-bold text-ink">{g.label}</span>
+              <span className="text-[16px] font-bold text-ink">{g.label}</span>
               <span className="flex items-center gap-0.5 text-[12.5px] text-cap">
                 {g.posts.length}개
                 {opened ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -97,15 +107,15 @@ export default function NewsArchive({ basePath }: { basePath: '/news' | '/info' 
             </button>
             {opened && (
               <>
-                {rows.map((p) => (
-                  <ArchiveRow key={p.id} post={p} basePath={basePath} />
+                {days.map((d) => (
+                  <DayCard key={d.date} day={d} basePath={basePath} />
                 ))}
-                {!expanded[g.ym] && rest > 0 && (
+                {hidden > 0 && (
                   <button
                     onClick={() => setExpanded((e) => ({ ...e, [g.ym]: true }))}
-                    className="w-full border-t border-bg py-3 text-[13px] font-bold text-sub"
+                    className="w-full py-2 text-[13.5px] font-bold text-sub"
                   >
-                    {g.label.split(' ')[1]} 글 {rest}개 더 보기
+                    {g.label.split(' ')[1]} 글 더 보기
                   </button>
                 )}
               </>
@@ -117,30 +127,43 @@ export default function NewsArchive({ basePath }: { basePath: '/news' | '/info' 
   )
 }
 
-function ArchiveRow({ post, basePath }: { post: Post; basePath: string }) {
+/** 하루치 글 — 날짜 머리 아래에 그날 올린 글을 순서대로 */
+export function DayCard({
+  day,
+  basePath,
+  footer,
+}: {
+  day: DayGroup
+  basePath: string
+  footer?: React.ReactNode
+}) {
+  return (
+    <div className="overflow-hidden rounded-card bg-white shadow-card">
+      <p className="px-4 pb-0.5 pt-3.5 text-[13px] font-bold text-sub">{day.label}</p>
+      {day.posts.map((p) => (
+        <DayRow key={p.id} post={p} basePath={basePath} />
+      ))}
+      {footer}
+    </div>
+  )
+}
+
+function DayRow({ post, basePath }: { post: Post; basePath: string }) {
   const navigate = useNavigate()
-  const [y, m, d] = post.postDate.split('-').map(Number)
-  const weekday = WEEKDAY[new Date(y, m - 1, d).getDay()]
   return (
     <button
       onClick={() => navigate(`${basePath}/${post.id}`)}
-      className="flex w-full gap-3 border-t border-bg px-4 py-3 text-left"
+      className="block w-full border-t border-bg px-4 py-3 text-left first-of-type:border-t-0"
     >
-      <span className="w-8 flex-none pt-0.5 text-center text-[11.5px] leading-tight text-cap">
-        <b className="block text-[16px] font-bold text-ink">{d}</b>
-        {weekday}
+      <span
+        className={`block text-[12px] font-bold ${
+          post.kind === 'market' ? 'text-[#12A56B]' : 'text-brand'
+        }`}
+      >
+        {post.title}
       </span>
-      <span className="min-w-0 flex-1">
-        <span
-          className={`inline-block rounded-md px-1.5 py-px text-[11px] font-bold ${
-            post.kind === 'market' ? 'bg-[#E6F7EF] text-[#12A56B]' : 'bg-brand/10 text-brand'
-          }`}
-        >
-          {post.title}
-        </span>
-        <span className="mt-1 line-clamp-2 block text-[14px] leading-snug text-[#333D4B]">
-          {postSummary(post.body)}
-        </span>
+      <span className="mt-1 line-clamp-3 block text-[15px] leading-normal text-ink">
+        {postSummary(post.body)}
       </span>
     </button>
   )

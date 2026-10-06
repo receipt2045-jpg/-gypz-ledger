@@ -121,7 +121,8 @@ export function kakaoText(original: string, withAppLink: boolean): string {
 }
 
 /**
- * 지난 글 목록의 한 줄 — 🔰 바로 다음 줄(그날의 한 줄 정리).
+ * 지난 글 목록의 한 줄 — 🔰 다음 문단(그날의 한 줄 정리).
+ * 카톡에서 옮긴 글은 문장 중간에 줄바꿈이 있어("오피스텔 평균 월세도⏎100만원에…") 빈 줄까지 이어 붙인다.
  * "부동산 2번 뉴스, 전세 매물이…"의 앞머리는 떼고, 🔰가 없는 9월 초 옛 형식은 본문 첫 줄을 쓴다.
  */
 export function postSummary(body: string): string {
@@ -130,8 +131,18 @@ export function postSummary(body: string): string {
     .split('\n')
     .map((l) => l.trim())
   const mark = lines.findIndex((l) => l.startsWith('🔰'))
-  const after = mark >= 0 ? lines.slice(mark + 1).find((l) => l) : undefined
-  if (after) return after.replace(/^\S+\s*\d+번\s*뉴스\s*,?\s*/, '').trim() || after
+  if (mark >= 0) {
+    const para: string[] = []
+    for (const l of lines.slice(mark + 1)) {
+      if (l) para.push(l)
+      else if (para.length) break
+    }
+    const joined = para
+      .join(' ')
+      .replace(/\s*https?:\/\/\S+/g, '')
+      .trim()
+    if (joined) return joined.replace(/^\S+\s*\d+번\s*뉴스\s*,?\s*/, '').trim() || joined
+  }
   const first = lines
     .map((l) =>
       l
@@ -166,6 +177,34 @@ export function groupByMonth(posts: Post[]): MonthGroup[] {
   return groups.sort((a, b) => (a.ym < b.ym ? 1 : -1))
 }
 
+const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
+
+export interface DayGroup {
+  /** YYYY-MM-DD */
+  date: string
+  /** 10월 6일 화요일 */
+  label: string
+  /** 그날 올린 순서대로(아침 → 저녁) */
+  posts: Post[]
+}
+
+/** 날짜별로 묶기 — 최근 날부터. 같은 날 안에서는 올린 순서대로 읽게 한다 */
+export function groupByDay(posts: Post[]): DayGroup[] {
+  const days: DayGroup[] = []
+  for (const p of posts) {
+    let g = days.find((x) => x.date === p.postDate)
+    if (!g) {
+      const [y, m, d] = p.postDate.split('-').map(Number)
+      const wd = WEEKDAY[new Date(y, m - 1, d).getDay()]
+      g = { date: p.postDate, label: `${m}월 ${d}일 ${wd}요일`, posts: [] }
+      days.push(g)
+    }
+    g.posts.push(p)
+  }
+  for (const g of days) g.posts.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+  return days.sort((a, b) => (a.date < b.date ? 1 : -1))
+}
+
 // ── DB ────────────────────────────────────────
 
 interface PostRow {
@@ -195,6 +234,13 @@ export async function fetchPosts(limit = 20): Promise<Post[]> {
     .limit(limit)
   if (error) throw error
   return (data as PostRow[]).map(fromRow)
+}
+
+/** 지금까지 올린 글 수 — 정보 탭의 '지난 글 달별로 보기 N개' */
+export async function fetchPostCount(): Promise<number> {
+  const { count, error } = await supabase.from('posts').select('id', { count: 'exact', head: true })
+  if (error) throw error
+  return count ?? 0
 }
 
 export async function insertPost(d: PostDraft): Promise<Post> {

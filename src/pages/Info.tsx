@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Gift, MessagesSquare, PenLine } from 'lucide-react'
 import Card from '../components/Card'
-import PostCard from '../components/PostCard'
+import { DayCard } from '../components/NewsArchive'
 import { NOTICES, type Notice } from '../lib/notices'
-import { amIAdmin, fetchPosts, type Post } from '../lib/posts'
+import { amIAdmin, fetchPostCount, fetchPosts, groupByDay, type Post } from '../lib/posts'
 
 /**
  * 정보 탭 (2026-09-30, 게시판 + 자산 로드맵 자리를 합쳤다).
@@ -17,12 +17,16 @@ export default function Info() {
   const navigate = useNavigate()
   const [posts, setPosts] = useState<Post[] | null>(null)
   const [admin, setAdmin] = useState(false)
+  const [total, setTotal] = useState<number | null>(null)
 
   useEffect(() => {
     let live = true
-    fetchPosts(4)
+    fetchPosts(6)
       .then((p) => live && setPosts(p))
       .catch(() => live && setPosts([])) // 못 읽으면 칸을 숨긴다 — 나머지 정보는 그대로 본다
+    fetchPostCount()
+      .then((n) => live && setTotal(n))
+      .catch(() => {})
     amIAdmin()
       .then((a) => live && setAdmin(a))
       .catch(() => {})
@@ -31,7 +35,8 @@ export default function Info() {
     }
   }, [])
 
-  const visible = posts ? posts.slice(0, 3) : []
+  // 가장 최근 하루치만 — 지난 글은 달별 화면에서. 아래 계산기가 밀려나지 않게 (2026-10-06)
+  const latest = posts && posts.length > 0 ? groupByDay(posts)[0] : null
 
   return (
     <div className="animate-fade-up space-y-5">
@@ -47,30 +52,27 @@ export default function Info() {
         )}
       </header>
 
-      {posts && posts.length > 0 && (
+      {latest && (
         <section aria-label="오늘의 경제" className="space-y-3">
           <SectionTitle>오늘의 경제</SectionTitle>
-          {visible.map((p) => (
-            <PostCard key={p.id} post={p} />
-          ))}
-          {posts.length > 3 && (
-            <button
-              onClick={() => navigate('/info/archive')}
-              className="flex w-full items-center justify-center gap-1 rounded-btn bg-white py-3 text-[13.5px] font-bold text-sub shadow-card"
-            >
-              지난 글 달별로 모아 보기
-              <ChevronRight size={15} />
-            </button>
-          )}
+          <DayCard
+            day={latest}
+            basePath="/info"
+            footer={
+              <button
+                onClick={() => navigate('/info/archive')}
+                className="flex w-full items-center justify-between border-t border-bg px-4 py-3 text-[13.5px] font-bold text-sub"
+              >
+                지난 글 달별로 보기
+                <span className="flex items-center gap-0.5 font-normal text-cap">
+                  {total ? `${total}개` : ''}
+                  <ChevronRight size={15} />
+                </span>
+              </button>
+            }
+          />
         </section>
       )}
-
-      <section aria-label="공지" className="space-y-3">
-        <SectionTitle>공지</SectionTitle>
-        {NOTICES.map((n) => (
-          <NoticeCard key={n.id} notice={n} />
-        ))}
-      </section>
 
       <section aria-label="계산기" className="space-y-3">
         <SectionTitle>계산기</SectionTitle>
@@ -92,6 +94,13 @@ export default function Info() {
           </span>
           <ChevronRight size={18} className="shrink-0 text-cap" />
         </button>
+      </section>
+
+      <section aria-label="공지" className="space-y-3">
+        <SectionTitle>공지</SectionTitle>
+        {NOTICES.map((n) => (
+          <NoticeCard key={n.id} notice={n} />
+        ))}
       </section>
 
       <section aria-label="정보·혜택" className="space-y-3">
