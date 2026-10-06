@@ -24,7 +24,6 @@ import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { deleteMyAccount } from '../lib/db'
 import { COLOR_STYLE, MEMBER_COLORS, memberColor, type MemberColor } from '../lib/memberColors'
-import { abbreviateKRW } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import type { AppData, CategoryGroup } from '../types'
 
@@ -246,19 +245,6 @@ export default function Settings() {
                 <p className="-mt-1 px-1 text-[12px] leading-relaxed text-cap">
                   내 이름이 배우자 자리에 있으면 눌러주세요. 기록은 그대로 두고 이름표만 바뀌어요.
                 </p>
-                {/* 목표 순자산은 로드맵 페이지에서 정한다 (2026-10-05) */}
-                <button
-                  onClick={() => navigate('/roadmap')}
-                  className="flex w-full items-center justify-between rounded-btn border border-line bg-white px-3.5 py-3 active:bg-bg"
-                >
-                  <span className="text-[14px] font-bold text-ink">자산 로드맵</span>
-                  <span className="flex items-center gap-0.5 text-[13px] text-sub">
-                    {profile.targetNetWorth > 0
-                      ? `목표 ${abbreviateKRW(profile.targetNetWorth)}`
-                      : '목표 정하기'}
-                    <ChevronRight size={16} className="text-cap" />
-                  </span>
-                </button>
                 <Field label="자녀" hint="자산 소유자로 쓸 수 있어요">
                   {childNames.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">

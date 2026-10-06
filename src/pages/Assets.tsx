@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Pencil } from 'lucide-react'
+import { ChevronRight, Pencil } from 'lucide-react'
 import AssetGlance from '../components/AssetGlance'
 import Card from '../components/Card'
 import { useLedgerStore } from '../lib/store'
-import { resolveSnapshot, totalAssets } from '../lib/carryover'
+import { netWorthOf, resolveSnapshot, totalAssets } from '../lib/carryover'
 import { krwOf, useFxRates } from '../lib/fx'
-import { currentYm } from '../lib/format'
+import { abbreviateKRW, currentYm, formatYmKorean } from '../lib/format'
+import { computeRoadmap, roadmapInput } from '../lib/roadmap'
 import { assetSeries, isOwned } from '../lib/assetGlance'
 
 /**
@@ -15,6 +16,8 @@ import { assetSeries, isOwned } from '../lib/assetGlance'
  * 예전 '자세히'(목표 카드·순자산 차트·도넛·계좌 카드)는 뺐다. 길이가 폰 세 장이 넘어
  * 한눈에 안 들어왔다. 함께 = 전체 자산 기준 그래프, 사람을 고르면 엑셀처럼 칸 나눈 표.
  * 고치기는 오른쪽 위 연필 → 자산 등록 화면.
+ *
+ * 자산 로드맵 입구는 설정에서 여기로 옮겼다(2026-10-06) — 캡처 칸(기준 날짜 줄) 아래에 둬서 캡처엔 안 찍힌다.
  */
 export default function Assets() {
   const navigate = useNavigate()
@@ -41,6 +44,13 @@ export default function Assets() {
   const series = assetSeries(snapshots, latestYm, 5).map((d, i, arr) =>
     i === arr.length - 1 ? { ...d, value: assets } : d,
   )
+
+  // 로드맵 카드 한 줄 — 홈 10년 목표 카드·로드맵 화면과 같은 계산 (지금 달 기준)
+  const reachYm = useMemo(() => {
+    const now = currentYm()
+    const input = roadmapInput(profile, netWorthOf(resolveSnapshot(snapshots, now)), now)
+    return input.target > 0 && input.monthlySaving > 0 ? computeRoadmap(input).reachYm : null
+  }, [profile, snapshots])
 
   return (
     <div className="animate-fade-up space-y-4">
@@ -80,6 +90,29 @@ export default function Assets() {
       )}
 
       <AssetGlance items={items} picked={picked} owners={owners} ym={latestYm} series={series} pc />
+
+      <button
+        onClick={() => navigate('/roadmap')}
+        className="flex w-full items-center gap-3 rounded-card border-[1.5px] border-brand bg-white px-4 py-3.5 text-left shadow-card active:bg-bg"
+      >
+        <span
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-[19px]"
+          aria-hidden
+        >
+          🗺️
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-bold text-ink">자산 로드맵</span>
+          <span className="mt-0.5 block text-[12.5px] text-sub">
+            {profile.targetNetWorth > 0
+              ? `목표 ${abbreviateKRW(profile.targetNetWorth)}${
+                  reachYm ? ` · 지금 속도면 ${formatYmKorean(reachYm)} 도착` : ''
+                }`
+              : '목표를 정하면 언제 닿는지 연도별로 그려 드려요'}
+          </span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-cap" />
+      </button>
     </div>
   )
 }

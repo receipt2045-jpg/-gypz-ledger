@@ -73,6 +73,14 @@ describe('자산 탭 — 한 화면 (2026-10-05)', () => {
     expect(screen.queryByText('10년 목표 순자산')).not.toBeInTheDocument()
   })
 
+  it('자산 로드맵 입구 — 설정에서 옮겨 왔다, 캡처 칸(기준 날짜 줄) 아래', () => {
+    seed()
+    renderScreen(<Assets />)
+    const road = screen.getByRole('button', { name: /자산 로드맵/ })
+    const stamp = screen.getByText(/모아불리 가계부 · 우리집 ·/)
+    expect(stamp.compareDocumentPosition(road) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('남편을 고르면 남편 것만 엑셀처럼 표로', async () => {
     seed()
     const { user } = renderScreen(<Assets />)
