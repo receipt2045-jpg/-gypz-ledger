@@ -79,7 +79,7 @@ export default function Assets() {
         </div>
       )}
 
-      <AssetGlance items={items} picked={picked} owners={owners} ym={latestYm} series={series} />
+      <AssetGlance items={items} picked={picked} owners={owners} ym={latestYm} series={series} pc />
     </div>
   )
 }

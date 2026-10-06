@@ -1,6 +1,20 @@
+import PcColumns from '../components/PcColumns'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Copy, Check, ChevronRight, Download, KeyRound, LogOut, Share2, Upload, RotateCcw, Trash2, X, Plus } from 'lucide-react'
+import {
+  Copy,
+  Check,
+  ChevronRight,
+  Download,
+  KeyRound,
+  LogOut,
+  Share2,
+  Upload,
+  RotateCcw,
+  Trash2,
+  X,
+  Plus,
+} from 'lucide-react'
 import Card from '../components/Card'
 import FeedbackCard from '../components/FeedbackCard'
 import { shareInvite } from '../lib/invite'
@@ -44,7 +58,9 @@ export default function Settings() {
       setIsAdmin(admin)
       if (!admin) return
       listRequests()
-        .then((rs) => setNewRequests(rs.filter((r) => r.status === 'requested' && !r.revoked_at).length))
+        .then((rs) =>
+          setNewRequests(rs.filter((r) => r.status === 'requested' && !r.revoked_at).length),
+        )
         .catch(() => {
           /* 실패해도 설정 화면은 그대로 */
         })
@@ -149,292 +165,307 @@ export default function Settings() {
         <h1 className="text-[18px] font-bold text-ink">설정</h1>
       </header>
 
-      {/* 부부 연결 */}
-      <Card>
-        <h2 className="mb-1 text-[15px] font-bold text-ink">부부 연결</h2>
-        <p className="text-[13px] text-sub">
-          {memberNo ? `내 계정은 구성원 ${memberNo}(${memberNo === 1 ? profile.member1Name : profile.member2Name})이에요. ` : ''}
-          배우자에게 아래 초대 코드를 알려주면 함께 쓸 수 있어요.
-        </p>
-        <div className="mt-3 flex items-center gap-2">
-          <span className="tnum flex-1 rounded-btn bg-bg px-4 py-3 text-center text-[18px] font-extrabold tracking-[0.25em] text-ink">
-            {inviteCode ?? '—'}
-          </span>
-          <button
-            onClick={copyInvite}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-btn bg-bg text-sub active:bg-line"
-            aria-label="초대 코드 복사"
-          >
-            {copied ? <Check size={19} /> : <Copy size={19} />}
-          </button>
-        </div>
-        <button
-          onClick={sendInvite}
-          className="mt-2 flex h-12 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
-        >
-          <Share2 size={17} />
-          {invited ? '보냈어요' : '배우자에게 초대 보내기'}
-        </button>
-      </Card>
-
-      {/* 프로필 */}
-      <Card>
-        <h2 className="mb-3 text-[15px] font-bold text-ink">부부 정보</h2>
-        <div className="space-y-3">
-          <Field label="구성원 1" hint="예: 남편">
-            <input
-              type="text"
-              value={profile.member1Name}
-              onChange={(e) => updateProfile({ member1Name: e.target.value })}
-              placeholder="남편"
-              className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
-            />
-            <ColorSwatches
-              current={memberColor(1, profile)}
-              onPick={(c) => updateProfile({ member1Color: c })}
-            />
-          </Field>
-          <Field label="구성원 2" hint="예: 아내">
-            <input
-              type="text"
-              value={profile.member2Name}
-              onChange={(e) => updateProfile({ member2Name: e.target.value })}
-              placeholder="아내"
-              className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
-            />
-            <ColorSwatches
-              current={memberColor(2, profile)}
-              onPick={(c) => updateProfile({ member2Color: c })}
-            />
-          </Field>
-          {/* "내가 아내인데 남편으로 나와요" — 이름표만 서로 바꾸면 과거 기록까지 맞게 보인다 */}
-          <button
-            onClick={() =>
-              updateProfile({
-                member1Name: profile.member2Name,
-                member2Name: profile.member1Name,
-                member1Color: profile.member2Color,
-                member2Color: profile.member1Color,
-              })
-            }
-            className="w-full rounded-btn bg-bg py-2.5 text-[13px] font-bold text-sub active:bg-line"
-          >
-            ⇄ 두 이름 서로 바꾸기
-          </button>
-          <p className="-mt-1 px-1 text-[12px] leading-relaxed text-cap">
-            내 이름이 배우자 자리에 있으면 눌러주세요. 기록은 그대로 두고 이름표만 바뀌어요.
-          </p>
-          {/* 목표 순자산은 로드맵 페이지에서 정한다 (2026-10-05) */}
-          <button
-            onClick={() => navigate('/roadmap')}
-            className="flex w-full items-center justify-between rounded-btn border border-line bg-white px-3.5 py-3 active:bg-bg"
-          >
-            <span className="text-[14px] font-bold text-ink">자산 로드맵</span>
-            <span className="flex items-center gap-0.5 text-[13px] text-sub">
-              {profile.targetNetWorth > 0 ? `목표 ${abbreviateKRW(profile.targetNetWorth)}` : '목표 정하기'}
-              <ChevronRight size={16} className="text-cap" />
-            </span>
-          </button>
-          <Field label="자녀" hint="자산 소유자로 쓸 수 있어요">
-            {childNames.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1.5">
-                {childNames.map((c) => (
-                  <span
-                    key={c}
-                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-[13px] font-medium text-amber-600"
-                  >
-                    {c}
-                    <button onClick={() => removeChild(c)} aria-label={`${c} 삭제`}>
-                      <X size={13} className="text-amber-400" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-1.5">
-              <input
-                type="text"
-                value={newChild}
-                onChange={(e) => setNewChild(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addChild()}
-                placeholder="자녀 이름 (예: 첫째, 자녀1)"
-                className="flex-1 rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
-              />
-              <button
-                onClick={addChild}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-brand text-white active:bg-brand-dark"
-                aria-label="자녀 추가"
-              >
-                <Plus size={18} />
-              </button>
-            </div>
-          </Field>
-        </div>
-      </Card>
-
-      {/* 카테고리 관리 */}
-      <Card>
-        <h2 className="mb-3 text-[15px] font-bold text-ink">카테고리 관리</h2>
-        <div className="space-y-4">
-          {GROUP_ORDER.map((g) => (
-            <div key={g}>
-              <p className="mb-1.5 text-[13px] font-semibold text-sub">{GROUP_LABEL[g]}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {categories[g].map((c) => (
-                  <span
-                    key={c}
-                    className="inline-flex items-center gap-1 rounded-full bg-bg px-3 py-1.5 text-[13px] font-medium text-ink"
-                  >
-                    {c}
-                    <button onClick={() => removeCategory(g, c)} aria-label={`${c} 삭제`}>
-                      <X size={13} className="text-cap" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="mt-2 flex gap-1.5">
-                <input
-                  type="text"
-                  value={newCat[g]}
-                  onChange={(e) => setNewCat((s) => ({ ...s, [g]: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newCat[g].trim()) {
-                      addCategory(g, newCat[g])
-                      setNewCat((s) => ({ ...s, [g]: '' }))
-                    }
-                  }}
-                  placeholder="새 카테고리"
-                  className="flex-1 rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
-                />
+      {/* PC에서는 두 칸 — 왼쪽: 우리집 설정, 오른쪽: 데이터·계정 (2026-10-06) */}
+      <PcColumns
+        left={
+          <>
+            {/* 부부 연결 */}
+            <Card>
+              <h2 className="mb-1 text-[15px] font-bold text-ink">부부 연결</h2>
+              <p className="text-[13px] text-sub">
+                {memberNo
+                  ? `내 계정은 구성원 ${memberNo}(${memberNo === 1 ? profile.member1Name : profile.member2Name})이에요. `
+                  : ''}
+                배우자에게 아래 초대 코드를 알려주면 함께 쓸 수 있어요.
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="tnum flex-1 rounded-btn bg-bg px-4 py-3 text-center text-[18px] font-extrabold tracking-[0.25em] text-ink">
+                  {inviteCode ?? '—'}
+                </span>
                 <button
-                  onClick={() => {
-                    if (newCat[g].trim()) {
-                      addCategory(g, newCat[g])
-                      setNewCat((s) => ({ ...s, [g]: '' }))
-                    }
-                  }}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-brand text-white active:bg-brand-dark"
-                  aria-label="추가"
+                  onClick={copyInvite}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-btn bg-bg text-sub active:bg-line"
+                  aria-label="초대 코드 복사"
                 >
-                  <Plus size={18} />
+                  {copied ? <Check size={19} /> : <Copy size={19} />}
                 </button>
               </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+              <button
+                onClick={sendInvite}
+                className="mt-2 flex h-12 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
+              >
+                <Share2 size={17} />
+                {invited ? '보냈어요' : '배우자에게 초대 보내기'}
+              </button>
+            </Card>
 
-      {/* 데이터 관리 */}
-      <Card>
-        <h2 className="mb-3 text-[15px] font-bold text-ink">데이터 관리</h2>
-        <div className="space-y-2">
-          <button
-            onClick={handleExport}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
-          >
-            <Download size={18} /> JSON 내보내기
-          </button>
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
-          >
-            <Upload size={18} /> JSON 가져오기
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json"
-            onChange={handleImport}
-            className="hidden"
-          />
-          <button
-            onClick={handleReset}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-danger/10 text-[15px] font-semibold text-danger active:bg-danger/20"
-          >
-            <RotateCcw size={18} /> 데이터 초기화
-          </button>
-        </div>
-      </Card>
-
-      {/* 계정 */}
-      <Card>
-        <h2 className="mb-3 text-[15px] font-bold text-ink">계정</h2>
-        <div className="space-y-2">
-          {/* 마케팅 수신은 언제든 끌 수 있어야 한다 — 동의를 받았으면 철회 수단이 있어야 한다 */}
-          <MarketingToggle />
-          <PasswordForm />
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
-          >
-            <LogOut size={18} /> 로그아웃
-          </button>
-          <button
-            onClick={withdraw}
-            disabled={deleting}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-danger/10 text-[15px] font-semibold text-danger active:bg-danger/20 disabled:opacity-50"
-          >
-            <Trash2 size={18} /> {deleting ? '탈퇴 처리 중…' : '회원 탈퇴'}
-          </button>
-        </div>
-      </Card>
-
-      {/* 의견 보내기 */}
-      <FeedbackCard screen="settings" />
-
-      {/* 운영자 전용 — 리포트 신청 관리 */}
-      {isAdmin && (
-        <Card onClick={() => navigate('/admin/reports')}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="flex items-center gap-1.5 text-[15px] font-bold text-ink">
-                리포트 신청 🔒
-                {newRequests > 0 && (
-                  <span className="tnum rounded-full bg-danger px-2 py-0.5 text-[11px] font-bold text-white">
-                    새 신청 {newRequests}건
+            {/* 프로필 */}
+            <Card>
+              <h2 className="mb-3 text-[15px] font-bold text-ink">부부 정보</h2>
+              <div className="space-y-3">
+                <Field label="구성원 1" hint="예: 남편">
+                  <input
+                    type="text"
+                    value={profile.member1Name}
+                    onChange={(e) => updateProfile({ member1Name: e.target.value })}
+                    placeholder="남편"
+                    className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
+                  />
+                  <ColorSwatches
+                    current={memberColor(1, profile)}
+                    onPick={(c) => updateProfile({ member1Color: c })}
+                  />
+                </Field>
+                <Field label="구성원 2" hint="예: 아내">
+                  <input
+                    type="text"
+                    value={profile.member2Name}
+                    onChange={(e) => updateProfile({ member2Name: e.target.value })}
+                    placeholder="아내"
+                    className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
+                  />
+                  <ColorSwatches
+                    current={memberColor(2, profile)}
+                    onPick={(c) => updateProfile({ member2Color: c })}
+                  />
+                </Field>
+                {/* "내가 아내인데 남편으로 나와요" — 이름표만 서로 바꾸면 과거 기록까지 맞게 보인다 */}
+                <button
+                  onClick={() =>
+                    updateProfile({
+                      member1Name: profile.member2Name,
+                      member2Name: profile.member1Name,
+                      member1Color: profile.member2Color,
+                      member2Color: profile.member1Color,
+                    })
+                  }
+                  className="w-full rounded-btn bg-bg py-2.5 text-[13px] font-bold text-sub active:bg-line"
+                >
+                  ⇄ 두 이름 서로 바꾸기
+                </button>
+                <p className="-mt-1 px-1 text-[12px] leading-relaxed text-cap">
+                  내 이름이 배우자 자리에 있으면 눌러주세요. 기록은 그대로 두고 이름표만 바뀌어요.
+                </p>
+                {/* 목표 순자산은 로드맵 페이지에서 정한다 (2026-10-05) */}
+                <button
+                  onClick={() => navigate('/roadmap')}
+                  className="flex w-full items-center justify-between rounded-btn border border-line bg-white px-3.5 py-3 active:bg-bg"
+                >
+                  <span className="text-[14px] font-bold text-ink">자산 로드맵</span>
+                  <span className="flex items-center gap-0.5 text-[13px] text-sub">
+                    {profile.targetNetWorth > 0
+                      ? `목표 ${abbreviateKRW(profile.targetNetWorth)}`
+                      : '목표 정하기'}
+                    <ChevronRight size={16} className="text-cap" />
                   </span>
-                )}
-              </p>
-              <p className="mt-1 text-[13px] text-sub">신청을 열면 초안이 자동으로 만들어져요</p>
-            </div>
-            <ChevronRight size={18} className="shrink-0 text-cap" />
-          </div>
-        </Card>
-      )}
+                </button>
+                <Field label="자녀" hint="자산 소유자로 쓸 수 있어요">
+                  {childNames.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {childNames.map((c) => (
+                        <span
+                          key={c}
+                          className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-[13px] font-medium text-amber-600"
+                        >
+                          {c}
+                          <button onClick={() => removeChild(c)} aria-label={`${c} 삭제`}>
+                            <X size={13} className="text-amber-400" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={newChild}
+                      onChange={(e) => setNewChild(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addChild()}
+                      placeholder="자녀 이름 (예: 첫째, 자녀1)"
+                      className="flex-1 rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
+                    />
+                    <button
+                      onClick={addChild}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-brand text-white active:bg-brand-dark"
+                      aria-label="자녀 추가"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+                </Field>
+              </div>
+            </Card>
 
-      {/* 운영자 전용 — 받은 의견 분석 */}
-      {isAdmin && (
-        <Card onClick={() => navigate('/admin/feedback')}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[15px] font-bold text-ink">받은 의견 분석 🔒</p>
-              <p className="mt-1 text-[13px] text-sub">사용자 의견을 AI로 정리해서 봐요</p>
-            </div>
-            <ChevronRight size={18} className="shrink-0 text-cap" />
-          </div>
-        </Card>
-      )}
+            {/* 카테고리 관리 */}
+            <Card>
+              <h2 className="mb-3 text-[15px] font-bold text-ink">카테고리 관리</h2>
+              <div className="space-y-4">
+                {GROUP_ORDER.map((g) => (
+                  <div key={g}>
+                    <p className="mb-1.5 text-[13px] font-semibold text-sub">{GROUP_LABEL[g]}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {categories[g].map((c) => (
+                        <span
+                          key={c}
+                          className="inline-flex items-center gap-1 rounded-full bg-bg px-3 py-1.5 text-[13px] font-medium text-ink"
+                        >
+                          {c}
+                          <button onClick={() => removeCategory(g, c)} aria-label={`${c} 삭제`}>
+                            <X size={13} className="text-cap" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex gap-1.5">
+                      <input
+                        type="text"
+                        value={newCat[g]}
+                        onChange={(e) => setNewCat((s) => ({ ...s, [g]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newCat[g].trim()) {
+                            addCategory(g, newCat[g])
+                            setNewCat((s) => ({ ...s, [g]: '' }))
+                          }
+                        }}
+                        placeholder="새 카테고리"
+                        className="flex-1 rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
+                      />
+                      <button
+                        onClick={() => {
+                          if (newCat[g].trim()) {
+                            addCategory(g, newCat[g])
+                            setNewCat((s) => ({ ...s, [g]: '' }))
+                          }
+                        }}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-brand text-white active:bg-brand-dark"
+                        aria-label="추가"
+                      >
+                        <Plus size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </>
+        }
+        right={
+          <>
+            {/* 데이터 관리 */}
+            <Card>
+              <h2 className="mb-3 text-[15px] font-bold text-ink">데이터 관리</h2>
+              <div className="space-y-2">
+                <button
+                  onClick={handleExport}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
+                >
+                  <Download size={18} /> JSON 내보내기
+                </button>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
+                >
+                  <Upload size={18} /> JSON 가져오기
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="application/json"
+                  onChange={handleImport}
+                  className="hidden"
+                />
+                <button
+                  onClick={handleReset}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-danger/10 text-[15px] font-semibold text-danger active:bg-danger/20"
+                >
+                  <RotateCcw size={18} /> 데이터 초기화
+                </button>
+              </div>
+            </Card>
 
-      {/* 약관·정책 */}
-      <Card>
-        <h2 className="mb-3 text-[15px] font-bold text-ink">약관·정책</h2>
-        <div className="divide-y divide-line/70">
-          {[
-            { label: '개인정보처리방침', to: '/legal/privacy' },
-            { label: '이용약관', to: '/legal/terms' },
-          ].map((it) => (
-            <button
-              key={it.to}
-              onClick={() => navigate(it.to)}
-              className="flex w-full items-center justify-between py-3 text-left active:opacity-60"
-            >
-              <span className="text-[15px] text-ink">{it.label}</span>
-              <ChevronRight size={18} className="text-cap" />
-            </button>
-          ))}
-        </div>
-      </Card>
+            {/* 계정 */}
+            <Card>
+              <h2 className="mb-3 text-[15px] font-bold text-ink">계정</h2>
+              <div className="space-y-2">
+                {/* 마케팅 수신은 언제든 끌 수 있어야 한다 — 동의를 받았으면 철회 수단이 있어야 한다 */}
+                <MarketingToggle />
+                <PasswordForm />
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
+                >
+                  <LogOut size={18} /> 로그아웃
+                </button>
+                <button
+                  onClick={withdraw}
+                  disabled={deleting}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-danger/10 text-[15px] font-semibold text-danger active:bg-danger/20 disabled:opacity-50"
+                >
+                  <Trash2 size={18} /> {deleting ? '탈퇴 처리 중…' : '회원 탈퇴'}
+                </button>
+              </div>
+            </Card>
 
+            {/* 의견 보내기 */}
+            <FeedbackCard screen="settings" />
+
+            {/* 운영자 전용 — 리포트 신청 관리 */}
+            {isAdmin && (
+              <Card onClick={() => navigate('/admin/reports')}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-[15px] font-bold text-ink">
+                      리포트 신청 🔒
+                      {newRequests > 0 && (
+                        <span className="tnum rounded-full bg-danger px-2 py-0.5 text-[11px] font-bold text-white">
+                          새 신청 {newRequests}건
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-1 text-[13px] text-sub">
+                      신청을 열면 초안이 자동으로 만들어져요
+                    </p>
+                  </div>
+                  <ChevronRight size={18} className="shrink-0 text-cap" />
+                </div>
+              </Card>
+            )}
+
+            {/* 운영자 전용 — 받은 의견 분석 */}
+            {isAdmin && (
+              <Card onClick={() => navigate('/admin/feedback')}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[15px] font-bold text-ink">받은 의견 분석 🔒</p>
+                    <p className="mt-1 text-[13px] text-sub">사용자 의견을 AI로 정리해서 봐요</p>
+                  </div>
+                  <ChevronRight size={18} className="shrink-0 text-cap" />
+                </div>
+              </Card>
+            )}
+
+            {/* 약관·정책 */}
+            <Card>
+              <h2 className="mb-3 text-[15px] font-bold text-ink">약관·정책</h2>
+              <div className="divide-y divide-line/70">
+                {[
+                  { label: '개인정보처리방침', to: '/legal/privacy' },
+                  { label: '이용약관', to: '/legal/terms' },
+                ].map((it) => (
+                  <button
+                    key={it.to}
+                    onClick={() => navigate(it.to)}
+                    className="flex w-full items-center justify-between py-3 text-left active:opacity-60"
+                  >
+                    <span className="text-[15px] text-ink">{it.label}</span>
+                    <ChevronRight size={18} className="text-cap" />
+                  </button>
+                ))}
+              </div>
+            </Card>
+          </>
+        }
+      />
       <p className="pb-2 text-center text-[12px] text-cap">모아불리 · v1.0</p>
     </div>
   )
@@ -516,7 +547,10 @@ function PasswordForm() {
         : `실패: ${error.message}`
       setMsg({ text, ok: false })
     } else {
-      setMsg({ text: '✅ 비밀번호가 설정됐어요. 이제 어디서든 이메일+비밀번호로 로그인하세요!', ok: true })
+      setMsg({
+        text: '✅ 비밀번호가 설정됐어요. 이제 어디서든 이메일+비밀번호로 로그인하세요!',
+        ok: true,
+      })
       setPw('')
       setOpen(false)
     }
@@ -566,9 +600,7 @@ function PasswordForm() {
           <KeyRound size={18} /> 비밀번호 설정·변경
         </button>
       )}
-      {msg && (
-        <p className={`text-[13px] ${msg.ok ? 'text-brand' : 'text-danger'}`}>{msg.text}</p>
-      )}
+      {msg && <p className={`text-[13px] ${msg.ok ? 'text-brand' : 'text-danger'}`}>{msg.text}</p>}
     </div>
   )
 }

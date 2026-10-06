@@ -1,3 +1,4 @@
+import PcColumns from '../components/PcColumns'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart3, Check, ChevronLeft, ChevronRight, Settings, TrendingUp } from 'lucide-react'
@@ -149,7 +150,9 @@ export default function Home() {
         <h1 className="tnum mt-1 text-[34px] font-extrabold leading-tight tracking-tight text-ink">
           {abbreviateKRW(netWorth)}
         </h1>
-        <p className={`mt-1 text-[14px] font-semibold ${delta.zero ? 'text-cap' : delta.positive ? 'text-brand' : 'text-danger'}`}>
+        <p
+          className={`mt-1 text-[14px] font-semibold ${delta.zero ? 'text-cap' : delta.positive ? 'text-brand' : 'text-danger'}`}
+        >
           지난달보다 {delta.zero ? '변동 없음' : delta.text}
         </p>
       </header>
@@ -170,165 +173,182 @@ export default function Home() {
       {/* 혼자 쓰는 집이면 배우자 초대 — 정산은 둘 다 해야 끝난다 */}
       <InviteBanner />
 
-      {/* 오늘 카드 — 매일의 기록이 예산·연말정산으로 이어지는 허브 */}
-      <TodayCard />
-
-      {/* 이번 달 할 일 — 월초 예산 / 월말 정산 */}
-      {todo && (
-        <button
-          onClick={todo.onClick}
-          className="flex w-full items-center justify-between gap-3 rounded-card bg-brand/10 px-4 py-3 text-left active:bg-brand/15"
-        >
-          <span className="text-[14px] font-bold text-ink">🔔 {todo.text}</span>
-          <span className="flex shrink-0 items-center gap-0.5 text-[13px] font-bold text-brand">
-            {todo.cta}
-            <ChevronRight size={16} />
-          </span>
-        </button>
-      )}
-
-      {/* 바로가기 — 자주 쓰는 3가지 */}
-      <div className="grid grid-cols-3 gap-2">
-        <QuickAction
-          emoji="📝"
-          label="예산 세우기"
-          onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
-        />
-        <QuickAction
-          emoji="✅"
-          label="정산하기"
-          onClick={() => navigate('/checkup', { state: { ym, mode: 'settle' } })}
-        />
-        <QuickAction emoji="🏦" label="자산 입력" onClick={() => navigate('/asset-setup')} />
-      </div>
-
-      {/* 시작 가이드 — 3단계 다 끝나면 자동으로 사라짐 */}
-      {!startDone && (
-        <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-[15px] font-bold text-ink">시작 가이드</p>
-            <span className="text-[12px] font-bold text-brand">{doneCount}/3 완료</span>
-          </div>
-          <div className="space-y-1">
-            <GuideStep
-              done={hasAssets}
-              label="우리집 자산 등록하기"
-              hint="어떤 통장에 얼마 있는지 넣으면 순자산이 보여요"
-              onClick={() => navigate('/asset-setup')}
-            />
-            <GuideStep
-              done={hasBudget}
-              label="이번 달 예산 세우기"
-              hint="수입·저축·지출 계획을 한 번만 잡아두면 돼요"
-              onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
-            />
-            <GuideStep
-              done={hasConfession}
-              label="오늘 쓴 돈 기록하기"
-              hint="3번 탭이면 끝. 모아·불리가 바로 반응해요"
-              onClick={() => navigate('/confess')}
-            />
-          </div>
-        </Card>
-      )}
-
-      {/* 미니 게이지 4종 (수입·지출·저축률·순자산) */}
-      <StatGauges
-        income={s.income}
-        expense={s.expense}
-        savingInvestRate={s.savingInvestRate}
-        netWorth={netWorth}
-        targetNetWorth={profile.targetNetWorth}
-      />
-
-      {/* 잉여현금 + 정산 상태 */}
-      <Card onClick={() => navigate('/monthly')}>
-        {ledger.closed ? (
+      {/* PC에서는 두 칸 — 왼쪽: 오늘 할 일, 오른쪽: 이번 달 숫자 (2026-10-06) */}
+      <PcColumns
+        left={
           <>
-            <p className="text-[13px] font-medium text-cap">
-              {formatMonthKorean(ym)} 잉여현금
-              <InfoTip text={TERM_TIP.surplus} />
-            </p>
-            <p
-              className={`tnum mt-1 text-[24px] font-extrabold ${s.surplus < 0 ? 'text-danger' : 'text-ink'}`}
-            >
-              {formatWon(s.surplus)}
-            </p>
-            <p className="mt-1.5 text-[14px] font-medium text-sub">
-              {s.surplus === 0
-                ? '완벽해요 👏 한 푼도 남김없이 계획됐어요'
-                : s.surplus > 0
-                  ? `아직 ${formatWon(s.surplus)}이 계획되지 않았어요`
-                  : `${formatWon(-s.surplus)}만큼 초과 지출됐어요`}
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <p className="text-[15px] font-bold text-ink">
-                아직 {formatMonthKorean(ym)} 정산 전입니다
-              </p>
-              <ChevronRight size={18} className="shrink-0 text-cap" />
-            </div>
-            <p className="mt-1.5 text-[14px] font-medium text-sub">
-              가계부 탭에서 예산을 세우고 정산해 보세요 🤍
-            </p>
-          </>
-        )}
-        {/* 부부 정산 상태 */}
-        <div className="mt-3 flex gap-2 border-t border-line pt-3">
-          {([1, 2] as const).map((m) => {
-            const done = settledMembers.includes(m)
-            return (
-              <span
-                key={m}
-                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold ${
-                  done ? 'bg-brand/10 text-brand' : 'bg-bg text-cap'
-                }`}
+            {/* 오늘 카드 — 매일의 기록이 예산·연말정산으로 이어지는 허브 */}
+            <TodayCard />
+
+            {/* 이번 달 할 일 — 월초 예산 / 월말 정산 */}
+            {todo && (
+              <button
+                onClick={todo.onClick}
+                className="flex w-full items-center justify-between gap-3 rounded-card bg-brand/10 px-4 py-3 text-left active:bg-brand/15"
               >
-                {done && <Check size={12} />}
-                {memberNames[m - 1]} {done ? '완료' : '대기'}
-              </span>
-            )
-          })}
-        </div>
-      </Card>
+                <span className="text-[14px] font-bold text-ink">🔔 {todo.text}</span>
+                <span className="flex shrink-0 items-center gap-0.5 text-[13px] font-bold text-brand">
+                  {todo.cta}
+                  <ChevronRight size={16} />
+                </span>
+              </button>
+            )}
 
-      {/* 월별 지출·순자산 콤보 차트 */}
-      <Card>
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-[13px] font-medium text-cap">최근 6개월 지출·순자산</p>
-          <TrendingUp size={16} className="text-brand" />
-        </div>
-        <LazyMonthlyCombo data={combo} />
-      </Card>
+            {/* 바로가기 — 자주 쓰는 3가지 */}
+            <div className="grid grid-cols-3 gap-2">
+              <QuickAction
+                emoji="📝"
+                label="예산 세우기"
+                onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
+              />
+              <QuickAction
+                emoji="✅"
+                label="정산하기"
+                onClick={() => navigate('/checkup', { state: { ym, mode: 'settle' } })}
+              />
+              <QuickAction emoji="🏦" label="자산 입력" onClick={() => navigate('/asset-setup')} />
+            </div>
 
-      {/* 10년 목표 진행바 */}
-      <Card onClick={() => navigate('/roadmap')}>
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-[15px] font-bold text-ink">10년 목표 순자산</p>
-          <ChevronRight size={18} className="text-cap" />
-        </div>
-        <div className="mb-2 flex items-end justify-between">
-          <span className="tnum text-[20px] font-extrabold text-brand">
-            {formatPercent(targetRatio)}
-          </span>
-          <span className="tnum text-[13px] font-medium text-sub">
-            목표 {abbreviateKRW(profile.targetNetWorth)}
-          </span>
-        </div>
-        <ProgressBar ratio={targetRatio} />
-        {profile.targetNetWorth > netWorth && (
-          <p className="mt-2 text-[13px] font-medium text-sub">
-            목표까지 <b className="tnum text-brand">{abbreviateKRW(profile.targetNetWorth - netWorth)}</b>{' '}
-            남았어요.{' '}
-            {reachYm ? `지금 속도면 ${formatYmKorean(reachYm)} 도착이에요` : '로드맵에서 길을 그려 보세요'}
-          </p>
-        )}
-        {profile.targetNetWorth > 0 && netWorth >= profile.targetNetWorth && (
-          <p className="mt-2 text-[13px] font-bold text-brand">🎉 10년 목표를 달성했어요! 대단해요</p>
-        )}
-      </Card>
+            {/* 시작 가이드 — 3단계 다 끝나면 자동으로 사라짐 */}
+            {!startDone && (
+              <Card>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-[15px] font-bold text-ink">시작 가이드</p>
+                  <span className="text-[12px] font-bold text-brand">{doneCount}/3 완료</span>
+                </div>
+                <div className="space-y-1">
+                  <GuideStep
+                    done={hasAssets}
+                    label="우리집 자산 등록하기"
+                    hint="어떤 통장에 얼마 있는지 넣으면 순자산이 보여요"
+                    onClick={() => navigate('/asset-setup')}
+                  />
+                  <GuideStep
+                    done={hasBudget}
+                    label="이번 달 예산 세우기"
+                    hint="수입·저축·지출 계획을 한 번만 잡아두면 돼요"
+                    onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
+                  />
+                  <GuideStep
+                    done={hasConfession}
+                    label="오늘 쓴 돈 기록하기"
+                    hint="3번 탭이면 끝. 모아·불리가 바로 반응해요"
+                    onClick={() => navigate('/confess')}
+                  />
+                </div>
+              </Card>
+            )}
+          </>
+        }
+        right={
+          <>
+            {/* 미니 게이지 4종 (수입·지출·저축률·순자산) */}
+            <StatGauges
+              income={s.income}
+              expense={s.expense}
+              savingInvestRate={s.savingInvestRate}
+              netWorth={netWorth}
+              targetNetWorth={profile.targetNetWorth}
+            />
+
+            {/* 잉여현금 + 정산 상태 */}
+            <Card onClick={() => navigate('/monthly')}>
+              {ledger.closed ? (
+                <>
+                  <p className="text-[13px] font-medium text-cap">
+                    {formatMonthKorean(ym)} 잉여현금
+                    <InfoTip text={TERM_TIP.surplus} />
+                  </p>
+                  <p
+                    className={`tnum mt-1 text-[24px] font-extrabold ${s.surplus < 0 ? 'text-danger' : 'text-ink'}`}
+                  >
+                    {formatWon(s.surplus)}
+                  </p>
+                  <p className="mt-1.5 text-[14px] font-medium text-sub">
+                    {s.surplus === 0
+                      ? '완벽해요 👏 한 푼도 남김없이 계획됐어요'
+                      : s.surplus > 0
+                        ? `아직 ${formatWon(s.surplus)}이 계획되지 않았어요`
+                        : `${formatWon(-s.surplus)}만큼 초과 지출됐어요`}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[15px] font-bold text-ink">
+                      아직 {formatMonthKorean(ym)} 정산 전입니다
+                    </p>
+                    <ChevronRight size={18} className="shrink-0 text-cap" />
+                  </div>
+                  <p className="mt-1.5 text-[14px] font-medium text-sub">
+                    가계부 탭에서 예산을 세우고 정산해 보세요 🤍
+                  </p>
+                </>
+              )}
+              {/* 부부 정산 상태 */}
+              <div className="mt-3 flex gap-2 border-t border-line pt-3">
+                {([1, 2] as const).map((m) => {
+                  const done = settledMembers.includes(m)
+                  return (
+                    <span
+                      key={m}
+                      className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold ${
+                        done ? 'bg-brand/10 text-brand' : 'bg-bg text-cap'
+                      }`}
+                    >
+                      {done && <Check size={12} />}
+                      {memberNames[m - 1]} {done ? '완료' : '대기'}
+                    </span>
+                  )
+                })}
+              </div>
+            </Card>
+
+            {/* 월별 지출·순자산 콤보 차트 */}
+            <Card>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[13px] font-medium text-cap">최근 6개월 지출·순자산</p>
+                <TrendingUp size={16} className="text-brand" />
+              </div>
+              <LazyMonthlyCombo data={combo} />
+            </Card>
+
+            {/* 10년 목표 진행바 */}
+            <Card onClick={() => navigate('/roadmap')}>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[15px] font-bold text-ink">10년 목표 순자산</p>
+                <ChevronRight size={18} className="text-cap" />
+              </div>
+              <div className="mb-2 flex items-end justify-between">
+                <span className="tnum text-[20px] font-extrabold text-brand">
+                  {formatPercent(targetRatio)}
+                </span>
+                <span className="tnum text-[13px] font-medium text-sub">
+                  목표 {abbreviateKRW(profile.targetNetWorth)}
+                </span>
+              </div>
+              <ProgressBar ratio={targetRatio} />
+              {profile.targetNetWorth > netWorth && (
+                <p className="mt-2 text-[13px] font-medium text-sub">
+                  목표까지{' '}
+                  <b className="tnum text-brand">
+                    {abbreviateKRW(profile.targetNetWorth - netWorth)}
+                  </b>{' '}
+                  남았어요.{' '}
+                  {reachYm
+                    ? `지금 속도면 ${formatYmKorean(reachYm)} 도착이에요`
+                    : '로드맵에서 길을 그려 보세요'}
+                </p>
+              )}
+              {profile.targetNetWorth > 0 && netWorth >= profile.targetNetWorth && (
+                <p className="mt-2 text-[13px] font-bold text-brand">
+                  🎉 10년 목표를 달성했어요! 대단해요
+                </p>
+              )}
+            </Card>
+          </>
+        }
+      />
     </div>
   )
 }

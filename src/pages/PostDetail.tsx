@@ -25,7 +25,7 @@ export default function PostDetail({ publicView = false }: { publicView?: boolea
   }, [id])
 
   return (
-    <div className="animate-fade-up space-y-3">
+    <div className="animate-fade-up space-y-3 lg:mx-auto lg:max-w-[720px]">
       <button
         onClick={() =>
           // 지난 글 목록에서 들어왔으면 그 목록으로, 링크로 바로 들어왔으면 첫 화면으로

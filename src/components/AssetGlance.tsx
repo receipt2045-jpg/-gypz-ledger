@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import Card from './Card'
+import PcColumns from './PcColumns'
 import { groupRows, isOwned, memberTable, ownerRows, type TableRow } from '../lib/assetGlance'
 import { abbreviateKRW, formatMonthKorean, formatYmKorean } from '../lib/format'
 import type { AssetItem } from '../types'
@@ -22,6 +23,7 @@ export default function AssetGlance({
   owners,
   ym,
   series,
+  pc = false,
 }: {
   items: AssetItem[]
   /** null = 함께 */
@@ -31,6 +33,8 @@ export default function AssetGlance({
   ym: string
   /** 최근 몇 달 전체 자산 (과거 → 지금) */
   series: { ym: string; value: number }[]
+  /** 자산 탭 — PC에서 두 칸으로 (공개 뉴스 화면의 작은 미리보기는 한 칸 그대로) */
+  pc?: boolean
 }) {
   if (items.length === 0) return null
   const today = new Date()
@@ -41,7 +45,7 @@ export default function AssetGlance({
       {picked ? (
         <MemberTable items={items} picked={picked} ym={ym} />
       ) : (
-        <Together items={items} owners={owners} ym={ym} series={series} />
+        <Together items={items} owners={owners} ym={ym} series={series} pc={pc} />
       )}
       <p className="pt-1 text-center text-[11.5px] text-cap">
         모아불리 가계부 · {picked ?? '우리집'} · {stamp} 기준
@@ -55,11 +59,13 @@ function Together({
   owners,
   ym,
   series,
+  pc,
 }: {
   items: AssetItem[]
   owners: string[]
   ym: string
   series: { ym: string; value: number }[]
+  pc: boolean
 }) {
   const rows = groupRows(items)
   const total = rows.reduce((a, r) => a + r.amount, 0)
@@ -69,47 +75,43 @@ function Together({
   const prev = series.length >= 2 ? series[series.length - 2].value : total
   const delta = total - prev
 
-  return (
-    <>
-      <Card>
-        <p className="text-[12.5px] font-medium text-cap">
-          {formatYmKorean(ym)} · 우리집 전체 자산
+  const total$ = (
+    <Card>
+      <p className="text-[12.5px] font-medium text-cap">{formatYmKorean(ym)} · 우리집 전체 자산</p>
+      <p className="tnum mt-0.5 text-[28px] font-extrabold tracking-tight text-ink">
+        {abbreviateKRW(total)}
+      </p>
+      {delta !== 0 && (
+        <p className={`tnum text-[13px] font-semibold ${delta > 0 ? 'text-brand' : 'text-danger'}`}>
+          지난달보다 {delta > 0 ? '+' : '−'}
+          {abbreviateKRW(Math.abs(delta))}
         </p>
-        <p className="tnum mt-0.5 text-[28px] font-extrabold tracking-tight text-ink">
-          {abbreviateKRW(total)}
-        </p>
-        {delta !== 0 && (
-          <p
-            className={`tnum text-[13px] font-semibold ${delta > 0 ? 'text-brand' : 'text-danger'}`}
-          >
-            지난달보다 {delta > 0 ? '+' : '−'}
-            {abbreviateKRW(Math.abs(delta))}
-          </p>
-        )}
-        {/* 모든 줄이 칸 하나를 같이 쓴다 — 금액이 길어도(11억 2,000만) 줄바꿈 없이, 막대가 대신 줄어든다 */}
-        <div className="mt-3 grid grid-cols-[auto_minmax(24px,1fr)_auto_auto] items-center gap-x-2 gap-y-2.5">
-          {rows.map((r) => (
-            <Fragment key={r.group}>
-              <span className="whitespace-nowrap text-[13px] font-medium text-ink">
-                {r.emoji} {r.label}
-              </span>
-              <div className="h-2.5 overflow-hidden rounded-full">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${Math.max(2, (r.amount / max) * 100)}%`, background: r.color }}
-                />
-              </div>
-              <span className="tnum whitespace-nowrap text-right text-[13px] font-bold text-ink">
-                {short(r.amount)}
-              </span>
-              <span className="tnum whitespace-nowrap text-right text-[12px] text-cap">
-                {r.pct}%
-              </span>
-            </Fragment>
-          ))}
-        </div>
-      </Card>
+      )}
+      {/* 모든 줄이 칸 하나를 같이 쓴다 — 금액이 길어도(11억 2,000만) 줄바꿈 없이, 막대가 대신 줄어든다 */}
+      <div className="mt-3 grid grid-cols-[auto_minmax(24px,1fr)_auto_auto] items-center gap-x-2 gap-y-2.5">
+        {rows.map((r) => (
+          <Fragment key={r.group}>
+            <span className="whitespace-nowrap text-[13px] font-medium text-ink">
+              {r.emoji} {r.label}
+            </span>
+            <div className="h-2.5 overflow-hidden rounded-full">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${Math.max(2, (r.amount / max) * 100)}%`, background: r.color }}
+              />
+            </div>
+            <span className="tnum whitespace-nowrap text-right text-[13px] font-bold text-ink">
+              {short(r.amount)}
+            </span>
+            <span className="tnum whitespace-nowrap text-right text-[12px] text-cap">{r.pct}%</span>
+          </Fragment>
+        ))}
+      </div>
+    </Card>
+  )
 
+  const rest = (
+    <>
       {byOwner.length > 1 && (
         <Card>
           <p className="mb-2 text-[12.5px] font-medium text-cap">누구 이름으로</p>
@@ -150,6 +152,16 @@ function Together({
           </span>
         </div>
       )}
+    </>
+  )
+
+  // PC: 왼쪽 전체 자산·종류별, 오른쪽 누구 이름으로·흐름·부채 (2026-10-06)
+  return pc ? (
+    <PcColumns left={total$} right={rest} />
+  ) : (
+    <>
+      {total$}
+      {rest}
     </>
   )
 }

@@ -1,3 +1,4 @@
+import PcColumns from '../components/PcColumns'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Gift, MessagesSquare, PenLine } from 'lucide-react'
@@ -49,55 +50,66 @@ export default function Info() {
         )}
       </header>
 
-      {/* 경제 뉴스는 기사 하나씩, 증시 정리는 최근 하루치 — 바로 아래 계산기가 밀려나지 않게 (2026-10-06) */}
-      {posts && posts.length > 0 && <EconomySection posts={posts} meta={meta} />}
+      {/* PC에서는 두 칸 — 왼쪽(넓게): 오늘의 경제, 오른쪽: 계산기·공지 (2026-10-06) */}
+      <PcColumns
+        wide="left"
+        left={
+          <>
+            {/* 경제 뉴스는 기사 하나씩, 증시 정리는 최근 하루치 — 바로 아래 계산기가 밀려나지 않게 (2026-10-06) */}
+            {posts && posts.length > 0 && <EconomySection posts={posts} meta={meta} />}
+          </>
+        }
+        right={
+          <>
+            <section aria-label="계산기" className="space-y-3">
+              <SectionTitle>계산기</SectionTitle>
+              <button
+                onClick={() => navigate('/leave')}
+                className="flex w-full items-center gap-3 rounded-card bg-white p-4 text-left shadow-card"
+              >
+                <span
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-[20px]"
+                  aria-hidden
+                >
+                  🍼
+                </span>
+                <span className="flex-1">
+                  <span className="block text-[14.5px] font-bold text-ink">육아휴직 계산기</span>
+                  <span className="mt-0.5 block text-[12.5px] text-sub">
+                    휴직하면 우리집에 달마다 얼마가 모이는지
+                  </span>
+                </span>
+                <ChevronRight size={18} className="shrink-0 text-cap" />
+              </button>
+            </section>
 
-      <section aria-label="계산기" className="space-y-3">
-        <SectionTitle>계산기</SectionTitle>
-        <button
-          onClick={() => navigate('/leave')}
-          className="flex w-full items-center gap-3 rounded-card bg-white p-4 text-left shadow-card"
-        >
-          <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-[20px]"
-            aria-hidden
-          >
-            🍼
-          </span>
-          <span className="flex-1">
-            <span className="block text-[14.5px] font-bold text-ink">육아휴직 계산기</span>
-            <span className="mt-0.5 block text-[12.5px] text-sub">
-              휴직하면 우리집에 달마다 얼마가 모이는지
-            </span>
-          </span>
-          <ChevronRight size={18} className="shrink-0 text-cap" />
-        </button>
-      </section>
+            <section aria-label="공지" className="space-y-3">
+              <SectionTitle>공지</SectionTitle>
+              {NOTICES.map((n) => (
+                <NoticeCard key={n.id} notice={n} />
+              ))}
+            </section>
 
-      <section aria-label="공지" className="space-y-3">
-        <SectionTitle>공지</SectionTitle>
-        {NOTICES.map((n) => (
-          <NoticeCard key={n.id} notice={n} />
-        ))}
-      </section>
+            <section aria-label="정보·혜택" className="space-y-3">
+              <SectionTitle>정보 · 혜택</SectionTitle>
+              <Soon
+                Icon={Gift}
+                title="신혼부부 정책·혜택은 준비하고 있어요"
+                text="우리집이 받을 수 있는 지원금과 제휴 할인을 모아 둘게요."
+              />
+            </section>
 
-      <section aria-label="정보·혜택" className="space-y-3">
-        <SectionTitle>정보 · 혜택</SectionTitle>
-        <Soon
-          Icon={Gift}
-          title="신혼부부 정책·혜택은 준비하고 있어요"
-          text="우리집이 받을 수 있는 지원금과 제휴 할인을 모아 둘게요."
-        />
-      </section>
-
-      <section aria-label="이야기" className="space-y-3">
-        <SectionTitle>이야기</SectionTitle>
-        <Soon
-          Icon={MessagesSquare}
-          title="이야기 나누는 곳은 준비하고 있어요"
-          text="다른 집은 어떻게 모으고 있는지 여기서 볼 수 있게 만들고 있어요."
-        />
-      </section>
+            <section aria-label="이야기" className="space-y-3">
+              <SectionTitle>이야기</SectionTitle>
+              <Soon
+                Icon={MessagesSquare}
+                title="이야기 나누는 곳은 준비하고 있어요"
+                text="다른 집은 어떻게 모으고 있는지 여기서 볼 수 있게 만들고 있어요."
+              />
+            </section>
+          </>
+        }
+      />
     </div>
   )
 }

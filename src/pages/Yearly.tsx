@@ -1,3 +1,4 @@
+import PcColumns from '../components/PcColumns'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -89,79 +90,92 @@ export default function Yearly() {
         </button>
       </div>
 
-      {/* 연말정산 미리보기 — '올해의 돈' 화면이라 여기가 입구 (홈 오늘 카드에서도 진입) */}
-      <button
-        onClick={() => navigate('/year-end-tax')}
-        className="w-full rounded-card bg-card px-5 py-4 text-left shadow-card active:bg-line"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[15px] font-bold text-ink">💳 연말정산 미리보기 — 누구 카드로 쓸까?</p>
-            <p className="mt-1 text-[13.5px] leading-relaxed text-sub">
-              부부 카드값은 합쳐지지 않아요. 연봉만 넣으면 지금 누구 카드가 유리한지 알려드려요.
-            </p>
-          </div>
-          <ChevronRight size={20} className="shrink-0 text-cap" />
-        </div>
-      </button>
+      {/* PC에서는 두 칸 (2026-10-06) */}
+      <PcColumns
+        left={
+          <>
+            {/* 연말정산 미리보기 — '올해의 돈' 화면이라 여기가 입구 (홈 오늘 카드에서도 진입) */}
+            <button
+              onClick={() => navigate('/year-end-tax')}
+              className="w-full rounded-card bg-card px-5 py-4 text-left shadow-card active:bg-line"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[15px] font-bold text-ink">
+                    💳 연말정산 미리보기 — 누구 카드로 쓸까?
+                  </p>
+                  <p className="mt-1 text-[13.5px] leading-relaxed text-sub">
+                    부부 카드값은 합쳐지지 않아요. 연봉만 넣으면 지금 누구 카드가 유리한지
+                    알려드려요.
+                  </p>
+                </div>
+                <ChevronRight size={20} className="shrink-0 text-cap" />
+              </div>
+            </button>
 
-      {/* 결산 매트릭스 */}
-      <Card className="!px-3 !py-4">
-        <div className="mb-2 flex items-center justify-between px-2">
-          <h2 className="text-[15px] font-bold text-ink">연간 결산</h2>
-          <span className="text-[12px] text-cap">단위: 만원</span>
-        </div>
-        {hasData ? (
-          <div className="thin-scroll overflow-x-auto">
-            <table className="tnum w-full border-collapse text-right text-[12px]">
-              <thead>
-                <tr className="text-cap">
-                  <th className="sticky left-0 z-10 min-w-[72px] whitespace-nowrap bg-card px-2 py-1.5 text-left font-semibold">
-                    항목
-                  </th>
-                  {yms.map((ym) => (
-                    <th key={ym} className="min-w-[42px] px-1.5 py-1.5 font-semibold">
-                      {Number(ym.split('-')[1])}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {GROUP_ORDER.map((g) => (
-                  <FragmentGroup
-                    key={g}
-                    group={g}
-                    categories={catByGroup[g]}
-                    yms={yms}
-                    actualOf={actualOf}
-                    groupTotalOf={groupTotalOf}
-                    toMan={toMan}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="px-2 py-6 text-center text-[13px] text-cap">
-            {year}년 결산 데이터가 없어요
-          </p>
-        )}
-      </Card>
+            {/* 결산 매트릭스 */}
+            <Card className="!px-3 !py-4">
+              <div className="mb-2 flex items-center justify-between px-2">
+                <h2 className="text-[15px] font-bold text-ink">연간 결산</h2>
+                <span className="text-[12px] text-cap">단위: 만원</span>
+              </div>
+              {hasData ? (
+                <div className="thin-scroll overflow-x-auto">
+                  <table className="tnum w-full border-collapse text-right text-[12px]">
+                    <thead>
+                      <tr className="text-cap">
+                        <th className="sticky left-0 z-10 min-w-[72px] whitespace-nowrap bg-card px-2 py-1.5 text-left font-semibold">
+                          항목
+                        </th>
+                        {yms.map((ym) => (
+                          <th key={ym} className="min-w-[42px] px-1.5 py-1.5 font-semibold">
+                            {Number(ym.split('-')[1])}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {GROUP_ORDER.map((g) => (
+                        <FragmentGroup
+                          key={g}
+                          group={g}
+                          categories={catByGroup[g]}
+                          yms={yms}
+                          actualOf={actualOf}
+                          groupTotalOf={groupTotalOf}
+                          toMan={toMan}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="px-2 py-6 text-center text-[13px] text-cap">
+                  {year}년 결산 데이터가 없어요
+                </p>
+              )}
+            </Card>
+          </>
+        }
+        right={
+          <>
+            {/* 월별 저축·투자율 */}
+            <Card>
+              <h2 className="mb-3 text-[15px] font-bold text-ink">월별 저축·투자율</h2>
+              <div className="h-40 w-full">
+                <LazySavingRateBars data={rateData} />
+              </div>
+            </Card>
 
-      {/* 월별 저축·투자율 */}
-      <Card>
-        <h2 className="mb-3 text-[15px] font-bold text-ink">월별 저축·투자율</h2>
-        <div className="h-40 w-full">
-          <LazySavingRateBars data={rateData} />
-        </div>
-      </Card>
-
-      {/* 비정기 지출 — 연간 조회 전용 (기록·추가는 가계부 탭) */}
-      <OccasionSection
-        items={yearOccasions}
-        yearTotal={occasionTotal}
-        onRemove={removeOccasion}
-        emptyText={`${year}년 기록이 없어요 · 가계부 탭에서 적을 수 있어요`}
+            {/* 비정기 지출 — 연간 조회 전용 (기록·추가는 가계부 탭) */}
+            <OccasionSection
+              items={yearOccasions}
+              yearTotal={occasionTotal}
+              onRemove={removeOccasion}
+              emptyText={`${year}년 기록이 없어요 · 가계부 탭에서 적을 수 있어요`}
+            />
+          </>
+        }
       />
     </div>
   )
@@ -210,4 +224,3 @@ function FragmentGroup({
     </>
   )
 }
-

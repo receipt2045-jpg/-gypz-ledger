@@ -48,7 +48,7 @@ function Tab({
                 <span className="absolute -right-1.5 -top-0.5 h-2 w-2 rounded-full bg-danger ring-2 ring-white" />
               )}
             </span>
-                        <span
+            <span
               className={`text-center text-[11px] leading-tight ${pending ? 'font-bold' : 'font-medium'} ${tone}`}
             >
               {label}
@@ -60,18 +60,19 @@ function Tab({
   )
 }
 
-export default function TabBar() {
+/** 오늘 내가 기록했는지 — 안 했으면 가계부 탭에 빨간 점 (소비 기록이 가계부 안에 있다) */
+function useConfessedToday() {
   const { confessions, memberNo } = useLedgerStore()
-
-  // 오늘 내가 기록했는지 — 안 했으면 가계부 탭에 빨간 점 (소비 기록이 가계부 안에 있다)
   const today = dayKey(new Date())
   const me = memberNo ?? 1
-  const confessedToday = confessions.some(
-    (c) => c.memberNo === me && dayKey(new Date(c.createdAt)) === today,
-  )
+  return confessions.some((c) => c.memberNo === me && dayKey(new Date(c.createdAt)) === today)
+}
+
+export default function TabBar() {
+  const confessedToday = useConfessedToday()
 
   return (
-    <nav className="fixed bottom-0 left-1/2 z-30 w-full max-w-app -translate-x-1/2 border-t border-line bg-white/95 backdrop-blur">
+    <nav className="fixed bottom-0 left-1/2 z-30 w-full max-w-app -translate-x-1/2 border-t border-line bg-white/95 backdrop-blur lg:hidden">
       <div className="grid grid-cols-5 items-start px-1 pb-[env(safe-area-inset-bottom)] pt-1.5">
         {LEFT.map((t) => (
           <Tab key={t.to} {...t} pending={t.to === '/monthly' && !confessedToday} />
@@ -99,6 +100,55 @@ export default function TabBar() {
         {RIGHT.map((t) => (
           <Tab key={t.to} {...t} />
         ))}
+      </div>
+    </nav>
+  )
+}
+
+const SIDE = [
+  { to: '/', label: '홈', Icon: Home, end: true },
+  { to: '/monthly', label: '가계부', Icon: BookOpen, end: false },
+  { to: '/assets', label: '자산', Icon: Landmark, end: false },
+  { to: '/info', label: '정보', Icon: Newspaper, end: false },
+  { to: '/settings', label: '설정', Icon: Settings, end: false },
+] as const
+
+/** PC(가로 1024px 이상) 왼쪽 메뉴 — 아래 탭과 같은 다섯 칸 (2026-10-06) */
+export function SideNav() {
+  const confessedToday = useConfessedToday()
+  return (
+    <nav
+      aria-label="메뉴"
+      className="sticky top-0 hidden h-screen w-[220px] shrink-0 flex-col border-r border-line bg-white px-3 py-6 lg:flex"
+    >
+      <NavLink to="/" end className="mb-6 flex items-center gap-2 px-3">
+        <img src="/favicon.svg" alt="" className="h-8 w-8" />
+        <span className="text-[16px] font-bold text-ink">모아불리 가계부</span>
+      </NavLink>
+      <div className="space-y-1">
+        {SIDE.map(({ to, label, Icon, end }) => {
+          const pending = to === '/monthly' && !confessedToday
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] transition-colors ${
+                  isActive ? 'bg-brand/10 font-bold text-brand' : 'font-medium text-sub hover:bg-bg'
+                }`
+              }
+            >
+              <span className="relative">
+                <Icon size={20} />
+                {pending && (
+                  <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-danger ring-2 ring-white" />
+                )}
+              </span>
+              {label}
+            </NavLink>
+          )
+        })}
       </div>
     </nav>
   )
