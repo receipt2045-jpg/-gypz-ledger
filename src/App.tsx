@@ -19,6 +19,7 @@ import Checkup from './pages/Checkup'
 import Confess from './pages/Confess'
 import Info from './pages/Info'
 import PostDetail from './pages/PostDetail'
+import InfoArchive from './pages/InfoArchive'
 import AdminPosts from './pages/AdminPosts'
 import AdminFeedback from './pages/AdminFeedback'
 import AdminReports from './pages/AdminReports'
@@ -159,6 +160,7 @@ function AppRoutes() {
         <Route element={<AppFrame />}>
           <Route path="/" element={<Home />} />
           <Route path="/info" element={<Info />} />
+          <Route path="/info/archive" element={<InfoArchive />} />
           <Route path="/info/:id" element={<PostDetail />} />
           {/* 옛 탭 주소(2026-09-30 개편 전) — 홈 화면 바로가기·링크가 깨지지 않게 */}
           <Route path="/board" element={<Navigate to="/info" replace />} />

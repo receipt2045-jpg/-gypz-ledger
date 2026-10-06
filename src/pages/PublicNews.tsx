@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import AssetGlance from '../components/AssetGlance'
-import Card from '../components/Card'
-import PostCard from '../components/PostCard'
+import NewsArchive from '../components/NewsArchive'
 import PostDetail from './PostDetail'
-import { fetchPosts, type Post } from '../lib/posts'
 import { assetSeries } from '../lib/assetGlance'
 import { buildSeed } from '../seed'
 
@@ -26,37 +24,13 @@ export default function PublicNews() {
 }
 
 function NewsList() {
-  const [posts, setPosts] = useState<Post[] | null>(null)
-  useEffect(() => {
-    let live = true
-    fetchPosts(20)
-      .then((p) => live && setPosts(p))
-      .catch(() => live && setPosts([]))
-    return () => {
-      live = false
-    }
-  }, [])
-
   return (
     <div className="animate-fade-up space-y-3">
       <header className="px-1 pb-1">
         <p className="text-[12.5px] font-bold text-brand">결영이네</p>
         <h1 className="text-[22px] font-bold text-ink">오늘의 경제</h1>
-        <p className="mt-1 text-[13.5px] text-sub">톡방에 올린 글을 날짜별로 모아 뒀어요</p>
       </header>
-      {posts === null && (
-        <div className="flex justify-center py-16">
-          <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-line border-t-brand" />
-        </div>
-      )}
-      {posts?.length === 0 && (
-        <Card>
-          <p className="text-[14px] text-sub">아직 올라온 글이 없어요.</p>
-        </Card>
-      )}
-      {posts?.map((p) => (
-        <PostCard key={p.id} post={p} basePath="/news" />
-      ))}
+      <NewsArchive basePath="/news" />
     </div>
   )
 }

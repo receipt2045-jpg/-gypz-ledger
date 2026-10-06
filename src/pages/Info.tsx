@@ -17,11 +17,10 @@ export default function Info() {
   const navigate = useNavigate()
   const [posts, setPosts] = useState<Post[] | null>(null)
   const [admin, setAdmin] = useState(false)
-  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     let live = true
-    fetchPosts(20)
+    fetchPosts(4)
       .then((p) => live && setPosts(p))
       .catch(() => live && setPosts([])) // 못 읽으면 칸을 숨긴다 — 나머지 정보는 그대로 본다
     amIAdmin()
@@ -32,7 +31,7 @@ export default function Info() {
     }
   }, [])
 
-  const visible = posts ? (showAll ? posts : posts.slice(0, 3)) : []
+  const visible = posts ? posts.slice(0, 3) : []
 
   return (
     <div className="animate-fade-up space-y-5">
@@ -56,10 +55,11 @@ export default function Info() {
           ))}
           {posts.length > 3 && (
             <button
-              onClick={() => setShowAll((v) => !v)}
-              className="w-full rounded-btn bg-white py-3 text-[13.5px] font-bold text-sub shadow-card"
+              onClick={() => navigate('/info/archive')}
+              className="flex w-full items-center justify-center gap-1 rounded-btn bg-white py-3 text-[13.5px] font-bold text-sub shadow-card"
             >
-              {showAll ? '접기' : `지난 글 ${posts.length - 3}개 더 보기`}
+              지난 글 달별로 모아 보기
+              <ChevronRight size={15} />
             </button>
           )}
         </section>

@@ -27,7 +27,12 @@ export default function PostDetail({ publicView = false }: { publicView?: boolea
   return (
     <div className="animate-fade-up space-y-3">
       <button
-        onClick={() => navigate(publicView ? '/news' : '/info')}
+        onClick={() =>
+          // 지난 글 목록에서 들어왔으면 그 목록으로, 링크로 바로 들어왔으면 첫 화면으로
+          (window.history.state?.idx ?? 0) > 0
+            ? navigate(-1)
+            : navigate(publicView ? '/news' : '/info')
+        }
         className="-ml-1 flex items-center gap-0.5 pt-2 text-[14px] font-semibold text-sub"
       >
         <ChevronLeft size={19} />

@@ -120,6 +120,52 @@ export function kakaoText(original: string, withAppLink: boolean): string {
     : base
 }
 
+/**
+ * 지난 글 목록의 한 줄 — 🔰 바로 다음 줄(그날의 한 줄 정리).
+ * "부동산 2번 뉴스, 전세 매물이…"의 앞머리는 떼고, 🔰가 없는 9월 초 옛 형식은 본문 첫 줄을 쓴다.
+ */
+export function postSummary(body: string): string {
+  const lines = body
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((l) => l.trim())
+  const mark = lines.findIndex((l) => l.startsWith('🔰'))
+  const after = mark >= 0 ? lines.slice(mark + 1).find((l) => l) : undefined
+  if (after) return after.replace(/^\S+\s*\d+번\s*뉴스\s*,?\s*/, '').trim() || after
+  const first = lines
+    .map((l) =>
+      l
+        .replace(/https?:\/\/\S+/g, '')
+        .replace(/^([-·■]|\d+\.)\s*/, '')
+        .trim(),
+    )
+    .find((l) => l.length > 6)
+  return first ?? ''
+}
+
+export interface MonthGroup {
+  /** YYYY-MM */
+  ym: string
+  label: string
+  posts: Post[]
+}
+
+/** 달별로 묶기 — 최근 달부터. 글 순서는 들어온 그대로(최근 글부터) */
+export function groupByMonth(posts: Post[]): MonthGroup[] {
+  const groups: MonthGroup[] = []
+  for (const p of posts) {
+    const ym = p.postDate.slice(0, 7)
+    let g = groups.find((x) => x.ym === ym)
+    if (!g) {
+      const [y, m] = ym.split('-')
+      g = { ym, label: `${y}년 ${Number(m)}월`, posts: [] }
+      groups.push(g)
+    }
+    g.posts.push(p)
+  }
+  return groups.sort((a, b) => (a.ym < b.ym ? 1 : -1))
+}
+
 // ── DB ────────────────────────────────────────
 
 interface PostRow {

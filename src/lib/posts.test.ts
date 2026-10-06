@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { kakaoText, linkify, parsePasted, stripCommand } from './posts'
+import {
+  groupByMonth,
+  kakaoText,
+  linkify,
+  parsePasted,
+  postSummary,
+  stripCommand,
+  type Post,
+} from './posts'
 
 const NEWS = `[결영이네] 10월 2일
 오늘의 경제 뉴스
@@ -104,5 +112,41 @@ describe('부부방 글 끝 앱 링크는 본문에 넣지 않는다', () => {
   it('카톡용 글에 링크가 두 번 붙지 않는다', () => {
     const once = kakaoText('글', true)
     expect(kakaoText(stripCommand(once), true)).toBe(once)
+  })
+})
+
+describe('지난 글 목록 — 한 줄 정리와 달별 묶기', () => {
+  it('🔰 다음 줄을 쓰고 "부동산 2번 뉴스," 앞머리는 뗀다', () => {
+    expect(
+      postSummary('🔰 오늘 딱 하나만 읽는다면\n부동산 2번 뉴스, 전세 매물이 말라요.\n\n■ 주식'),
+    ).toBe('전세 매물이 말라요.')
+    expect(postSummary('🔰 한 줄 정리\n미국 주식이 올랐어요.\n\n💌왜?')).toBe(
+      '미국 주식이 올랐어요.',
+    )
+  })
+
+  it('🔰가 없는 옛 형식은 기호·주소를 빼고 첫 줄', () => {
+    expect(postSummary('- 다우 -0.7%, S&P500 -0.3%\n- 엔비디아 +1.5%')).toBe(
+      '다우 -0.7%, S&P500 -0.3%',
+    )
+    expect(postSummary('■ 주식\n\n1. "코스피 7000선 박스권" https://n.news.naver.com/x')).toBe(
+      '"코스피 7000선 박스권"',
+    )
+  })
+
+  it('최근 달부터 묶는다', () => {
+    const p = (id: string, postDate: string): Post => ({
+      id,
+      kind: 'news',
+      title: 't',
+      body: 'b',
+      postDate,
+      createdAt: '',
+    })
+    const g = groupByMonth([p('a', '2026-10-06'), p('b', '2026-09-30'), p('c', '2026-10-01')])
+    expect(g.map((x) => [x.label, x.posts.map((y) => y.id).join('')])).toEqual([
+      ['2026년 10월', 'ac'],
+      ['2026년 9월', 'b'],
+    ])
   })
 })
