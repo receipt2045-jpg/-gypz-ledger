@@ -92,3 +92,17 @@ describe('날짜 줄 — [결영이네]가 없어도 (루틴 원문)', () => {
     expect(d.title).toBe('10월 6일 오늘의 경제 뉴스')
   })
 })
+
+describe('부부방 글 끝 앱 링크는 본문에 넣지 않는다', () => {
+  it('📱 줄과 moabuli.com/news 주소가 빠진다', () => {
+    const d = parsePasted(
+      '[결영이네] 10월 6일\n오늘의 경제 뉴스\n\n본문 한 줄\n\n📱 지난 글은 모아불리에서 모아 봐요\nhttps://moabuli.com/news',
+      new Date(2026, 9, 6),
+    )
+    expect(d.body).toBe('본문 한 줄')
+  })
+  it('카톡용 글에 링크가 두 번 붙지 않는다', () => {
+    const once = kakaoText('글', true)
+    expect(kakaoText(stripCommand(once), true)).toBe(once)
+  })
+})

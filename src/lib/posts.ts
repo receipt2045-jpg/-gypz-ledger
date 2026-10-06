@@ -51,8 +51,11 @@ export const isoDate = (d: Date) =>
  */
 const COMMAND_LINE = /^.{0,15}올려(줘|주세요)?[.!~ ]*$/
 
+/** 부부방 글 끝에 중계가 붙이는 앱 링크 두 줄 — 카톡용이지 글 본문이 아니다 */
+const APP_LINK = /\n*📱 지난 글은 모아불리[^\n]*(\n+https?:\/\/(www\.)?moabuli\.com\/news\S*)?/g
+
 export function stripCommand(text: string): string {
-  const lines = text.replace(/\r\n/g, '\n').split('\n')
+  const lines = text.replace(/\r\n/g, '\n').replace(APP_LINK, '').split('\n')
   const firstIdx = () => lines.findIndex((l) => l.trim())
   const lastIdx = () => {
     for (let i = lines.length - 1; i >= 0; i--) if (lines[i].trim()) return i
