@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react'
-import LoanEditor from './LoanEditor'
-import { dayString } from '../lib/loan'
-import { Pencil, Plus, StickyNote, X } from 'lucide-react'
+import LoanEditor, { LoanForm } from './LoanEditor'
+import { dayString, type LoanInfo } from '../lib/loan'
+import { ChevronDown, ChevronRight, Pencil, Plus, StickyNote, X } from 'lucide-react'
 import AmountInput from './AmountInput'
 import AssetIcon from './AssetIcon'
 import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER } from '../lib/constants'
@@ -48,11 +48,21 @@ export default function AssetEditor({
   const [owner, setOwner] = useState(defaultOwner)
   const [amount, setAmount] = useState(0)
   const [currency, setCurrency] = useState<Currency>('KRW')
+  // 부채를 추가하면서 바로 대출 정보까지 (2026-10-07 — 추가한 뒤 다시 열어야 해서 못 찾았다)
+  const [loanOpen, setLoanOpen] = useState(false)
+  const [loan, setLoan] = useState<LoanInfo | null>(null)
 
   const submit = () => {
     if (!name.trim() || amount <= 0) return
     if (currency === 'KRW') {
-      onAdd({ kind, group, name: name.trim(), owner, amount })
+      onAdd({
+        kind,
+        group,
+        name: name.trim(),
+        owner,
+        amount,
+        ...(kind === 'debt' && loanOpen && loan ? { loan } : {}),
+      })
     } else {
       // 외화: 원금+통화 저장, 원화 환산액은 현재 환율로 스냅샷
       onAdd({
@@ -68,6 +78,8 @@ export default function AssetEditor({
     setName('')
     setAmount(0)
     setCurrency('KRW')
+    setLoanOpen(false)
+    setLoan(null)
     setAdding(false)
   }
 
@@ -181,7 +193,7 @@ export default function AssetEditor({
               className="flex-1"
               value={amount}
               onChange={setAmount}
-              placeholder="현재 잔액"
+              placeholder={kind === 'debt' ? '남은 대출금' : '현재 잔액'}
               suffix={suffixOf(currency)}
             />
           </div>
@@ -189,6 +201,28 @@ export default function AssetEditor({
             <p className="px-1 text-right text-[12px] text-cap">
               실시간 환율 ≈ {formatWon(krwOf({ amount: 0, currency, fxAmount: amount }, rates))}
             </p>
+          )}
+          {kind === 'debt' && currency === 'KRW' && (
+            <div className="rounded-btn bg-bg p-3">
+              <button
+                type="button"
+                onClick={() => setLoanOpen((v) => !v)}
+                aria-expanded={loanOpen}
+                className="flex w-full items-center justify-between text-[12.5px] font-bold text-brand"
+              >
+                대출 정보 넣기 · 매달 갚는 돈 계산 (선택)
+                {loanOpen ? (
+                  <ChevronDown size={15} className="text-cap" />
+                ) : (
+                  <ChevronRight size={15} className="text-cap" />
+                )}
+              </button>
+              {loanOpen && (
+                <div className="mt-2">
+                  <LoanForm amount={amount} onChange={setLoan} />
+                </div>
+              )}
+            </div>
           )}
           <div className="flex gap-2">
             <button
