@@ -64,24 +64,25 @@ export default function Info() {
           <>
             <section aria-label="계산기" className="space-y-3">
               <SectionTitle>계산기</SectionTitle>
-              <button
-                onClick={() => navigate('/leave')}
-                className="flex w-full items-center gap-3 rounded-card bg-white p-4 text-left shadow-card"
-              >
-                <span
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-[20px]"
-                  aria-hidden
-                >
-                  🍼
-                </span>
-                <span className="flex-1">
-                  <span className="block text-[14.5px] font-bold text-ink">육아휴직 계산기</span>
-                  <span className="mt-0.5 block text-[12.5px] text-sub">
-                    휴직하면 우리집에 달마다 얼마가 모이는지
-                  </span>
-                </span>
-                <ChevronRight size={18} className="shrink-0 text-cap" />
-              </button>
+              {/* 돈 공부 계산기 (2026-10-07) — 우리집 가계부 숫자로 먼저 채워지고, 아래에서 결영이네로 이어진다 */}
+              <div className="grid grid-cols-2 gap-2">
+                {CALCS.map((c) => (
+                  <button
+                    key={c.title}
+                    onClick={() => c.to && navigate(c.to)}
+                    disabled={!c.to}
+                    className="flex flex-col items-start gap-1 rounded-card bg-white p-3.5 text-left shadow-card disabled:opacity-60"
+                  >
+                    <span className="text-[20px]" aria-hidden>
+                      {c.icon}
+                    </span>
+                    <span className="text-[14px] font-bold text-ink">{c.title}</span>
+                    <span className="text-[12px] leading-snug text-sub">
+                      {c.to ? c.sub : '준비 중이에요'}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </section>
 
             <section aria-label="공지" className="space-y-3">
@@ -115,6 +116,13 @@ export default function Info() {
     </div>
   )
 }
+
+const CALCS: { icon: string; title: string; sub: string; to: string | null }[] = [
+  { icon: '🍼', title: '육아휴직', sub: '쉬는 동안 한 달에 얼마', to: '/leave' },
+  { icon: '🏠', title: '집 살 때 드는 돈', sub: '집값 말고 잔금날 더', to: null },
+  { icon: '🌱', title: '노후 준비', sub: '지금 모으면 노후에 얼마', to: '/calc/retire' },
+  { icon: '🏦', title: '대출 이자', sub: '매달 갚는 돈 · 총 이자', to: '/calc/loan' },
+]
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <p className="px-1 text-[13px] font-bold text-sub">{children}</p>

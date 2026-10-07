@@ -52,6 +52,7 @@ describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기'
         <Routes>
           <Route path="/info" element={<Info />} />
           <Route path="/leave" element={<p>계산기 화면</p>} />
+          <Route path="/calc/retire" element={<p>노후 화면</p>} />
           <Route path="/info/archive" element={<p>지난 글 화면</p>} />
         </Routes>
       </MemoryRouter>,
@@ -78,7 +79,7 @@ describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기'
 
   it('계산기 칸에서도 육아휴직 계산기로 간다', () => {
     renderInfo()
-    fireEvent.click(screen.getByRole('button', { name: /육아휴직 계산기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /쉬는 동안 한 달에 얼마/ }))
     expect(screen.getByText('계산기 화면')).toBeInTheDocument()
   })
 
@@ -99,5 +100,12 @@ describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기'
     fireEvent.click(screen.getByRole('button', { name: /지난 증시 정리 보기/ }))
     expect(screen.getByText('지난 글 화면')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /글 올리기/ })).not.toBeInTheDocument()
+  })
+
+  it('계산기 칸 — 노후 준비로 가고, 아직 안 만든 건 준비 중', () => {
+    renderInfo()
+    expect(screen.getByRole('button', { name: /집 살 때 드는 돈/ })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: /노후 준비/ }))
+    expect(screen.getByText('노후 화면')).toBeInTheDocument()
   })
 })

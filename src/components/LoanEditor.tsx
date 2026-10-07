@@ -23,11 +23,14 @@ export function LoanForm({
   amount,
   initial,
   onChange,
+  hideLedger = false,
 }: {
   /** 남은 대출금 — 매달 갚는 돈 미리보기에 쓴다 */
   amount: number
   initial?: LoanInfo
   onChange: (draft: LoanInfo | null) => void
+  /** 돈 공부 '대출 이자' 계산기처럼 저장하지 않는 곳에선 '가계부에도 넣기'를 숨긴다 */
+  hideLedger?: boolean
 }) {
   const [rate, setRate] = useState(initial ? String(initial.rate) : '')
   const [years, setYears] = useState(initial ? String(Math.floor(initial.months / 12)) : '')
@@ -137,15 +140,17 @@ export function LoanForm({
           </button>
         ))}
       </div>
-      <label className="flex items-center gap-2 text-[12.5px] text-sub">
-        <input
-          type="checkbox"
-          checked={toLedger}
-          onChange={(e) => setToLedger(e.target.checked)}
-          className="h-4 w-4 accent-[#3182F6]"
-        />
-        가계부 고정지출에도 '대출 상환'으로 매달 넣기
-      </label>
+      {!hideLedger && (
+        <label className="flex items-center gap-2 text-[12.5px] text-sub">
+          <input
+            type="checkbox"
+            checked={toLedger}
+            onChange={(e) => setToLedger(e.target.checked)}
+            className="h-4 w-4 accent-[#3182F6]"
+          />
+          가계부 고정지출에도 '대출 상환'으로 매달 넣기
+        </label>
+      )}
       {preview && (
         <p className="rounded-btn bg-white px-3 py-2 text-[12.5px] leading-relaxed text-sub">
           매달 <b className="tnum text-[14px] font-bold text-brand">{short(preview.payment)}원</b> ·
