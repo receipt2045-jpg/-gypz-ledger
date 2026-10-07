@@ -146,7 +146,7 @@ export default function Monthly() {
 
       {/* 한눈에 — 폰은 맨 위, PC는 오른쪽 칸 맨 위 */}
       <div className="lg:hidden">
-        <MonthlyGlance ledger={ledger} profile={profile} />
+        <MonthlyGlance ledger={ledger} />
       </div>
 
       {/* PC에서는 두 칸 — 왼쪽: 기록하기·점검, 오른쪽: 부부별 내역 (2026-10-06) */}
@@ -273,7 +273,7 @@ export default function Monthly() {
           <>
             {/* 한눈에 — 남는 돈 + 링 (2026-10-07). 항목은 아래 '자세히'에서 */}
             <div className="hidden lg:block">
-              <MonthlyGlance ledger={ledger} profile={profile} />
+              <MonthlyGlance ledger={ledger} />
             </div>
 
             <p className="px-1 pt-2 text-[13px] font-bold text-sub">자세히 보기</p>

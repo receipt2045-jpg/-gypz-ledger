@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MonthlyGlance from './MonthlyGlance'
 import SectionList from './SectionList'
-import type { BudgetItem, MonthlyLedger, Profile } from '../types'
+import type { BudgetItem, MonthlyLedger } from '../types'
 
 const item = (
   id: string,
@@ -22,13 +22,6 @@ const item = (
   ...(shared ? { shared } : {}),
 })
 
-const profile: Profile = {
-  member1Name: '남편',
-  member2Name: '아내',
-  targetNetWorth: 0,
-  startYear: 2026,
-}
-
 const ledger: MonthlyLedger = {
   ym: '2026-10',
   closed: false,
@@ -43,8 +36,8 @@ const ledger: MonthlyLedger = {
 }
 
 describe('가계부 탭 한눈에', () => {
-  it('남는 돈을 크게, 계산식과 링 네 개, 누가 얼마나 벌었나를 보여 준다', () => {
-    render(<MonthlyGlance ledger={ledger} profile={profile} />)
+  it('남는 돈을 크게, 계산식과 링 네 개, 링 네 개를 보여 준다', () => {
+    render(<MonthlyGlance ledger={ledger} />)
     expect(screen.getByText('10월 남는 돈')).toBeInTheDocument()
     // 400 − 50 − 148 − 80 = 122만
     expect(screen.getByText('122만원')).toBeInTheDocument()
@@ -52,8 +45,7 @@ describe('가계부 탭 한눈에', () => {
     for (const label of ['수입', '저축·투자', '고정비', '생활비'])
       expect(screen.getByText(label)).toBeInTheDocument()
     expect(screen.getByText('수입의 37%')).toBeInTheDocument() // 고정비 148/400
-    expect(screen.getByText('누가 얼마나 벌었나')).toBeInTheDocument()
-    expect(screen.getByText('75%')).toBeInTheDocument()
+    expect(screen.queryByText('누가 얼마나 벌었나')).not.toBeInTheDocument()
   })
 })
 
