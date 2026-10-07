@@ -78,7 +78,12 @@ export function resolveLedger(ledgers: MonthlyLedger[], ym: string): MonthlyLedg
 
   const prev = findLatestBefore(ledgers, ym)
   if (prev) {
-    return { ym, items: deriveItemsFromPrevious(prev.items, ym), closed: false }
+    return {
+      ym,
+      items: deriveItemsFromPrevious(prev.items, ym),
+      closed: false,
+      ...(prev.contributions ? { contributions: { ...prev.contributions } } : {}),
+    }
   }
   return { ym, items: [], closed: false }
 }

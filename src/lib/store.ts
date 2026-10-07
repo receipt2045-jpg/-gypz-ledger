@@ -307,7 +307,13 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     }
   },
 
-  saveLedger: (ledger) => {
+  saveLedger: (input) => {
+    // 정산 화면처럼 공동통장 금액을 모르는 곳에서 저장해도 그 달 금액은 지킨다 (2026-10-07)
+    const prev = get().ledgers.find((l) => l.ym === input.ym)
+    const ledger =
+      input.contributions === undefined && prev?.contributions
+        ? { ...input, contributions: prev.contributions }
+        : input
     set((s) => {
       const rest = s.ledgers.filter((l) => l.ym !== ledger.ym)
       return { ledgers: [...rest, ledger].sort((a, b) => (a.ym < b.ym ? -1 : 1)) }

@@ -176,7 +176,7 @@ export default function Monthly() {
             {/* 기록하기 — 예산 세우기(월초) / 정산하기(월말) */}
             <div className="flex gap-2">
               <button
-                onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
+                onClick={() => navigate('/budget', { state: { ym } })}
                 className="h-12 flex-1 rounded-btn bg-white text-[14px] font-bold text-ink shadow-card active:bg-line"
               >
                 📝 예산 세우기

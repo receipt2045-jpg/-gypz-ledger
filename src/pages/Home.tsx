@@ -32,6 +32,7 @@ import {
   signedAbbrev,
 } from '../lib/format'
 import { TERM_TIP } from '../lib/constants'
+import { NO_CONTRIBUTIONS, totalLeft } from '../lib/budgetPlan'
 import { computeRoadmap, roadmapInput } from '../lib/roadmap'
 
 /**
@@ -86,20 +87,28 @@ export default function Home() {
   const thisYm = currentYm()
   const thisLedger = resolveLedger(ledgers, thisYm)
   const thisPlanned = thisLedger.items.some((it) => it.planned > 0)
+  // 예산 표의 '아직 정하지 않은 돈' (2026-10-07) — 월초에 남아 있으면 마저 정하자고
+  const unassigned = totalLeft(thisLedger.items, thisLedger.contributions ?? NO_CONTRIBUTIONS)
   const todo: { text: string; cta: string; onClick: () => void } | null =
     day <= 10 && !thisPlanned
       ? {
           text: '이번 달 예산 세울 때예요',
           cta: '예산 세우기',
-          onClick: () => navigate('/checkup', { state: { ym: thisYm, mode: 'budget' } }),
+          onClick: () => navigate('/budget', { state: { ym: thisYm } }),
         }
-      : day >= 25 && !thisLedger.closed
+      : day <= 10 && unassigned > 0
         ? {
-            text: '이번 달 정산할 때예요',
-            cta: '정산하기',
-            onClick: () => navigate('/checkup', { state: { ym: thisYm, mode: 'settle' } }),
+            text: `아직 정하지 않은 돈 ${abbreviateKRW(unassigned)}`,
+            cta: '마저 정하기',
+            onClick: () => navigate('/budget', { state: { ym: thisYm } }),
           }
-        : null
+        : day >= 25 && !thisLedger.closed
+          ? {
+              text: '이번 달 정산할 때예요',
+              cta: '정산하기',
+              onClick: () => navigate('/checkup', { state: { ym: thisYm, mode: 'settle' } }),
+            }
+          : null
 
   return (
     <div className="animate-fade-up space-y-4 pb-24">
@@ -199,7 +208,7 @@ export default function Home() {
               <QuickAction
                 emoji="📝"
                 label="예산 세우기"
-                onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
+                onClick={() => navigate('/budget', { state: { ym } })}
               />
               <QuickAction
                 emoji="✅"
@@ -227,7 +236,7 @@ export default function Home() {
                     done={hasBudget}
                     label="이번 달 예산 세우기"
                     hint="수입·저축·지출 계획을 한 번만 잡아두면 돼요"
-                    onClick={() => navigate('/checkup', { state: { ym, mode: 'budget' } })}
+                    onClick={() => navigate('/budget', { state: { ym } })}
                   />
                   <GuideStep
                     done={hasConfession}

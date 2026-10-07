@@ -96,6 +96,7 @@ export async function fetchHouseholdData(householdId: string): Promise<Household
     items: r.items,
     closed: r.closed,
     settledMembers: r.settled_members,
+    contributions: r.contributions ?? undefined,
   }))
   const snapshots: AssetSnapshot[] = (sn.data ?? []).map((r) => ({ ym: r.ym, items: r.items }))
   const occasions: OccasionEntry[] = (oc.data ?? []).map((r) => ({
@@ -142,6 +143,7 @@ export async function fetchLedger(householdId: string, ym: string): Promise<Mont
     items: data.items,
     closed: data.closed,
     settledMembers: data.settled_members,
+    contributions: data.contributions ?? undefined,
   }
 }
 
@@ -170,6 +172,8 @@ export async function pushLedger(householdId: string, ledger: MonthlyLedger) {
     items: ledger.items,
     closed: ledger.closed,
     settled_members: ledger.settledMembers ?? [],
+    // 공동통장 (2026-10-07) — 칸이 없는 옛 DB에서도 저장이 되게, 정한 달만 보낸다
+    ...(ledger.contributions ? { contributions: ledger.contributions } : {}),
     updated_at: new Date().toISOString(),
   })
   if (error) throw error

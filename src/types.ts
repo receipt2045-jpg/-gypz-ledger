@@ -72,6 +72,11 @@ export interface BudgetItem {
   planned: number // 예산
   actual: number // 결산(실제)
   note?: string
+  /**
+   * 공동통장에서 나가는 돈 (2026-10-07, 예산 표의 '공동' 칸).
+   * member는 그대로 둔다 — 정산은 사람별이라 누군가의 몫으로는 잡혀야 한다.
+   */
+  shared?: boolean
 }
 
 export interface MonthlyLedger {
@@ -79,6 +84,13 @@ export interface MonthlyLedger {
   items: BudgetItem[]
   closed: boolean // 결산 완료 여부 (두 구성원 모두 정산하면 true)
   settledMembers?: (1 | 2)[] // 정산을 마친 구성원
+  /** 각자 공동통장으로 보내는 돈(원). 없으면 공동통장을 안 쓰는 달 — lib/budgetPlan */
+  contributions?: Contributions
+}
+
+export interface Contributions {
+  1: number
+  2: number
 }
 
 export type AssetGroup = 'cash' | 'stock' | 'realestate' | 'pension' | 'consumable'

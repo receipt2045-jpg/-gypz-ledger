@@ -19,6 +19,7 @@ import Assets from './pages/Assets'
 import Yearly from './pages/Yearly'
 import Settings from './pages/Settings'
 import Checkup from './pages/Checkup'
+import Budget from './pages/Budget'
 import Confess from './pages/Confess'
 import Info from './pages/Info'
 import PostDetail from './pages/PostDetail'
@@ -180,6 +181,7 @@ function AppRoutes() {
         <Route path="/admin/posts" element={<AdminPosts />} />
         <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/checkup" element={<Checkup />} />
+        <Route path="/budget" element={<Budget />} />
         <Route path="/confess" element={<Confess />} />
         <Route path="/asset-setup" element={<AssetSetup />} />
         <Route path="/year-end-tax" element={<YearEndTax />} />

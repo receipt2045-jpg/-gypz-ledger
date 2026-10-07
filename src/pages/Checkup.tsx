@@ -1128,7 +1128,14 @@ function MoneyStep({
           <div key={it.id} className="rounded-card bg-card px-4 py-3 shadow-card">
             <div className="flex items-center gap-2.5">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-semibold text-ink">{it.category}</p>
+                <p className="truncate text-[15px] font-semibold text-ink">
+                  {it.category}
+                  {it.shared && (
+                    <span className="ml-1.5 rounded-full bg-violet-50 px-1.5 py-0.5 align-middle text-[10.5px] font-bold text-violet-600">
+                      공동
+                    </span>
+                  )}
+                </p>
                 {/* 두 사람 몫을 한 화면에서 넣을 땐 누구 것인지가 제일 중요하다 */}
                 {(showMember || groups.length > 1) && (
                   <p className="mt-0.5 truncate text-[11px] text-cap">

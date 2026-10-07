@@ -70,7 +70,11 @@ export default function TodayCard() {
         <span className="text-[14px] font-bold text-ink">
           {streak > 0 ? `🔥 ${streak}일 연속` : '🎙️ 오늘의 소비 기록'}
           <span className={`ml-1.5 font-semibold ${confessedToday ? 'text-brand' : 'text-sub'}`}>
-            {confessedToday ? '· 오늘 기록 끝 ✅' : streak > 0 ? '· 오늘 기록 아직이에요' : '오늘 쓴 돈을 말해주세요'}
+            {confessedToday
+              ? '· 오늘 기록 끝 ✅'
+              : streak > 0
+                ? '· 오늘 기록 아직이에요'
+                : '오늘 쓴 돈을 말해주세요'}
           </span>
         </span>
         <span className="flex shrink-0 items-center text-[13px] font-bold text-brand">
@@ -104,7 +108,7 @@ export default function TodayCard() {
           </>
         ) : (
           <button
-            onClick={() => navigate('/checkup', { state: { ym: thisYm, mode: 'budget' } })}
+            onClick={() => navigate('/budget', { state: { ym: thisYm } })}
             className="flex w-full items-center justify-between text-left"
           >
             <span className="text-[13px] font-medium text-sub">
