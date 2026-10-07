@@ -102,9 +102,9 @@ describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기'
     expect(screen.queryByRole('button', { name: /글 올리기/ })).not.toBeInTheDocument()
   })
 
-  it('계산기 칸 — 노후 준비로 가고, 아직 안 만든 건 준비 중', () => {
+  it('계산기 칸 — 노후 준비로 간다', () => {
     renderInfo()
-    expect(screen.getByRole('button', { name: /집 살 때 드는 돈/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /집 살 때 드는 돈/ })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: /노후 준비/ }))
     expect(screen.getByText('노후 화면')).toBeInTheDocument()
   })

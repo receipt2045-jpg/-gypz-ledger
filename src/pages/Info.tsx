@@ -119,7 +119,7 @@ export default function Info() {
 
 const CALCS: { icon: string; title: string; sub: string; to: string | null }[] = [
   { icon: '🍼', title: '육아휴직', sub: '쉬는 동안 한 달에 얼마', to: '/leave' },
-  { icon: '🏠', title: '집 살 때 드는 돈', sub: '집값 말고 잔금날 더', to: null },
+  { icon: '🏠', title: '집 살 때 드는 돈', sub: '집값 말고 잔금날 더', to: '/calc/home-cost' },
   { icon: '🌱', title: '노후 준비', sub: '지금 모으면 노후에 얼마', to: '/calc/retire' },
   { icon: '🏦', title: '대출 이자', sub: '매달 갚는 돈 · 총 이자', to: '/calc/loan' },
 ]

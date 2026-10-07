@@ -1,5 +1,6 @@
 import RetireCalc from './pages/RetireCalc'
 import LoanCalc from './pages/LoanCalc'
+import HomeCostCalc from './pages/HomeCostCalc'
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import type { Session, User } from '@supabase/supabase-js'
@@ -166,6 +167,7 @@ function AppRoutes() {
           {/* 돈 공부 계산기 (2026-10-07) */}
           <Route path="/calc/retire" element={<RetireCalc />} />
           <Route path="/calc/loan" element={<LoanCalc />} />
+          <Route path="/calc/home-cost" element={<HomeCostCalc />} />
           <Route path="/info/:id" element={<PostDetail />} />
           {/* 옛 탭 주소(2026-09-30 개편 전) — 홈 화면 바로가기·링크가 깨지지 않게 */}
           <Route path="/board" element={<Navigate to="/info" replace />} />
