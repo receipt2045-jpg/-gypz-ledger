@@ -1,3 +1,4 @@
+import { ymOfDate } from './format'
 import type { BudgetItem, CategoryGroup, Confession } from '../types'
 import { NO_SPEND } from './constants'
 
@@ -5,10 +6,9 @@ import { NO_SPEND } from './constants'
 // 고백은 습관 로그지만, 쌓인 내역은 월간 가계부에서 보이고
 // 정산 때 실제 금액의 초안이 되어야 한다.
 
-/** ISO 시각을 사용자 로컬 기준 "YYYY-MM"으로 (자정 전후 고백이 엉뚱한 달로 가지 않게) */
+/** ISO 시각을 사용자 로컬 기준 가계부 달 "YYYY-MM"으로 (자정 전후·한 달 시작일 반영) */
 export function ymOfIso(iso: string): string {
-  const d = new Date(iso)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  return ymOfDate(new Date(iso))
 }
 
 /** 해당 월의 고백만 (최신순 유지) */

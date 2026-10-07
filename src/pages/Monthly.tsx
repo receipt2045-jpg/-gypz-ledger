@@ -11,7 +11,7 @@ import SectionList from '../components/SectionList'
 import { useLedgerStore } from '../lib/store'
 import { buildMonthlyCard } from '../lib/monthlyCard'
 import { activeYm, resolveLedger, summarize } from '../lib/carryover'
-import { formatWon, formatYmKorean, shiftYm } from '../lib/format'
+import { formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER, TERM_TIP } from '../lib/constants'
 import { confessSums, monthConfessions } from '../lib/confessLedger'
 import { memberStyle } from '../lib/memberColors'
@@ -78,7 +78,7 @@ export default function Monthly() {
   const logTotal = spendLog.reduce((sum, c) => sum + c.amount, 0)
 
   // 비정기 지출 — 보는 달 것만 목록에, 합계는 올해 누적 (연간비 감각 유지)
-  const monthOccasions = occasions.filter((o) => o.date.startsWith(ym))
+  const monthOccasions = occasions.filter((o) => ymOfDay(o.date) === ym)
   const yearOccasions = occasions.filter((o) => o.date.startsWith(ym.slice(0, 4)))
   const occasionYearTotal = yearOccasions.reduce((a, o) => a + o.amount, 0)
   // 추가 폼 기본 날짜: 보는 달이 이번 달이면 오늘, 아니면 그 달 1일
@@ -126,9 +126,10 @@ export default function Monthly() {
         >
           <ChevronLeft size={22} />
         </button>
-        <h1 className="min-w-[128px] text-center text-[18px] font-bold text-ink">
-          {formatYmKorean(ym)}
-        </h1>
+        <div className="min-w-[128px] text-center">
+          <h1 className="text-[18px] font-bold text-ink">{formatYmKorean(ym)}</h1>
+          {periodLabel(ym) && <p className="text-[12px] text-cap">{periodLabel(ym)}</p>}
+        </div>
         <button
           onClick={() => setYm(shiftYm(ym, 1))}
           className="flex h-9 w-9 items-center justify-center rounded-full text-sub active:bg-line"

@@ -11,6 +11,8 @@
 // 캐릭터: 모아(눈치채고 짚어줌) → 불리(그래서 얼마 남는지 계산해줌)
 // 치환: {금액}{카테고리}{n}{월합}{연}{10년}
 // ============================================================
+import { currentYm } from './format'
+import { ymOfIso } from './confessLedger'
 import type { CategoryGroup, Confession } from '../types'
 import { abbreviateKRW, formatWon } from './format'
 import { NO_SPEND } from './constants'
@@ -44,12 +46,46 @@ function reduceSub(kind: CategoryGroup, category: string): ReduceSub | null {
   if (c.includes('배달') || c.includes('외식')) return 'delivery'
   if (c.includes('카페') || c.includes('커피')) return 'cafe'
   if (c.includes('택시')) return 'taxi'
-  if (c.includes('꾸밈') || c.includes('미용') || c.includes('화장') || c.includes('네일') || c.includes('헤어')) return 'beauty'
-  if (c.includes('여행') || c.includes('항공') || c.includes('숙박') || c.includes('호텔')) return 'travel'
-  if (c.includes('자동차') || c.includes('주유') || c.includes('기름') || c.includes('주차')) return 'car'
-  if (c.includes('문화') || c.includes('공연') || c.includes('영화') || c.includes('게임') || c.includes('전시') || c.includes('콘서트')) return 'culture'
-  if (c.includes('반려') || c.includes('강아지') || c.includes('고양이') || c.includes('댕댕') || c.includes('냥')) return 'pet'
-  if (c.includes('술') || c.includes('유흥') || c.includes('음주') || c.includes('맥주') || c.includes('소주') || c.includes('와인') || c.includes('회식') || c.includes('파티')) return 'booze'
+  if (
+    c.includes('꾸밈') ||
+    c.includes('미용') ||
+    c.includes('화장') ||
+    c.includes('네일') ||
+    c.includes('헤어')
+  )
+    return 'beauty'
+  if (c.includes('여행') || c.includes('항공') || c.includes('숙박') || c.includes('호텔'))
+    return 'travel'
+  if (c.includes('자동차') || c.includes('주유') || c.includes('기름') || c.includes('주차'))
+    return 'car'
+  if (
+    c.includes('문화') ||
+    c.includes('공연') ||
+    c.includes('영화') ||
+    c.includes('게임') ||
+    c.includes('전시') ||
+    c.includes('콘서트')
+  )
+    return 'culture'
+  if (
+    c.includes('반려') ||
+    c.includes('강아지') ||
+    c.includes('고양이') ||
+    c.includes('댕댕') ||
+    c.includes('냥')
+  )
+    return 'pet'
+  if (
+    c.includes('술') ||
+    c.includes('유흥') ||
+    c.includes('음주') ||
+    c.includes('맥주') ||
+    c.includes('소주') ||
+    c.includes('와인') ||
+    c.includes('회식') ||
+    c.includes('파티')
+  )
+    return 'booze'
   if (c.includes('쇼핑') || c.includes('충동')) return 'shopping'
   if (c.includes('식비') || c.includes('식사')) return 'food'
   return null
@@ -296,17 +332,11 @@ const LEVERAGE_LINE = [
   '{카테고리} {금액}이에요. 이건 자산을 만드는 지출이라 줄이라고 안 할게요',
   '{카테고리}는 감당선 안이면 괜찮아요. 그대로 가요',
 ]
-const INCOME = [
-  '수입 {금액} 들어왔네요 🤍',
-  '{금액} 확인했어요. 모으고 불릴 준비 됐어요',
-]
+const INCOME = ['수입 {금액} 들어왔네요 🤍', '{금액} 확인했어요. 모으고 불릴 준비 됐어요']
 
 // ── 중립 ──────────────────────────────────────
 const RECEIPT = ['기록 완료', '접수했어요', '오늘도 남겼네요']
-const NEUTRAL_MID = [
-  '{카테고리} {금액}, 이 정도는 괜찮아요',
-  '{카테고리} {금액} 기록했어요',
-]
+const NEUTRAL_MID = ['{카테고리} {금액}, 이 정도는 괜찮아요', '{카테고리} {금액} 기록했어요']
 const NEUTRAL_HIGH: Line[][] = [
   [
     { who: '모아', text: '{카테고리} {금액}이네. 큰 지출은 적어둔 것만으로 반은 했어' },
@@ -315,11 +345,7 @@ const NEUTRAL_HIGH: Line[][] = [
 ]
 
 // ── 치환 ──────────────────────────────────────
-function makeVars(
-  c: { category: string; amount: number },
-  monthCount: number,
-  monthSum: number,
-) {
+function makeVars(c: { category: string; amount: number }, monthCount: number, monthSum: number) {
   return {
     '{금액}': formatWon(c.amount),
     '{카테고리}': c.category,
@@ -385,8 +411,8 @@ export function pickReaction(
   }
 
   const bucket = bucketOf(c.kind, c.category)
-  const ym = new Date().toISOString().slice(0, 7)
-  const same = all.filter((x) => x.category === c.category && x.createdAt.slice(0, 7) === ym)
+  const ym = currentYm()
+  const same = all.filter((x) => x.category === c.category && ymOfIso(x.createdAt) === ym)
   const monthCount = Math.max(1, same.length)
   const monthSum = same.reduce((s, x) => s + x.amount, 0) || c.amount
   const vars = makeVars(c, monthCount, monthSum)
@@ -465,10 +491,10 @@ const NO_SPEND_MOA = [
 
 /** 이번 달 무지출로 기록한 날 수 */
 export function noSpendCount(all: Confession[]): number {
-  const ym = new Date().toISOString().slice(0, 7)
+  const ym = currentYm()
   const days = new Set(
     all
-      .filter((c) => c.category === NO_SPEND && c.createdAt.slice(0, 7) === ym)
+      .filter((c) => c.category === NO_SPEND && ymOfIso(c.createdAt) === ym)
       .map((c) => new Date(c.createdAt).toLocaleDateString('sv-SE')),
   )
   return days.size

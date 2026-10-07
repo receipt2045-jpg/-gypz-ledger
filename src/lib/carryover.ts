@@ -1,12 +1,6 @@
-import type {
-  AssetItem,
-  AssetSnapshot,
-  BudgetItem,
-  CategoryGroup,
-  MonthlyLedger,
-} from '../types'
+import type { AssetItem, AssetSnapshot, BudgetItem, CategoryGroup, MonthlyLedger } from '../types'
 import { GROUP_ORDER } from './constants'
-import { shiftYm } from './format'
+import { shiftYm, currentYm } from './format'
 
 /** 간단 uuid (crypto 지원 없을 때 fallback) */
 export function genId(): string {
@@ -136,7 +130,8 @@ export function mergeAssets(
   const out: AssetItem[] = []
   for (const s of server) {
     const edited = mineById.get(s.id)
-    if (edited) out.push(edited) // 내가 고친 것 → 내 값
+    if (edited)
+      out.push(edited) // 내가 고친 것 → 내 값
     else if (!baselineIds.has(s.id)) out.push(s) // 배우자가 새로 넣은 것 → 지킨다
     // baseline에 있었는데 내 목록엔 없다 = 내가 지운 것 → 버린다
   }
@@ -190,16 +185,12 @@ export function sumGroup(ledger: MonthlyLedger, group: CategoryGroup): number {
 
 /** planned 합계 (그룹) */
 export function sumGroupPlanned(ledger: MonthlyLedger, group: CategoryGroup): number {
-  return ledger.items
-    .filter((it) => it.group === group)
-    .reduce((acc, it) => acc + it.planned, 0)
+  return ledger.items.filter((it) => it.group === group).reduce((acc, it) => acc + it.planned, 0)
 }
 
 /** actual 합계 (그룹) */
 export function sumGroupActual(ledger: MonthlyLedger, group: CategoryGroup): number {
-  return ledger.items
-    .filter((it) => it.group === group)
-    .reduce((acc, it) => acc + it.actual, 0)
+  return ledger.items.filter((it) => it.group === group).reduce((acc, it) => acc + it.actual, 0)
 }
 
 export interface LedgerSummary {
@@ -227,22 +218,15 @@ export function summarize(ledger: MonthlyLedger): LedgerSummary {
 
 /** 순자산 = 자산 합 - 부채 합 */
 export function netWorthOf(snapshot: AssetSnapshot): number {
-  return snapshot.items.reduce(
-    (acc, it) => acc + (it.kind === 'asset' ? it.amount : -it.amount),
-    0,
-  )
+  return snapshot.items.reduce((acc, it) => acc + (it.kind === 'asset' ? it.amount : -it.amount), 0)
 }
 
 export function totalAssets(snapshot: AssetSnapshot): number {
-  return snapshot.items
-    .filter((it) => it.kind === 'asset')
-    .reduce((acc, it) => acc + it.amount, 0)
+  return snapshot.items.filter((it) => it.kind === 'asset').reduce((acc, it) => acc + it.amount, 0)
 }
 
 export function totalDebts(snapshot: AssetSnapshot): number {
-  return snapshot.items
-    .filter((it) => it.kind === 'debt')
-    .reduce((acc, it) => acc + it.amount, 0)
+  return snapshot.items.filter((it) => it.kind === 'debt').reduce((acc, it) => acc + it.amount, 0)
 }
 
 /** 최근 count개월 순자산 시계열 (ym 포함, 과거→현재 순) */
@@ -267,10 +251,7 @@ export function sortedYms(ledgers: MonthlyLedger[]): string[] {
 
 /** 활성 월: 가장 최근 ledger. 그게 closed면 다음 달. */
 export function activeYm(ledgers: MonthlyLedger[]): string {
-  if (ledgers.length === 0) {
-    const d = new Date()
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-  }
+  if (ledgers.length === 0) return currentYm()
   const latest = [...ledgers].sort((a, b) => (a.ym < b.ym ? 1 : -1))[0]
   return latest.closed ? shiftYm(latest.ym, 1) : latest.ym
 }

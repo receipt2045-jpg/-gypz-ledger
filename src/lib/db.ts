@@ -89,6 +89,7 @@ export async function fetchHouseholdData(householdId: string): Promise<Household
     // 칸이 없는 옛 DB(마이그레이션 전)에서도 죽지 않게 — 없으면 '목표 넣기 전'으로 본다
     goal: (h.goal ?? undefined) as Profile['goal'],
     roadmap: (h.roadmap ?? undefined) as Profile['roadmap'],
+    monthStartDay: h.month_start_day ?? undefined,
   }
   const ledgers: MonthlyLedger[] = (lg.data ?? []).map((r) => ({
     ym: r.ym,
@@ -227,6 +228,8 @@ export async function pushProfile(householdId: string, profile: Profile) {
       ...(profile.goal !== undefined ? { goal: profile.goal } : {}),
       // roadmap 칸도 같은 이유로 — household-roadmap.sql을 실행한 DB에서 로드맵을 만진 집만 보낸다
       ...(profile.roadmap !== undefined ? { roadmap: profile.roadmap } : {}),
+      // 한 달 시작일 — month-start-day.sql을 실행한 DB에서, 바꾼 집만 보낸다 (없는 칸에 보내면 저장 전체가 실패)
+      ...(profile.monthStartDay !== undefined ? { month_start_day: profile.monthStartDay } : {}),
     })
     .eq('id', householdId)
   if (error) throw error

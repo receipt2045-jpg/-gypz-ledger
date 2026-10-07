@@ -1,3 +1,4 @@
+import MonthStartPicker from '../components/MonthStartPicker'
 import SiteFooter from '../components/SiteFooter'
 import PcColumns from '../components/PcColumns'
 import { useEffect, useRef, useState } from 'react'
@@ -268,6 +269,13 @@ export default function Settings() {
                 <p className="-mt-1 px-1 text-[12px] leading-relaxed text-cap">
                   내 이름이 배우자 자리에 있으면 눌러주세요. 기록은 그대로 두고 이름표만 바뀌어요.
                 </p>
+                {/* 한 달 시작일 — 급여일에 맞춰 15일부터 한 달로 쓰는 집 (2026-10-07 제보) */}
+                <Field label="한 달 시작일" hint="월급날에 맞추면 편해요">
+                  <MonthStartPicker
+                    value={profile.monthStartDay ?? 1}
+                    onChange={(d) => updateProfile({ monthStartDay: d })}
+                  />
+                </Field>
                 <Field label="자녀" hint="자산 소유자로 쓸 수 있어요">
                   {childNames.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1.5">

@@ -76,14 +76,48 @@ export function formatMonthKorean(ym: string): string {
 /** ym 문자열 오프셋: shiftYm("2026-07", -1) -> "2026-06" */
 export function shiftYm(ym: string, delta: number): string {
   const [y, m] = ym.split('-').map(Number)
-  const base = (y * 12 + (m - 1)) + delta
+  const base = y * 12 + (m - 1) + delta
   const ny = Math.floor(base / 12)
   const nm = (base % 12) + 1
   return `${ny}-${String(nm).padStart(2, '0')}`
 }
 
-/** 오늘 기준 현재 ym */
+// ── 우리집 한 달 시작일 (2026-10-07) ──
+// 급여일이 15일인 집은 15일부터 다음 달 14일까지를 한 달로 쓴다. 달 이름은 시작하는 달.
+// 스토어가 프로필을 읽을 때 setMonthStartDay로 맞춘다 — 날짜를 달로 바꾸는 곳은 모두 ymOfDate를 쓴다.
+let monthStartDay = 1
+
+export function setMonthStartDay(day: number | undefined) {
+  monthStartDay = day && day >= 1 && day <= 28 ? Math.floor(day) : 1
+}
+
+export function getMonthStartDay(): number {
+  return monthStartDay
+}
+
+/** 날짜가 속한 가계부 달 'YYYY-MM' — 시작일 전이면 앞 달 */
+export function ymOfDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = d.getMonth() + 1
+  const ym = `${y}-${String(m).padStart(2, '0')}`
+  return d.getDate() < monthStartDay ? shiftYm(ym, -1) : ym
+}
+
+/** 'YYYY-MM-DD' 날짜 글자(경조사 등)를 가계부 달로 — 시간대 없이 그 날짜 그대로 */
+export function ymOfDay(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return ymOfDate(new Date(y, (m || 1) - 1, d || 1))
+}
+
+/** 이 달의 기간 글자 — 시작일이 1일이면 null (예전과 같아 따로 안 보여준다) */
+export function periodLabel(ym: string): string | null {
+  if (monthStartDay === 1) return null
+  const [y, m] = ym.split('-').map(Number)
+  const end = new Date(y, m, monthStartDay - 1) // 다음 달 (시작일 - 1)일
+  return `${m}월 ${monthStartDay}일 ~ ${end.getMonth() + 1}월 ${end.getDate()}일`
+}
+
+/** 오늘 기준 현재 ym (한 달 시작일 반영) */
 export function currentYm(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  return ymOfDate(new Date())
 }

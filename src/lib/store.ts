@@ -1,3 +1,4 @@
+import { setMonthStartDay } from './format'
 import { applyCategoryChanges, changesFromSnapshot, type CategoryChange } from './categoryChanges'
 import { create } from 'zustand'
 import type {
@@ -422,3 +423,10 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     }
   },
 }))
+
+// 프로필의 한 달 시작일을 날짜 → 달 계산(lib/format)에 맞춘다. 화면은 프로필이 바뀌면 다시 그려진다.
+setMonthStartDay(useLedgerStore.getState().profile.monthStartDay)
+useLedgerStore.subscribe((st, prev) => {
+  if (st.profile.monthStartDay !== prev.profile.monthStartDay)
+    setMonthStartDay(st.profile.monthStartDay)
+})

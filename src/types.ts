@@ -31,6 +31,8 @@ export interface Profile {
   startYear: number
   goal?: SavingsGoal // 없으면 로드맵이 '목표 넣기 전' 화면을 보여준다
   roadmap?: Roadmap // 자산 로드맵 페이지(/roadmap)의 가정·계획. 없으면 기본값으로 계산한다
+  /** 우리집 한 달 시작일 1~28 (없으면 1). 15면 10월 = 10월 15일 ~ 11월 14일 — lib/format.ymOfDate */
+  monthStartDay?: number
 }
 
 /** 로드맵에 넣는 큰일. 종류마다 쓰는 칸이 다르다 — lib/roadmap.flowAt 참고 */

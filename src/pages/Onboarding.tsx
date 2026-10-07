@@ -1,3 +1,4 @@
+import MonthStartPicker from '../components/MonthStartPicker'
 import { useState } from 'react'
 import { Heart, KeyRound, Plus, Target } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
@@ -18,6 +19,7 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
   const [name1, setName1] = useState('남편')
   const [name2, setName2] = useState('아내')
   const [target, setTarget] = useState(1_000_000_000)
+  const [startDay, setStartDay] = useState(1)
 
   const handleCreate = async () => {
     if (busy) return
@@ -44,6 +46,7 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
         member2Name: name2.trim() || '아내',
         targetNetWorth: target > 0 ? target : 1_000_000_000,
         startYear: new Date().getFullYear(),
+        ...(startDay !== 1 ? { monthStartDay: startDay } : {}),
       })
     } catch (err) {
       console.error(err) // 저장 실패해도 기본값으로 진행 (설정에서 수정 가능)
@@ -94,7 +97,7 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
           <p className="mt-3 text-[15px] leading-relaxed text-sub">
             {mode === 'profile' ? (
               <>
-                호칭과 10년 목표 순자산을 정해요.
+                호칭, 한 달 시작일, 10년 목표 순자산을 정해요.
                 <br />
                 나중에 설정에서 언제든 바꿀 수 있어요.
               </>
@@ -117,7 +120,9 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
             <div className="mt-8 space-y-3">
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="mb-1.5 block text-[13px] font-medium text-sub">나 (구성원 1)</label>
+                  <label className="mb-1.5 block text-[13px] font-medium text-sub">
+                    나 (구성원 1)
+                  </label>
                   <input
                     type="text"
                     value={name1}
@@ -126,7 +131,9 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="mb-1.5 block text-[13px] font-medium text-sub">배우자 (구성원 2)</label>
+                  <label className="mb-1.5 block text-[13px] font-medium text-sub">
+                    배우자 (구성원 2)
+                  </label>
                   <input
                     type="text"
                     value={name2}
@@ -134,6 +141,12 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
                     className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-center text-[15px] font-semibold text-ink outline-none focus:border-brand"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[13px] font-medium text-sub">
+                  한 달은 며칠부터인가요?
+                </label>
+                <MonthStartPicker value={startDay} onChange={setStartDay} />
               </div>
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
