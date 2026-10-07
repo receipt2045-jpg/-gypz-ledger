@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, Copy, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Copy, Pencil, X } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import PcShell from '../components/PcShell'
 import { LOAN_CATEGORY, addLoanItems, loanLedgerAmounts } from '../lib/loan'
@@ -282,6 +282,9 @@ export default function Budget() {
             <div className="space-y-2.5 lg:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start lg:gap-3 lg:space-y-0">
               {/* 표 */}
               <div className="rounded-card bg-card px-2 py-3 shadow-card">
+                <p className="mb-2 flex items-center gap-1 px-1 text-[12px] font-medium text-brand">
+                  <Pencil size={12} />칸 안의 숫자를 누르면 고칠 수 있어요
+                </p>
                 <table className="w-full table-fixed border-collapse text-[13.5px]">
                   <colgroup>
                     <col className="w-[29%]" />
@@ -380,8 +383,8 @@ export default function Budget() {
                   </tbody>
                 </table>
                 <p className="mt-1 px-1 text-[11.5px] text-cap">
-                  칸을 누르면 <span className="lg:hidden">아래</span>
-                  <span className="hidden lg:inline">오른쪽</span>에서 고쳐요
+                  누른 칸의 항목은 <span className="lg:hidden">아래</span>
+                  <span className="hidden lg:inline">오른쪽</span>에 나와요 · 남는 돈은 자동 계산
                 </p>
               </div>
 
@@ -505,12 +508,17 @@ function Cell({
       <button
         onClick={onClick}
         aria-label={`${label} ${formatComma(value)}원`}
-        className={`tnum block w-full rounded-lg border px-1.5 py-2 text-right ${color} ${
-          selected ? 'border-brand bg-brand/10' : 'border-transparent active:bg-bg'
+        className={`tnum flex w-full items-center justify-end gap-1 rounded-lg border px-1.5 py-2 text-right ${color} ${
+          selected
+            ? 'border-brand bg-brand/10 ring-2 ring-brand/15'
+            : 'border-line bg-white hover:border-brand/50 active:bg-bg'
         }`}
       >
-        {value > 0 && sign ? sign : ''}
-        {short(value)}
+        <Pencil size={10} className="shrink-0 text-cap/70" aria-hidden />
+        <span className="truncate">
+          {value > 0 && sign ? sign : ''}
+          {short(value)}
+        </span>
       </button>
     </td>
   )
