@@ -1,4 +1,4 @@
-import { changesFromSnapshot, type CategoryChange } from './categoryChanges'
+import { applyCategoryChanges, changesFromSnapshot, type CategoryChange } from './categoryChanges'
 import { create } from 'zustand'
 import type {
   AppData,
@@ -64,7 +64,10 @@ function saveCategoryChange(hid: string | null, change: CategoryChange) {
   if (!hid) return
   const op: PendingOp = {
     kind: 'categoryChange',
-    key: `categoryChange:${change.action}:${change.group}:${change.name}`,
+    key:
+      change.action === 'order'
+        ? `categoryChange:order:${change.group}`
+        : `categoryChange:${change.action}:${change.group}:${change.name}`,
     payload: change,
   }
   db.changeCategories(hid, [change])
@@ -159,6 +162,8 @@ interface LedgerState extends AppData {
   /** 'added' | 'exists'(같은 칸에 이미 있음) | 다른 칸 이름(그 칸에 이미 있음) */
   addCategory: (group: CategoryGroup, name: string) => 'added' | 'exists' | CategoryGroup
   removeCategory: (group: CategoryGroup, name: string) => void
+  /** 예산·정산에서 바꾼 항목 순서를 카테고리 순서에도 — 다음 달·설정에서도 같은 순서 */
+  orderCategories: (group: CategoryGroup, names: string[]) => void
   /** 서버 최신 카테고리로 맞춘다 — 배우자·다른 기기에서 추가한 것까지 고를 때 보이게 */
   refreshCategories: () => Promise<void>
   // 데이터 관리
@@ -365,6 +370,15 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const s = get()
     set({ categories: { ...s.categories, [group]: s.categories[group].filter((c) => c !== name) } })
     saveCategoryChange(s.householdId, { action: 'remove', group, name })
+  },
+
+  orderCategories: (group, names) => {
+    const s = get()
+    const change: CategoryChange = { action: 'order', group, names }
+    const next = applyCategoryChanges(s.categories, [change])
+    if (next === s.categories) return
+    set({ categories: next })
+    saveCategoryChange(s.householdId, change)
   },
 
   refreshCategories: async () => {

@@ -9,15 +9,21 @@ import type { Categories, CategoryGroup } from '../types'
  * 그 사이 추가한 카테고리는 오래된 목록에 없으니 지워졌다(재시도 큐가 옛 목록을 다시 보낼 때도).
  * 이제는 서버 최신 목록을 읽어 이 변경만 적용한 뒤 저장한다.
  */
-export interface CategoryChange {
-  action: 'add' | 'remove'
-  group: CategoryGroup
-  name: string
-}
+export type CategoryChange =
+  | { action: 'add' | 'remove'; group: CategoryGroup; name: string }
+  /** 예산·정산에서 바꾼 순서 — 적힌 이름을 이 순서로 앞에, 나머지는 원래 순서대로 뒤에 (2026-10-07) */
+  | { action: 'order'; group: CategoryGroup; names: string[] }
 
 export function applyCategoryChanges(cats: Categories, changes: CategoryChange[]): Categories {
   let next = cats
   for (const ch of changes) {
+    if (ch.action === 'order') {
+      const list = next[ch.group] ?? []
+      const front = ch.names.filter((n, i) => list.includes(n) && ch.names.indexOf(n) === i)
+      const ordered = [...front, ...list.filter((n) => !front.includes(n))]
+      if (ordered.some((n, i) => n !== list[i])) next = { ...next, [ch.group]: ordered }
+      continue
+    }
     const name = ch.name.trim()
     if (!name) continue
     const list = next[ch.group] ?? []

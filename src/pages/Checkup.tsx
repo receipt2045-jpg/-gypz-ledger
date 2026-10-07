@@ -2,8 +2,10 @@
 import PcShell from '../components/PcShell'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  ArrowUpDown,
   Check,
   ChevronLeft,
+  ChevronUp,
   ChevronDown,
   ChevronRight,
   X,
@@ -126,6 +128,7 @@ export default function Checkup() {
     saveLedger,
     saveSnapshot,
     addCategory,
+    orderCategories,
   } = useLedgerStore()
 
   // 모드: 'budget'(예산 세우기, 계획 금액) / 'settle'(정산하기, 실제 금액)
@@ -222,6 +225,38 @@ export default function Checkup() {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: v } : it)))
   const setNote = (id: string, note: string) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, note: note || undefined } : it)))
+  /** 보이는 목록(이 스텝·이 사람) 안에서 한 칸 위/아래로 — 저장할 때 이 순서 그대로 (2026-10-07 제보) */
+  const moveItem = (id: string, dir: -1 | 1) =>
+    setItems((prev) => {
+      const visible = prev.filter(
+        (it) => def.groups.includes(it.group) && (bothMode || it.member === member),
+      )
+      const i = visible.findIndex((it) => it.id === id)
+      const j = i + dir
+      if (i < 0 || j < 0 || j >= visible.length) return prev
+      const a = prev.findIndex((it) => it.id === visible[i].id)
+      const b = prev.findIndex((it) => it.id === visible[j].id)
+      const next = [...prev]
+      ;[next[a], next[b]] = [next[b], next[a]]
+      return next
+    })
+  /** 순서 바꾸기를 마치면 카테고리 순서에도 — 다음 달 새 항목·설정에서도 같은 순서 */
+  const orderDone = () => {
+    for (const g of def.groups) {
+      const names = stepItems.filter((it) => it.group === g).map((it) => it.category)
+      if (names.length > 1) orderCategories(g, names)
+    }
+    // 정산을 끝내지 않고 나가도 바꾼 순서가 남게 — 삭제와 같은 방식으로 바로 저장
+    if (!member) return
+    void fetchBase().then((base) => {
+      saveLedger({
+        ym,
+        items: mergeMemberItems(base.items, items, member),
+        closed: base.closed,
+        settledMembers: base.settledMembers ?? [],
+      })
+    })
+  }
   const addItem = (group: CategoryGroup, category: string, forMember: 1 | 2) => {
     setItems((prev) => [
       ...prev,
@@ -610,6 +645,8 @@ export default function Checkup() {
           onNote={setNote}
           onAdd={addItem}
           onRemove={removeItem}
+          onMove={moveItem}
+          onOrderDone={orderDone}
           onCreateCategory={addCategory}
           showMember={bothMode}
           memberNames={memberNames}
@@ -818,6 +855,8 @@ function MoneyStep({
   onNote,
   onAdd,
   onRemove,
+  onMove,
+  onOrderDone,
   onCreateCategory,
   onFillPreset,
   hints,
@@ -846,6 +885,8 @@ function MoneyStep({
   memberNames: [string, string]
   defaultMember: 1 | 2
   onRemove: (id: string) => void
+  onMove: (id: string, dir: -1 | 1) => void
+  onOrderDone: () => void
   onCreateCategory: (g: CategoryGroup, name: string) => void
   onFillPreset: () => void
 }) {
@@ -856,6 +897,7 @@ function MoneyStep({
   const [nameError, setNameError] = useState<string | null>(null)
   const [memoOpen, setMemoOpen] = useState<string | null>(null)
   const [addMember, setAddMember] = useState<1 | 2>(defaultMember)
+  const [ordering, setOrdering] = useState(false)
 
   // '기타'가 없는 기존 데이터에도 항상 노출 (브리프 P1 2.1)
   const catOptions = categories[g].includes('기타') ? categories[g] : [...categories[g], '기타']
@@ -938,13 +980,34 @@ function MoneyStep({
           <p className="text-[11.5px] text-cap">채워진 금액은 우리집에 맞게 고치면 돼요</p>
         </div>
       )}
-      {items.map((it) => {
+      {items.length > 1 && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => {
+              if (ordering) onOrderDone()
+              setOrdering((v) => !v)
+            }}
+            className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-[12.5px] font-bold ${
+              ordering ? 'bg-brand text-white' : 'bg-white text-sub shadow-card'
+            }`}
+          >
+            {ordering ? (
+              '완료'
+            ) : (
+              <>
+                <ArrowUpDown size={13} /> 순서 바꾸기
+              </>
+            )}
+          </button>
+        </div>
+      )}
+      {items.map((it, idx) => {
         const invalid = showErrors && (!it[valueField] || it[valueField] <= 0)
         const memoVisible = memoOpen === it.id || !!it.note
         return (
           <div key={it.id} className="rounded-card bg-card px-4 py-3 shadow-card">
             <div className="flex items-center gap-2.5">
-              <div className="w-[76px] shrink-0">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-semibold text-ink">{it.category}</p>
                 {/* 두 사람 몫을 한 화면에서 넣을 땐 누구 것인지가 제일 중요하다 */}
                 {(showMember || groups.length > 1) && (
@@ -958,27 +1021,51 @@ function MoneyStep({
                   </p>
                 )}
               </div>
-              <AmountInput
-                className="flex-1"
-                value={it[valueField]}
-                error={invalid}
-                onChange={(v) => onChange(it.id, v)}
-              />
-              <button
-                onClick={() => setMemoOpen(memoOpen === it.id ? null : it.id)}
-                className={`shrink-0 ${memoVisible ? 'text-brand' : 'text-cap'} active:text-brand`}
-                aria-label="메모"
-              >
-                <StickyNote size={16} />
-              </button>
-              <button
-                onClick={() => onRemove(it.id)}
-                className="shrink-0 text-cap active:text-danger"
-                aria-label="삭제"
-              >
-                <X size={18} />
-              </button>
+              {ordering ? (
+                <>
+                  <button
+                    onClick={() => onMove(it.id, -1)}
+                    disabled={idx === 0}
+                    className="shrink-0 rounded-md p-1 text-sub active:bg-bg disabled:opacity-25"
+                    aria-label={`${it.category} 위로`}
+                  >
+                    <ChevronUp size={18} />
+                  </button>
+                  <button
+                    onClick={() => onMove(it.id, 1)}
+                    disabled={idx === items.length - 1}
+                    className="shrink-0 rounded-md p-1 text-sub active:bg-bg disabled:opacity-25"
+                    aria-label={`${it.category} 아래로`}
+                  >
+                    <ChevronDown size={18} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setMemoOpen(memoOpen === it.id ? null : it.id)}
+                    className={`shrink-0 ${memoVisible ? 'text-brand' : 'text-cap'} active:text-brand`}
+                    aria-label="메모"
+                  >
+                    <StickyNote size={16} />
+                  </button>
+                  <button
+                    onClick={() => onRemove(it.id)}
+                    className="shrink-0 text-cap active:text-danger"
+                    aria-label="삭제"
+                  >
+                    <X size={18} />
+                  </button>
+                </>
+              )}
             </div>
+            {/* 금액은 이름 아래 한 줄 전체 (2026-10-07 — 한 줄을 나눠 쓰면 폰에서 큰 금액이 잘렸다) */}
+            <AmountInput
+              className="mt-2"
+              value={it[valueField]}
+              error={invalid}
+              onChange={(v) => onChange(it.id, v)}
+            />
             {memoVisible && (
               <input
                 type="text"

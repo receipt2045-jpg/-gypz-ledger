@@ -44,3 +44,22 @@ describe('카테고리 — 바뀐 것만 서버 최신 목록에 얹는다', () 
     expect(merged.variable).toEqual(['식비', '아기용품', '외식'])
   })
 })
+
+describe('카테고리 순서 — 예산·정산에서 바꾼 순서를 그대로', () => {
+  it('적힌 이름을 앞에, 나머지는 원래 순서대로 뒤에', () => {
+    const server = { ...base, variable: ['식비', '외식', '교통', '아기용품'] }
+    const merged = applyCategoryChanges(server, [
+      { action: 'order', group: 'variable', names: ['아기용품', '식비'] },
+    ])
+    expect(merged.variable).toEqual(['아기용품', '식비', '외식', '교통'])
+  })
+
+  it('목록에 없는 이름은 무시하고, 바뀐 게 없으면 그대로', () => {
+    const server = { ...base, variable: ['식비', '외식'] }
+    expect(
+      applyCategoryChanges(server, [
+        { action: 'order', group: 'variable', names: ['식비', '없는것'] },
+      ]),
+    ).toBe(server)
+  })
+})

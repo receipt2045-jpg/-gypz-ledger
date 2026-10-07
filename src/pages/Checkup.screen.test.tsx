@@ -202,3 +202,20 @@ describe('정산 화면 — 고백 합계 밑 내역 펼쳐 보기', () => {
     expect(screen.queryByRole('button', { name: /내역 .*보기/ })).not.toBeInTheDocument()
   })
 })
+
+describe('정산 화면 — 목록 순서 바꾸기 (2026-10-07 제보)', () => {
+  it('순서 바꾸기 → 아래로 → 완료하면 그 순서로 저장되고 카테고리 순서도 따라간다', async () => {
+    const { user } = await openAsWife([
+      item('a', 'income', '주수입', 2, 3_000_000),
+      item('b', 'income', '부수입', 2, 200_000),
+    ])
+    await user.click(screen.getByRole('button', { name: /순서 바꾸기/ }))
+    await user.click(screen.getByRole('button', { name: '주수입 아래로' }))
+    await user.click(screen.getByRole('button', { name: '완료' }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(savedItems().map((i) => i.category)).toEqual(['부수입', '주수입'])
+    const { useLedgerStore } = await import('../lib/store')
+    const income = useLedgerStore.getState().categories.income
+    expect(income.indexOf('부수입')).toBeLessThan(income.indexOf('주수입'))
+  })
+})
