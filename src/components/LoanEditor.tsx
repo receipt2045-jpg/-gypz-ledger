@@ -29,7 +29,7 @@ export function LoanForm({
 }) {
   const [rate, setRate] = useState(initial ? String(initial.rate) : '')
   const [years, setYears] = useState(initial ? String(Math.floor(initial.months / 12)) : '')
-  const [months, setMonths] = useState(initial ? String(initial.months % 12) : '0')
+  const [months, setMonths] = useState(initial ? String(initial.months % 12) : '')
   const [payDay, setPayDay] = useState(initial?.payDay ?? 25)
   const [method, setMethod] = useState<LoanMethod>(initial?.method ?? 'annuity')
   const [toLedger, setToLedger] = useState(initial?.toLedger ?? true)
@@ -53,6 +53,13 @@ export function LoanForm({
 
   const preview = draft && amount > 0 ? monthlyPayment(amount, draft) : null
   const payoff = draft ? payoffYm(draft, new Date()) : null
+  // 예시 글자(placeholder)가 채워진 값처럼 보여 "숫자가 고정이에요" 제보 (2026-10-07)
+  // → 예시는 '예)'를 붙여 옅게, 단위는 칸 안 오른쪽에 따로
+  const box =
+    'mt-1 flex items-center gap-1 rounded-btn border border-line bg-white px-3 focus-within:border-brand'
+  const input =
+    'tnum min-w-0 w-full bg-transparent py-2 text-right text-[15px] font-semibold text-ink outline-none placeholder:text-[13px] placeholder:font-normal placeholder:text-cap/70'
+  const unit = 'shrink-0 text-[13px] font-medium text-sub'
   const field =
     'mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-right text-[14px] font-semibold text-ink outline-none focus:border-brand'
 
@@ -60,14 +67,17 @@ export function LoanForm({
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <label className="text-[11.5px] text-cap">
-          연 금리(%)
-          <input
-            inputMode="decimal"
-            value={rate}
-            onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ''))}
-            placeholder="4.2"
-            className={field}
-          />
+          연 금리
+          <span className={box}>
+            <input
+              inputMode="decimal"
+              value={rate}
+              onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ''))}
+              placeholder="예) 4.2"
+              className={input}
+            />
+            <span className={unit}>%</span>
+          </span>
         </label>
         <label className="text-[11.5px] text-cap">
           매달 갚는 날
@@ -84,23 +94,30 @@ export function LoanForm({
           </select>
         </label>
         <label className="text-[11.5px] text-cap">
-          남은 기간(년)
-          <input
-            inputMode="numeric"
-            value={years}
-            onChange={(e) => setYears(e.target.value.replace(/\D/g, ''))}
-            placeholder="28"
-            className={field}
-          />
+          남은 기간
+          <span className={box}>
+            <input
+              inputMode="numeric"
+              value={years}
+              onChange={(e) => setYears(e.target.value.replace(/\D/g, ''))}
+              placeholder="예) 30"
+              className={input}
+            />
+            <span className={unit}>년</span>
+          </span>
         </label>
         <label className="text-[11.5px] text-cap">
-          + 개월
-          <input
-            inputMode="numeric"
-            value={months}
-            onChange={(e) => setMonths(e.target.value.replace(/\D/g, '').slice(0, 2))}
-            className={field}
-          />
+          더 남은 개월 (없으면 비워 두기)
+          <span className={box}>
+            <input
+              inputMode="numeric"
+              value={months}
+              onChange={(e) => setMonths(e.target.value.replace(/\D/g, '').slice(0, 2))}
+              placeholder="0"
+              className={input}
+            />
+            <span className={unit}>개월</span>
+          </span>
         </label>
       </div>
       <div className="flex gap-1.5" role="group" aria-label="갚는 방식">
@@ -137,6 +154,11 @@ export function LoanForm({
               갚는 날마다 남은 대출이 원금만큼 줄어요 · 다 갚는 달 {formatYmKorean(payoff)}
             </>
           )}
+        </p>
+      )}
+      {!draft && (
+        <p className="px-1 text-[12px] text-cap">
+          금리와 남은 기간을 넣으면 매달 갚는 돈이 계산돼요
         </p>
       )}
       {draft && amount <= 0 && (
