@@ -644,7 +644,7 @@ export default function Checkup() {
         subtitle={`${bothMode ? '우리집' : memberName} · ${stepSubtitle}`}
         caption={`${formatYmKorean(ym)} ${modeLabel}`}
       />
-      <div className="flex-1 px-5 pb-40">
+      <div className="flex-1 px-5 pb-52">
         {/*
           key로 스텝마다 새로 만든다. 없으면 네 스텝이 같은 인스턴스를 재사용해서
           '항목 추가'의 그룹·카테고리 선택이 첫 스텝(수입) 값 그대로 남는다.
@@ -1002,6 +1002,104 @@ function MoneyStep({
           <p className="text-[11.5px] text-cap">채워진 금액은 우리집에 맞게 고치면 돼요</p>
         </div>
       )}
+      {/* 항목 추가는 목록 맨 위 (2026-10-07 제보: 금액 칸이 두 줄이 되며 목록이 길어져, 맨 아래 버튼이 아래 막대에 가려 안 보였다) */}
+      {adding ? (
+        <div className="space-y-2 rounded-card bg-card p-4 shadow-card">
+          {/* 드롭다운 가로 배치: '추가' 버튼 위치가 흔들리지 않게 고정 (브리프 P1 2.3) */}
+          {/* 두 사람 몫을 넣는 중이면 누구 항목인지 먼저 고른다 */}
+          {showMember && (
+            <select
+              value={addMember}
+              onChange={(e) => setAddMember(Number(e.target.value) as 1 | 2)}
+              className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] font-semibold text-ink outline-none focus:border-brand"
+            >
+              {([1, 2] as const).map((m) => (
+                <option key={m} value={m}>
+                  {memberNames[m - 1]} 항목
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="flex gap-2">
+            {groups.length > 1 && (
+              <select
+                value={g}
+                onChange={(e) => {
+                  const ng = e.target.value as CategoryGroup
+                  setG(ng)
+                  setCat(categories[ng][0])
+                }}
+                className="min-w-0 flex-1 rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+              >
+                {groups.map((gr) => (
+                  <option key={gr} value={gr}>
+                    {GROUP_LABEL[gr]}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              value={cat}
+              onChange={(e) => setCat(e.target.value)}
+              className="min-w-0 flex-1 rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+            >
+              {catOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+              <option value={NEW_CAT}>+ 새 카테고리</option>
+            </select>
+          </div>
+          {cat === NEW_CAT && (
+            <input
+              type="text"
+              value={newCatName}
+              onChange={(e) => {
+                setNewCatName(e.target.value)
+                if (nameError) setNameError(null)
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && submitAdd()}
+              placeholder="새 카테고리 이름"
+              autoFocus
+              className={`w-full rounded-btn border bg-white px-3 py-2.5 text-[14px] text-ink outline-none placeholder:text-cap ${
+                nameError ? 'border-danger' : 'border-line focus:border-brand'
+              }`}
+            />
+          )}
+          {nameError && <p className="text-[12.5px] font-medium text-danger">{nameError}</p>}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => {
+                setAdding(false)
+                setNewCatName('')
+                setNameError(null)
+              }}
+              className="h-11 flex-1 rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
+            >
+              취소
+            </button>
+            <button
+              onClick={submitAdd}
+              disabled={cat === NEW_CAT && !newCatName.trim()}
+              className="h-11 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark disabled:opacity-40"
+            >
+              추가
+            </button>
+          </div>
+        </div>
+      ) : ordering ? null : (
+        <button
+          onClick={() => {
+            setG(groups[0])
+            setCat(categories[groups[0]][0])
+            setAdding(true)
+          }}
+          className="flex h-12 w-full items-center justify-center gap-1.5 rounded-card border border-dashed border-line bg-transparent text-[14px] font-semibold text-sub active:bg-white"
+        >
+          <Plus size={17} /> 항목 추가
+        </button>
+      )}
       {items.length > 1 && (
         <div className="flex justify-end">
           <button
@@ -1125,104 +1223,6 @@ function MoneyStep({
           </div>
         )
       })}
-
-      {adding ? (
-        <div className="space-y-2 rounded-card bg-card p-4 shadow-card">
-          {/* 드롭다운 가로 배치: '추가' 버튼 위치가 흔들리지 않게 고정 (브리프 P1 2.3) */}
-          {/* 두 사람 몫을 넣는 중이면 누구 항목인지 먼저 고른다 */}
-          {showMember && (
-            <select
-              value={addMember}
-              onChange={(e) => setAddMember(Number(e.target.value) as 1 | 2)}
-              className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] font-semibold text-ink outline-none focus:border-brand"
-            >
-              {([1, 2] as const).map((m) => (
-                <option key={m} value={m}>
-                  {memberNames[m - 1]} 항목
-                </option>
-              ))}
-            </select>
-          )}
-          <div className="flex gap-2">
-            {groups.length > 1 && (
-              <select
-                value={g}
-                onChange={(e) => {
-                  const ng = e.target.value as CategoryGroup
-                  setG(ng)
-                  setCat(categories[ng][0])
-                }}
-                className="min-w-0 flex-1 rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
-              >
-                {groups.map((gr) => (
-                  <option key={gr} value={gr}>
-                    {GROUP_LABEL[gr]}
-                  </option>
-                ))}
-              </select>
-            )}
-            <select
-              value={cat}
-              onChange={(e) => setCat(e.target.value)}
-              className="min-w-0 flex-1 rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
-            >
-              {catOptions.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-              <option value={NEW_CAT}>+ 새 카테고리</option>
-            </select>
-          </div>
-          {cat === NEW_CAT && (
-            <input
-              type="text"
-              value={newCatName}
-              onChange={(e) => {
-                setNewCatName(e.target.value)
-                if (nameError) setNameError(null)
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && submitAdd()}
-              placeholder="새 카테고리 이름"
-              autoFocus
-              className={`w-full rounded-btn border bg-white px-3 py-2.5 text-[14px] text-ink outline-none placeholder:text-cap ${
-                nameError ? 'border-danger' : 'border-line focus:border-brand'
-              }`}
-            />
-          )}
-          {nameError && <p className="text-[12.5px] font-medium text-danger">{nameError}</p>}
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={() => {
-                setAdding(false)
-                setNewCatName('')
-                setNameError(null)
-              }}
-              className="h-11 flex-1 rounded-btn bg-bg text-[14px] font-semibold text-sub active:bg-line"
-            >
-              취소
-            </button>
-            <button
-              onClick={submitAdd}
-              disabled={cat === NEW_CAT && !newCatName.trim()}
-              className="h-11 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark disabled:opacity-40"
-            >
-              추가
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => {
-            setG(groups[0])
-            setCat(categories[groups[0]][0])
-            setAdding(true)
-          }}
-          className="flex h-12 w-full items-center justify-center gap-1.5 rounded-card border border-dashed border-line bg-transparent text-[14px] font-semibold text-sub active:bg-white"
-        >
-          <Plus size={17} /> 항목 추가
-        </button>
-      )}
     </div>
   )
 }
