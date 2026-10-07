@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, Copy, Pencil, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Copy, X } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import PcShell from '../components/PcShell'
 import { LOAN_CATEGORY, addLoanItems, loanLedgerAmounts } from '../lib/loan'
@@ -283,7 +283,7 @@ export default function Budget() {
               {/* 표 */}
               <div className="rounded-card bg-card px-2 py-3 shadow-card">
                 <p className="mb-2 flex items-center gap-1 px-1 text-[12px] font-medium text-brand">
-                  <Pencil size={12} />칸 안의 숫자를 누르면 고칠 수 있어요
+                  칸 안의 숫자를 누르면 고칠 수 있어요
                 </p>
                 <table className="w-full table-fixed border-collapse text-[13.5px]">
                   <colgroup>
@@ -514,7 +514,6 @@ function Cell({
             : 'border-line bg-white hover:border-brand/50 active:bg-bg'
         }`}
       >
-        <Pencil size={10} className="shrink-0 text-cap/70" aria-hidden />
         <span className="truncate">
           {value > 0 && sign ? sign : ''}
           {short(value)}
