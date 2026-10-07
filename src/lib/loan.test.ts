@@ -4,7 +4,9 @@ import {
   addLoanItems,
   catchUpLoan,
   loanLedgerAmounts,
+  loanTotalCost,
   loanTotals,
+  paymentIfRateUp,
   monthlyPayment,
   payDatesSince,
   payoffYm,
@@ -119,5 +121,28 @@ describe('대출 → 가계부 고정지출', () => {
       [1, 1_000_000],
       [2, 500_000],
     ])
+  })
+})
+
+describe('총 상환액·금리 오를 때', () => {
+  it('원리금균등 총 이자 = 매달 갚는 돈 × 개월 − 원금 (반올림 오차 안)', () => {
+    const l = loan({ months: 360, rate: 5 })
+    const { total, interest } = loanTotalCost(350_000_000, l)
+    expect(total - interest).toBeGreaterThan(349_990_000)
+    expect(Math.round(interest / 1e7)).toBe(33) // 약 3.3억
+  })
+
+  it('만기일시는 이자만 내다가 끝에 원금', () => {
+    const { total, interest } = loanTotalCost(
+      100_000_000,
+      loan({ method: 'bullet', months: 12, rate: 4.8 }),
+    )
+    expect(interest).toBe(4_800_000)
+    expect(total).toBe(104_800_000)
+  })
+
+  it('금리가 1%p 오르면 매달 갚는 돈이 는다', () => {
+    const l = loan({ months: 360, rate: 5 })
+    expect(paymentIfRateUp(350_000_000, l)).toBeGreaterThan(monthlyPayment(350_000_000, l).payment)
   })
 })

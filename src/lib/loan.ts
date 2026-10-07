@@ -165,3 +165,30 @@ export function addLoanItems(
   }
   return add.length ? [...items, ...add] : items
 }
+
+/**
+ * 다 갚을 때까지 총 얼마 — 지금 남은 원금·기간 기준으로 끝까지 굴려 본다 (2026-10-07, 부상구 대출 계산기 참고).
+ * 금리가 그대로라고 가정한다.
+ */
+export function loanTotalCost(
+  balance: number,
+  loan: LoanInfo,
+): { total: number; interest: number } {
+  let b = balance
+  let n = Math.max(0, Math.round(loan.months))
+  let interest = 0
+  let total = 0
+  while (b > 0 && n > 0) {
+    const p = monthlyPayment(b, { ...loan, months: n })
+    interest += p.interest
+    total += p.payment
+    b -= p.principal
+    n -= 1
+  }
+  return { total, interest }
+}
+
+/** 금리가 1%p 오르면 매달 갚는 돈 — 변동금리 위험을 한눈에 */
+export function paymentIfRateUp(balance: number, loan: LoanInfo, up = 1): number {
+  return monthlyPayment(balance, { ...loan, rate: loan.rate + up }).payment
+}

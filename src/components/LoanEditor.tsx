@@ -4,6 +4,8 @@ import { abbreviateKRW, formatYmKorean } from '../lib/format'
 import {
   LOAN_METHOD_LABEL,
   dayString,
+  loanTotalCost,
+  paymentIfRateUp,
   monthlyPayment,
   payoffYm,
   type LoanInfo,
@@ -156,6 +158,8 @@ export function LoanForm({
           )}
         </p>
       )}
+      {/* 다 갚을 때까지 총액·금리 오를 때 (2026-10-07, 부상구 대출 계산기 참고) */}
+      {preview && draft && <LoanRisk amount={amount} loan={draft} payment={preview.payment} />}
       {!draft && (
         <p className="px-1 text-[12px] text-cap">
           금리와 남은 기간을 넣으면 매달 갚는 돈이 계산돼요
@@ -236,6 +240,26 @@ export default function LoanEditor({
         >
           저장
         </button>
+      </div>
+    </div>
+  )
+}
+
+/** 다 갚을 때까지 총 얼마, 금리가 1%p 오르면 매달 얼마 */
+function LoanRisk({ amount, loan, payment }: { amount: number; loan: LoanInfo; payment: number }) {
+  const cost = loanTotalCost(amount, loan)
+  const up = paymentIfRateUp(amount, loan)
+  return (
+    <div className="grid grid-cols-2 gap-2 text-[12px]">
+      <div className="rounded-btn bg-white px-3 py-2">
+        <p className="text-cap">다 갚을 때까지</p>
+        <p className="tnum mt-0.5 font-bold text-ink">총 {short(cost.total)}원</p>
+        <p className="tnum text-sub">이자만 {short(cost.interest)}원</p>
+      </div>
+      <div className="rounded-btn bg-white px-3 py-2">
+        <p className="text-cap">금리가 1%p 오르면</p>
+        <p className="tnum mt-0.5 font-bold text-ink">매달 {short(up)}원</p>
+        <p className="tnum text-danger">+{short(up - payment)}원</p>
       </div>
     </div>
   )
