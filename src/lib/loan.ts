@@ -6,11 +6,12 @@ import type { AssetItem, BudgetItem } from '../types'
  * 부채 항목에 금리·남은 기간·갚는 날·방식을 넣으면 매달 갚는 돈(이자·원금)을 계산하고,
  * 갚는 날이 지날 때마다 원금만큼 남은 대출을 줄인다(asOf 이후 지난 갚는 날만큼).
  */
-export type LoanMethod = 'annuity' | 'principal' | 'bullet'
+export type LoanMethod = 'annuity' | 'principal' | 'graduated' | 'bullet'
 
 export const LOAN_METHOD_LABEL: Record<LoanMethod, string> = {
   annuity: '원리금균등',
   principal: '원금균등',
+  graduated: '체증식',
   bullet: '만기일시',
 }
 
@@ -26,6 +27,9 @@ export interface LoanInfo {
   asOf: string
   /** 가계부 고정지출 '대출 상환'에도 매달 채우기 */
   toLedger?: boolean
+  /** 체증식 — 이번 달 갚는 돈(원리금)과 매달 늘어나는 금액. 없으면 남은 원금으로 다시 잡는다 */
+  gradPayment?: number
+  gradStep?: number
 }
 
 export interface LoanPayment {
@@ -38,6 +42,33 @@ const pad = (n: number) => String(n).padStart(2, '0')
 export const dayString = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
+/**
+ * 체증식 (2026-10-07) — 처음엔 적게 내고 원리금이 매달 같은 금액씩 늘어 만기에 다 갚는다.
+ * 공사(HF)가 계산식을 공개하지 않아, 공개된 예시(3억·연 3%·30년 → 1개월 차 약 76만, 5년 차 96만, 10년 차 116만,
+ * 만기 200만 넘게)에 맞춘 어림: 첫 달은 원리금균등의 60%(이자보다는 많게), 늘어나는 금액은 만기에 다 갚히게.
+ */
+export const GRADUATED_START_RATIO = 0.6
+
+export function graduatedPlan(
+  balance: number,
+  ratePct: number,
+  months: number,
+): { first: number; step: number } {
+  const n = Math.max(1, Math.round(months))
+  const r = Math.max(0, ratePct) / 100 / 12
+  let a = 0 // Σ v^k
+  let ia = 0 // Σ (k−1) v^k
+  for (let k = 1; k <= n; k++) {
+    const v = Math.pow(1 + r, -k)
+    a += v
+    ia += (k - 1) * v
+  }
+  const annuity = balance / a
+  const first = Math.max(annuity * GRADUATED_START_RATIO, balance * r + 1)
+  const step = n > 1 ? (balance - first * a) / ia : 0
+  return { first: Math.round(first), step: Math.max(0, Math.round(step)) }
+}
+
 /** 이번 달 갚는 돈 — 남은 원금·금리·남은 기간 기준 */
 export function monthlyPayment(balance: number, loan: LoanInfo): LoanPayment {
   const n = Math.max(0, Math.round(loan.months))
@@ -45,7 +76,10 @@ export function monthlyPayment(balance: number, loan: LoanInfo): LoanPayment {
   const r = Math.max(0, loan.rate) / 100 / 12
   const interest = Math.round(balance * r)
   let principal: number
-  if (loan.method === 'bullet') {
+  if (loan.method === 'graduated') {
+    const pay = loan.gradPayment ?? graduatedPlan(balance, loan.rate, n).first
+    principal = n === 1 ? balance : pay - interest
+  } else if (loan.method === 'bullet') {
     principal = n === 1 ? balance : 0 // 만기에 한 번에
   } else if (loan.method === 'principal' || r === 0) {
     principal = Math.round(balance / n)
@@ -83,6 +117,19 @@ export function payDatesSince(asOf: string, today: Date, payDay: number): Date[]
   return out
 }
 
+/** 한 달 갚은 뒤의 대출 정보 — 남은 기간 하나 줄이고, 체증식이면 다음 달 갚는 돈을 늘린다 */
+function nextMonth(loan: LoanInfo, balanceAfter: number): LoanInfo {
+  const months = loan.months - 1
+  if (loan.method !== 'graduated') return { ...loan, months }
+  const plan =
+    loan.gradPayment === undefined || loan.gradStep === undefined
+      ? graduatedPlan(balanceAfter, loan.rate, Math.max(1, months))
+      : null
+  return plan
+    ? { ...loan, months, gradPayment: plan.first, gradStep: plan.step }
+    : { ...loan, months, gradPayment: loan.gradPayment! + loan.gradStep! }
+}
+
 /** 지난 갚는 날만큼 원금을 줄인 항목. 바뀐 게 없으면 null */
 export function catchUpLoan(item: AssetItem, today: Date): AssetItem | null {
   const loan = item.loan
@@ -90,15 +137,15 @@ export function catchUpLoan(item: AssetItem, today: Date): AssetItem | null {
   const dates = payDatesSince(loan.asOf, today, loan.payDay)
   if (dates.length === 0) return null
   let balance = item.amount
-  let months = loan.months
-  for (let i = 0; i < dates.length && balance > 0 && months > 0; i++) {
-    balance -= monthlyPayment(balance, { ...loan, months }).principal
-    months -= 1
+  let cur: LoanInfo = loan
+  for (let i = 0; i < dates.length && balance > 0 && cur.months > 0; i++) {
+    balance -= monthlyPayment(balance, cur).principal
+    cur = nextMonth(cur, balance)
   }
   return {
     ...item,
     amount: Math.max(0, balance),
-    loan: { ...loan, months, asOf: dayString(dates[dates.length - 1]) },
+    loan: { ...cur, asOf: dayString(dates[dates.length - 1]) },
   }
 }
 
@@ -175,20 +222,26 @@ export function loanTotalCost(
   loan: LoanInfo,
 ): { total: number; interest: number } {
   let b = balance
-  let n = Math.max(0, Math.round(loan.months))
+  let cur: LoanInfo = { ...loan, months: Math.max(0, Math.round(loan.months)) }
   let interest = 0
   let total = 0
-  while (b > 0 && n > 0) {
-    const p = monthlyPayment(b, { ...loan, months: n })
+  while (b > 0 && cur.months > 0) {
+    const p = monthlyPayment(b, cur)
     interest += p.interest
     total += p.payment
     b -= p.principal
-    n -= 1
+    cur = nextMonth(cur, b)
   }
   return { total, interest }
 }
 
 /** 금리가 1%p 오르면 매달 갚는 돈 — 변동금리 위험을 한눈에 */
 export function paymentIfRateUp(balance: number, loan: LoanInfo, up = 1): number {
-  return monthlyPayment(balance, { ...loan, rate: loan.rate + up }).payment
+  // 체증식은 오른 금리로 처음부터 다시 잡은 첫 달 기준
+  return monthlyPayment(balance, {
+    ...loan,
+    rate: loan.rate + up,
+    gradPayment: undefined,
+    gradStep: undefined,
+  }).payment
 }

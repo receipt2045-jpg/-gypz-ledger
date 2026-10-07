@@ -72,4 +72,16 @@ describe('대출 상환 (2026-10-07 제보)', () => {
     expect(screen.getByText('보금자리')).toBeInTheDocument()
     expect(screen.getByText(/갚아요/)).toBeInTheDocument()
   })
+
+  it('체증식을 고르면 매달 늘어나는 금액과 마지막 달을 보여준다', async () => {
+    seedStore({ snapshots: [{ ym: TEST_YM, items: [house, mortgage] }] })
+    const { user } = renderScreen(<AssetSetup />)
+    await user.click(screen.getAllByRole('button', { name: /남편|공동|아내/ })[0])
+    await user.click(await screen.findByRole('button', { name: /대출 정보 넣기/ }))
+    await user.type(screen.getByPlaceholderText('예) 4.2'), '3')
+    await user.type(screen.getByPlaceholderText('예) 30'), '30')
+    await user.click(screen.getByRole('button', { name: '체증식' }))
+    expect(screen.getByText(/처음엔 적게 내고 매달/)).toBeInTheDocument()
+    expect(screen.getByText(/마지막 달 약/)).toBeInTheDocument()
+  })
 })

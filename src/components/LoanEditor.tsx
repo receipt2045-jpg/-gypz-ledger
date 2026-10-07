@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { abbreviateKRW, formatYmKorean } from '../lib/format'
+import { abbreviateKRW, formatComma, formatYmKorean } from '../lib/format'
 import {
   LOAN_METHOD_LABEL,
   dayString,
+  graduatedPlan,
   loanTotalCost,
   paymentIfRateUp,
   monthlyPayment,
@@ -49,6 +50,13 @@ export function LoanForm({
           method,
           asOf: initial?.asOf ?? dayString(new Date()),
           toLedger,
+          // 체증식 — 지금 남은 원금으로 첫 달 갚는 돈과 매달 늘어나는 금액을 잡아 둔다
+          ...(method === 'graduated' && amount > 0
+            ? (() => {
+                const plan = graduatedPlan(amount, Number(rate), totalMonths)
+                return { gradPayment: plan.first, gradStep: plan.step }
+              })()
+            : {}),
         }
       : null
   const key = JSON.stringify(draft)
@@ -125,14 +133,18 @@ export function LoanForm({
           </span>
         </label>
       </div>
-      <div className="flex gap-1.5" role="group" aria-label="갚는 방식">
+      <div
+        className="grid grid-cols-2 gap-1.5 min-[400px]:grid-cols-4"
+        role="group"
+        aria-label="갚는 방식"
+      >
         {(Object.keys(LOAN_METHOD_LABEL) as LoanMethod[]).map((m) => (
           <button
             key={m}
             type="button"
             onClick={() => setMethod(m)}
             aria-pressed={method === m}
-            className={`flex-1 rounded-full border py-1.5 text-[12px] font-bold ${
+            className={`rounded-full border py-1.5 text-[12px] font-bold ${
               method === m ? 'border-brand bg-brand text-white' : 'border-line bg-white text-sub'
             }`}
           >
@@ -164,6 +176,17 @@ export function LoanForm({
         </p>
       )}
       {/* 다 갚을 때까지 총액·금리 오를 때 (2026-10-07, 부상구 대출 계산기 참고) */}
+      {preview && draft?.method === 'graduated' && draft.gradStep !== undefined && (
+        <p className="rounded-btn bg-white px-3 py-2 text-[12px] leading-relaxed text-sub">
+          처음엔 적게 내고 매달 <b className="tnum text-ink">{formatComma(draft.gradStep)}원</b>씩
+          늘어요 · 마지막 달 약{' '}
+          <b className="tnum text-ink">
+            {short((draft.gradPayment ?? 0) + draft.gradStep * (draft.months - 1))}원
+          </b>
+          <br />만 40세 미만이 디딤돌·보금자리론에서 고를 수 있어요. 공사 계산과 조금 다를 수 있는
+          어림값이에요.
+        </p>
+      )}
       {preview && draft && <LoanRisk amount={amount} loan={draft} payment={preview.payment} />}
       {!draft && (
         <p className="px-1 text-[12px] text-cap">

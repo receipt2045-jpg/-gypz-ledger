@@ -3,6 +3,7 @@ import {
   LOAN_CATEGORY,
   addLoanItems,
   catchUpLoan,
+  graduatedPlan,
   loanLedgerAmounts,
   loanTotalCost,
   loanTotals,
@@ -144,5 +145,33 @@ describe('총 상환액·금리 오를 때', () => {
   it('금리가 1%p 오르면 매달 갚는 돈이 는다', () => {
     const l = loan({ months: 360, rate: 5 })
     expect(paymentIfRateUp(350_000_000, l)).toBeGreaterThan(monthlyPayment(350_000_000, l).payment)
+  })
+})
+
+describe('체증식 (2026-10-07)', () => {
+  const g = (p: Partial<LoanInfo> = {}) => loan({ method: 'graduated', rate: 3, months: 360, ...p })
+
+  it('공개 예시(3억·연 3%·30년)와 비슷하게 — 1개월 약 76만, 5년 차 96만, 10년 차 116만', () => {
+    const plan = graduatedPlan(300_000_000, 3, 360)
+    expect(Math.round(plan.first / 10_000)).toBe(76)
+    expect(Math.round((plan.first + plan.step * 59) / 10_000)).toBeGreaterThanOrEqual(94)
+    expect(Math.round((plan.first + plan.step * 59) / 10_000)).toBeLessThanOrEqual(97)
+    expect(Math.round((plan.first + plan.step * 119) / 10_000)).toBeGreaterThanOrEqual(114)
+    expect(Math.round((plan.first + plan.step * 119) / 10_000)).toBeLessThanOrEqual(117)
+  })
+
+  it('끝까지 굴리면 원금을 다 갚고, 원리금균등보다 이자가 많다', () => {
+    const grad = loanTotalCost(300_000_000, g())
+    const ann = loanTotalCost(300_000_000, loan({ rate: 3, months: 360 }))
+    expect(grad.total - grad.interest).toBeGreaterThan(299_990_000)
+    expect(grad.interest).toBeGreaterThan(ann.interest)
+  })
+
+  it('갚는 날이 지나면 다음 달 갚는 돈이 늘어난다', () => {
+    const plan = graduatedPlan(300_000_000, 3, 360)
+    const item = debt(300_000_000, g({ gradPayment: plan.first, gradStep: plan.step }))
+    const after = catchUpLoan(item, new Date(2026, 10, 26))! // 10·11월 두 번
+    expect(after.loan!.gradPayment).toBe(plan.first + plan.step * 2)
+    expect(after.amount).toBeLessThan(300_000_000)
   })
 })
