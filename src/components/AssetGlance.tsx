@@ -1,3 +1,4 @@
+import { loanTotals, payoffYm, type LoanPayment } from '../lib/loan'
 import { Fragment } from 'react'
 import Card from './Card'
 import PcColumns from './PcColumns'
@@ -72,6 +73,7 @@ function Together({
   const max = Math.max(1, ...rows.map((r) => r.amount))
   const debts = items.filter((it) => it.kind === 'debt').reduce((a, it) => a + it.amount, 0)
   const byOwner = ownerRows(items, owners)
+  const loans = loanTotals(items)
   const prev = series.length >= 2 ? series[series.length - 2].value : total
   const delta = total - prev
 
@@ -150,6 +152,7 @@ function Together({
           <span className="whitespace-nowrap">
             빼면 순자산 <b className="tnum font-bold text-ink">{short(total - debts)}</b>
           </span>
+          {loans.count > 0 && <LoanLine items={items} loans={loans} />}
         </div>
       )}
     </>
@@ -296,5 +299,29 @@ function MemberTable({ items, picked, ym }: { items: AssetItem[]; picked: string
         </p>
       )}
     </Card>
+  )
+}
+
+/** 부채 줄 아래 — 대출 정보를 넣은 집만 (2026-10-07) */
+function LoanLine({
+  items,
+  loans,
+}: {
+  items: AssetItem[]
+  loans: LoanPayment & { count: number }
+}) {
+  const one = items.filter((it) => it.kind === 'debt' && it.loan && it.amount > 0)
+  const payoff = one.length === 1 ? payoffYm(one[0].loan!, new Date()) : null
+  return (
+    <div className="mt-1 w-full border-t border-bg pt-2">
+      <p className="flex justify-between">
+        <span>대출 갚는 돈 매달</span>
+        <b className="tnum font-bold text-ink">{short(loans.payment)}원</b>
+      </p>
+      <p className="mt-0.5 text-[11.5px] text-cap">
+        원금 {short(loans.principal)}씩 갚는 날마다 자동으로 줄어요
+        {payoff ? ` · 다 갚는 달 ${formatYmKorean(payoff)}` : ''}
+      </p>
+    </div>
   )
 }

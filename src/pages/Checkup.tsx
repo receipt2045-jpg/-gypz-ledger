@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
+import { LOAN_CATEGORY, addLoanItems, loanLedgerAmounts } from '../lib/loan'
 import PcShell from '../components/PcShell'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -146,9 +147,25 @@ export default function Checkup() {
   // 7월에서 멈춘 집이 9월 정산을 아예 못 열었다 (직접 눌러보다 발견, 2026-09-10).
   const maxYm = [shiftYm(latestLedgerYm, 1), activeYm(ledgers), currentYm()].sort().at(-1)!
 
+  // '가계부에도 넣기'를 켠 대출 — 그 사람 몫 '대출 상환' 고정지출을 이번 달 갚는 돈으로 채워 둔다 (2026-10-07)
+  const withLoans = (base: BudgetItem[], ofYm: string) =>
+    addLoanItems(
+      base,
+      loanLedgerAmounts(resolveSnapshot(snapshots, ofYm).items, profile.member2Name),
+      (m, amount) => ({ ...emptyItem('fixed', LOAN_CATEGORY, m), planned: amount, actual: amount }),
+    )
   const [items, setItems] = useState<BudgetItem[]>(() =>
-    resolveLedger(ledgers, ym).items.map((it) => ({ ...it })),
+    withLoans(
+      resolveLedger(ledgers, ym).items.map((it) => ({ ...it })),
+      ym,
+    ),
   )
+  const needsLoanCategory =
+    resolveSnapshot(snapshots, ym).items.some((it) => it.kind === 'debt' && it.loan?.toLedger) &&
+    !categories.fixed.includes(LOAN_CATEGORY)
+  useEffect(() => {
+    if (needsLoanCategory) addCategory('fixed', LOAN_CATEGORY)
+  }, [needsLoanCategory, addCategory])
   const [assets, setAssets] = useState<AssetItem[]>(() =>
     resolveSnapshot(snapshots, ym).items.map((it) => ({ ...it })),
   )
@@ -202,7 +219,12 @@ export default function Checkup() {
     const ny = shiftYm(ym, delta)
     if (ny > maxYm) return
     setYm(ny)
-    setItems(resolveLedger(ledgers, ny).items.map((it) => ({ ...it })))
+    setItems(
+      withLoans(
+        resolveLedger(ledgers, ny).items.map((it) => ({ ...it })),
+        ny,
+      ),
+    )
     setAssets(resolveSnapshot(snapshots, ny).items.map((it) => ({ ...it })))
   }
 

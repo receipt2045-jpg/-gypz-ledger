@@ -1,3 +1,4 @@
+import type { LoanInfo } from './lib/loan'
 export type CategoryGroup = 'income' | 'saving' | 'investment' | 'fixed' | 'variable'
 // 그룹 라벨: 수입, 저축, 투자, 고정지출, 변동지출
 
@@ -93,6 +94,8 @@ export interface AssetItem {
   fxAmount?: number // 외화 원금 (currency가 외화일 때). 원화 환산은 실시간 환율로 계산
   owner?: string // 남편/아내/공동
   note?: string
+  /** 부채만 — 대출 정보가 있으면 매달 갚는 돈을 계산하고 갚는 날마다 원금을 줄인다 (lib/loan.ts) */
+  loan?: LoanInfo
 }
 
 export interface AssetSnapshot {

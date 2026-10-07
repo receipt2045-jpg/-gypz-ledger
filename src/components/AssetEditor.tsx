@@ -1,4 +1,6 @@
 ﻿import { useState } from 'react'
+import LoanEditor from './LoanEditor'
+import { dayString } from '../lib/loan'
 import { Pencil, Plus, StickyNote, X } from 'lucide-react'
 import AmountInput from './AmountInput'
 import AssetIcon from './AssetIcon'
@@ -374,7 +376,18 @@ function AssetRow({
             }
           />
         ) : (
-          <AmountInput value={item.amount} onChange={(v) => onChange(item.id, v)} />
+          <AmountInput
+            value={item.amount}
+            onChange={(v) =>
+              // 대출 정보가 있는 부채를 직접 고치면 오늘까지 반영된 금액으로 본다 (다음 갚는 날부터 자동으로 줄임)
+              debt && item.loan
+                ? onUpdate(item.id, {
+                    amount: v,
+                    loan: { ...item.loan, asOf: dayString(new Date()) },
+                  })
+                : onChange(item.id, v)
+            }
+          />
         )}
       </div>
       {/* 큰 금액은 자릿수 세기 어렵다 — 억·만으로 한 번 더 읽어 준다 */}
@@ -387,6 +400,9 @@ function AssetRow({
         <p className="mt-1.5 text-right text-[12px] font-medium text-cap">
           실시간 환율 ≈ {formatWon(krwOf(item, rates))}
         </p>
+      )}
+      {debt && !foreign && (
+        <LoanEditor item={item} onSave={(loan) => onUpdate(item.id, { loan })} />
       )}
       {memoVisible && (
         <input

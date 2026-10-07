@@ -1,4 +1,5 @@
-import { setMonthStartDay } from './format'
+import { catchUpLoan } from './loan'
+import { currentYm, setMonthStartDay } from './format'
 import { applyCategoryChanges, changesFromSnapshot, type CategoryChange } from './categoryChanges'
 import { create } from 'zustand'
 import type {
@@ -11,7 +12,7 @@ import type {
   Profile,
 } from '../types'
 import { DEFAULT_CATEGORIES, findCategoryGroup } from './constants'
-import { genId } from './carryover'
+import { genId, resolveSnapshot } from './carryover'
 import { YEAREND_SAVE_KEY } from './yearEndTax'
 import { buildSeed } from '../seed'
 import * as db from './db'
@@ -165,6 +166,8 @@ interface LedgerState extends AppData {
   removeCategory: (group: CategoryGroup, name: string) => void
   /** 예산·정산에서 바꾼 항목 순서를 카테고리 순서에도 — 다음 달·설정에서도 같은 순서 */
   orderCategories: (group: CategoryGroup, names: string[]) => void
+  /** 지난 갚는 날만큼 대출을 줄여 이번 달 자산에 저장한다 (앱을 열 때) */
+  applyLoanSchedule: () => void
   /** 서버 최신 카테고리로 맞춘다 — 배우자·다른 기기에서 추가한 것까지 고를 때 보이게 */
   refreshCategories: () => Promise<void>
   // 데이터 관리
@@ -198,6 +201,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     // 못 보낸 저장분 재전송 → 최근 고백 로그 로드 (실패해도 앱 사용엔 지장 없음)
     migrateLegacyQueue()
     await flushPendingSync()
+    // 대출 정보가 있는 부채 — 지난 갚는 날만큼 원금을 줄인다 (2026-10-07)
+    get().applyLoanSchedule()
     try {
       set({ confessions: await db.fetchConfessions(householdId) })
     } catch (err) {
@@ -371,6 +376,20 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const s = get()
     set({ categories: { ...s.categories, [group]: s.categories[group].filter((c) => c !== name) } })
     saveCategoryChange(s.householdId, { action: 'remove', group, name })
+  },
+
+  applyLoanSchedule: () => {
+    const s = get()
+    const ym = currentYm()
+    const snap = resolveSnapshot(s.snapshots, ym)
+    const today = new Date()
+    let changed = false
+    const items = snap.items.map((it) => {
+      const next = catchUpLoan(it, today)
+      if (next) changed = true
+      return next ?? it
+    })
+    if (changed) get().saveSnapshot({ ym, items })
   },
 
   orderCategories: (group, names) => {
