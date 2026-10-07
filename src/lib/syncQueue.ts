@@ -6,6 +6,7 @@ import type {
   OccasionEntry,
   Profile,
 } from '../types'
+import type { CategoryChange } from './categoryChanges'
 
 // ── 저장 실패 재시도 큐 ────────────────────────
 // 화면은 낙관적으로 먼저 바뀌므로, 서버 저장이 실패하면 사용자는 성공한 줄 안다.
@@ -18,7 +19,9 @@ export type PendingOp =
   | { kind: 'occasion'; key: string; payload: OccasionEntry }
   | { kind: 'occasionDelete'; key: string; payload: { id: string } }
   | { kind: 'profile'; key: string; payload: Profile }
+  // 예전(2026-10-07 전) 큐에 남아 있을 수 있는 '목록 통째' 저장 — 보낼 때 빠진 것만 더한다
   | { kind: 'categories'; key: string; payload: Categories }
+  | { kind: 'categoryChange'; key: string; payload: CategoryChange }
   | { kind: 'aliases'; key: string; payload: Record<string, string> }
   | { kind: 'confession'; key: string; payload: Confession }
   | { kind: 'confessionDelete'; key: string; payload: { id: string } }

@@ -39,6 +39,7 @@ export default function Settings() {
     updateProfile,
     addCategory,
     removeCategory,
+    refreshCategories,
     resetData,
     importData,
     exportData,
@@ -122,6 +123,27 @@ export default function Settings() {
     fixed: '',
     variable: '',
   })
+  const [catError, setCatError] = useState<{ group: CategoryGroup; text: string } | null>(null)
+  const submitCategory = (g: CategoryGroup) => {
+    const name = newCat[g].trim()
+    const r = addCategory(g, name)
+    if (r === 'added') {
+      setNewCat((s) => ({ ...s, [g]: '' }))
+      setCatError(null)
+    } else {
+      setCatError({
+        group: g,
+        text:
+          r === 'exists'
+            ? `'${name}'은 이미 있어요.`
+            : `'${name}'은 이미 ${GROUP_LABEL[r]}에 있어요. 다른 이름으로 적어 주세요.`,
+      })
+    }
+  }
+  // 배우자·다른 기기에서 추가한 카테고리까지 보이게 — 들어올 때 서버 최신으로
+  useEffect(() => {
+    void refreshCategories()
+  }, [refreshCategories])
 
   const handleExport = () => {
     const data = exportData()
@@ -309,20 +331,14 @@ export default function Settings() {
                         value={newCat[g]}
                         onChange={(e) => setNewCat((s) => ({ ...s, [g]: e.target.value }))}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newCat[g].trim()) {
-                            addCategory(g, newCat[g])
-                            setNewCat((s) => ({ ...s, [g]: '' }))
-                          }
+                          if (e.key === 'Enter' && newCat[g].trim()) submitCategory(g)
                         }}
                         placeholder="새 카테고리"
                         className="flex-1 rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
                       />
                       <button
                         onClick={() => {
-                          if (newCat[g].trim()) {
-                            addCategory(g, newCat[g])
-                            setNewCat((s) => ({ ...s, [g]: '' }))
-                          }
+                          if (newCat[g].trim()) submitCategory(g)
                         }}
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-brand text-white active:bg-brand-dark"
                         aria-label="추가"
@@ -330,6 +346,11 @@ export default function Settings() {
                         <Plus size={18} />
                       </button>
                     </div>
+                    {catError?.group === g && (
+                      <p className="mt-1.5 px-1 text-[12px] font-medium text-danger">
+                        {catError.text}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

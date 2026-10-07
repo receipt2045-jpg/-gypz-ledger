@@ -1,3 +1,4 @@
+import { applyCategoryChanges, type CategoryChange } from './categoryChanges'
 import { supabase } from './supabase'
 import type { PeerRow } from './peerBenchmark'
 import type {
@@ -67,7 +68,11 @@ export async function fetchHouseholdData(householdId: string): Promise<Household
     supabase.from('households').select('*').eq('id', householdId).single(),
     supabase.from('ledgers').select('*').eq('household_id', householdId).order('ym'),
     supabase.from('snapshots').select('*').eq('household_id', householdId).order('ym'),
-    supabase.from('occasions').select('*').eq('household_id', householdId).order('date', { ascending: false }),
+    supabase
+      .from('occasions')
+      .select('*')
+      .eq('household_id', householdId)
+      .order('date', { ascending: false }),
   ])
   const firstError = hh.error || lg.error || sn.error || oc.error
   if (firstError) throw firstError
@@ -108,7 +113,7 @@ export async function fetchHouseholdData(householdId: string): Promise<Household
     categories: h.categories as Categories,
     inviteCode: h.invite_code,
     // 줄글 고백 학습 별칭 (단어 → 카테고리, 가구 공유)
-    aliases: ((h.category_aliases as Record<string, string> | null) ?? {}),
+    aliases: (h.category_aliases as Record<string, string> | null) ?? {},
   }
 }
 
@@ -122,10 +127,7 @@ export async function pushAliases(householdId: string, aliases: Record<string, s
 }
 
 /** 특정 월 가계부만 다시 읽기 — 정산 저장 직전, 배우자가 그사이 저장한 내용을 보존하기 위함 */
-export async function fetchLedger(
-  householdId: string,
-  ym: string,
-): Promise<MonthlyLedger | null> {
+export async function fetchLedger(householdId: string, ym: string): Promise<MonthlyLedger | null> {
   const { data, error } = await supabase
     .from('ledgers')
     .select('*')
@@ -230,11 +232,29 @@ export async function pushProfile(householdId: string, profile: Profile) {
   if (error) throw error
 }
 
-export async function pushCategories(householdId: string, categories: Categories) {
-  const { error } = await supabase
+/** 서버에 있는 지금 카테고리 — 배우자·다른 기기에서 추가한 것까지 */
+export async function fetchCategories(householdId: string): Promise<Categories> {
+  const { data, error } = await supabase
     .from('households')
-    .update({ categories })
+    .select('categories')
     .eq('id', householdId)
+    .single()
+  if (error) throw error
+  return data.categories as Categories
+}
+
+/** 서버 최신 목록에 이 변경만 얹어 저장하고, 합쳐진 목록을 돌려준다 (lib/categoryChanges.ts) */
+export async function changeCategories(
+  householdId: string,
+  changes: CategoryChange[],
+): Promise<Categories> {
+  const merged = applyCategoryChanges(await fetchCategories(householdId), changes)
+  await pushCategories(householdId, merged)
+  return merged
+}
+
+export async function pushCategories(householdId: string, categories: Categories) {
+  const { error } = await supabase.from('households').update({ categories }).eq('id', householdId)
   if (error) throw error
 }
 

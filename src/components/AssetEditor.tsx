@@ -12,7 +12,7 @@ import {
   type Currency,
   type Rates,
 } from '../lib/fx'
-import { formatWon } from '../lib/format'
+import { abbreviateKRW, formatWon } from '../lib/format'
 import type { AssetGroup, AssetItem } from '../types'
 
 // 통화 입력칸의 접미사 (KRW는 '원', 외화는 기호)
@@ -76,7 +76,9 @@ export default function AssetEditor({
     <div className="space-y-3">
       {assets.length === 0 && (
         <div className="space-y-2 py-6 text-center">
-          <p className="text-[13.5px] font-medium text-sub">아래 버튼으로 통장·자산을 추가해 주세요</p>
+          <p className="text-[13.5px] font-medium text-sub">
+            아래 버튼으로 통장·자산을 추가해 주세요
+          </p>
           <p className="text-[12.5px] leading-relaxed text-cap">
             예: 토스 비상금 300만 원 · 주택청약 500만 원
             <br />
@@ -98,9 +100,7 @@ export default function AssetEditor({
           onRemove={onRemove}
         />
       ))}
-      {debtItems.length > 0 && (
-        <p className="px-1 pt-2 text-[13px] font-bold text-danger">부채</p>
-      )}
+      {debtItems.length > 0 && <p className="px-1 pt-2 text-[13px] font-bold text-danger">부채</p>}
       {debtItems.map((it) => (
         <AssetRow
           key={it.id}
@@ -326,20 +326,44 @@ function AssetRow({
     )
   }
 
+  // 금액 칸을 이름 줄 아래 한 줄로 (2026-10-07 제보: "금액을 넣을 때 일부만 보여 불편해요").
+  // 예전엔 아이콘·이름·버튼 셋과 한 줄을 나눠 써서 폰에서 금액 칸이 80px 남짓이었다.
   return (
     <div className="rounded-card bg-card px-4 py-3 shadow-card">
       <div className="flex items-center gap-2.5">
         <AssetIcon group={item.group} kind={item.kind} size={34} />
-        <button onClick={startEdit} className="w-[76px] shrink-0 text-left" aria-label="항목 수정">
+        <button onClick={startEdit} className="min-w-0 flex-1 text-left" aria-label="항목 수정">
           <p className="truncate text-[14px] font-semibold text-ink">{item.name}</p>
           <p className="mt-0.5 text-[11px] text-cap">
             {debt ? '부채' : ASSET_GROUP_LABEL[item.group]}
             {item.owner ? ` · ${item.owner}` : ''}
           </p>
         </button>
+        <button
+          onClick={startEdit}
+          className="shrink-0 p-1 text-cap active:text-brand"
+          aria-label="항목 수정"
+        >
+          <Pencil size={15} />
+        </button>
+        <button
+          onClick={() => setMemoOpen((v) => !v)}
+          className={`shrink-0 p-1 ${memoVisible ? 'text-brand' : 'text-cap'} active:text-brand`}
+          aria-label="메모"
+        >
+          <StickyNote size={16} />
+        </button>
+        <button
+          onClick={() => onRemove(item.id)}
+          className="shrink-0 p-1 text-cap active:text-danger"
+          aria-label="삭제"
+        >
+          <X size={18} />
+        </button>
+      </div>
+      <div className="mt-2">
         {foreign ? (
           <AmountInput
-            className="flex-1"
             value={item.fxAmount ?? 0}
             suffix={CURRENCY_SYMBOL[ccy]}
             onChange={(v) =>
@@ -350,30 +374,15 @@ function AssetRow({
             }
           />
         ) : (
-          <AmountInput className="flex-1" value={item.amount} onChange={(v) => onChange(item.id, v)} />
+          <AmountInput value={item.amount} onChange={(v) => onChange(item.id, v)} />
         )}
-        <button
-          onClick={startEdit}
-          className="shrink-0 text-cap active:text-brand"
-          aria-label="항목 수정"
-        >
-          <Pencil size={15} />
-        </button>
-        <button
-          onClick={() => setMemoOpen((v) => !v)}
-          className={`shrink-0 ${memoVisible ? 'text-brand' : 'text-cap'} active:text-brand`}
-          aria-label="메모"
-        >
-          <StickyNote size={16} />
-        </button>
-        <button
-          onClick={() => onRemove(item.id)}
-          className="shrink-0 text-cap active:text-danger"
-          aria-label="삭제"
-        >
-          <X size={18} />
-        </button>
       </div>
+      {/* 큰 금액은 자릿수 세기 어렵다 — 억·만으로 한 번 더 읽어 준다 */}
+      {!foreign && item.amount >= 10_000 && (
+        <p className="mt-1 text-right text-[12px] font-medium text-cap">
+          {abbreviateKRW(item.amount)}
+        </p>
+      )}
       {foreign && (
         <p className="mt-1.5 text-right text-[12px] font-medium text-cap">
           실시간 환율 ≈ {formatWon(krwOf(item, rates))}

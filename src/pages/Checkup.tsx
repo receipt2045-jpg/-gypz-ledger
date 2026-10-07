@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import PcShell from '../components/PcShell'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -108,6 +108,11 @@ const LAST_MONEY_STEP = STEPS.length // 변동지출 (마지막 입력 스텝)
 const DONE_STEP = TOTAL_STEPS // 완료 화면
 
 export default function Checkup() {
+  // 배우자·다른 기기에서 추가한 카테고리까지 고를 때 보이게 — 들어올 때 서버 최신으로 (2026-10-07)
+  const refreshCategories = useLedgerStore((st) => st.refreshCategories)
+  useEffect(() => {
+    void refreshCategories()
+  }, [refreshCategories])
   const navigate = useNavigate()
   const location = useLocation()
   const {

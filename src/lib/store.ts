@@ -1,3 +1,4 @@
+import { changesFromSnapshot, type CategoryChange } from './categoryChanges'
 import { create } from 'zustand'
 import type {
   AppData,
@@ -13,13 +14,7 @@ import { genId } from './carryover'
 import { YEAREND_SAVE_KEY } from './yearEndTax'
 import { buildSeed } from '../seed'
 import * as db from './db'
-import {
-  enqueue,
-  flushQueue,
-  migrateLegacyQueue,
-  pendingCount,
-  type PendingOp,
-} from './syncQueue'
+import { enqueue, flushQueue, migrateLegacyQueue, pendingCount, type PendingOp } from './syncQueue'
 
 /** op 하나를 실제로 서버에 보낸다 */
 async function sendOp(op: PendingOp, hid: string): Promise<void> {
@@ -35,7 +30,11 @@ async function sendOp(op: PendingOp, hid: string): Promise<void> {
     case 'profile':
       return db.pushProfile(hid, op.payload)
     case 'categories':
-      return db.pushCategories(hid, op.payload)
+      await db.changeCategories(hid, changesFromSnapshot(op.payload))
+      return
+    case 'categoryChange':
+      await db.changeCategories(hid, [op.payload])
+      return
     case 'aliases':
       return db.pushAliases(hid, op.payload)
     case 'confession':
@@ -55,6 +54,25 @@ function onSaveFailed(op: PendingOp) {
     enqueue(op)
     useLedgerStore.setState({ pendingSync: pendingCount() })
   }
+}
+
+/**
+ * 카테고리 추가·삭제 저장 — 목록 통째가 아니라 이 변경만 서버 최신 목록에 얹는다.
+ * 저장된 합친 목록(배우자가 그 사이 추가한 것 포함)으로 화면도 맞춘다.
+ */
+function saveCategoryChange(hid: string | null, change: CategoryChange) {
+  if (!hid) return
+  const op: PendingOp = {
+    kind: 'categoryChange',
+    key: `categoryChange:${change.action}:${change.group}:${change.name}`,
+    payload: change,
+  }
+  db.changeCategories(hid, [change])
+    .then((merged) => {
+      if (useLedgerStore.getState().householdId === hid)
+        useLedgerStore.setState({ categories: merged })
+    })
+    .catch(onSaveFailed(op))
 }
 
 /**
@@ -138,8 +156,11 @@ interface LedgerState extends AppData {
   addOccasion: (entry: Omit<OccasionEntry, 'id'>) => void
   removeOccasion: (id: string) => void
   // 카테고리 관리
-  addCategory: (group: CategoryGroup, name: string) => void
+  /** 'added' | 'exists'(같은 칸에 이미 있음) | 다른 칸 이름(그 칸에 이미 있음) */
+  addCategory: (group: CategoryGroup, name: string) => 'added' | 'exists' | CategoryGroup
   removeCategory: (group: CategoryGroup, name: string) => void
+  /** 서버 최신 카테고리로 맞춘다 — 배우자·다른 기기에서 추가한 것까지 고를 때 보이게 */
+  refreshCategories: () => Promise<void>
   // 데이터 관리
   resetData: () => void
   importData: (data: AppData) => void
@@ -256,7 +277,11 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     if (!target) return
     set({ confessions: s.confessions.filter((c) => c.id !== id) })
     if (s.householdId) {
-      const op: PendingOp = { kind: 'confessionDelete', key: `confessionDelete:${id}`, payload: { id } }
+      const op: PendingOp = {
+        kind: 'confessionDelete',
+        key: `confessionDelete:${id}`,
+        payload: { id },
+      }
       db.deleteConfession(id).catch(onSaveFailed(op))
     }
   },
@@ -327,27 +352,28 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
   addCategory: (group, name) => {
     const trimmed = name.trim()
     const s = get()
-    if (!trimmed || s.categories[group].includes(trimmed)) return
+    if (!trimmed || s.categories[group].includes(trimmed)) return 'exists'
     // 같은 이름이 다른 그룹에 있으면 거부 — 스텝마다 항목이 갈라져 "안 지워진다"가 된다
-    if (findCategoryGroup(s.categories, trimmed, group)) return
-    const categories = { ...s.categories, [group]: [...s.categories[group], trimmed] }
-    set({ categories })
-    if (s.householdId) {
-      const op: PendingOp = { kind: 'categories', key: 'categories', payload: categories }
-      db.pushCategories(s.householdId, categories).catch(onSaveFailed(op))
-    }
+    const clash = findCategoryGroup(s.categories, trimmed, group)
+    if (clash) return clash
+    set({ categories: { ...s.categories, [group]: [...s.categories[group], trimmed] } })
+    saveCategoryChange(s.householdId, { action: 'add', group, name: trimmed })
+    return 'added'
   },
 
   removeCategory: (group, name) => {
     const s = get()
-    const categories = {
-      ...s.categories,
-      [group]: s.categories[group].filter((c) => c !== name),
-    }
-    set({ categories })
-    if (s.householdId) {
-      const op: PendingOp = { kind: 'categories', key: 'categories', payload: categories }
-      db.pushCategories(s.householdId, categories).catch(onSaveFailed(op))
+    set({ categories: { ...s.categories, [group]: s.categories[group].filter((c) => c !== name) } })
+    saveCategoryChange(s.householdId, { action: 'remove', group, name })
+  },
+
+  refreshCategories: async () => {
+    const hid = get().householdId
+    if (!hid) return
+    try {
+      set({ categories: await db.fetchCategories(hid) })
+    } catch (err) {
+      console.error('[sync] 카테고리 새로 읽기 실패:', err)
     }
   },
 

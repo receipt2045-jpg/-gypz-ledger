@@ -116,6 +116,11 @@ interface DraftEntry extends ParsedEntry {
  * 버튼식(카테고리 그리드 → 숫자패드)은 보조 수단으로 유지.
  */
 export default function Confess() {
+  // 배우자·다른 기기에서 추가한 카테고리까지 고를 때 보이게 — 들어올 때 서버 최신으로 (2026-10-07)
+  const refreshCategories = useLedgerStore((st) => st.refreshCategories)
+  useEffect(() => {
+    void refreshCategories()
+  }, [refreshCategories])
   const navigate = useNavigate()
   const {
     categories,
