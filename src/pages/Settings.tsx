@@ -227,12 +227,10 @@ export default function Settings() {
               <h2 className="mb-3 text-[15px] font-bold text-ink">부부 정보</h2>
               <div className="space-y-3">
                 <Field label="구성원 1" hint="예: 남편">
-                  <input
-                    type="text"
+                  <NameInput
                     value={profile.member1Name}
-                    onChange={(e) => updateProfile({ member1Name: e.target.value })}
+                    onCommit={(v) => updateProfile({ member1Name: v })}
                     placeholder="남편"
-                    className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
                   />
                   <ColorSwatches
                     current={memberColor(1, profile)}
@@ -240,12 +238,10 @@ export default function Settings() {
                   />
                 </Field>
                 <Field label="구성원 2" hint="예: 아내">
-                  <input
-                    type="text"
+                  <NameInput
                     value={profile.member2Name}
-                    onChange={(e) => updateProfile({ member2Name: e.target.value })}
+                    onCommit={(v) => updateProfile({ member2Name: v })}
                     placeholder="아내"
-                    className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
                   />
                   <ColorSwatches
                     current={memberColor(2, profile)}
@@ -663,5 +659,40 @@ function ColorSwatches({
         />
       ))}
     </div>
+  )
+}
+
+/**
+ * 이름 칸 — 다 친 뒤 칸을 떠날 때(또는 Enter) 한 번만 저장한다 (2026-10-07).
+ * 예전엔 한 글자마다 저장돼서, 이름으로 묶인 자산 주인과 어긋났다. 비우면 원래 이름으로 돌아간다.
+ */
+function NameInput({
+  value,
+  onCommit,
+  placeholder,
+}: {
+  value: string
+  onCommit: (v: string) => void
+  placeholder: string
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const commit = () => {
+    if (draft === null) return
+    const v = draft.trim()
+    if (v && v !== value) onCommit(v)
+    setDraft(null)
+  }
+  return (
+    <input
+      type="text"
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+      }}
+      placeholder={placeholder}
+      className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
+    />
   )
 }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { displayOwner } from '../lib/assetOwner'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Pencil } from 'lucide-react'
 import AssetGlance from '../components/AssetGlance'
@@ -27,7 +28,11 @@ export default function Assets() {
 
   const stored = resolveSnapshot(snapshots, latestYm)
   // 외화 항목은 실시간 환율로 원화 환산 (현재 화면 기준)
-  const items = stored.items.map((it) => ({ ...it, amount: krwOf(it, rates) }))
+  const items = stored.items.map((it) => ({
+    ...it,
+    amount: krwOf(it, rates),
+    owner: displayOwner(it.owner, profile),
+  }))
   const assets = totalAssets({ ...stored, items })
 
   const childNames = profile.childNames ?? []

@@ -1,4 +1,5 @@
 import { catchUpLoan } from './loan'
+import { renameOwner, repairOwners } from './assetOwner'
 import { currentYm, setMonthStartDay } from './format'
 import { applyCategoryChanges, changesFromSnapshot, type CategoryChange } from './categoryChanges'
 import { create } from 'zustand'
@@ -168,6 +169,8 @@ interface LedgerState extends AppData {
   orderCategories: (group: CategoryGroup, names: string[]) => void
   /** 지난 갚는 날만큼 대출을 줄여 이번 달 자산에 저장한다 (앱을 열 때) */
   applyLoanSchedule: () => void
+  /** 예전 이름('남편'·'아내')으로 남은 자산 주인을 지금 이름으로 — lib/assetOwner */
+  repairAssetOwners: () => void
   /** 서버 최신 카테고리로 맞춘다 — 배우자·다른 기기에서 추가한 것까지 고를 때 보이게 */
   refreshCategories: () => Promise<void>
   // 데이터 관리
@@ -203,6 +206,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     await flushPendingSync()
     // 대출 정보가 있는 부채 — 지난 갚는 날만큼 원금을 줄인다 (2026-10-07)
     get().applyLoanSchedule()
+    get().repairAssetOwners()
     try {
       set({ confessions: await db.fetchConfessions(householdId) })
     } catch (err) {
@@ -298,8 +302,24 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
   },
 
   updateProfile: (patch) => {
-    const profile = { ...get().profile, ...patch }
+    const prev = get().profile
+    const profile = { ...prev, ...patch }
     set({ profile })
+    // 이름을 바꾸면 그 이름으로 저장된 자산 주인도 같이 (2026-10-07 제보: 바꾼 뒤 자산이 '0개'로 보임).
+    // 이름표 서로 바꾸기(1↔2)는 사람이 그대로라 주인을 건드리지 않는다.
+    const swapped =
+      profile.member1Name === prev.member2Name && profile.member2Name === prev.member1Name
+    if (!swapped) {
+      const renames: [string, string][] = [
+        [prev.member1Name, profile.member1Name],
+        [prev.member2Name, profile.member2Name],
+      ]
+      for (const sn of get().snapshots) {
+        let items = sn.items
+        for (const [from, to] of renames) items = renameOwner(items, from, to) ?? items
+        if (items !== sn.items) get().saveSnapshot({ ...sn, items })
+      }
+    }
     const hid = get().householdId
     if (hid) {
       const op: PendingOp = { kind: 'profile', key: 'profile', payload: profile }
@@ -382,6 +402,14 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const s = get()
     set({ categories: { ...s.categories, [group]: s.categories[group].filter((c) => c !== name) } })
     saveCategoryChange(s.householdId, { action: 'remove', group, name })
+  },
+
+  repairAssetOwners: () => {
+    const profile = get().profile
+    for (const sn of get().snapshots) {
+      const items = repairOwners(sn.items, profile)
+      if (items) get().saveSnapshot({ ...sn, items })
+    }
   },
 
   applyLoanSchedule: () => {

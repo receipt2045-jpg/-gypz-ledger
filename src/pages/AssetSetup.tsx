@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react'
 import PcShell from '../components/PcShell'
+import { displayOwner } from '../lib/assetOwner'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Baby, ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
 import AssetEditor from '../components/AssetEditor'
@@ -91,7 +92,7 @@ export default function AssetSetup() {
         <div className="flex-1 space-y-3 px-5 pt-4">
           {([1, 2] as const).map((m) => {
             const count = assets.filter(
-              (a) => a.owner === memberNames[m - 1] || a.owner === '공동' || !a.owner,
+              (a) => a.owner === memberNames[m - 1] || displayOwner(a.owner, profile) === '공동',
             ).length
             return (
               <button
@@ -167,7 +168,9 @@ export default function AssetSetup() {
     ? assets.filter((a) => a.owner === selName)
     : assets.filter(
         (a) =>
-          !a.owner || a.owner === '공동' || a.owner === selName || childNames.includes(a.owner),
+          displayOwner(a.owner, profile) === '공동' ||
+          a.owner === selName ||
+          childNames.includes(a.owner!),
       )
   const netWorth = netWorthOf({ ym, items: assets })
 

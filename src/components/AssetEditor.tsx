@@ -276,7 +276,8 @@ function AssetRow({
   const [eKind, setEKind] = useState<'asset' | 'debt'>(item.kind)
   const [eGroup, setEGroup] = useState<AssetGroup>(item.group)
   const [eName, setEName] = useState(item.name)
-  const [eOwner, setEOwner] = useState(item.owner ?? '공동')
+  const ownerOf = (o?: string) => (o && ownerOptions.includes(o) ? o : '공동')
+  const [eOwner, setEOwner] = useState(ownerOf(item.owner))
   const memoVisible = memoOpen || !!item.note
   const ccy = (item.currency as Currency) ?? 'KRW'
   const foreign = ccy !== 'KRW'
@@ -285,7 +286,7 @@ function AssetRow({
     setEKind(item.kind)
     setEGroup(item.group)
     setEName(item.name)
-    setEOwner(item.owner ?? '공동')
+    setEOwner(ownerOf(item.owner))
     setEditing(true)
   }
   const confirmEdit = () => {
