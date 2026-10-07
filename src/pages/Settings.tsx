@@ -38,6 +38,7 @@ export default function Settings() {
     inviteCode,
     memberNo,
     updateProfile,
+    swapMembers,
     addCategory,
     removeCategory,
     refreshCategories,
@@ -48,6 +49,8 @@ export default function Settings() {
   const navigate = useNavigate()
   const fileRef = useRef<HTMLInputElement>(null)
   const [copied, setCopied] = useState(false)
+  const [swapOpen, setSwapOpen] = useState(false)
+  const [swapping, setSwapping] = useState(false)
   const [newChild, setNewChild] = useState('')
   const [deleting, setDeleting] = useState(false)
   // 운영자 메뉴는 운영자 계정에만 노출 (실제 권한 검증은 서버에서)
@@ -248,23 +251,73 @@ export default function Settings() {
                     onPick={(c) => updateProfile({ member2Color: c })}
                   />
                 </Field>
-                {/* "내가 아내인데 남편으로 나와요" — 이름표만 서로 바꾸면 과거 기록까지 맞게 보인다 */}
+                {/* (나) 표시가 배우자 이름에 붙은 집 — 두 가지 경우가 있어 고르게 한다 (2026-10-07 제보:
+                    "이름 바꾸기를 눌렀더니 내용은 안 바뀌고 이름만 바뀌어요") */}
                 <button
-                  onClick={() =>
-                    updateProfile({
-                      member1Name: profile.member2Name,
-                      member2Name: profile.member1Name,
-                      member1Color: profile.member2Color,
-                      member2Color: profile.member1Color,
-                    })
-                  }
+                  onClick={() => setSwapOpen((v) => !v)}
+                  aria-expanded={swapOpen}
                   className="w-full rounded-btn bg-bg py-2.5 text-[13px] font-bold text-sub active:bg-line"
                 >
-                  ⇄ 두 이름 서로 바꾸기
+                  ⇄ (나) 표시가 배우자 이름에 붙어 있어요
                 </button>
-                <p className="-mt-1 px-1 text-[12px] leading-relaxed text-cap">
-                  내 이름이 배우자 자리에 있으면 눌러주세요. 기록은 그대로 두고 이름표만 바뀌어요.
-                </p>
+                {swapOpen && (
+                  <div className="space-y-2 rounded-btn border border-line p-3">
+                    <p className="text-[12.5px] leading-relaxed text-sub">
+                      지금 (나)는{' '}
+                      <b className="text-ink">
+                        {memberNo === 2 ? profile.member2Name : profile.member1Name}
+                      </b>
+                      에 붙어 있어요. 바꾸면{' '}
+                      <b className="text-ink">
+                        {memberNo === 2 ? profile.member1Name : profile.member2Name}
+                      </b>
+                      에 붙어요.
+                    </p>
+                    <button
+                      disabled={swapping}
+                      onClick={async () => {
+                        setSwapping(true)
+                        try {
+                          await swapMembers()
+                          setSwapOpen(false)
+                        } catch {
+                          alert('바꾸지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.')
+                        } finally {
+                          setSwapping(false)
+                        }
+                      }}
+                      className="w-full rounded-btn bg-brand px-3 py-2.5 text-left text-white disabled:opacity-60"
+                    >
+                      <span className="block text-[13.5px] font-bold">
+                        {swapping ? '바꾸는 중…' : '기록도 이름 따라 옮기기 (추천)'}
+                      </span>
+                      <span className="block text-[11.5px] text-white/85">
+                        {profile.member1Name} 이름으로 적은 예산·정산·소비 기록은 계속{' '}
+                        {profile.member1Name} 것으로 남아요
+                      </span>
+                    </button>
+                    <button
+                      disabled={swapping}
+                      onClick={() => {
+                        updateProfile({
+                          member1Name: profile.member2Name,
+                          member2Name: profile.member1Name,
+                          member1Color: profile.member2Color,
+                          member2Color: profile.member1Color,
+                        })
+                        setSwapOpen(false)
+                      }}
+                      className="w-full rounded-btn bg-bg px-3 py-2.5 text-left active:bg-line"
+                    >
+                      <span className="block text-[13.5px] font-bold text-ink">
+                        이름표만 바꾸기
+                      </span>
+                      <span className="block text-[11.5px] text-sub">
+                        내가 적은 기록이 배우자 이름으로 보일 때 — 기록은 자리에 그대로
+                      </span>
+                    </button>
+                  </div>
+                )}
                 {/* 한 달 시작일 — 급여일에 맞춰 15일부터 한 달로 쓰는 집 (2026-10-07 제보) */}
                 <Field label="한 달 시작일" hint="월급날에 맞추면 편해요">
                   <MonthStartPicker

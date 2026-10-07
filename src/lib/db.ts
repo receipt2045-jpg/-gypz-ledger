@@ -291,6 +291,35 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
   }))
 }
 
+/**
+ * 구성원 1·2 자리 바꾸기 — 이 가구의 모든 소비 기록(62일 밖까지)의 번호를 맞바꾼다 (lib/memberSwap).
+ * 번호는 1·2만 허용이라 한 번에 바꿀 수 없어, 행마다 새 번호로 고친다.
+ */
+export async function swapConfessionMembers(householdId: string) {
+  const { data, error } = await supabase
+    .from('confessions')
+    .select('id, member_no, card_owner')
+    .eq('household_id', householdId)
+  if (error) throw error
+  const rows = data ?? []
+  for (let i = 0; i < rows.length; i += 20) {
+    const chunk = rows.slice(i, i + 20)
+    const results = await Promise.all(
+      chunk.map((r) =>
+        supabase
+          .from('confessions')
+          .update({
+            member_no: r.member_no === 1 ? 2 : 1,
+            ...(r.card_owner ? { card_owner: r.card_owner === 1 ? 2 : 1 } : {}),
+          })
+          .eq('id', r.id),
+      ),
+    )
+    const failed = results.find((r) => r.error)
+    if (failed?.error) throw failed.error
+  }
+}
+
 /** 고백 삭제 — RLS가 '내가 쓴 것'만 허용한다 (배우자 것은 서버가 거부) */
 export async function deleteConfession(id: string) {
   const { error } = await supabase.from('confessions').delete().eq('id', id)

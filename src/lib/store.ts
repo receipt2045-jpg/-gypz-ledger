@@ -1,5 +1,6 @@
 import { catchUpLoan } from './loan'
 import { renameOwner, repairOwners } from './assetOwner'
+import { swapConfession, swapLedger, swapProfile } from './memberSwap'
 import { currentYm, setMonthStartDay } from './format'
 import { applyCategoryChanges, changesFromSnapshot, type CategoryChange } from './categoryChanges'
 import { create } from 'zustand'
@@ -152,6 +153,8 @@ interface LedgerState extends AppData {
   learnAliases: (patch: Record<string, string>) => void
   // 프로필
   updateProfile: (patch: Partial<Profile>) => void
+  /** 구성원 1·2 자리 바꾸기 — 기록이 이름을 따라간다(lib/memberSwap). 실패하면 아무것도 안 바뀐다 */
+  swapMembers: () => Promise<void>
   // 월간 가계부
   saveLedger: (ledger: MonthlyLedger) => void
   // 자산 스냅샷
@@ -325,6 +328,20 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       const op: PendingOp = { kind: 'profile', key: 'profile', payload: profile }
       db.pushProfile(hid, profile).catch(onSaveFailed(op))
     }
+  },
+
+  swapMembers: async () => {
+    const hid = get().householdId
+    // 소비 기록은 서버에 62일 밖까지 있다 — 그것부터 바꾸고, 실패하면 멈춘다(반만 바뀌지 않게)
+    if (hid) await db.swapConfessionMembers(hid)
+    const s = get()
+    const profile = swapProfile(s.profile)
+    set({ profile, confessions: s.confessions.map(swapConfession) })
+    if (hid) {
+      const op: PendingOp = { kind: 'profile', key: 'profile', payload: profile }
+      db.pushProfile(hid, profile).catch(onSaveFailed(op))
+    }
+    for (const l of s.ledgers) get().saveLedger(swapLedger(l))
   },
 
   saveLedger: (input) => {
