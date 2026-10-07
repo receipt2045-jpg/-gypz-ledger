@@ -10,16 +10,20 @@ export function shortWon(n: number): string {
   return `${sign}${man.toLocaleString('ko-KR')}만`
 }
 
-function Ring({
+/** 링 하나 — 가계부 탭 '한눈에'도 같이 쓴다 (2026-10-07) */
+export function Ring({
   ratio,
   value,
   label,
   color,
+  sub,
 }: {
   ratio: number // 0~1 (초과는 1로 캡)
   value: string
   label: string
   color: string
+  /** 이름 아래 한 줄 (예: 수입의 54%) */
+  sub?: string
 }) {
   const size = 66
   const stroke = 6
@@ -30,7 +34,14 @@ function Ring({
     <div className="flex flex-col items-center gap-1">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#E5E8EB" strokeWidth={stroke} />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke="#E5E8EB"
+            strokeWidth={stroke}
+          />
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -48,6 +59,7 @@ function Ring({
         </span>
       </div>
       <span className="text-[11px] font-medium text-sub">{label}</span>
+      {sub && <span className="tnum -mt-1 text-[10.5px] text-cap">{sub}</span>}
     </div>
   )
 }

@@ -4,15 +4,15 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Mic, Trash2, X } from 'lucide-react'
 import BudgetBars from '../components/BudgetBars'
 import FixedCostCheck from '../components/FixedCostCheck'
-import InfoTip from '../components/InfoTip'
 import MonthlyReportCard from '../components/MonthlyReportCard'
+import MonthlyGlance from '../components/MonthlyGlance'
 import OccasionSection from '../components/OccasionSection'
 import SectionList from '../components/SectionList'
 import { useLedgerStore } from '../lib/store'
 import { buildMonthlyCard } from '../lib/monthlyCard'
-import { activeYm, resolveLedger, summarize } from '../lib/carryover'
+import { activeYm, resolveLedger } from '../lib/carryover'
 import { formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
-import { GROUP_LABEL, GROUP_ORDER, TERM_TIP } from '../lib/constants'
+import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import { confessSums, monthConfessions } from '../lib/confessLedger'
 import { memberStyle } from '../lib/memberColors'
 import type { CategoryGroup } from '../types'
@@ -61,10 +61,9 @@ export default function Monthly() {
   // (resolveLedger는 없는 달도 이전 달에서 만들어 주므로 원본을 직접 본다)
   const hasAnyRecord = ledgers.some((l) => l.ym === ym) || snapshots.some((s) => s.ym === ym)
 
+  // 공동 항목(예산 표의 '공동' 칸)은 한 사람 것이 아니라 사람별 보기에선 뺀다
   const filteredItems =
-    member === 0 ? ledger.items : ledger.items.filter((it) => it.member === member)
-  const filteredLedger = { ...ledger, items: filteredItems }
-  const s = summarize(filteredLedger)
+    member === 0 ? ledger.items : ledger.items.filter((it) => it.member === member && !it.shared)
 
   // 이번 달 고백 내역 (최근 62일만 로드되므로 오래된 달엔 자연히 비어 있음)
   const monthLog = useMemo(() => {
@@ -144,6 +143,11 @@ export default function Monthly() {
           아직 정산 전이에요 · 정산한 사람은 실제, 아직이면 계획 기준
         </p>
       )}
+
+      {/* 한눈에 — 폰은 맨 위, PC는 오른쪽 칸 맨 위 */}
+      <div className="lg:hidden">
+        <MonthlyGlance ledger={ledger} profile={profile} />
+      </div>
 
       {/* PC에서는 두 칸 — 왼쪽: 기록하기·점검, 오른쪽: 부부별 내역 (2026-10-06) */}
       <PcColumns
@@ -267,6 +271,12 @@ export default function Monthly() {
         }
         right={
           <>
+            {/* 한눈에 — 남는 돈 + 링 (2026-10-07). 항목은 아래 '자세히'에서 */}
+            <div className="hidden lg:block">
+              <MonthlyGlance ledger={ledger} profile={profile} />
+            </div>
+
+            <p className="px-1 pt-2 text-[13px] font-bold text-sub">자세히 보기</p>
             {/* 부부 토글 */}
             <div className="flex gap-1 rounded-btn bg-line/60 p-1">
               {tabs.map((t) => (
@@ -388,22 +398,6 @@ export default function Monthly() {
                 onOpenChange={setOccasionOpen}
                 emptyText={`${formatYmKorean(ym).split(' ')[1]}엔 아직 없어요 · 경조사·명절·자동차 같은 큰돈이 생기면 바로 적어두세요`}
               />
-            </div>
-
-            {/* 잉여현금 */}
-            <div className="rounded-card bg-ink px-5 py-4 text-white">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center text-[15px] font-semibold text-white/80">
-                  잉여현금
-                  <InfoTip text={TERM_TIP.surplus} />
-                </span>
-                <span
-                  className={`tnum text-[20px] font-extrabold ${s.surplus < 0 ? 'text-[#FF8A93]' : 'text-white'}`}
-                >
-                  {formatWon(s.surplus)}
-                </span>
-              </div>
-              <p className="mt-1 text-[12px] text-white/55">수입 − 저축 − 투자 − 지출 기준</p>
             </div>
           </>
         }
