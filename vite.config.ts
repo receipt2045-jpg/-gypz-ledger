@@ -31,6 +31,7 @@ function newsOgHtml(html: string): string {
   set('name', 'twitter:title', NEWS_OG.title)
   set('name', 'twitter:description', NEWS_OG.description)
   set('name', 'twitter:image', NEWS_OG.image)
+  html = html.replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${NEWS_OG.url}$2`)
   return html.replace(/<title>[^<]*<\/title>/, `<title>${NEWS_OG.title}</title>`)
 }
 
