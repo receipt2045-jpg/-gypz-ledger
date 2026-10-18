@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ExternalLink } from 'lucide-react'
 import PcShell from '../components/PcShell'
+import { detectInAppBrowser } from '../lib/inAppBrowser'
 
 /** 원팀 프로젝트 이야기 페이지 — 결영이네가 따로 고치는 페이지라, 앱에선 그대로 띄우기만 한다 */
 export const STORY_URL = 'https://receipt2045-jpg.github.io/oneteam-dashboard/story/'
@@ -12,6 +14,13 @@ export const STORY_URL = 'https://receipt2045-jpg.github.io/oneteam-dashboard/st
  */
 export default function Story() {
   const navigate = useNavigate()
+  // 카톡·인스타 같은 앱 안 브라우저는 페이지 속(iframe) 버튼이 새 창을 못 띄워서 '6기 신청'이 안 눌렸다 (2026-10-18 제보).
+  // 거기서 열면 이야기 페이지로 바로 넘어간다 — 버튼이 제대로 동작한다.
+  const inApp = detectInAppBrowser() !== null
+  useEffect(() => {
+    if (inApp) window.location.replace(STORY_URL)
+  }, [inApp])
+  if (inApp) return null
   return (
     <PcShell active="/info">
       <div className="flex h-[100dvh] justify-center bg-[#e6e9ed] lg:bg-bg">
