@@ -52,6 +52,8 @@ export default function App() {
         {/* 오늘의 경제 — 카톡 톡방 링크로 들어오는 자리라 로그인 밖에 둔다 */}
         <Route path="/news" element={<PublicNews />} />
         <Route path="/news/:id" element={<PublicNews />} />
+        {/* 원팀 프로젝트 이야기 — 카톡·인스타로 나누는 자리라 로그인 밖에 둔다 */}
+        <Route path="/story" element={<Story />} />
         <Route path="*" element={<AuthGate />} />
       </Routes>
     </>
@@ -183,7 +185,6 @@ function AppRoutes() {
         <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/checkup" element={<Checkup />} />
         <Route path="/budget" element={<Budget />} />
-        <Route path="/story" element={<Story />} />
         <Route path="/confess" element={<Confess />} />
         <Route path="/asset-setup" element={<AssetSetup />} />
         <Route path="/year-end-tax" element={<YearEndTax />} />
