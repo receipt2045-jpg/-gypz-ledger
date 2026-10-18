@@ -103,11 +103,21 @@ export default function Info() {
 
             <section aria-label="이야기" className="space-y-3">
               <SectionTitle>이야기</SectionTitle>
-              <Soon
-                Icon={MessagesSquare}
-                title="이야기 나누는 곳은 준비하고 있어요"
-                text="다른 집은 어떻게 모으고 있는지 여기서 볼 수 있게 만들고 있어요."
-              />
+              {/* 원팀 프로젝트 이야기 (2026-10-18) — 다른 부부들이 실제로 하는 것, 앱 안에서 본다 */}
+              <Card onClick={() => navigate('/story')}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-50">
+                    <MessagesSquare size={20} className="text-pink-500" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-bold text-ink">원팀 프로젝트 5기 이야기</p>
+                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-sub">
+                      15부부가 매주 쓰는 과제와 한 문장, 결영이네가 단 답까지
+                    </p>
+                  </div>
+                  <ChevronRight size={18} className="shrink-0 text-cap" />
+                </div>
+              </Card>
             </section>
           </>
         }

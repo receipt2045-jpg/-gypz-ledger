@@ -54,6 +54,7 @@ describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기'
           <Route path="/leave" element={<p>계산기 화면</p>} />
           <Route path="/calc/retire" element={<p>노후 화면</p>} />
           <Route path="/info/archive" element={<p>지난 글 화면</p>} />
+          <Route path="/story" element={<p>이야기 화면</p>} />
         </Routes>
       </MemoryRouter>,
     )
@@ -69,6 +70,12 @@ describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기'
     await screen.findByText('매물 고갈된 전세 시장')
     const names = screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'))
     expect(names).toEqual(['오늘의 경제', '계산기', '공지', '정보·혜택', '이야기'])
+  })
+
+  it('이야기 칸에서 원팀 프로젝트 이야기를 앱 안에서 연다', () => {
+    renderInfo()
+    fireEvent.click(screen.getByText('원팀 프로젝트 5기 이야기'))
+    expect(screen.getByText('이야기 화면')).toBeInTheDocument()
   })
 
   it('공지의 계산해보기로 계산기에 간다', () => {
