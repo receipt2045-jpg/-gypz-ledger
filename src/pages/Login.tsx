@@ -11,7 +11,8 @@ const redirectTo = window.location.origin + import.meta.env.BASE_URL
 // Supabase 에러 메시지 → 한국어
 function koError(message: string): string {
   if (message.includes('Invalid login credentials')) return '이메일 또는 비밀번호가 맞지 않아요'
-  if (message.includes('User already registered')) return '이미 가입된 이메일이에요. 로그인해 주세요'
+  if (message.includes('User already registered'))
+    return '이미 가입된 이메일이에요. 로그인해 주세요'
   if (message.includes('Password should be at least')) return '비밀번호는 6자 이상이어야 해요'
   if (message.includes('rate limit') || message.includes('Rate limit'))
     return '요청이 너무 잦아요. 잠시 후 다시 시도해 주세요'
@@ -32,11 +33,9 @@ export default function Login() {
   const [households, setHouseholds] = useState<number | null>(null)
 
   useEffect(() => {
-    supabase
-      .rpc('public_household_count')
-      .then(({ data, error: err }) => {
-        if (!err && typeof data === 'number' && data >= 10) setHouseholds(data)
-      })
+    supabase.rpc('public_household_count').then(({ data, error: err }) => {
+      if (!err && typeof data === 'number' && data >= 10) setHouseholds(data)
+    })
   }, [])
 
   const canSubmit = email.trim() && password.length >= 6 && !busy
@@ -70,9 +69,13 @@ export default function Login() {
       options: {
         emailRedirectTo: redirectTo,
         // 받은 시각까지 남긴다 — 나중에 "동의받았다"를 대려면 시각이 있어야 한다
-        data: marketing
-          ? { marketingOptIn: true, marketingOptInAt: now }
-          : { marketingOptIn: false },
+        data: {
+          ...(marketing
+            ? { marketingOptIn: true, marketingOptInAt: now }
+            : { marketingOptIn: false }),
+          // 초대 링크로 왔으면 코드도 계정에 — 인증 메일을 다른 브라우저에서 열어도 배우자 가계부로 이어진다
+          ...(pendingInvite() ? { invite: pendingInvite() } : {}),
+        },
       },
     })
     setBusy(false)

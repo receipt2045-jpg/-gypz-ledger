@@ -56,6 +56,15 @@ export async function joinHousehold(code: string): Promise<Membership> {
   return { householdId: data.id, memberNo: 2 }
 }
 
+/**
+ * 배우자 가계부로 옮기기 — 혼자 쓰던 가계부는 지우고 초대 코드의 가계부에 들어간다 (supabase/switch-household.sql).
+ * 둘이 쓰는 가계부면 서버가 거부한다.
+ */
+export async function switchHousehold(code: string): Promise<void> {
+  const { error } = await supabase.rpc('switch_household', { code })
+  if (error) throw error
+}
+
 // ── 전체 데이터 로드 ──────────────────────────
 
 export interface HouseholdData extends AppData {

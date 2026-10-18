@@ -24,6 +24,7 @@ import { marketingConsentOf, setMarketingConsent } from '../lib/marketing'
 import { listRequests } from '../lib/reportAdmin'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
+import * as db from '../lib/db'
 import { deleteMyAccount } from '../lib/db'
 import { COLOR_STYLE, MEMBER_COLORS, memberColor, type MemberColor } from '../lib/memberColors'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
@@ -224,6 +225,8 @@ export default function Settings() {
                 {invited ? '보냈어요' : '배우자에게 초대 보내기'}
               </button>
             </Card>
+
+            <SwitchHousehold />
 
             {/* 프로필 */}
             <Card>
@@ -747,5 +750,103 @@ function NameInput({
       placeholder={placeholder}
       className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-right text-[15px] font-semibold text-ink outline-none focus:border-brand placeholder:font-normal placeholder:text-cap"
     />
+  )
+}
+
+/**
+ * 배우자 가계부로 옮기기 (2026-10-18 제보: "남편이 초대 링크로 가입했는데 제 가계부로 안 넘어가요").
+ * 초대 코드를 못 받고 '새로 만들기'를 눌러 각자 가계부가 생긴 집 — 혼자 쓰는 사람에게만 보인다.
+ */
+function SwitchHousehold() {
+  const householdId = useLedgerStore((s) => s.householdId)
+  const sample = useLedgerStore((s) => s.sample)
+  const [alone, setAlone] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!householdId || sample) return
+    let live = true
+    db.fetchMemberCount(householdId)
+      .then((n) => live && setAlone(n < 2))
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [householdId, sample])
+
+  if (!alone) return null
+  const valid = /^[0-9A-F]{8}$/.test(code)
+
+  const move = async () => {
+    if (!valid || busy) return
+    if (
+      !confirm(
+        '배우자 가계부로 옮길까요?\n지금 이 계정에 적은 기록(예산·정산·자산·소비 기록)은 지워지고, 배우자 가계부를 같이 쓰게 돼요.',
+      )
+    )
+      return
+    setBusy(true)
+    setError('')
+    try {
+      await db.switchHousehold(code)
+      window.location.reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '옮기지 못했어요')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <span>
+          <span className="block text-[15px] font-bold text-ink">배우자가 먼저 시작했나요?</span>
+          <span className="mt-0.5 block text-[12.5px] text-sub">
+            초대 코드로 배우자 가계부에 들어가요
+          </span>
+        </span>
+        <ChevronRight
+          size={18}
+          className={`shrink-0 text-cap transition-transform ${open ? 'rotate-90' : ''}`}
+        />
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <input
+            value={code}
+            onChange={(e) => {
+              setCode(
+                e.target.value
+                  .toUpperCase()
+                  .replace(/[^0-9A-F]/g, '')
+                  .slice(0, 8),
+              )
+              setError('')
+            }}
+            placeholder="배우자 초대 코드 8자리"
+            aria-label="배우자 초대 코드"
+            className="tnum w-full rounded-btn border border-line bg-white px-4 py-3 text-center text-[17px] font-bold tracking-[0.2em] text-ink outline-none focus:border-brand placeholder:text-[14px] placeholder:font-normal placeholder:tracking-normal placeholder:text-cap"
+          />
+          <p className="px-1 text-[12px] leading-relaxed text-cap">
+            배우자 설정 › 부부 연결에 있는 코드예요. 옮기면 지금 이 계정에 적은 기록은 지워져요.
+          </p>
+          {error && <p className="px-1 text-[12.5px] text-danger">{error}</p>}
+          <button
+            onClick={move}
+            disabled={!valid || busy}
+            className="h-12 w-full rounded-btn bg-ink text-[15px] font-bold text-white disabled:opacity-40"
+          >
+            {busy ? '옮기는 중…' : '배우자 가계부로 옮기기'}
+          </button>
+        </div>
+      )}
+    </Card>
   )
 }

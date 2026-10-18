@@ -89,6 +89,21 @@ export function pendingInvite(): string | null {
   }
 }
 
+/**
+ * 계정에 같이 저장해 둔 초대 코드를 되살린다 (2026-10-18 제보: "남편이 초대 링크로 가입했는데 제 가계부로 안 넘어가요").
+ * 이메일 가입은 인증 메일의 링크를 누르는 순간 다른 브라우저(메일 앱·사파리)로 열리기 일쑤라,
+ * 처음 브라우저에 보관한 코드가 없다. 가입할 때 계정 정보(user_metadata.invite)에도 적어 두고, 여기서 꺼낸다.
+ */
+export function restoreInviteFromAccount(meta: Record<string, unknown> | undefined): void {
+  const code = typeof meta?.invite === 'string' ? meta.invite.toUpperCase() : null
+  if (!code || !CODE_RE.test(code) || pendingInvite()) return
+  try {
+    localStorage.setItem(KEY, code)
+  } catch {
+    // 못 적으면 코드 입력 칸으로 참여하면 된다
+  }
+}
+
 /** 참여했거나, 새로 만들기를 택했을 때 지운다. */
 export function clearPendingInvite(): void {
   try {

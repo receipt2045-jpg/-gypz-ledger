@@ -6,7 +6,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { attachSourceToUser, captureSource } from './lib/source'
-import { capturePendingInvite } from './lib/invite'
+import { capturePendingInvite, restoreInviteFromAccount } from './lib/invite'
 import { applyMarketingChoice } from './lib/marketing'
 import { getMyMembership, type Membership } from './lib/db'
 import { useLedgerStore } from './lib/store'
@@ -116,6 +116,8 @@ function AuthGate() {
 
 /** 로그인 직후: 최초 1회 온보딩 → (선택) 샘플 둘러보기 → 가구 연결 */
 function AuthedFlow({ user }: { user: User }) {
+  // 가입할 때 계정에 적어 둔 초대 코드 — 가계부 연결 화면보다 먼저 꺼내 둔다
+  useState(() => restoreInviteFromAccount(user.user_metadata))
   // 온보딩 여부는 계정 플래그(user_metadata)로 저장 → 기기가 바뀌어도 반복 노출 없음
   const [intro, setIntro] = useState(() => !user.user_metadata?.onboarded)
   const [sampleMode, setSampleMode] = useState(false)

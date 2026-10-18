@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  restoreInviteFromAccount,
   capturePendingInvite,
   clearPendingInvite,
   codeFromHash,
@@ -80,6 +81,29 @@ describe('로그인을 건너뛰어도 코드가 남는다', () => {
 
   it('저장소에 이상한 값이 들어 있으면 무시한다', () => {
     localStorage.setItem('moabuli_invite', 'not-a-code')
+    expect(pendingInvite()).toBeNull()
+  })
+})
+
+// 제보 재현(2026-10-18): 남편이 초대 링크로 이메일 가입 → 인증 메일 링크가 다른 브라우저에서 열려
+// 처음 브라우저에 보관한 코드가 없었다. 가입할 때 계정에 같이 적어 둔 코드로 이어 간다.
+describe('계정에 적어 둔 초대 코드', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('브라우저에 코드가 없으면 계정의 코드를 꺼내 둔다', () => {
+    restoreInviteFromAccount({ invite: 'a1b2c3d4' })
+    expect(pendingInvite()).toBe('A1B2C3D4')
+  })
+
+  it('브라우저에 이미 코드가 있으면 그대로 둔다', () => {
+    localStorage.setItem('moabuli_invite', 'FFFFFFFF')
+    restoreInviteFromAccount({ invite: 'A1B2C3D4' })
+    expect(pendingInvite()).toBe('FFFFFFFF')
+  })
+
+  it('형식이 안 맞거나 없으면 아무것도 안 한다', () => {
+    restoreInviteFromAccount({ invite: 'nope' })
+    restoreInviteFromAccount(undefined)
     expect(pendingInvite()).toBeNull()
   })
 })
