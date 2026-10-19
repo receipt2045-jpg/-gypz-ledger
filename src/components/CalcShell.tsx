@@ -13,17 +13,22 @@ export default function CalcShell({
   title,
   lead,
   cta,
+  wide,
   children,
 }: {
   title: string
   lead: string
   /** 맨 아래 검은 버튼 문구 — 없으면 버튼을 안 둔다 */
   cta?: string
+  /** PC에서 넓게(두 칸) — 내집마련 대출 찾기 */
+  wide?: boolean
   children: ReactNode
 }) {
   const navigate = useNavigate()
   return (
-    <div className="animate-fade-up space-y-3 lg:mx-auto lg:max-w-[720px]">
+    <div
+      className={`animate-fade-up space-y-3 lg:mx-auto ${wide ? 'lg:max-w-[1080px]' : 'lg:max-w-[720px]'}`}
+    >
       <button
         onClick={() => navigate('/info')}
         className="-ml-1 flex items-center gap-0.5 pt-2 text-[14px] font-semibold text-sub"
