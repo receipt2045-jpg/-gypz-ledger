@@ -17,8 +17,8 @@ export default function CalcShell({
 }: {
   title: string
   lead: string
-  /** 맨 아래 검은 버튼 문구 */
-  cta: string
+  /** 맨 아래 검은 버튼 문구 — 없으면 버튼을 안 둔다 */
+  cta?: string
   children: ReactNode
 }) {
   const navigate = useNavigate()
@@ -35,15 +35,17 @@ export default function CalcShell({
         <p className="mt-1 text-[13.5px] leading-relaxed text-sub">{lead}</p>
       </header>
       {children}
-      <a
-        href={ONETEAM_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-between rounded-card bg-ink px-4 py-3.5 text-[14px] font-bold text-white"
-      >
-        {cta}
-        <ChevronRight size={17} />
-      </a>
+      {cta && (
+        <a
+          href={ONETEAM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between rounded-card bg-ink px-4 py-3.5 text-[14px] font-bold text-white"
+        >
+          {cta}
+          <ChevronRight size={17} />
+        </a>
+      )}
       <p className="px-1 text-center text-[11.5px] leading-relaxed text-cap">
         참고용 계산이에요. 실제 금액은 금융회사·세무서 확인이 필요해요.
       </p>
