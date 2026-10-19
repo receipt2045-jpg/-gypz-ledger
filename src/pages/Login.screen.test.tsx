@@ -16,22 +16,22 @@ vi.mock('../lib/supabase', () => ({
 
 import Login from './Login'
 
-describe('로그인 화면 — 가구 수 표시', () => {
+describe('로그인 화면 — 가입한 사람 수 표시', () => {
   beforeEach(() => rpc.mockReset())
 
-  it('가구 수를 받아오면 "N가구가 함께 쓰고 있어요"가 보인다', async () => {
-    rpc.mockResolvedValue({ data: 37, error: null })
+  it('사람 수를 받아오면 "N명이 함께 쓰고 있어요"가 보인다', async () => {
+    rpc.mockResolvedValue({ data: 7312, error: null })
     render(<Login />)
-    await waitFor(() => expect(screen.getByText('37')).toBeInTheDocument())
-    expect(screen.getByText(/가구가 함께 쓰고 있어요/)).toBeInTheDocument()
-    expect(rpc).toHaveBeenCalledWith('public_household_count')
+    await waitFor(() => expect(screen.getByText('7,312')).toBeInTheDocument())
+    expect(screen.getByText(/명이 함께 쓰고 있어요/)).toBeInTheDocument()
+    expect(rpc).toHaveBeenCalledWith('public_member_count')
   })
 
-  it('10가구 미만이면 초라해 보이니 줄 자체를 숨긴다', async () => {
+  it('10명 미만이면 초라해 보이니 줄 자체를 숨긴다', async () => {
     rpc.mockResolvedValue({ data: 3, error: null })
     render(<Login />)
     await waitFor(() => expect(rpc).toHaveBeenCalled())
-    expect(screen.queryByText(/가구가 함께 쓰고 있어요/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/명이 함께 쓰고 있어요/)).not.toBeInTheDocument()
   })
 
   it('RPC가 실패해도 로그인 화면은 멀쩡하다', async () => {
@@ -39,6 +39,6 @@ describe('로그인 화면 — 가구 수 표시', () => {
     render(<Login />)
     await waitFor(() => expect(rpc).toHaveBeenCalled())
     expect(screen.getByText('모아불리 가계부')).toBeInTheDocument()
-    expect(screen.queryByText(/가구가 함께 쓰고 있어요/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/명이 함께 쓰고 있어요/)).not.toBeInTheDocument()
   })
 })

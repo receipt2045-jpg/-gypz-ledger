@@ -29,12 +29,12 @@ export default function Login() {
   const [agreed, setAgreed] = useState(false)
   // 마케팅 수신은 '선택'이다 — 필수 동의와 묶으면 안 되고, 기본값도 꺼져 있어야 한다
   const [marketing, setMarketing] = useState(false)
-  // 사회적 증거 — 실제 가구 수 (RPC 실패 시 null이면 줄 자체를 숨김)
-  const [households, setHouseholds] = useState<number | null>(null)
+  // 사회적 증거 — 가입한 사람 수 (2026-10-19 가구 수에서 바꿈). RPC 실패 시 null이면 줄 자체를 숨김
+  const [members, setMembers] = useState<number | null>(null)
 
   useEffect(() => {
-    supabase.rpc('public_household_count').then(({ data, error: err }) => {
-      if (!err && typeof data === 'number' && data >= 10) setHouseholds(data)
+    supabase.rpc('public_member_count').then(({ data, error: err }) => {
+      if (!err && typeof data === 'number' && data >= 10) setMembers(data)
     })
   }, [])
 
@@ -110,9 +110,9 @@ export default function Login() {
           <p className="mt-2 text-[15px] font-medium leading-relaxed text-sub">
             매달 한 번, 부부가 함께 순자산을 키우는 가계부입니다 🤍
           </p>
-          {households !== null && (
+          {members !== null && (
             <p className="mt-2 text-[13.5px] font-bold text-brand">
-              지금 <span className="tnum">{households}</span>가구가 함께 쓰고 있어요
+              지금 <span className="tnum">{members.toLocaleString('ko-KR')}</span>명이 함께 쓰고 있어요
             </p>
           )}
 
