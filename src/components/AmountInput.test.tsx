@@ -32,3 +32,27 @@ describe('금액 칸 계산기 (2026-10-07 제보)', () => {
     expect(onChange).toHaveBeenCalledWith(12000)
   })
 })
+
+// 제보(2026-10-20): "40000000 입력하기 힘들어요 — 만원 붙여서 4000만 쓰게"
+describe('만원 단위 칸 (man)', () => {
+  it('4000을 치면 4,000만원(원 단위 40,000,000)으로 들어간다', () => {
+    let v = 0
+    const { rerender } = render(<AmountInput man value={v} onChange={(n) => (v = n)} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '4000' } })
+    expect(v).toBe(40_000_000)
+    rerender(<AmountInput man value={v} onChange={(n) => (v = n)} />)
+    expect(screen.getByDisplayValue('4,000')).toBeInTheDocument()
+    expect(screen.getByText('만원')).toBeInTheDocument()
+  })
+
+  it('1억 이상이면 칸 아래에 한글로도 보여 준다', () => {
+    render(<AmountInput man value={253_100_000} onChange={() => {}} />)
+    expect(screen.getByDisplayValue('25,310')).toBeInTheDocument()
+    expect(screen.getByText('2억 5,310만원')).toBeInTheDocument()
+  })
+
+  it('1억 아래는 한글 표시가 없다', () => {
+    render(<AmountInput man value={40_000_000} onChange={() => {}} />)
+    expect(screen.queryByText(/억/)).not.toBeInTheDocument()
+  })
+})

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Calculator } from 'lucide-react'
 import CalcPad from './CalcPad'
 import { evaluate, isExpr } from '../lib/calc'
-import { formatComma, parseNumber } from '../lib/format'
+import { abbreviateKRW, formatComma, parseNumber } from '../lib/format'
 
 interface AmountInputProps {
   value: number
@@ -12,6 +12,11 @@ interface AmountInputProps {
   className?: string
   suffix?: string
   error?: boolean // 검증 실패 시 강조 (브리프 P1 2.2)
+  /**
+   * 만원 단위로 받기 (2026-10-20 "40000000 입력하기 힘들어요") — 4000을 치면 4,000만원.
+   * value·onChange는 그대로 원 단위. 1억 이상이면 칸 아래에 "2억 5,310만원"처럼 한글로도 보여 준다.
+   */
+  man?: boolean
 }
 
 /**
@@ -25,18 +30,22 @@ export default function AmountInput({
   placeholder = '0',
   autoFocus,
   className = '',
-  suffix = '원',
+  suffix,
   error = false,
+  man = false,
 }: AmountInputProps) {
+  const scale = man ? 10_000 : 1
+  const unit = suffix ?? (man ? '만원' : '원')
+  const shown = Math.round(value / scale)
   const [draft, setDraft] = useState<string | null>(null)
   const [calcOpen, setCalcOpen] = useState(false)
-  const display = draft ?? (value === 0 ? '' : formatComma(value))
+  const display = draft ?? (shown === 0 ? '' : formatComma(shown))
   const preview = draft !== null ? evaluate(draft) : null
 
   const commit = () => {
     if (draft === null) return
     const v = evaluate(draft)
-    if (v !== null) onChange(Math.max(0, v))
+    if (v !== null) onChange(Math.max(0, v) * scale)
     setDraft(null)
   }
 
@@ -57,7 +66,7 @@ export default function AmountInput({
             const raw = e.target.value
             if (isExpr(raw)) return setDraft(raw)
             setDraft(null)
-            onChange(Math.max(0, parseNumber(raw)))
+            onChange(Math.max(0, parseNumber(raw)) * scale)
           }}
           onBlur={commit}
           onKeyDown={(e) => {
@@ -68,7 +77,7 @@ export default function AmountInput({
           }}
           className="tnum min-w-0 w-full bg-transparent py-3 text-right text-[17px] font-semibold text-ink outline-none placeholder:font-normal placeholder:text-cap"
         />
-        <span className="shrink-0 text-[15px] font-medium text-sub">{suffix}</span>
+        <span className="shrink-0 text-[15px] font-medium text-sub">{unit}</span>
         <button
           type="button"
           onClick={() => setCalcOpen(true)}
@@ -81,17 +90,22 @@ export default function AmountInput({
       {draft !== null && (
         <p className="tnum absolute right-1 top-full z-10 mt-0.5 rounded bg-white/95 px-1 text-[12px] font-bold text-brand">
           {preview !== null
-            ? `= ${formatComma(Math.max(0, preview))}${suffix}`
+            ? `= ${formatComma(Math.max(0, preview))}${unit}`
             : '계산식을 마저 써 주세요'}
+        </p>
+      )}
+      {man && draft === null && value >= 100_000_000 && (
+        <p className="tnum mt-1 pr-1 text-right text-[12px] font-medium text-sub">
+          {abbreviateKRW(value)}
         </p>
       )}
       {calcOpen && (
         <CalcPad
-          initial={value}
-          suffix={suffix}
+          initial={shown}
+          suffix={unit}
           onClose={() => setCalcOpen(false)}
           onDone={(n) => {
-            onChange(n)
+            onChange(n * scale)
             setCalcOpen(false)
           }}
         />

@@ -181,7 +181,7 @@ export default function LoanFinderCalc() {
         <div className="space-y-3">
           <Step no={1} title="감당 가능한 대출">
             <CalcRow label="한 달에 부담 없는 상환액">
-              <AmountInput value={input.monthly} onChange={(n) => set({ monthly: n })} />
+              <AmountInput man value={input.monthly} onChange={(n) => set({ monthly: n })} />
             </CalcRow>
             <p className="mt-1 text-[12px] leading-relaxed text-cap">
               이 돈이 없어도 생활에 부담 없고, 하락장에도 버틸 수 있는 금액이요.
@@ -200,13 +200,13 @@ export default function LoanFinderCalc() {
 
           <Step no={2} title="우리 조건">
             <CalcRow label={`${names[0]} 연소득`} auto={prefill.income1 ? '가계부' : undefined}>
-              <AmountInput value={input.income1} onChange={(n) => set({ income1: n })} />
+              <AmountInput man value={input.income1} onChange={(n) => set({ income1: n })} />
             </CalcRow>
             <CalcRow label={`${names[1]} 연소득`} auto={prefill.income2 ? '가계부' : undefined}>
-              <AmountInput value={input.income2} onChange={(n) => set({ income2: n })} />
+              <AmountInput man value={input.income2} onChange={(n) => set({ income2: n })} />
             </CalcRow>
             <CalcRow label="집 사는 데 쓸 우리 돈" auto={prefill.own ? '순자산' : undefined}>
-              <AmountInput value={input.own} onChange={(n) => set({ own: n })} />
+              <AmountInput man value={input.own} onChange={(n) => set({ own: n })} />
             </CalcRow>
             <Sub>대출 받는 사람 나이 (장래소득 · 보금자리론 기간)</Sub>
             <Chips<AgeBand>
@@ -262,10 +262,10 @@ export default function LoanFinderCalc() {
 
           <Step no={3} title="살 집">
             <CalcRow label="매매가" auto={prefill.price ? '로드맵' : undefined}>
-              <AmountInput value={input.deal} onChange={(n) => set({ deal: n })} />
+              <AmountInput man value={input.deal} onChange={(n) => set({ deal: n })} />
             </CalcRow>
             <CalcRow label="KB시세">
-              <AmountInput value={input.kb} onChange={(n) => set({ kb: n })} />
+              <AmountInput man value={input.kb} onChange={(n) => set({ kb: n })} />
             </CalcRow>
             <Go to="kb" />
             <Go to="naver" />
@@ -274,7 +274,11 @@ export default function LoanFinderCalc() {
               한도는 낮은 쪽 기준이에요.
             </p>
             <CalcRow label="공시가격 (모르면 비워 두기)">
-              <AmountInput value={input.publicPrice} onChange={(n) => set({ publicPrice: n })} />
+              <AmountInput
+                man
+                value={input.publicPrice}
+                onChange={(n) => set({ publicPrice: n })}
+              />
             </CalcRow>
             <Go to="publicPrice" />
             <p className="mt-1.5 text-[12px] leading-relaxed text-cap">

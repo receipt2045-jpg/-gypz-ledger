@@ -24,9 +24,9 @@ describe('내집마련 대출 찾기', () => {
   it('집값이 6억을 넘으면 보금자리론은 어려운 대출로 내려간다', async () => {
     seedStore({})
     const { user } = renderScreen(<LoanFinderCalc />)
-    const deal = screen.getAllByDisplayValue('500,000,000')[0] // 매매가 (그다음이 KB시세)
+    const deal = screen.getAllByDisplayValue('50,000')[0] // 매매가 (그다음이 KB시세)
     await user.clear(deal)
-    await user.type(deal, '700000000')
+    await user.type(deal, '70000') // 만원 단위 — 7억
     await user.tab()
     expect(screen.queryByTestId('loan-bogeum')).not.toBeInTheDocument()
     const blocked = screen.getByText('지금 조건으론 어려운 대출').parentElement!
