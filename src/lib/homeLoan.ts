@@ -304,10 +304,8 @@ export function findLoans(i: LoanFinderInput): LoanFinderResult {
     const both = i.income1 > 0 && i.income2 > 0
     if (!i.baby) b.push('2년 안에 출산한 아이가 있어야 해요')
     if (!noHome) b.push('집이 없어야 해요 (1주택은 갈아타기만)')
-    if (both) {
-      if (income > 2 * EOK) b.push('맞벌이 합산 소득 2억 이하')
-      if (i.income1 > 1.3 * EOK || i.income2 > 1.3 * EOK) b.push('부부 각자 소득 1.3억 이하')
-    } else if (income > 1.3 * EOK) b.push('부부 소득 1.3억 이하')
+    // 강의 57쪽 기준: 부부합산 1.3억 이하, 맞벌이 2억 이하 (2026-10-20 사용자 확인)
+    if (income > (both ? 2 : 1.3) * EOK) b.push(`부부 소득 ${both ? '2억' : '1.3억'} 이하`)
     if (!i.assetOk) b.push('순자산 5.11억 이하')
     if (!areaOk) b.push('전용 85㎡ 이하')
     if (low > 9 * EOK) b.push('집값 9억 이하')

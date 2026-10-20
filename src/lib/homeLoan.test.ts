@@ -117,9 +117,13 @@ describe('최신 기준 (2026-10-20 확인)', () => {
     ).toBe(4.15)
   })
 
-  it('신생아 특례 — 맞벌이 2억 이하여도 한 명이 1.3억 넘으면 안 된다', () => {
-    const r = loan({ ...base, baby: true, income1: 1.4 * EOK, income2: 0.5 * EOK }, 'baby')
-    expect(r.blockers).toContain('부부 각자 소득 1.3억 이하')
+  it('신생아 특례 — 맞벌이는 합산 2억까지 (강의 57쪽)', () => {
+    expect(
+      loan({ ...base, baby: true, income1: 1.4 * EOK, income2: 0.5 * EOK }, 'baby').blockers,
+    ).toHaveLength(0)
+    expect(
+      loan({ ...base, baby: true, income1: 1.4 * EOK, income2: 0.7 * EOK }, 'baby').blockers,
+    ).toContain('부부 소득 2억 이하')
   })
 
   it('보금자리론 금리 — 10월 아낌e 만기별, 규제지역 +0.2%p', () => {
