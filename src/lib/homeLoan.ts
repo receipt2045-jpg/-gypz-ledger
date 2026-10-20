@@ -8,6 +8,9 @@
  */
 export const HOME_LOAN_BASE_DATE = '2026년 10월'
 
+/** 체증식 최대 기간 — 보금자리론이 50년까지 되어도 체증식은 40년까지 */
+export const GRADUATED_MAX_YEARS = 40
+
 const MAN = 10_000
 const EOK = 100_000_000
 
@@ -294,8 +297,9 @@ export function findLoans(i: LoanFinderInput): LoanFinderResult {
       ltv = 60
       dti = 50
     }
+    // 나이·신혼에 따라 받을 수 있는 최대 기간
     const young = i.age === 'u25' || i.age === '25' || i.age === '30'
-    const years = young
+    const maxYears = young
       ? 50
       : i.age === '35'
         ? i.newly
@@ -307,11 +311,19 @@ export function findLoans(i: LoanFinderInput): LoanFinderResult {
             : 30
           : 30
     const rate = 4.8 // 4.9~5.3%에서 아낌e보금자리론 −0.1%
+    // 체증식은 최대 40년 (2026-10-20 지적) — 50년이 되는 집도 체증식이면 40년으로 계산하고, 50년은 원리금균등만이라고 알린다
+    const years = Math.min(maxYears, GRADUATED_MAX_YEARS)
+    const notes = [
+      i.home === 'one' ? '1주택은 기존 집 처분 조건' : '',
+      maxYears > GRADUATED_MAX_YEARS
+        ? `${maxYears}년은 원리금균등·원금균등만 (체증식은 최대 ${GRADUATED_MAX_YEARS}년)`
+        : '',
+    ].filter(Boolean)
     raw.push({
       key: 'bogeum',
       name: '보금자리론',
       sub: '정책대출 · 방공제 없음 · 최대 50년 · 아낌e −0.1%',
-      note: i.home === 'one' ? '1주택은 기존 집 처분 조건' : undefined,
+      note: notes.length ? notes.join(' · ') : undefined,
       blockers: b,
       rate,
       years,

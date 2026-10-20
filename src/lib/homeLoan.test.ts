@@ -93,8 +93,14 @@ describe('상품별 조건', () => {
     expect(r.blockers).toHaveLength(0)
   })
 
-  it('보금자리론 — 신혼 35~39세는 50년, 40대 신혼은 40년, 50대는 30년', () => {
-    expect(loan({ ...base, age: '35' }, 'bogeum').years).toBe(50)
+  it('보금자리론 — 50년이 되는 집도 체증식은 최대 40년, 50년은 원리금균등만이라고 알린다', () => {
+    const r = loan({ ...base, age: '35' }, 'bogeum')
+    expect(r.method).toBe('grad')
+    expect(r.years).toBe(40)
+    expect(r.note).toContain('50년은 원리금균등')
+  })
+
+  it('보금자리론 — 40대 신혼은 40년, 50대는 30년', () => {
     expect(loan({ ...base, age: '40' }, 'bogeum').years).toBe(40)
     expect(loan({ ...base, age: '50' }, 'bogeum').years).toBe(30)
   })
