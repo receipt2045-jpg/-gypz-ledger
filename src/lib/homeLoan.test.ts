@@ -207,6 +207,34 @@ describe('결과', () => {
     expect(p.ann.interest).toBeLessThan(p.grad.interest)
   })
 
+  it('대출 카드마다 우리 돈 + 빌리는 돈 = 집값 (충분할 때)', () => {
+    const r = findLoans(base)
+    for (const l of r.loans.filter((x) => x.enough)) expect(base.own + l.use).toBe(base.deal)
+  })
+
+  it('살 수 있는 집 — 그 가격에서 실제로 받을 수 있는 대출로 다시 계산 (지금 집값과 무관)', () => {
+    const a = findLoans(base)
+    const b = findLoans({ ...base, deal: 7 * EOK, kb: 7 * EOK })
+    expect(a.canBuy).toBe(b.canBuy)
+    // 그 가격에 다시 넣으면 대출로 모자람 없이 채워진다
+    const at = findLoans({ ...base, deal: a.canBuy, kb: a.canBuy })
+    const via = at.loans.find((l) => l.name === a.canBuyWith)!
+    expect(base.own + Math.min(via.limit, a.affordable)).toBeGreaterThanOrEqual(a.canBuy)
+  })
+
+  it('살 수 있는 집 — 우리 돈이 많아도 6억 이하 전용 대출로 6억 넘는 집을 계산하지 않는다', () => {
+    const r = findLoans({ ...base, own: 6 * EOK })
+    expect(r.canBuy).toBeGreaterThan(6 * EOK)
+    expect(['디딤돌', '보금자리론']).not.toContain(r.canBuyWith)
+    expect(r.canBuy).toBeLessThanOrEqual(6 * EOK + r.affordable)
+  })
+
+  it('살 수 있는 집 — 매달 갚을 여유가 없으면 우리 돈만큼', () => {
+    const r = findLoans({ ...base, monthly: 0 })
+    expect(r.canBuy).toBe(base.own)
+    expect(r.canBuyWith).toBeNull()
+  })
+
   it('소득공제 — 기준시가 6억 넘으면 없다 (공시가 없으면 KB시세 × 70%)', () => {
     expect(loan(base, 'bogeum').deduction).toBe(2_000 * MAN)
     expect(loan({ ...base, kb: 9 * EOK, deal: 9 * EOK }, 'general').deduction).toBe(0)

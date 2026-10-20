@@ -238,7 +238,9 @@ export default function LoanFinderCalc() {
             <CalcRow label="우리 돈" auto={prefill.own ? '순자산' : undefined}>
               <AmountInput man value={input.own} onChange={(n) => set({ own: n })} />
             </CalcRow>
-            <p className="-mt-1 pb-1 text-[12px] text-cap">집 사는 데 쓸 수 있는 돈 (전세보증금 포함)</p>
+            <p className="-mt-1 pb-1 text-[12px] text-cap">
+              집 사는 데 쓸 수 있는 돈 (전세보증금 포함)
+            </p>
             <Sub kind="one">대출 받는 사람 나이 (만)</Sub>
             <Chips<AgeBand>
               label="대출 받는 사람 나이"
@@ -405,8 +407,10 @@ export default function LoanFinderCalc() {
               </div>
             </div>
             <p className="mt-1 text-[11.5px] leading-relaxed text-white/55">
-              살 수 있는 집 = 우리 돈 + (가장 유리한 대출 한도와 감당 가능한 대출 중 작은 쪽) ·
-              세금·복비는 '집 살 때 드는 돈'에서
+              {r.canBuyWith
+                ? `우리 돈 + 그 집값에서 실제로 받을 수 있는 대출(${r.canBuyWith}, 감당 가능한 ${short(r.affordable)}까지)`
+                : '대출 없이 우리 돈만으로 살 수 있는 값'}{' '}
+              · 세금·복비는 '집 살 때 드는 돈'에서
             </p>
           </div>
 

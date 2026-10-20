@@ -233,7 +233,10 @@ export interface LoanFinderResult {
   loans: LoanResult[] // 받을 수 있는 것, 유리한 순
   blocked: LoanResult[]
   best: LoanResult | null
+  /** 우리 돈 + 대출로 살 수 있는 가장 비싼 집 — 그 가격에서 실제로 받을 수 있는 대출로 다시 계산 */
   canBuy: number
+  /** canBuy를 만든 대출 이름 (대출 없이 우리 돈만이면 null) */
+  canBuyWith: string | null
 }
 
 /** 장기주택저당차입금 이자 소득공제 한도 (강의 22~24쪽) — 고정금리엔 5년 이상 주기형 포함 */
@@ -249,7 +252,8 @@ type Raw = Omit<LoanResult, 'parts' | 'limit' | 'use' | 'plans' | 'firstPayment'
   src: { prod: number; ltv: number; base: number; bang: number; inc: number; incLabel: string }
 }
 
-export function findLoans(i: LoanFinderInput): LoanFinderResult {
+/** 한 집값에서 네 대출을 모두 따져 본다. withPlans=false면 상환표를 안 만들어 빠르다(살 수 있는 집 찾기용) */
+function evaluate(i: LoanFinderInput, withPlans: boolean): { need: number; all: LoanResult[] } {
   const income = i.income1 + i.income2
   const reg = REGION[i.region]
   const capital = reg.capital
@@ -459,7 +463,7 @@ export function findLoans(i: LoanFinderInput): LoanFinderResult {
     ]
     const limit = Math.max(0, Math.min(s.prod, ltvAmount, s.inc))
     const use = Math.min(limit, need)
-    const plans = use > 0 ? repaymentPlans(use, r.rate, r.years) : null
+    const plans = withPlans && use > 0 ? repaymentPlans(use, r.rate, r.years) : null
     return {
       ...r,
       parts,
@@ -470,19 +474,61 @@ export function findLoans(i: LoanFinderInput): LoanFinderResult {
       enough: limit >= need,
     }
   })
+  return { need, all }
+}
+
+/**
+ * 살 수 있는 가장 비싼 집 (2026-10-21 "대출이랑 내 돈 합산 제대로 되는지" 확인 중 발견).
+ * 예전엔 지금 고른 집값의 한도로 '우리 돈 + 한도'를 냈다 — 우리 돈 6억이면 8.9억이 나왔는데,
+ * 그 가격에선 그 대출(디딤돌 6억 이하)을 아예 못 받는다. 집값을 올려 가며 그 가격에서 받을 수 있는 대출로 다시 본다.
+ * 조건: 우리 돈 + min(그 대출 한도, 감당 가능한 대출) ≥ 집값. KB시세는 지금 매매가 대비 비율 그대로.
+ */
+function maxPrice(i: LoanFinderInput, affordable: number): { price: number; via: string | null } {
+  const ratio = i.deal > 0 ? i.kb / i.deal : 1
+  const via = (p: number): string | null => {
+    const ok = evaluate({ ...i, deal: p, kb: p * ratio }, false)
+      .all.filter((l) => l.blockers.length === 0 && i.own + Math.min(l.limit, affordable) >= p)
+      .sort((a, b) => b.limit - a.limit)
+    return ok[0]?.name ?? null
+  }
+  const coarse = 1_000 * MAN
+  const fine = 100 * MAN
+  let best = 0
+  let name: string | null = null
+  for (let p = coarse; p <= i.own + 20 * EOK; p += coarse) {
+    const v = via(p)
+    if (v) {
+      best = p
+      name = v
+    }
+  }
+  for (let p = best + fine; best > 0 && p < best + coarse; p += fine) {
+    const v = via(p)
+    if (v) {
+      best = p
+      name = v
+    }
+  }
+  return best > i.own ? { price: best, via: name } : { price: i.own, via: null }
+}
+
+export function findLoans(i: LoanFinderInput): LoanFinderResult {
+  const { need, all } = evaluate(i, true)
   // 유리한 순 — 필요한 만큼 나오는 것 먼저, 그다음 첫 달 갚는 돈이 적은 것
   const loans = all
     .filter((l) => l.blockers.length === 0)
     .sort((a, b) => Number(b.enough) - Number(a.enough) || a.firstPayment - b.firstPayment)
   const affordable = principalFor(i.monthly, 4.8, 30) // 강의 29쪽: 30년 · 4.8% · 원리금균등
   const best = loans[0] ?? null
+  const max = maxPrice(i, affordable)
   return {
     need,
     affordable,
-    incomeTimesFive: income * 5,
+    incomeTimesFive: (i.income1 + i.income2) * 5,
     loans,
     blocked: all.filter((l) => l.blockers.length > 0),
     best,
-    canBuy: i.own + (best ? Math.min(best.limit, affordable) : 0),
+    canBuy: max.price,
+    canBuyWith: max.via,
   }
 }
