@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { Check as CheckIcon, ChevronDown, ExternalLink } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import Card from '../components/Card'
 import CalcShell, { CalcRow } from '../components/CalcShell'
@@ -61,17 +61,26 @@ function Chips<T extends string | number | boolean>({
   label: string
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5" role="group" aria-label={label}>
+    <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={label}>
       {options.map(([v, text]) => (
         <button
           key={String(v)}
           type="button"
           onClick={() => onChange(v)}
-          aria-pressed={value === v}
-          className={`rounded-full border px-3 py-1.5 text-[12.5px] font-bold ${
+          role="radio"
+          aria-checked={value === v}
+          className={`flex items-center gap-1.5 rounded-full border py-1.5 pl-2 pr-3 text-[12.5px] font-bold ${
             value === v ? 'border-brand bg-brand text-white' : 'border-line bg-white text-sub'
           }`}
         >
+          <span
+            aria-hidden
+            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
+              value === v ? 'border-white' : 'border-line'
+            }`}
+          >
+            {value === v && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+          </span>
           {text}
         </button>
       ))}
@@ -92,11 +101,20 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!on)}
-      aria-pressed={on}
-      className={`rounded-full border px-3 py-1.5 text-[12.5px] font-bold ${
+      role="checkbox"
+      aria-checked={on}
+      className={`flex items-center gap-1.5 rounded-full border py-1.5 pl-2 pr-3 text-[12.5px] font-bold ${
         on ? 'border-brand bg-brand text-white' : 'border-line bg-white text-sub'
       }`}
     >
+      <span
+        aria-hidden
+        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px] border ${
+          on ? 'border-white bg-white text-brand' : 'border-line'
+        }`}
+      >
+        {on && <CheckIcon size={11} strokeWidth={3.5} />}
+      </span>
       {label}
     </button>
   )
@@ -114,8 +132,20 @@ function Step({ no, title, children }: { no: number; title: string; children: Re
   )
 }
 
-const Sub = ({ children }: { children: React.ReactNode }) => (
-  <p className="mb-1.5 mt-3 text-[12.5px] text-cap">{children}</p>
+/** 칸 이름 — 하나만 고르는지(one), 여러 개 고르는지(many) 같이 적는다 */
+const Sub = ({ children, kind }: { children: React.ReactNode; kind?: 'one' | 'many' }) => (
+  <p className="mb-1.5 mt-3 flex items-center gap-1.5 text-[12.5px] text-cap">
+    {children}
+    {kind && (
+      <span
+        className={`rounded px-1.5 py-px text-[10.5px] font-bold ${
+          kind === 'one' ? 'bg-bg text-sub' : 'bg-brand/10 text-brand'
+        }`}
+      >
+        {kind === 'one' ? '하나만' : '해당하는 것 모두'}
+      </span>
+    )}
+  </p>
 )
 
 /**
@@ -146,7 +176,7 @@ export default function LoanFinderCalc() {
     income2: prefill.income2,
     own: prefill.own,
     monthly: 1_500_000,
-    age: '30',
+    age: 'u35',
     home: 'none',
     first: true,
     newly: true,
@@ -157,10 +187,9 @@ export default function LoanFinderCalc() {
     deal: prefill.price || 500_000_000,
     kb: prefill.price || 500_000_000,
     publicPrice: 0,
-    region: 'metro',
+    region: 'dense',
     eup: false,
     regulated: false,
-    overheated: false,
     area: '85',
     rateType: 'cycle',
     lender: 'bank',
@@ -205,34 +234,35 @@ export default function LoanFinderCalc() {
             <CalcRow label={`${names[1]} 연소득`} auto={prefill.income2 ? '가계부' : undefined}>
               <AmountInput man value={input.income2} onChange={(n) => set({ income2: n })} />
             </CalcRow>
-            <CalcRow label="집 사는 데 쓸 우리 돈" auto={prefill.own ? '순자산' : undefined}>
+            {/* 이름이 길면 숫자 칸이 좁아져 '25,31'처럼 잘렸다 — 이름은 짧게, 설명은 아래로 */}
+            <CalcRow label="우리 돈" auto={prefill.own ? '순자산' : undefined}>
               <AmountInput man value={input.own} onChange={(n) => set({ own: n })} />
             </CalcRow>
-            <Sub>대출 받는 사람 나이 (장래소득 · 보금자리론 기간)</Sub>
+            <p className="-mt-1 pb-1 text-[12px] text-cap">집 사는 데 쓸 수 있는 돈 (전세보증금 포함)</p>
+            <Sub kind="one">대출 받는 사람 나이 (만)</Sub>
             <Chips<AgeBand>
               label="대출 받는 사람 나이"
               value={input.age}
               onChange={(v) => set({ age: v })}
               options={[
-                ['u25', '만 24세 이하'],
-                ['25', '25~29'],
-                ['30', '30~34'],
-                ['35', '35~39'],
-                ['40', '40~49'],
+                ['u35', '34세 이하'],
+                ['35', '35~39세'],
+                ['40', '40~49세'],
                 ['50', '50세 이상'],
               ]}
             />
-            <Sub>우리 상황</Sub>
+            <Sub kind="one">지금 집</Sub>
+            <Chips<'none' | 'one'>
+              label="지금 집"
+              value={input.home}
+              onChange={(v) => set({ home: v })}
+              options={[
+                ['none', '집 없음'],
+                ['one', '1주택'],
+              ]}
+            />
+            <Sub kind="many">우리 상황</Sub>
             <div className="flex flex-wrap gap-1.5">
-              <Chips<'none' | 'one'>
-                label="집"
-                value={input.home}
-                onChange={(v) => set({ home: v })}
-                options={[
-                  ['none', '집 없음'],
-                  ['one', '1주택'],
-                ]}
-              />
               <Toggle
                 on={input.first}
                 onChange={(v) => set({ first: v })}
@@ -247,7 +277,7 @@ export default function LoanFinderCalc() {
               />
               <Toggle on={input.worker} onChange={(v) => set({ worker: v })} label="근로소득자" />
             </div>
-            <Sub>자녀</Sub>
+            <Sub kind="one">자녀</Sub>
             <Chips<0 | 1 | 2>
               label="자녀"
               value={input.kids}
@@ -273,59 +303,63 @@ export default function LoanFinderCalc() {
               은행은 대부분 KB시세로 한도를 정해요. 보금자리론은 매매가·KB시세 둘 다 6억 이하,
               한도는 낮은 쪽 기준이에요.
             </p>
-            <CalcRow label="공시가격 (모르면 비워 두기)">
-              <AmountInput
-                man
-                value={input.publicPrice}
-                onChange={(n) => set({ publicPrice: n })}
-              />
-            </CalcRow>
-            <Go to="publicPrice" />
-            <p className="mt-1.5 text-[12px] leading-relaxed text-cap">
-              비우면 KB시세 × 70%로 어림해요. 주담대 이자 소득공제(기준시가 6억 이하)에 써요.
-            </p>
-            <Sub>지역</Sub>
+            <Sub kind="one">지역</Sub>
+            <Chips
+              label="지역"
+              value={input.region}
+              onChange={(v) => set({ region: v })}
+              options={Object.entries(REGION).map(([k, v]) => [
+                k as LoanFinderInput['region'],
+                v.label,
+              ])}
+            />
+            {REGION[input.region].hint && (
+              <p className="mt-1.5 text-[12px] leading-relaxed text-cap">
+                {REGION[input.region].hint}
+              </p>
+            )}
+            <Sub kind="many">해당하면</Sub>
             <div className="flex flex-wrap gap-1.5">
-              <Chips
-                label="지역"
-                value={input.region}
-                onChange={(v) => set({ region: v })}
-                options={Object.entries(REGION).map(([k, v]) => [
-                  k as LoanFinderInput['region'],
-                  v.label,
-                ])}
-              />
-              {input.region === 'other' && (
-                <Toggle on={input.eup} onChange={(v) => set({ eup: v })} label="읍·면" />
-              )}
-            </div>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
               <Toggle
                 on={input.regulated}
                 onChange={(v) => set({ regulated: v })}
-                label="규제지역"
+                label="규제지역 (조정·투기과열)"
               />
-              <Toggle
-                on={input.overheated}
-                onChange={(v) => set({ overheated: v })}
-                label="투기과열지구"
-              />
+              {input.region === 'other' && (
+                <Toggle on={input.eup} onChange={(v) => set({ eup: v })} label="읍·면 지역" />
+              )}
             </div>
-            <Sub>전용면적</Sub>
-            <Chips<LoanFinderInput['area']>
-              label="전용면적"
-              value={input.area}
-              onChange={(v) => set({ area: v })}
-              options={[
-                ['85', '85㎡ 이하 (34평)'],
-                ['100', '85~100㎡'],
-                ['big', '100㎡ 초과'],
-              ]}
-            />
+            <Detail>
+              <CalcRow label="공시가격 (모르면 비워 두기)">
+                <AmountInput
+                  man
+                  value={input.publicPrice}
+                  onChange={(n) => set({ publicPrice: n })}
+                />
+              </CalcRow>
+              <Go to="publicPrice" />
+              <p className="mt-1.5 text-[12px] leading-relaxed text-cap">
+                비우면 KB시세 × 70%로 어림해요. 주담대 이자 소득공제(기준시가 6억 이하)에 써요.
+              </p>
+              <Sub kind="one">전용면적</Sub>
+              <Chips<LoanFinderInput['area']>
+                label="전용면적"
+                value={input.area}
+                onChange={(v) => set({ area: v })}
+                options={[
+                  ['85', '85㎡ 이하 (34평)'],
+                  ['100', '85~100㎡'],
+                  ['big', '100㎡ 초과'],
+                ]}
+              />
+            </Detail>
           </Step>
 
           <Step no={4} title="은행 대출은 이렇게">
-            <Sub>금리 유형 — 한도가 달라져요</Sub>
+            <p className="text-[12.5px] leading-relaxed text-cap">
+              은행 주담대에만 쓰여요. 모르면 그대로 두세요.
+            </p>
+            <Sub kind="one">금리 유형 — 한도가 달라져요</Sub>
             <Chips<LoanFinderInput['rateType']>
               label="금리 유형"
               value={input.rateType}
@@ -335,25 +369,26 @@ export default function LoanFinderCalc() {
                 `${v.label} ${v.rate}%`,
               ])}
             />
-            <Sub>어디서</Sub>
-            <div className="flex flex-wrap gap-1.5">
-              <Chips<LoanFinderInput['lender']>
-                label="어디서"
-                value={input.lender}
-                onChange={(v) => set({ lender: v })}
-                options={[
-                  ['bank', '은행 (DSR 40%)'],
-                  ['ins', '보험사 (DSR 50% · 방공제 없음)'],
-                ]}
-              />
-              {input.lender === 'bank' && (
+            <Sub kind="one">어디서</Sub>
+            <Chips<LoanFinderInput['lender']>
+              label="어디서"
+              value={input.lender}
+              onChange={(v) => set({ lender: v })}
+              options={[
+                ['bank', '은행 (DSR 40%)'],
+                ['ins', '보험사 (DSR 50% · 방공제 없음)'],
+              ]}
+            />
+            {input.lender === 'bank' && (
+              <>
+                <Sub kind="many">해당하면</Sub>
                 <Toggle
                   on={input.mortgageInsurance}
                   onChange={(v) => set({ mortgageInsurance: v })}
                   label="MCI·MCG 가입 (방공제 없이)"
                 />
-              )}
-            </div>
+              </>
+            )}
           </Step>
         </div>
         {/* 오른쪽: 결과 — PC에선 입력을 고치는 동안 계속 보이게 */}
@@ -408,6 +443,13 @@ export default function LoanFinderCalc() {
               여러 은행을 비교하고 비대면도 돼요. 상담비를 달라거나 특정 금융사만 권하면 손절하세요.
               <br />
               <Go to="consultant" />
+            </Check>
+            <Check title="만 34세 이하 무주택 근로자라면">
+              은행이 앞으로 오를 소득(장래소득)을 반영해 한도를 더 쳐줄 수 있어요. 창구에서 꼭
+              물어보세요.
+            </Check>
+            <Check title="수도권·규제지역은 6개월 안에 전입">
+              주담대로 산 집엔 6개월 안에 들어가 살아야 해요.
             </Check>
             <Check title="정책대출은 직접 확인">
               내 조건을 말하면 더 정확한 답을 들을 수 있어요.
@@ -495,6 +537,7 @@ function LoanCard({
         <Fact label="금리 (어림)" value={`${l.rate.toFixed(2)}%`} />
         <Fact label="기간 · 방식" value={`${l.years}년 · ${METHOD_LABEL[l.method]}`} />
       </div>
+      <p className="mt-2 text-[11.5px] leading-relaxed text-cap">금리: {l.rateNote}</p>
       {l.deduction > 0 && (
         <p className="mt-2 text-[12px] text-cap">
           연말정산 주담대 이자 소득공제 최대{' '}
@@ -571,5 +614,18 @@ function Fact({ label, value, warn }: { label: string; value: string; warn?: boo
       <p className="text-[11px] text-cap">{label}</p>
       <p className={`tnum text-[14.5px] font-bold ${warn ? 'text-danger' : 'text-ink'}`}>{value}</p>
     </div>
+  )
+}
+
+/** 모르면 그대로 둬도 되는 칸 — 접어 둔다 */
+function Detail({ children }: { children: React.ReactNode }) {
+  return (
+    <details className="group mt-3 rounded-btn bg-bg px-3 py-2">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-[12.5px] font-bold text-sub">
+        자세히 (모르면 그대로 두세요)
+        <ChevronDown size={15} className="transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="mt-1">{children}</div>
+    </details>
   )
 }

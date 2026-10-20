@@ -9,7 +9,7 @@ describe('내집마련 대출 찾기', () => {
     const { user } = renderScreen(<LoanFinderCalc />)
     expect(screen.getByText('필요한 대출')).toBeInTheDocument()
     expect(screen.queryByTestId('loan-baby')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '2년 안에 출산' }))
+    await user.click(screen.getByRole('checkbox', { name: '2년 안에 출산' }))
     expect(screen.getByTestId('loan-baby')).toBeInTheDocument()
   })
 
@@ -38,5 +38,16 @@ describe('내집마련 대출 찾기', () => {
     renderScreen(<LoanFinderCalc />)
     expect(screen.queryByText(/결영이네에 물어보기/)).not.toBeInTheDocument()
     expect(screen.queryByText(/과제 양식으로 복사/)).not.toBeInTheDocument()
+  })
+
+  // 제보(2026-10-20): "중복 선택인지 아닌지 헷갈려요"
+  it('하나만 고르는 칸은 라디오, 여러 개 고르는 칸은 체크 — 칸 이름에 하나만/해당하는 것 모두', () => {
+    seedStore({})
+    renderScreen(<LoanFinderCalc />)
+    expect(screen.getByRole('radiogroup', { name: '지금 집' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '집 없음' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('checkbox', { name: '결혼 7년 이내' })).toBeInTheDocument()
+    expect(screen.getAllByText('하나만').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('해당하는 것 모두').length).toBeGreaterThan(0)
   })
 })
