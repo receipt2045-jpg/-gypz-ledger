@@ -177,3 +177,7 @@ create policy "consult staff update" on public.consult_requests
 
 -- 상담 전 우리집 상황 (2026-10-21) — 원팀 '[신혼집] 1:1 상담 신청서' 질문들. 한 칸(jsonb)에 담는다.
 alter table public.consult_requests add column if not exists details jsonb;
+
+-- 텔레그램 알림을 한 번만 보내려고 (2026-10-21, functions/notify-staff)
+alter table public.consult_requests add column if not exists notified_at timestamptz;
+alter table public.questions add column if not exists notified_at timestamptz;

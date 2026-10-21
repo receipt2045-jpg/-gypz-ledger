@@ -1,4 +1,17 @@
 import { supabase } from './supabase'
+import { genId } from './carryover'
+
+/**
+ * 결영이네에게 텔레그램으로 알린다 (2026-10-21, supabase/functions/notify-staff).
+ * 내용은 보내지 않고 행 번호만 — 함수가 DB에서 직접 읽어서 알린다. 실패해도 저장은 그대로 둔다.
+ */
+function notifyStaff(table: 'consult_requests' | 'questions', id: string) {
+  try {
+    void supabase.functions.invoke('notify-staff', { body: { table, id } }).catch(() => {})
+  } catch {
+    // 알림이 안 가도 신청·질문은 저장돼 있다 — 설정 › 결영이네 답변에서 본다
+  }
+}
 
 /**
  * 묻고 답하기 (2026-10-21) — 질문은 로그인한 사람 누구나, 답은 결영이네(staff 명단)만.
@@ -166,7 +179,9 @@ export async function createQuestion(input: {
     .select('id')
     .single()
   if (error) throw error
-  return (data as { id: string }).id
+  const id = (data as { id: string }).id
+  notifyStaff('questions', id)
+  return id
 }
 
 export async function deleteQuestion(id: string) {
@@ -291,7 +306,10 @@ export async function createConsultRequest(input: {
   preferredTime?: string
   details?: ConsultDetails
 }) {
+  // 번호를 앱에서 정한다 — 로그인 없이 보낸 신청은 다시 읽을 수 없어서, 알림에 쓸 번호를 미리 쥐고 있어야 한다
+  const id = genId()
   const { error } = await supabase.from('consult_requests').insert({
+    id,
     name: input.name.trim(),
     contact: input.contact.trim(),
     plan: input.plan,
@@ -302,6 +320,7 @@ export async function createConsultRequest(input: {
     consent_at: new Date().toISOString(),
   })
   if (error) throw error
+  notifyStaff('consult_requests', id)
 }
 
 export interface ConsultRequest {
