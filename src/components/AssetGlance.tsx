@@ -125,33 +125,27 @@ function Together({
       {byOwner.length > 1 && (
         <Card>
           <p className="mb-2 text-[12.5px] font-medium text-cap">누구 이름으로</p>
-          <div className="flex items-center gap-4">
-            <Donut
-              label="누구 이름으로 비율"
-              segments={byOwner.map((o) => ({
-                value: o.amount,
-                color: OWNER_COLOR[owners.indexOf(o.name)] ?? OWNER_COLOR[2],
-              }))}
-              size={88}
-              stroke={15}
-            />
-            <div className="min-w-0 flex-1 space-y-1.5 text-[12.5px] text-sub">
-              {byOwner.map((o) => (
-                <div key={o.name} className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 whitespace-nowrap">
-                    <span
-                      className="inline-block h-2.5 w-2.5 rounded-sm"
-                      style={{ background: OWNER_COLOR[owners.indexOf(o.name)] ?? OWNER_COLOR[2] }}
-                    />
-                    {o.name}
-                  </span>
-                  <span className="whitespace-nowrap">
-                    <b className="tnum font-semibold text-ink">{short(o.amount)}</b>
-                    <span className="tnum ml-1 text-cap">{o.pct}%</span>
-                  </span>
-                </div>
-              ))}
-            </div>
+          <div className="flex h-3.5 overflow-hidden rounded-md">
+            {byOwner.map((o) => (
+              <div
+                key={o.name}
+                style={{
+                  width: `${Math.max(1, o.pct)}%`,
+                  background: OWNER_COLOR[owners.indexOf(o.name)] ?? OWNER_COLOR[2],
+                }}
+              />
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-[12px] text-sub">
+            {byOwner.map((o) => (
+              <span key={o.name} className="flex items-center gap-1 whitespace-nowrap">
+                <span
+                  className="inline-block h-2 w-2 rounded-sm"
+                  style={{ background: OWNER_COLOR[owners.indexOf(o.name)] ?? OWNER_COLOR[2] }}
+                />
+                {o.name} <b className="tnum font-semibold text-ink">{short(o.amount)}</b>
+              </span>
+            ))}
           </div>
         </Card>
       )}
