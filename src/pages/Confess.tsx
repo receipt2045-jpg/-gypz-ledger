@@ -184,7 +184,8 @@ export default function Confess() {
   const spenderNo: 1 | 2 = spender === 'shared' ? me : spender
   const spenderLabel = spender === 'shared' ? '공동' : memberNames[spender - 1]
   // 누구 카드로 썼는지 — 연말정산 카드 공제가 명의자 기준이라 쌓아두면 추천이 정확해진다
-  const [cardOwner, setCardOwner] = useState<1 | 2>(memberNo ?? 1)
+  // 'cash' = 현금으로 냄 (2026-10-21 의견)
+  const [cardOwner, setCardOwner] = useState<1 | 2 | 'cash'>(memberNo ?? 1)
   // 카드를 직접 고르기 전까지는 '쓴 사람 = 그 사람 카드'로 따라간다 (대부분 그렇다)
   const [cardPicked, setCardPicked] = useState(false)
   const pickSpender = (m: 1 | 2 | 'shared') => {
@@ -192,7 +193,7 @@ export default function Confess() {
     // 공동은 누구 카드인지 짐작할 수 없다 — 카드 선택은 그대로 둔다
     if (!cardPicked && m !== 'shared') setCardOwner(m)
   }
-  const pickCardOwner = (m: 1 | 2) => {
+  const pickCardOwner = (m: 1 | 2 | 'cash') => {
     setCardOwner(m)
     setCardPicked(true)
   }
@@ -288,7 +289,12 @@ export default function Confess() {
         memberNo: spenderNo,
         shared: spender === 'shared' ? true : undefined,
         // 카드값이 아닌 것(저축·투자·수입)에는 카드 주인을 남기지 않는다
-        cardOwner: e.kind === 'variable' || e.kind === 'fixed' ? cardOwner : undefined,
+        cardOwner:
+          (e.kind === 'variable' || e.kind === 'fixed') && cardOwner !== 'cash'
+            ? cardOwner
+            : undefined,
+        cash:
+          (e.kind === 'variable' || e.kind === 'fixed') && cardOwner === 'cash' ? true : undefined,
       })
     }
     if (!last) return
@@ -748,20 +754,20 @@ export default function Confess() {
           </div>
           <div className="flex items-center gap-2">
             <span className="w-[104px] shrink-0 text-[13px] font-bold text-sub">
-              누구 카드로요?
+              어떻게 냈어요?
             </span>
             <div className="flex flex-1 gap-1.5">
-              {([1, 2] as const).map((m) => (
+              {([1, 2, 'cash'] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => pickCardOwner(m)}
-                  aria-label={`카드 주인 ${memberNames[m - 1]}`}
+                  aria-label={m === 'cash' ? '현금으로 냄' : `카드 주인 ${memberNames[m - 1]}`}
                   aria-pressed={cardOwner === m}
                   className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[13px] font-bold transition-colors ${
                     cardOwner === m ? 'bg-ink text-white' : 'bg-bg text-sub active:bg-line'
                   }`}
                 >
-                  {memberNames[m - 1]}
+                  {m === 'cash' ? '현금' : `${memberNames[m - 1]} 카드`}
                 </button>
               ))}
             </div>
@@ -933,12 +939,22 @@ function EditRow({
 }: {
   c: Confession
   categories: Record<CategoryGroup, string[]>
-  onSave: (patch: { amount: number; category: string; kind: CategoryGroup; note?: string }) => void
+  onSave: (patch: {
+    amount: number
+    category: string
+    kind: CategoryGroup
+    note?: string
+    createdAt?: string
+  }) => void
   onCancel: () => void
 }) {
   const [amount, setAmount] = useState(c.amount)
   const [pick, setPick] = useState(`${c.kind}:${c.category}`)
   const [note, setNote] = useState(c.note ?? '')
+  // 날짜도 고친다 (2026-10-21 의견: "가계부 내역 수정할 때 날짜도 수정할 수 있으면 좋겠습니다")
+  const origDate = new Date(c.createdAt).toLocaleDateString('sv-SE')
+  const [date, setDate] = useState(origDate)
+  const today = new Date().toLocaleDateString('sv-SE')
   const groups: CategoryGroup[] = ['variable', 'fixed', 'income', 'saving', 'investment']
 
   const save = () => {
@@ -948,6 +964,10 @@ function EditRow({
       category: pick.slice(i + 1),
       amount,
       note: note.trim() || undefined,
+      // 바꾼 날은 그 날 낮 12시로 — 새로 적을 때와 같은 규칙 (시간대가 밀려 하루 어긋나지 않게)
+      ...(date && date !== origDate
+        ? { createdAt: new Date(`${date}T12:00:00`).toISOString() }
+        : {}),
     })
   }
 
@@ -985,6 +1005,17 @@ function EditRow({
         />
         <span className="text-[13px] text-sub">원</span>
       </div>
+      <label className="flex items-center gap-2 text-[13px] text-sub">
+        <span className="shrink-0">날짜</span>
+        <input
+          type="date"
+          value={date}
+          max={today}
+          onChange={(e) => setDate(e.target.value)}
+          aria-label="날짜"
+          className="tnum min-w-0 flex-1 rounded-btn border border-line bg-white px-2 py-1.5 text-[13px] font-bold text-ink outline-none focus:border-brand"
+        />
+      </label>
       <input
         value={note}
         onChange={(e) => setNote(e.target.value)}

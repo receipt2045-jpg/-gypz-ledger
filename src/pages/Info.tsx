@@ -162,7 +162,7 @@ function NoticeCard({ notice }: { notice: Notice }) {
     <Card>
       <div className="flex items-center gap-2">
         <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand">
-          새로운 기능
+          {notice.badge ?? '새로운 기능'}
         </span>
         <span className="text-[12px] text-cap">
           {Number(m)}월 {Number(d)}일

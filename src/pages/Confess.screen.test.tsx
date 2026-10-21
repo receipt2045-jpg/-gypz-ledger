@@ -148,7 +148,7 @@ describe('고백 페이지 — 누구 카드로 썼는지', () => {
     seedStore({ memberNo: 2, confessions: [] })
     const { user } = renderScreen(<Confess />)
 
-    expect(screen.getByText('누구 카드로요?')).toBeInTheDocument()
+    expect(screen.getByText('어떻게 냈어요?')).toBeInTheDocument()
     await user.click(screen.getByText(/안 썼어요/))
 
     // 무지출(0원)도 변동지출이라 카드 주인이 붙는다 — 금액이 0이라 계산엔 영향 없다
@@ -226,7 +226,7 @@ describe('소비 기록 — 남편 · 아내 · 공동', () => {
     expect(screen.queryByText(/안 썼어요/)).not.toBeInTheDocument()
   })
 
-  it("사람을 고른 기록엔 공동 표시가 안 붙는다", async () => {
+  it('사람을 고른 기록엔 공동 표시가 안 붙는다', async () => {
     seedStore({ memberNo: 2, confessions: [] })
     const { user } = renderScreen(<Confess />)
     await user.click(screen.getByText(/안 썼어요/))
@@ -261,7 +261,14 @@ describe('소비 기록 — 지난 날짜로 적은 게 사라지지 않는다 (
     seedStore({
       memberNo: 2,
       confessions: [
-        { id: 'o', memberNo: 2, category: '식비', kind: 'variable', amount: 9_000, createdAt: new Date(`${ymd(old)}T12:00:00`).toISOString() },
+        {
+          id: 'o',
+          memberNo: 2,
+          category: '식비',
+          kind: 'variable',
+          amount: 9_000,
+          createdAt: new Date(`${ymd(old)}T12:00:00`).toISOString(),
+        },
       ],
     })
     renderScreen(<Confess />)
@@ -273,7 +280,9 @@ describe('소비 기록 — 지난 날짜로 적은 게 사라지지 않는다 (
   it("지난 날짜를 고르면 '버튼으로 고르기' 화면에도 그 날짜가 보인다", async () => {
     seedStore({ memberNo: 2, confessions: [] })
     const { user } = renderScreen(<Confess />)
-    fireEvent.change(screen.getByDisplayValue(ymd(new Date())), { target: { value: ymd(daysAgo(5)) } })
+    fireEvent.change(screen.getByDisplayValue(ymd(new Date())), {
+      target: { value: ymd(daysAgo(5)) },
+    })
     await user.click(screen.getByRole('button', { name: '버튼으로 고르기' }))
     expect(screen.getByText(/기록으로 적는 중/)).toBeInTheDocument()
 
@@ -294,7 +303,15 @@ describe('소비 기록 — 고치기 (제보 4건)', () => {
     seedStore({
       memberNo: 2,
       confessions: [
-        { id: 'c1', memberNo: 2, category: '식비', kind: 'variable', amount: 9_000, note: '점심', createdAt: new Date().toISOString() },
+        {
+          id: 'c1',
+          memberNo: 2,
+          category: '식비',
+          kind: 'variable',
+          amount: 9_000,
+          note: '점심',
+          createdAt: new Date().toISOString(),
+        },
       ],
     })
 
@@ -340,5 +357,42 @@ describe('소비 기록 — 들어온 돈도 바로 적는다 (제보 9/11)', ()
     expect(c.kind).toBe('income')
     expect(c.category).toBe('부수입')
     expect(c.cardOwner).toBeUndefined() // 수입엔 카드 주인을 안 남긴다
+  })
+})
+
+// 의견(2026-10-21): "현금으로 쓴 건 기록 못 하나요?" · "수정할 때 날짜도 바꾸고 싶어요"
+describe('고백 페이지 — 현금 · 날짜 고치기', () => {
+  it('현금을 고르면 카드 주인 없이 현금으로 기록된다', async () => {
+    seedStore({ memberNo: 2, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByLabelText('현금으로 냄'))
+    await user.click(screen.getByText(/안 썼어요/))
+    const saved = useLedgerStore.getState().confessions[0]
+    expect(saved.cash).toBe(true)
+    expect(saved.cardOwner).toBeUndefined()
+  })
+
+  it('기록을 고칠 때 날짜도 바꿀 수 있다', async () => {
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        {
+          id: 'c1',
+          memberNo: 2,
+          category: '식비',
+          kind: 'variable',
+          amount: 9_000,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByLabelText('식비 기록 고치기'))
+    const target = ymd(daysAgo(2))
+    fireEvent.change(screen.getByLabelText('날짜'), { target: { value: target } })
+    await user.click(screen.getByRole('button', { name: '고치기' }))
+    const saved = useLedgerStore.getState().confessions[0]
+    expect(new Date(saved.createdAt).toLocaleDateString('sv-SE')).toBe(target)
+    expect(saved.amount).toBe(9_000)
   })
 })

@@ -59,8 +59,10 @@ describe('자산 탭 — 한 화면 (2026-10-05)', () => {
     seed()
     renderScreen(<Assets />)
     expect(screen.getByText(/우리집 전체 자산/)).toBeInTheDocument()
-    expect(screen.getByText(/🏠 집/)).toBeInTheDocument()
-    expect(screen.getByText(/🚗 기타/)).toBeInTheDocument()
+    // 2026-10-21 원 그래프로 — 이름 옆 이모지 대신 색 점
+    expect(screen.getByRole('img', { name: '자산 종류별 비율' })).toBeInTheDocument()
+    expect(screen.getByText('집')).toBeInTheDocument()
+    expect(screen.getByText('기타')).toBeInTheDocument()
     expect(screen.queryByText(/현금성|소비재|주식\/코인/)).not.toBeInTheDocument()
     expect(screen.getByText(/빼면 순자산/)).toBeInTheDocument()
     expect(screen.getByText(/모아불리 가계부 · 우리집/)).toBeInTheDocument()

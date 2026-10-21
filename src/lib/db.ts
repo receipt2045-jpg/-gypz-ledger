@@ -295,6 +295,7 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
     amount: Number(r.amount),
     note: r.note ?? undefined,
     cardOwner: (r.card_owner ?? undefined) as 1 | 2 | undefined,
+    cash: r.paid_cash === true ? true : undefined,
     shared: r.shared === true ? true : undefined,
     createdAt: r.created_at,
   }))
@@ -350,6 +351,8 @@ export async function insertConfession(householdId: string, c: Confession) {
     amount: c.amount,
     note: c.note ?? null,
     card_owner: c.cardOwner ?? null,
+    // 현금 (2026-10-21) — confession-paid-cash.sql 칸. 현금일 때만 보낸다(칸이 없는 옛 DB에서도 저장되게)
+    ...(c.cash ? { paid_cash: true } : {}),
     created_at: c.createdAt,
     // shared 칸은 confession-shared.sql을 실행해야 생긴다. 칸이 없는 DB에 항상 보내면
     // 공동이 아닌 기록까지 저장이 깨지므로, 공동일 때만 보낸다.
