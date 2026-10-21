@@ -47,7 +47,6 @@ export const QNA_TEMPLATES: Record<QnaCategory, string> = {
     '- 지금 사는 곳 (전세·월세·자가): ',
     '- 관심 지역: ',
     '- 직장 위치: ',
-    '- 청약 가점·통장: ',
     ...ASK,
   ].join('\n'),
   sns: [

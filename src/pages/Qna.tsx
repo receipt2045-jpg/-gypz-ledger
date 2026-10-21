@@ -503,12 +503,26 @@ function QnaDetail({ id }: { id: string }) {
         </div>
       )}
 
+      {/* 나도 질문하기를 먼저, 크게 (2026-10-21) — 상담은 그 아래 한 줄로 */}
+      <button
+        onClick={() => navigate('/qna/new')}
+        className="flex w-full items-center justify-between rounded-card bg-brand px-5 py-4 text-left text-white shadow-cta active:bg-brand-dark"
+      >
+        <span>
+          <span className="block text-[16px] font-bold">나도 질문하기</span>
+          <span className="mt-0.5 block text-[12.5px] text-white/85">
+            우리집 상황을 남기면 결영이네가 답해요
+          </span>
+        </span>
+        <ChevronRight size={20} className="shrink-0" />
+      </button>
+
       <div className="rounded-card bg-white p-4 shadow-card">
-        <p className="text-[14px] font-bold text-ink">우리집 숫자로 자세히 보고 싶다면</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <p className="text-[13px] font-bold text-sub">우리집 숫자로 자세히 보고 싶다면</p>
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
           <button
             onClick={() => navigate('/consult')}
-            className="rounded-btn bg-ink py-3 text-[13.5px] font-bold text-white"
+            className="rounded-btn border border-line py-2.5 text-[13px] font-bold text-ink active:bg-bg"
           >
             1:1 상담 신청
           </button>
@@ -516,19 +530,12 @@ function QnaDetail({ id }: { id: string }) {
             href={ONETEAM_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-btn border border-line py-3 text-center text-[13.5px] font-bold text-ink"
+            className="rounded-btn border border-line py-2.5 text-center text-[13px] font-bold text-ink active:bg-bg"
           >
             원팀 프로젝트
           </a>
         </div>
       </div>
-
-      <button
-        onClick={() => navigate('/qna/new')}
-        className="w-full rounded-card bg-brand/10 py-3.5 text-[14px] font-bold text-brand"
-      >
-        나도 질문하기
-      </button>
     </div>
   )
 }
