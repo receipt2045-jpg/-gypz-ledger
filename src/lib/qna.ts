@@ -133,8 +133,13 @@ export async function deleteQuestion(id: string) {
 
 /** 답변하는 사람인지 (결영이네·남편) — 서버의 staff 명단으로 확인 */
 export async function amIStaff(): Promise<boolean> {
-  const { data, error } = await supabase.rpc('is_staff')
-  return !error && data === true
+  // 못 물어보면(오프라인·옛 DB) 그냥 일반 사용자로 — 화면이 깨지면 안 된다
+  try {
+    const { data, error } = await supabase.rpc('is_staff')
+    return !error && data === true
+  } catch {
+    return false
+  }
 }
 
 export async function addAnswer(questionId: string, body: string): Promise<void> {
