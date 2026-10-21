@@ -103,6 +103,21 @@ export default function Info() {
 
             <section aria-label="이야기" className="space-y-3">
               <SectionTitle>이야기</SectionTitle>
+              {/* 묻고 답하기 (2026-10-21) — 질문은 누구나, 답은 결영이네 */}
+              <Card onClick={() => navigate('/qna')}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-[19px]">
+                    💬
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-bold text-ink">묻고 답하기</p>
+                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-sub">
+                      주식 · 내집마련 · SNS 부수입 · 부부 돈 관리, 결영이네가 답해요
+                    </p>
+                  </div>
+                  <ChevronRight size={18} className="shrink-0 text-cap" />
+                </div>
+              </Card>
               {/* 원팀 프로젝트 이야기 (2026-10-18) — 다른 부부들이 실제로 하는 것, 앱 안에서 본다 */}
               <Card onClick={() => navigate('/story')}>
                 <div className="flex items-center gap-3">
@@ -129,7 +144,12 @@ export default function Info() {
 
 const CALCS: { icon: string; title: string; sub: string; to: string | null }[] = [
   { icon: '🍼', title: '육아휴직', sub: '쉬는 동안 한 달에 얼마', to: '/leave' },
-  { icon: '🔑', title: '내집마련 대출 찾기', sub: '우리 조건에 유리한 대출', to: '/calc/home-loan' },
+  {
+    icon: '🔑',
+    title: '내집마련 대출 찾기',
+    sub: '우리 조건에 유리한 대출',
+    to: '/calc/home-loan',
+  },
   { icon: '🏠', title: '집 살 때 드는 돈', sub: '집값 말고 잔금날 더', to: '/calc/home-cost' },
   { icon: '🌱', title: '노후 준비', sub: '지금 모으면 노후에 얼마', to: '/calc/retire' },
   { icon: '🏦', title: '대출 이자', sub: '매달 갚는 돈 · 총 이자', to: '/calc/loan' },

@@ -22,6 +22,9 @@ import Settings from './pages/Settings'
 import Checkup from './pages/Checkup'
 import Budget from './pages/Budget'
 import Story from './pages/Story'
+import Qna from './pages/Qna'
+import Consult from './pages/Consult'
+import AdminConsult from './pages/AdminConsult'
 import Confess from './pages/Confess'
 import Info from './pages/Info'
 import PostDetail from './pages/PostDetail'
@@ -55,6 +58,10 @@ export default function App() {
         <Route path="/news/:id" element={<PublicNews />} />
         {/* 원팀 프로젝트 이야기 — 카톡·인스타로 나누는 자리라 로그인 밖에 둔다 */}
         <Route path="/story" element={<Story />} />
+        {/* 묻고 답하기·상담 신청 (2026-10-21) — 유튜브·인스타 링크로 들어오는 자리라 로그인 밖에 둔다 */}
+        <Route path="/qna" element={<Qna />} />
+        <Route path="/qna/:id" element={<Qna />} />
+        <Route path="/consult" element={<Consult />} />
         <Route path="*" element={<AuthGate />} />
       </Routes>
     </>
@@ -187,6 +194,7 @@ function AppRoutes() {
         <Route path="/admin/feedback" element={<AdminFeedback />} />
         <Route path="/admin/posts" element={<AdminPosts />} />
         <Route path="/admin/reports" element={<AdminReports />} />
+        <Route path="/admin/consult" element={<AdminConsult />} />
         <Route path="/checkup" element={<Checkup />} />
         <Route path="/budget" element={<Budget />} />
         <Route path="/confess" element={<Confess />} />

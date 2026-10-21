@@ -25,6 +25,7 @@ import { listRequests } from '../lib/reportAdmin'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import * as db from '../lib/db'
+import { amIStaff } from '../lib/qna'
 import { deleteMyAccount } from '../lib/db'
 import { COLOR_STYLE, MEMBER_COLORS, memberColor, type MemberColor } from '../lib/memberColors'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
@@ -499,6 +500,9 @@ export default function Settings() {
               </Card>
             )}
 
+            {/* 답변하는 사람(결영이네·남편) — staff 명단으로 확인 (2026-10-21) */}
+            <StaffLinks />
+
             {/* 운영자 전용 — 받은 의견 분석 */}
             {isAdmin && (
               <Card onClick={() => navigate('/admin/feedback')}>
@@ -847,6 +851,36 @@ function SwitchHousehold() {
           </button>
         </div>
       )}
+    </Card>
+  )
+}
+
+/** 묻고 답하기·상담 신청 바로가기 — staff 명단에 있는 사람(결영이네·남편)에게만 보인다 */
+function StaffLinks() {
+  const navigate = useNavigate()
+  const [staff, setStaff] = useState(false)
+  useEffect(() => {
+    void amIStaff().then(setStaff)
+  }, [])
+  if (!staff) return null
+  return (
+    <Card>
+      <p className="mb-2 text-[15px] font-bold text-ink">결영이네 답변 🔒</p>
+      <div className="divide-y divide-line/70">
+        {[
+          { label: '묻고 답하기 · 답 달기', to: '/qna' },
+          { label: '받은 1:1 상담 신청', to: '/admin/consult' },
+        ].map((l) => (
+          <button
+            key={l.to}
+            onClick={() => navigate(l.to)}
+            className="flex w-full items-center justify-between py-3 text-left text-[14px] font-medium text-ink"
+          >
+            {l.label}
+            <ChevronRight size={17} className="text-cap" />
+          </button>
+        ))}
+      </div>
     </Card>
   )
 }
