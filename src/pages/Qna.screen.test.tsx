@@ -70,7 +70,10 @@ describe('묻고 답하기', () => {
     expect(screen.getByText(/1:1 유료 상담/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '내집마련' }))
+    // 분류를 고르면 그 분류의 형식이 채워진다 (2026-10-21)
+    expect((screen.getByLabelText('내용') as HTMLTextAreaElement).value).toContain('청약 가점')
     await user.type(screen.getByLabelText('제목'), '청약 vs 매매')
+    await user.clear(screen.getByLabelText('내용'))
     await user.type(screen.getByLabelText('내용'), '전세 만기가 1년 남았어요')
     await user.click(screen.getByRole('button', { name: '질문 올리기' }))
     expect(screen.getByText('아래 안내를 확인하고 체크해 주세요')).toBeInTheDocument()

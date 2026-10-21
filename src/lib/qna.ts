@@ -13,6 +13,49 @@ export const QNA_CATEGORIES: { key: QnaCategory; label: string; tone: string }[]
   { key: 'couple', label: '부부 돈 관리', tone: 'bg-pink-50 text-pink-600' },
 ]
 
+/**
+ * 질문 형식 (2026-10-21) — 분류를 고르면 내용 칸에 채워 준다. 빈칸만 채우면 답하기 좋은 질문이 된다.
+ * 공통(우리집 상황) + 분류마다 꼭 필요한 줄.
+ */
+const COMMON = [
+  '[우리집 상황]',
+  '- 부부 나이: ',
+  '- 월 실수령 (부부 합산): ',
+  '- 모은 돈: ',
+  '- 대출: ',
+]
+const ASK = ['', '[궁금한 것]', '- ']
+export const QNA_TEMPLATES: Record<QnaCategory, string> = {
+  stock: [...COMMON, '- 투자 경험: ', '- 투자하려는 금액: ', '- 그 돈을 쓸 시기: ', ...ASK].join(
+    '\n',
+  ),
+  home: [
+    ...COMMON,
+    '- 지금 사는 곳 (전세·월세·자가): ',
+    '- 관심 지역: ',
+    '- 직장 위치: ',
+    '- 청약 가점·통장: ',
+    ...ASK,
+  ].join('\n'),
+  sns: [
+    ...COMMON,
+    '- 지금 계정 (주제·팔로워): ',
+    '- 하루에 쓸 수 있는 시간: ',
+    '- 해 보고 싶은 주제: ',
+    ...ASK,
+  ].join('\n'),
+  couple: [
+    ...COMMON,
+    '- 각자 수입: ',
+    '- 지금 돈 관리 방식 (합치기·각자·공동통장): ',
+    '- 자녀·휴직 계획: ',
+    ...ASK,
+  ].join('\n'),
+}
+const TEMPLATE_SET = new Set(Object.values(QNA_TEMPLATES))
+/** 손대지 않은 형식 그대로인지 — 분류를 바꾸면 새 형식으로 갈아 끼워도 되는지 */
+export const isUntouchedTemplate = (body: string) => !body.trim() || TEMPLATE_SET.has(body)
+
 export const categoryOf = (key: string) =>
   QNA_CATEGORIES.find((c) => c.key === key) ?? QNA_CATEGORIES[0]
 

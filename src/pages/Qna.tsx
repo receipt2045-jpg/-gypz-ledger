@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { ONETEAM_URL } from '../components/CalcShell'
 import {
   QNA_CATEGORIES,
+  QNA_TEMPLATES,
   addAnswer,
   amIStaff,
   categoryOf,
@@ -14,6 +15,7 @@ import {
   deleteQuestion,
   fetchQuestion,
   fetchQuestions,
+  isUntouchedTemplate,
   qnaLink,
   qnaListLink,
   setQuestionHidden,
@@ -258,7 +260,11 @@ function QnaNew() {
             {QNA_CATEGORIES.map((c) => (
               <button
                 key={c.key}
-                onClick={() => setCat(c.key)}
+                onClick={() => {
+                  setCat(c.key)
+                  // 아직 안 적었으면 그 분류의 형식으로 채운다 — 적은 내용은 안 건드린다
+                  if (isUntouchedTemplate(body)) setBody(QNA_TEMPLATES[c.key])
+                }}
                 aria-pressed={cat === c.key}
                 className={`rounded-full px-3 py-1.5 text-[13px] font-bold ${
                   cat === c.key ? 'bg-ink text-white' : 'bg-bg text-sub'
@@ -279,12 +285,26 @@ function QnaNew() {
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value.slice(0, 2000))}
-          rows={7}
-          placeholder="우리집 상황을 적어 주면 더 정확히 답할 수 있어요 (월급, 모은 돈, 고민하는 이유)"
+          rows={cat ? 13 : 7}
+          placeholder="분류를 고르면 적을 형식이 채워져요. 우리집 상황을 적어 주면 더 정확히 답할 수 있어요"
           aria-label="내용"
           className="w-full resize-none rounded-btn border border-line px-3.5 py-3 text-[14.5px] leading-relaxed text-ink outline-none focus:border-brand placeholder:text-cap"
         />
-        <p className="text-right text-[11.5px] text-cap">{body.length} / 2000</p>
+        <div className="flex items-center justify-between text-[11.5px] text-cap">
+          {cat && !isUntouchedTemplate(body) ? (
+            <button
+              onClick={() => {
+                if (confirm('적은 내용을 지우고 형식을 다시 넣을까요?')) setBody(QNA_TEMPLATES[cat])
+              }}
+              className="font-bold text-brand"
+            >
+              형식 다시 넣기
+            </button>
+          ) : (
+            <span>빈칸만 채우면 돼요. 모르는 줄은 지워도 괜찮아요</span>
+          )}
+          <span>{body.length} / 2000</span>
+        </div>
       </div>
 
       {/* 콘텐츠 활용 안내 — 체크해야 올릴 수 있다 (2026-10-21 결영 요청). 체크한 시각을 함께 저장한다 */}
