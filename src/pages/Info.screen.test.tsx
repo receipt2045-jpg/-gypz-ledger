@@ -69,7 +69,7 @@ describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기'
     renderInfo()
     await screen.findByText('매물 고갈된 전세 시장')
     const names = screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'))
-    expect(names).toEqual(['오늘의 경제', '계산기', '공지', '정보·혜택', '이야기'])
+    expect(names).toEqual(['오늘의 경제', '계산기', '정보·혜택', '이야기', '공지'])
   })
 
   it('이야기 칸에서 원팀 프로젝트 이야기를 앱 안에서 연다', () => {

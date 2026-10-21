@@ -85,13 +85,6 @@ export default function Info() {
               </div>
             </section>
 
-            <section aria-label="공지" className="space-y-3">
-              <SectionTitle>공지</SectionTitle>
-              {NOTICES.map((n) => (
-                <NoticeCard key={n.id} notice={n} />
-              ))}
-            </section>
-
             <section aria-label="정보·혜택" className="space-y-3">
               <SectionTitle>정보 · 혜택</SectionTitle>
               <Soon
@@ -133,6 +126,14 @@ export default function Info() {
                   <ChevronRight size={18} className="shrink-0 text-cap" />
                 </div>
               </Card>
+            </section>
+
+            {/* 공지는 맨 아래, 작게 (2026-10-21) */}
+            <section aria-label="공지" className="space-y-2">
+              <SectionTitle>공지</SectionTitle>
+              {NOTICES.map((n) => (
+                <NoticeCard key={n.id} notice={n} />
+              ))}
             </section>
           </>
         }
@@ -178,34 +179,45 @@ function Soon({ Icon, title, text }: { Icon: typeof Gift; title: string; text: s
 function NoticeCard({ notice }: { notice: Notice }) {
   const navigate = useNavigate()
   const [, m, d] = notice.date.split('-')
+  const [open, setOpen] = useState(false)
+  const points = notice.points ?? []
+  const shown = open ? points : points.slice(0, 3)
   return (
-    <Card>
+    <Card className="!p-4">
       <div className="flex items-center gap-2">
-        <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand">
+        <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10.5px] font-bold text-brand">
           {notice.badge ?? '새로운 기능'}
         </span>
-        <span className="text-[12px] text-cap">
+        <span className="text-[11.5px] text-cap">
           {Number(m)}월 {Number(d)}일
         </span>
       </div>
-      <p className="mt-2 text-[16px] font-bold text-ink">{notice.title}</p>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-sub">{notice.body}</p>
-      {notice.points && (
-        <ul className="mt-2.5 space-y-1.5">
-          {notice.points.map((pt) => (
-            <li key={pt} className="flex gap-2 text-[13.5px] leading-relaxed text-sub">
+      <p className="mt-1.5 text-[14px] font-bold text-ink">{notice.title}</p>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-sub">{notice.body}</p>
+      {points.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {shown.map((pt) => (
+            <li key={pt} className="flex gap-1.5 text-[12px] leading-relaxed text-sub">
               <span className="text-brand">·</span>
               <span>{pt}</span>
             </li>
           ))}
         </ul>
       )}
+      {points.length > 3 && (
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="mt-1.5 text-[12px] font-bold text-brand"
+        >
+          {open ? '접기' : `${points.length - 3}개 더 보기`}
+        </button>
+      )}
       {notice.link && (
         <button
           onClick={() => navigate(notice.link!.to)}
-          className="mt-4 flex w-full items-center justify-between rounded-btn bg-brand px-3.5 py-3 text-white active:bg-brand-dark"
+          className="mt-3 flex w-full items-center justify-between rounded-btn bg-brand px-3.5 py-2.5 text-white active:bg-brand-dark"
         >
-          <span className="text-[14px] font-bold">{notice.link.label}</span>
+          <span className="text-[13px] font-bold">{notice.link.label}</span>
           <ChevronRight size={17} className="shrink-0" />
         </button>
       )}
