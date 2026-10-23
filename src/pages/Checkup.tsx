@@ -19,6 +19,8 @@ import {
 } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import MonthlyReportCard from '../components/MonthlyReportCard'
+import RecoCard from '../components/RecoCard'
+import { settleReco } from '../lib/reco'
 import StepProgress from '../components/StepProgress'
 import { shareInvite } from '../lib/invite'
 import { buildMonthlyCard } from '../lib/monthlyCard'
@@ -590,6 +592,11 @@ export default function Checkup() {
               data={buildMonthlyCard({ ym, items, closed: true }, snapshots, profile)}
             />
           )}
+
+          {/* 남은 돈을 어디에 둘지 고민하는 순간 — 원팀·1:1 상담 (2026-10-24) */}
+          <div className="mt-5 w-full">
+            <RecoCard card={settleReco(s.surplus)} slot="settle" />
+          </div>
         </div>
         <BottomBar>
           <button

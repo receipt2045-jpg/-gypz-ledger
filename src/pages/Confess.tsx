@@ -36,9 +36,12 @@ import {
 } from 'lucide-react'
 import WeeklyCostCard from '../components/WeeklyCostCard'
 import MonthSpendCard from '../components/MonthSpendCard'
+import RecoCard from '../components/RecoCard'
+import { pickConfessReco, type RecoCard as Reco } from '../lib/reco'
+import { resolveLedger } from '../lib/carryover'
 import { useLedgerStore } from '../lib/store'
 import { pickReaction, streakOf, type Reaction } from '../lib/reactions'
-import { formatComma, formatWon } from '../lib/format'
+import { currentYm, formatComma, formatWon } from '../lib/format'
 import { memberStyle } from '../lib/memberColors'
 import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
 import { GROUP_LABEL, NO_SPEND } from '../lib/constants'
@@ -157,6 +160,8 @@ export default function Confess() {
     reaction: Reaction
     streak: number
     saved: { category: string; amount: number; note?: string }[]
+    /** 맞춤 추천 카드 — 저장하는 순간 한 번만 고른다(보이면 '오늘 봄'이 돼서 다시 고르면 바뀐다) */
+    reco: Reco | null
   } | null>(null)
 
   useEffect(() => () => recRef.current?.stop(), [])
@@ -311,10 +316,18 @@ export default function Confess() {
     )
     // 연속 일수는 '쓴 사람' 기준 — 남편 몫을 적었으면 남편 연속이 이어진다
     const streak = streakOf(all, spenderNo)
+    const ym = currentYm()
+    const reco = pickConfessReco(
+      spend.map((e) => e.category),
+      all,
+      resolveLedger(useLedgerStore.getState().ledgers, ym).items,
+      ym,
+    )
     setResult({
       reaction,
       streak,
       saved: entries.map(({ category, amount, note }) => ({ category, amount, note })),
+      reco,
     })
   }
 
@@ -467,6 +480,13 @@ export default function Confess() {
               <span className="text-[14px] font-bold text-amber-700">{result.reaction.action}</span>
               <ChevronRight size={18} className="shrink-0 text-amber-500" />
             </button>
+          )}
+
+          {/* 맞춤 추천 한 장 (2026-10-24) — 방금 적은 것에 맞는 계산기·원팀. 같은 카드는 하루 한 번 */}
+          {result.reco && (
+            <div className="mt-4">
+              <RecoCard card={result.reco} slot="confess" />
+            </div>
           )}
 
           {/* 스트릭 — 지난 날짜로 적으면 0일이 나온다. "0일 연속"은 안 보여주는 게 낫다 */}
