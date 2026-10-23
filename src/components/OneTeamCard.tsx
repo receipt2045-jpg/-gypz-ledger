@@ -4,15 +4,14 @@ import { ONETEAM_URL } from './CalcShell'
 
 /**
  * 부부들이 실제로 하는 고민 (결영이네 문구, 2026-10-23). [대괄호] 안은 금색.
- * 같은 고민을 세 모양으로 보여준다 (2026-10-24) — 오른쪽이 비어 보이지 않게:
+ * 같은 고민을 두 모양으로 보여준다 (2026-10-24) — 오른쪽이 비어 보이지 않게:
  * - lines: 원문 그대로, 큰 글씨 가운데
  * - talk: 부부 대화 말풍선
- * - answer: 고민 아래 '원팀에선' 한 줄
+ * ('원팀에선' 답을 붙인 모양도 있었는데 글자가 많아 안 읽혀서 뺐다)
  */
 export interface OneTeamPain {
   lines: string[]
   talk: { who: '아내' | '남편'; text: string }[]
-  answer: string
 }
 
 export const ONETEAM_PAINS: OneTeamPain[] = [
@@ -23,7 +22,6 @@ export const ONETEAM_PAINS: OneTeamPain[] = [
       { who: '남편', text: '우리가 많이 쓰는 건가?' },
       { who: '아내', text: '모르겠어… 비교할 데가 없어' },
     ],
-    answer: '우리집 고정비·생활비, 어디부터 줄여야 할지 알아봐요',
   },
   {
     lines: ['통장 합치라는 말은', '들었는데 [세금 얘긴]', '아무도 안 해준다'],
@@ -32,7 +30,6 @@ export const ONETEAM_PAINS: OneTeamPain[] = [
       { who: '남편', text: '엥? 진짜? 내 친구는 괜찮다던데?' },
       { who: '아내', text: '어떡하지' },
     ],
-    answer: '통장 합치기 전에, 맞벌이 부부가 챙길 절세부터 같이 짚어요',
   },
   {
     lines: ['애 낳으면 한 명은 쉬어야 하는데', '그때 [뭘로 버틸지]', '계산이 안 선다'],
@@ -41,7 +38,6 @@ export const ONETEAM_PAINS: OneTeamPain[] = [
       { who: '남편', text: '그때 [뭘로 버티지?]' },
       { who: '아내', text: '계산이 안 서…' },
     ],
-    answer: '휴직 기간까지 버틸 우리집 돈 흐름을 미리 같이 짜요',
   },
   {
     lines: ['집이든 주식이든', '한 사람만 알아보고,', '[한 사람은 불안하다]'],
@@ -50,17 +46,15 @@ export const ONETEAM_PAINS: OneTeamPain[] = [
       { who: '아내', text: '응… 근데 [나는 그게 더 불안해]' },
       { who: '남편', text: '왜?' },
     ],
-    answer: '한 사람만 아는 돈 말고, 부부가 같이 공부해서 같이 정해요',
   },
 ]
 
-export type OneTeamVariant = 'lines' | 'talk' | 'answer'
-const VARIANTS: OneTeamVariant[] = ['lines', 'talk', 'answer']
+export type OneTeamVariant = 'lines' | 'talk'
+const VARIANTS: OneTeamVariant[] = ['lines', 'talk']
 /** 모양마다 높이를 고정해 둔다 — 3초마다 바뀌어도 아래 버튼이 들썩이지 않게 */
 const HEIGHT: Record<OneTeamVariant, string> = {
   lines: 'h-[84px]',
   talk: 'h-[188px]',
-  answer: 'h-[136px]',
 }
 
 const EVERY_MS = 3000
@@ -84,7 +78,7 @@ function Gold({ text }: { text: string }) {
 }
 
 /**
- * 원팀프로젝트 카드 — 고민이 3초마다 바뀐다. 모양(원문·대화·답)은 들어올 때마다 랜덤.
+ * 원팀프로젝트 카드 — 고민이 3초마다 바뀐다. 모양(원문·대화)은 들어올 때마다 랜덤.
  * "부부가 한 팀으로 재테크" 같은 설명보다, 읽는 사람이 "어 우리 얘기네" 하는 고민을 먼저 보여준다.
  * 어두운 바탕 + 인스타 스토리처럼 차오르는 막대 (2026-10-24).
  */
@@ -169,34 +163,18 @@ export default function OneTeamCard({
               })}
             </div>
           )}
-
-          {variant === 'answer' && (
-            <>
-              <p className="text-[18px] font-extrabold leading-[28px]">
-                “<Gold text={pain.lines.join(' ')} />”
-              </p>
-              <div className="mt-3 flex gap-2 rounded-xl bg-white/[0.08] px-3.5 py-3">
-                <span className="text-[15px] leading-[21px] text-[#FFD66B]">→</span>
-                <p className="text-[13.5px] leading-[21px] text-white/85">
-                  <b className="font-bold text-white">원팀에선</b> {pain.answer}
-                </p>
-              </div>
-            </>
-          )}
         </div>
       </div>
 
-      {variant !== 'answer' && (
-        <p
-          className={`mt-5 border-t border-white/10 pt-4 text-[14px] leading-relaxed text-white/65 ${
-            variant === 'lines' ? 'text-center' : ''
-          }`}
-        >
-          이런 고민 하고 있다면,{' '}
-          <b className="font-bold text-white">비슷한 고민을 하는 다른 부부들과 함께</b> 돈 공부해
-          봐요.
-        </p>
-      )}
+      <p
+        className={`mt-5 border-t border-white/10 pt-4 text-[14px] leading-relaxed text-white/65 ${
+          variant === 'lines' ? 'text-center' : ''
+        }`}
+      >
+        이런 고민 하고 있다면,{' '}
+        <b className="font-bold text-white">비슷한 고민을 하는 다른 부부들과 함께</b> 돈 공부해
+        봐요.
+      </p>
       <a
         href={ONETEAM_URL}
         target="_blank"

@@ -24,10 +24,4 @@ describe('원팀프로젝트 카드 — 고민 문구가 3초마다 바뀐다 (2
     expect(screen.getByText('우리가 많이 쓰는 건가?')).toBeInTheDocument()
     expect(screen.getByText('남편')).toBeInTheDocument()
   })
-
-  it('답 모양: 고민 아래 원팀에선 한 줄', () => {
-    render(<OneTeamCard onStory={() => {}} variant="answer" />)
-    expect(screen.getByText('원팀에선')).toBeInTheDocument()
-    expect(screen.getByText(/고정비·생활비, 어디부터 줄여야 할지/)).toBeInTheDocument()
-  })
 })
