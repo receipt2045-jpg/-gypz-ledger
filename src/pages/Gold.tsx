@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import OneTeamCard from '../components/OneTeamCard'
+import ShareMore from '../components/ShareMore'
 import SiteFooter from '../components/SiteFooter'
 import {
   BROKERS,
@@ -265,6 +266,9 @@ export default function Gold() {
 
           {/* ── 원팀프로젝트 배너 — 맨 끝 */}
           <OneTeamCard onStory={() => navigate('/story')} />
+
+          {/* ── 다른 자료로 (2026-10-24) — 공유 링크로 들어온 사람이 이어서 보게 */}
+          <ShareMore />
         </div>
         <SiteFooter />
       </div>

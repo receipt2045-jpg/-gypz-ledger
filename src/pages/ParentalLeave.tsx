@@ -1,4 +1,5 @@
 import SiteFooter from '../components/SiteFooter'
+import ShareMore from '../components/ShareMore'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowRight, Check, ChevronDown, ChevronLeft, Download, Share2, X } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
@@ -300,6 +301,11 @@ export default function ParentalLeave() {
                 급여는 세전 월급(통상임금) 기준이라 실수령으로 넣으면 실제로는 같거나 조금 더
                 받아요. 방향을 보는 용도로만 쓰시고, 정확한 금액은 고용보험에서 확인하세요.
               </p>
+            </div>
+
+            {/* ── 다른 자료로 (2026-10-24) */}
+            <div className="mt-10">
+              <ShareMore />
             </div>
           </div>
         </div>

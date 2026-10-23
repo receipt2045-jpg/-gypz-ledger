@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import ParentalLeave from './ParentalLeave'
+import { MemoryRouter } from 'react-router-dom'
+import ParentalLeavePage from './ParentalLeave'
 import { DEFAULT_INPUT } from '../lib/parentalLeave'
 import { encodeLeave } from '../lib/leaveShare'
 import { useLedgerStore } from '../lib/store'
+
+// 맨 끝 '다른 자료'(2026-10-24)가 라우터를 쓴다 — 앱에선 HashRouter 안에 있다
+const ParentalLeave = () => (
+  <MemoryRouter initialEntries={['/leave']}>
+    <ParentalLeavePage />
+  </MemoryRouter>
+)
 
 describe('육아휴직 계산기 화면', () => {
   beforeEach(() => localStorage.clear())
@@ -32,7 +40,9 @@ describe('육아휴직 계산기 화면', () => {
     fireEvent.click(screen.getByRole('button', { name: '24개월 이상' }))
     expect(screen.getAllByText('24개월').length).toBeGreaterThan(0)
     fireEvent.click(screen.getByRole('button', { name: '한 달 늘리기' }))
-    expect(screen.getByRole('button', { name: '한 달 줄이기' }).nextSibling?.textContent).toBe('25개월')
+    expect(screen.getByRole('button', { name: '한 달 줄이기' }).nextSibling?.textContent).toBe(
+      '25개월',
+    )
     expect(screen.getByText('13~25개월째는 무급이에요.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '자세히 보기' }))
     expect(screen.getAllByText('무급').length).toBeGreaterThan(0)
@@ -86,10 +96,31 @@ describe('육아휴직 계산기 화면', () => {
           ym: '2026-08',
           closed: true,
           items: [
-            { id: 'a', group: 'income', category: '월급', member: 1, planned: 0, actual: 3_000_000 },
-            { id: 'b', group: 'income', category: '월급', member: 2, planned: 0, actual: 2_000_000 },
+            {
+              id: 'a',
+              group: 'income',
+              category: '월급',
+              member: 1,
+              planned: 0,
+              actual: 3_000_000,
+            },
+            {
+              id: 'b',
+              group: 'income',
+              category: '월급',
+              member: 2,
+              planned: 0,
+              actual: 2_000_000,
+            },
             { id: 'c', group: 'fixed', category: '주거', member: 1, planned: 0, actual: 1_000_000 },
-            { id: 'd', group: 'variable', category: '식비', member: 2, planned: 0, actual: 1_000_000 },
+            {
+              id: 'd',
+              group: 'variable',
+              category: '식비',
+              member: 2,
+              planned: 0,
+              actual: 1_000_000,
+            },
           ],
         },
       ],

@@ -9,6 +9,7 @@ import { NOTICES, type Notice } from '../lib/notices'
 import { amIAdmin, fetchNewsMeta, fetchPosts, type NewsMeta, type Post } from '../lib/posts'
 import { markStartSeen } from '../lib/startGuide'
 import OneTeamCard from '../components/OneTeamCard'
+import ShareList from '../components/ShareList'
 import { useIsPc } from '../lib/useIsPc'
 
 /**
@@ -88,6 +89,8 @@ export default function Info() {
 
       {/* 폰에선 계산기 바로 아래 — 오늘의 경제 밑이면 한참 내려야 보였다 (2026-10-23) */}
       {!isPc && oneTeam}
+      {/* 자료 나눔 (2026-10-24) — 최신 3개, 나머지는 전체 보기 */}
+      {!isPc && <ShareList />}
 
       {/* PC에서는 두 칸 — 왼쪽(넓게): 오늘의 경제, 오른쪽: 원팀프로젝트·공지 (2026-10-06) */}
       <PcColumns
@@ -101,6 +104,7 @@ export default function Info() {
         right={
           <>
             {isPc && oneTeam}
+            {isPc && <ShareList />}
 
             {/* 공지는 맨 아래, 작게 (2026-10-21) */}
             <section aria-label="공지" className="space-y-2">

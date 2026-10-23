@@ -43,6 +43,7 @@ import IntroSlides from './pages/IntroSlides'
 import Legal from './pages/Legal'
 import ParentalLeave from './pages/ParentalLeave'
 import Gold from './pages/Gold'
+import Share from './pages/Share'
 import PublicNews from './pages/PublicNews'
 import Roadmap from './pages/Roadmap'
 
@@ -58,6 +59,8 @@ export default function App() {
         <Route path="/leave" element={<ParentalLeave />} />
         {/* 금테크 정리 — 단톡·인스타에서 바로 들어오는 자리라 로그인 밖에 둔다 */}
         <Route path="/gold" element={<Gold />} />
+        {/* 결영이네 자료 나눔 목록 (2026-10-24) — 단톡방 공지에 거는 링크 하나 */}
+        <Route path="/share" element={<Share />} />
         {/* 오늘의 경제 — 카톡 톡방 링크로 들어오는 자리라 로그인 밖에 둔다 */}
         <Route path="/news" element={<PublicNews />} />
         <Route path="/news/:id" element={<PublicNews />} />

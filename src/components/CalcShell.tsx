@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import ShareMore from './ShareMore'
 
 /** 원팀프로젝트 — 상담 창구가 열리기 전까지 계산기 아래 '결영이네와 같이'가 여기로 간다 */
 export const ONETEAM_URL = 'https://oneteamm.netlify.app'
@@ -54,6 +55,10 @@ export default function CalcShell({
       <p className="px-1 text-center text-[11.5px] leading-relaxed text-cap">
         참고용 계산이에요. 실제 금액은 금융회사·세무서 확인이 필요해요.
       </p>
+      {/* 다른 자료로 (2026-10-24) — 자료 나눔 링크로 들어온 사람도 이어서 보게 */}
+      <div className="pt-6">
+        <ShareMore />
+      </div>
     </div>
   )
 }
