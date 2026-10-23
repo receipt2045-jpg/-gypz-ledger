@@ -42,6 +42,7 @@ import Onboarding from './pages/Onboarding'
 import IntroSlides from './pages/IntroSlides'
 import Legal from './pages/Legal'
 import ParentalLeave from './pages/ParentalLeave'
+import Gold from './pages/Gold'
 import PublicNews from './pages/PublicNews'
 import Roadmap from './pages/Roadmap'
 
@@ -55,6 +56,8 @@ export default function App() {
         <Route path="/legal/:doc" element={<Legal />} />
         {/* 육아휴직 계산기 — 영상·SNS에서 바로 들어오는 자리라 로그인 밖에 둔다 */}
         <Route path="/leave" element={<ParentalLeave />} />
+        {/* 금테크 정리 — 단톡·인스타에서 바로 들어오는 자리라 로그인 밖에 둔다 */}
+        <Route path="/gold" element={<Gold />} />
         {/* 오늘의 경제 — 카톡 톡방 링크로 들어오는 자리라 로그인 밖에 둔다 */}
         <Route path="/news" element={<PublicNews />} />
         <Route path="/news/:id" element={<PublicNews />} />
