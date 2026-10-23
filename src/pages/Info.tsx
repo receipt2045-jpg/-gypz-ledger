@@ -2,16 +2,17 @@ import SiteFooter from '../components/SiteFooter'
 import PcColumns from '../components/PcColumns'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Gift, MessagesSquare, PenLine } from 'lucide-react'
+import { ChevronRight, PenLine } from 'lucide-react'
 import Card from '../components/Card'
 import EconomySection from '../components/EconomySection'
 import { NOTICES, type Notice } from '../lib/notices'
 import { amIAdmin, fetchNewsMeta, fetchPosts, type NewsMeta, type Post } from '../lib/posts'
 import { markStartSeen } from '../lib/startGuide'
+import { ONETEAM_URL } from '../components/CalcShell'
 
 /**
  * 돈 공부 탭 (2026-09-30 '정보'로 시작 — 게시판 + 자산 로드맵 자리를 합쳤다. 2026-10-06 이름을 '돈 공부'로).
- * 위에서부터: 계산기 → 오늘의 경제(결영이네 매일 글) → 정보·혜택(준비 중) → 이야기 → 공지(새 기능 소식).
+ * 위에서부터: 계산기 → 오늘의 경제(결영이네 매일 글) → 원팀프로젝트 → 공지(새 기능 소식).
  *
  * 이야기(글쓰기·신고)는 누가 쓰고 누가 지우는지 정한 뒤에 연다.
  * 4,000명 단톡방이 그대로 들어오면 관리 없이는 못 버틴다.
@@ -80,7 +81,7 @@ export default function Info() {
         </div>
       </section>
 
-      {/* PC에서는 두 칸 — 왼쪽(넓게): 오늘의 경제, 오른쪽: 공지·이야기 (2026-10-06) */}
+      {/* PC에서는 두 칸 — 왼쪽(넓게): 오늘의 경제, 오른쪽: 원팀프로젝트·공지 (2026-10-06) */}
       <PcColumns
         wide="left"
         left={
@@ -91,47 +92,34 @@ export default function Info() {
         }
         right={
           <>
-            <section aria-label="정보·혜택" className="space-y-3">
-              <SectionTitle>정보 · 혜택</SectionTitle>
-              <Soon
-                Icon={Gift}
-                title="신혼부부 정책·혜택은 준비하고 있어요"
-                text="우리집이 받을 수 있는 지원금과 제휴 할인을 모아 둘게요."
-              />
-            </section>
-
-            <section aria-label="이야기" className="space-y-3">
-              <SectionTitle>이야기</SectionTitle>
-              {/* 묻고 답하기 (2026-10-21) — 질문은 누구나, 답은 결영이네 */}
-              <Card onClick={() => navigate('/qna')}>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-[19px]">
-                    💬
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-bold text-ink">묻고 답하기</p>
-                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-sub">
-                      주식 · 내집마련 · SNS 부수입 · 부부 돈 관리, 결영이네가 답해요
-                    </p>
-                  </div>
-                  <ChevronRight size={18} className="shrink-0 text-cap" />
-                </div>
-              </Card>
-              {/* 원팀 프로젝트 이야기 (2026-10-18) — 다른 부부들이 실제로 하는 것, 앱 안에서 본다 */}
-              <Card onClick={() => navigate('/story')}>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-50">
-                    <MessagesSquare size={20} className="text-pink-500" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-bold text-ink">원팀 프로젝트 5기 이야기</p>
-                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-sub">
-                      15부부가 매주 쓰는 과제와 한 문장, 결영이네가 단 답까지
-                    </p>
-                  </div>
-                  <ChevronRight size={18} className="shrink-0 text-cap" />
-                </div>
-              </Card>
+            {/* 원팀프로젝트 (2026-10-23) — 준비 중이던 정보·혜택과 이야기 칸을 빼고 이 한 장으로 */}
+            <section
+              aria-label="원팀프로젝트"
+              className="rounded-card border-[1.5px] border-brand bg-white p-5"
+            >
+              <p className="text-[12px] font-bold text-brand">결영이네 원팀프로젝트</p>
+              <p className="mt-1 text-[18px] font-bold leading-snug text-ink">
+                부부가 한 팀으로 재테크 시작해요
+              </p>
+              <p className="mt-1.5 text-[14px] leading-relaxed text-sub">
+                절약·절세부터 부수입·투자까지, 부부가 같이 공부하고 같이 실천해요.
+              </p>
+              <a
+                href={ONETEAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white active:bg-brand-dark"
+              >
+                원팀프로젝트 보러가기
+                <ChevronRight size={17} />
+              </a>
+              <button
+                onClick={() => navigate('/story')}
+                className="mt-3 flex w-full items-center justify-center gap-0.5 text-[13px] font-bold text-sub active:text-ink"
+              >
+                5기 부부들은 이렇게 하고 있어요
+                <ChevronRight size={15} />
+              </button>
             </section>
 
             {/* 공지는 맨 아래, 작게 (2026-10-21) */}
@@ -164,22 +152,6 @@ const CALCS: { icon: string; title: string; sub: string; to: string | null }[] =
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <p className="px-1 text-[13px] font-bold text-sub">{children}</p>
-}
-
-function Soon({ Icon, title, text }: { Icon: typeof Gift; title: string; text: string }) {
-  return (
-    <Card>
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bg">
-          <Icon size={20} className="text-cap" />
-        </div>
-        <div>
-          <p className="text-[14px] font-bold text-ink">{title}</p>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-sub">{text}</p>
-        </div>
-      </div>
-    </Card>
-  )
 }
 
 function NoticeCard({ notice }: { notice: Notice }) {

@@ -45,7 +45,7 @@ vi.mock('../lib/posts', async (orig) => ({
   ]),
 }))
 
-describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기', () => {
+describe('돈 공부 탭 — 계산기 · 오늘의 경제 · 원팀프로젝트 · 공지', () => {
   const renderInfo = () =>
     render(
       <MemoryRouter initialEntries={['/info']}>
@@ -69,12 +69,16 @@ describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기'
     renderInfo()
     await screen.findByText('매물 고갈된 전세 시장')
     const names = screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'))
-    expect(names).toEqual(['계산기', '오늘의 경제', '정보·혜택', '이야기', '공지'])
+    expect(names).toEqual(['계산기', '오늘의 경제', '원팀프로젝트', '공지'])
   })
 
-  it('이야기 칸에서 원팀 프로젝트 이야기를 앱 안에서 연다', () => {
+  it('원팀프로젝트 칸: 소개 페이지 링크와 5기 이야기', () => {
     renderInfo()
-    fireEvent.click(screen.getByText('원팀 프로젝트 5기 이야기'))
+    expect(screen.getByRole('link', { name: /원팀프로젝트 보러가기/ })).toHaveAttribute(
+      'href',
+      'https://oneteamm.netlify.app',
+    )
+    fireEvent.click(screen.getByText('5기 부부들은 이렇게 하고 있어요'))
     expect(screen.getByText('이야기 화면')).toBeInTheDocument()
   })
 
