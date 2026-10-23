@@ -1,12 +1,13 @@
 import SiteFooter from '../components/SiteFooter'
 import PcColumns from '../components/PcColumns'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, Gift, MessagesSquare, PenLine } from 'lucide-react'
 import Card from '../components/Card'
 import EconomySection from '../components/EconomySection'
 import { NOTICES, type Notice } from '../lib/notices'
 import { amIAdmin, fetchNewsMeta, fetchPosts, type NewsMeta, type Post } from '../lib/posts'
+import { markStartSeen } from '../lib/startGuide'
 
 /**
  * 돈 공부 탭 (2026-09-30 '정보'로 시작 — 게시판 + 자산 로드맵 자리를 합쳤다. 2026-10-06 이름을 '돈 공부'로).
@@ -17,7 +18,15 @@ import { amIAdmin, fetchNewsMeta, fetchPosts, type NewsMeta, type Post } from '.
  */
 export default function Info() {
   const navigate = useNavigate()
+  const location = useLocation()
+  // 시작 가이드 5단계에서 오면 계산기 칸으로 바로 내려간다 (폰에선 오늘의 경제 아래에 있다)
+  const calcRef = useRef<HTMLElement>(null)
+  const toCalc = (location.state as { scrollTo?: string } | null)?.scrollTo === 'calc'
   const [posts, setPosts] = useState<Post[] | null>(null)
+  // 오늘의 경제가 늦게 뜨면 계산기가 밀려 내려간다 — 글을 받은 뒤에 한 번 더 맞춘다
+  useEffect(() => {
+    if (toCalc) calcRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }, [toCalc, posts])
   const [admin, setAdmin] = useState(false)
   const [meta, setMeta] = useState<Record<string, NewsMeta>>({})
 
@@ -62,14 +71,18 @@ export default function Info() {
         }
         right={
           <>
-            <section aria-label="계산기" className="space-y-3">
+            <section ref={calcRef} aria-label="계산기" className="scroll-mt-4 space-y-3">
               <SectionTitle>계산기</SectionTitle>
               {/* 돈 공부 계산기 (2026-10-07) — 우리집 가계부 숫자로 먼저 채워지고, 아래에서 결영이네로 이어진다 */}
               <div className="grid grid-cols-2 gap-2">
                 {CALCS.map((c) => (
                   <button
                     key={c.title}
-                    onClick={() => c.to && navigate(c.to)}
+                    onClick={() => {
+                      if (!c.to) return
+                      markStartSeen('calcs')
+                      navigate(c.to)
+                    }}
                     disabled={!c.to}
                     className="flex flex-col items-start gap-1 rounded-card bg-white p-3.5 text-left shadow-card disabled:opacity-60"
                   >

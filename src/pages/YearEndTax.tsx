@@ -1,10 +1,11 @@
 import PcColumns from '../components/PcColumns'
 import PcShell from '../components/PcShell'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Info } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import { useLedgerStore } from '../lib/store'
+import { markStartSeen } from '../lib/startGuide'
 import { memberStyle } from '../lib/memberColors'
 import { abbreviateKRW, formatComma, formatWon } from '../lib/format'
 import {
@@ -22,6 +23,8 @@ import {
  * 세무 신고를 대신하지 않는다. 방향만 잡아주고 자세한 건 상담으로 넘긴다.
  */
 export default function YearEndTax() {
+  // 시작 가이드 4단계 — 한 번 열어 보면 끝
+  useEffect(() => markStartSeen('yearEnd'), [])
   const navigate = useNavigate()
   const { profile, confessions } = useLedgerStore()
   const [v, setV] = useState<Saved>(readYearEndInput)
