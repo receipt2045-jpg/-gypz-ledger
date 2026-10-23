@@ -7,7 +7,7 @@ describe('원팀프로젝트 카드 — 고민 문구가 3초마다 바뀐다 (2
 
   it('첫 고민부터, 3초 뒤 다음 고민, 마지막 다음엔 처음으로', () => {
     vi.useFakeTimers()
-    render(<OneTeamCard onStory={() => {}} />)
+    render(<OneTeamCard onStory={() => {}} variant="lines" />)
     const shown = () => screen.getByText('우리가 많이 쓰는 건지', { selector: 'span' })
     expect(shown()).toBeInTheDocument()
 
@@ -17,5 +17,17 @@ describe('원팀프로젝트 카드 — 고민 문구가 3초마다 바뀐다 (2
 
     act(() => vi.advanceTimersByTime(9000))
     expect(shown()).toBeInTheDocument()
+  })
+
+  it('대화 모양: 부부 말풍선 (2026-10-24)', () => {
+    render(<OneTeamCard onStory={() => {}} variant="talk" />)
+    expect(screen.getByText('우리가 많이 쓰는 건가?')).toBeInTheDocument()
+    expect(screen.getByText('남편')).toBeInTheDocument()
+  })
+
+  it('답 모양: 고민 아래 원팀에선 한 줄', () => {
+    render(<OneTeamCard onStory={() => {}} variant="answer" />)
+    expect(screen.getByText('원팀에선')).toBeInTheDocument()
+    expect(screen.getByText(/고정비·생활비부터 같이 뜯어보고/)).toBeInTheDocument()
   })
 })
