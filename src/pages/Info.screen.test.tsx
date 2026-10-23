@@ -65,11 +65,11 @@ describe('돈 공부 탭 — 계산기 · 오늘의 경제 · 원팀프로젝트
     expect(screen.getByText('9월 30일')).toBeInTheDocument()
   })
 
-  it('계산기가 맨 위, 그 아래 오늘의 경제 (2026-10-23)', async () => {
+  it('폰: 계산기 → 원팀프로젝트 → 오늘의 경제 (2026-10-23)', async () => {
     renderInfo()
     await screen.findByText('매물 고갈된 전세 시장')
     const names = screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'))
-    expect(names).toEqual(['계산기', '오늘의 경제', '원팀프로젝트', '공지'])
+    expect(names).toEqual(['계산기', '원팀프로젝트', '오늘의 경제', '공지'])
   })
 
   it('원팀프로젝트 칸: 소개 페이지 링크와 5기 이야기', () => {

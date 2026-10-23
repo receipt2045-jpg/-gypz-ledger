@@ -9,6 +9,7 @@ import { NOTICES, type Notice } from '../lib/notices'
 import { amIAdmin, fetchNewsMeta, fetchPosts, type NewsMeta, type Post } from '../lib/posts'
 import { markStartSeen } from '../lib/startGuide'
 import OneTeamCard from '../components/OneTeamCard'
+import { useIsPc } from '../lib/useIsPc'
 
 /**
  * 돈 공부 탭 (2026-09-30 '정보'로 시작 — 게시판 + 자산 로드맵 자리를 합쳤다. 2026-10-06 이름을 '돈 공부'로).
@@ -19,6 +20,7 @@ import OneTeamCard from '../components/OneTeamCard'
  */
 export default function Info() {
   const navigate = useNavigate()
+  const isPc = useIsPc()
   const [posts, setPosts] = useState<Post[] | null>(null)
   const [admin, setAdmin] = useState(false)
   const [meta, setMeta] = useState<Record<string, NewsMeta>>({})
@@ -38,6 +40,9 @@ export default function Info() {
       live = false
     }
   }, [])
+
+  // 원팀프로젝트 (2026-10-23) — 준비 중이던 정보·혜택과 이야기 칸을 빼고 이 한 장으로
+  const oneTeam = <OneTeamCard onStory={() => navigate('/story')} />
 
   return (
     <div className="animate-fade-up space-y-5">
@@ -81,6 +86,9 @@ export default function Info() {
         </div>
       </section>
 
+      {/* 폰에선 계산기 바로 아래 — 오늘의 경제 밑이면 한참 내려야 보였다 (2026-10-23) */}
+      {!isPc && oneTeam}
+
       {/* PC에서는 두 칸 — 왼쪽(넓게): 오늘의 경제, 오른쪽: 원팀프로젝트·공지 (2026-10-06) */}
       <PcColumns
         wide="left"
@@ -92,8 +100,7 @@ export default function Info() {
         }
         right={
           <>
-            {/* 원팀프로젝트 (2026-10-23) — 준비 중이던 정보·혜택과 이야기 칸을 빼고 이 한 장으로 */}
-            <OneTeamCard onStory={() => navigate('/story')} />
+            {isPc && oneTeam}
 
             {/* 공지는 맨 아래, 작게 (2026-10-21) */}
             <section aria-label="공지" className="space-y-2">
