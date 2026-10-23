@@ -41,9 +41,15 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // 인스타 스토리처럼 차오르는 막대 — 원팀 카드 고민 문구 (2026-10-24)
+        'story-fill': {
+          '0%': { width: '0%' },
+          '100%': { width: '100%' },
+        },
       },
       animation: {
         'fade-up': 'fade-up 0.28s ease-out both',
+        'story-fill': 'story-fill 3s linear both',
       },
     },
   },

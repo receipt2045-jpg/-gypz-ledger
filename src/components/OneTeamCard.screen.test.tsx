@@ -12,7 +12,7 @@ describe('원팀프로젝트 카드 — 고민 문구가 3초마다 바뀐다 (2
     expect(shown()).toBeInTheDocument()
 
     act(() => vi.advanceTimersByTime(3000))
-    expect(screen.getByText('들었는데 세금 얘긴', { selector: 'span' })).toBeInTheDocument()
+    expect(screen.getByText('아무도 안 해준다', { selector: 'span' })).toBeInTheDocument()
     expect(screen.queryByText('우리가 많이 쓰는 건지', { selector: 'span' })).toBeNull()
 
     act(() => vi.advanceTimersByTime(9000))
