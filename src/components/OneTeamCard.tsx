@@ -28,8 +28,6 @@ export default function OneTeamCard({ onStory }: { onStory: () => void }) {
       aria-label="원팀프로젝트"
       className="rounded-card border-[1.5px] border-brand bg-white p-5"
     >
-      <p className="text-[12px] font-bold text-brand">결영이네 원팀프로젝트</p>
-
       {/* 화면 읽기 프로그램엔 넷 다 한 번에 — 3초마다 읽어 주면 시끄럽다 */}
       <ul className="sr-only">
         {ONETEAM_PAINS.map((lines) => (
@@ -37,7 +35,7 @@ export default function OneTeamCard({ onStory }: { onStory: () => void }) {
         ))}
       </ul>
       {/* 세 줄 높이를 잡아 둬서 바뀔 때 아래 버튼이 들썩이지 않는다 */}
-      <div aria-hidden className="mt-2 h-[78px] overflow-hidden">
+      <div aria-hidden className="h-[78px] overflow-hidden">
         <p key={i} className="animate-fade-up text-[17px] font-extrabold leading-[26px] text-ink">
           {ONETEAM_PAINS[i].map((line) => (
             <span key={line} className="block">
@@ -56,7 +54,8 @@ export default function OneTeamCard({ onStory }: { onStory: () => void }) {
       </div>
 
       <p className="mt-3 text-[14px] leading-relaxed text-sub">
-        이런 고민, <b className="font-bold text-ink">우리집 숫자로 부부가 같이</b> 풀어요.
+        이런 고민 하고 있다면,{' '}
+        <b className="font-bold text-ink">비슷한 고민을 하는 다른 부부들과 함께</b> 돈 공부해 봐요.
       </p>
       <a
         href={ONETEAM_URL}
