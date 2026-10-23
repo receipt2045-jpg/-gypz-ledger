@@ -8,7 +8,7 @@ import EconomySection from '../components/EconomySection'
 import { NOTICES, type Notice } from '../lib/notices'
 import { amIAdmin, fetchNewsMeta, fetchPosts, type NewsMeta, type Post } from '../lib/posts'
 import { markStartSeen } from '../lib/startGuide'
-import { ONETEAM_URL } from '../components/CalcShell'
+import OneTeamCard from '../components/OneTeamCard'
 
 /**
  * 돈 공부 탭 (2026-09-30 '정보'로 시작 — 게시판 + 자산 로드맵 자리를 합쳤다. 2026-10-06 이름을 '돈 공부'로).
@@ -93,34 +93,7 @@ export default function Info() {
         right={
           <>
             {/* 원팀프로젝트 (2026-10-23) — 준비 중이던 정보·혜택과 이야기 칸을 빼고 이 한 장으로 */}
-            <section
-              aria-label="원팀프로젝트"
-              className="rounded-card border-[1.5px] border-brand bg-white p-5"
-            >
-              <p className="text-[12px] font-bold text-brand">결영이네 원팀프로젝트</p>
-              <p className="mt-1 text-[18px] font-bold leading-snug text-ink">
-                부부가 한 팀으로 재테크 시작해요
-              </p>
-              <p className="mt-1.5 text-[14px] leading-relaxed text-sub">
-                절약·절세부터 부수입·투자까지, 부부가 같이 공부하고 같이 실천해요.
-              </p>
-              <a
-                href={ONETEAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white active:bg-brand-dark"
-              >
-                원팀프로젝트 보러가기
-                <ChevronRight size={17} />
-              </a>
-              <button
-                onClick={() => navigate('/story')}
-                className="mt-3 flex w-full items-center justify-center gap-0.5 text-[13px] font-bold text-sub active:text-ink"
-              >
-                5기 부부들은 이렇게 하고 있어요
-                <ChevronRight size={15} />
-              </button>
-            </section>
+            <OneTeamCard onStory={() => navigate('/story')} />
 
             {/* 공지는 맨 아래, 작게 (2026-10-21) */}
             <section aria-label="공지" className="space-y-2">
