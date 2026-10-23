@@ -65,11 +65,11 @@ describe('돈 공부 탭 — 공지 · 계산기 · 정보·혜택 · 이야기'
     expect(screen.getByText('9월 30일')).toBeInTheDocument()
   })
 
-  it('오늘의 경제가 맨 위, 바로 아래 계산기 — 뉴스에 계산기가 밀려나지 않게', async () => {
+  it('계산기가 맨 위, 그 아래 오늘의 경제 (2026-10-23)', async () => {
     renderInfo()
     await screen.findByText('매물 고갈된 전세 시장')
     const names = screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'))
-    expect(names).toEqual(['오늘의 경제', '계산기', '정보·혜택', '이야기', '공지'])
+    expect(names).toEqual(['계산기', '오늘의 경제', '정보·혜택', '이야기', '공지'])
   })
 
   it('이야기 칸에서 원팀 프로젝트 이야기를 앱 안에서 연다', () => {

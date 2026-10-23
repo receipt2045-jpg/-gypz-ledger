@@ -5,7 +5,6 @@ import { BarChart3, Check, ChevronLeft, ChevronRight, Settings, TrendingUp } fro
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import InviteBanner from '../components/InviteBanner'
-import NewFeatureBanner from '../components/NewFeatureBanner'
 import { type MonthPoint } from '../components/MonthlyCombo'
 import { LazyMonthlyCombo } from '../components/LazyCharts'
 import ProgressBar from '../components/ProgressBar'
@@ -172,9 +171,6 @@ export default function Home() {
           saved={totalAssets(snapshot) - (profile.goal.baseAssets ?? totalAssets(snapshot))}
         />
       )}
-
-      {/* 새로운 기능 알림 — 한 번 닫거나 들어가 보면 다시 안 뜬다 */}
-      <NewFeatureBanner />
 
       {/* 혼자 쓰는 집이면 배우자 초대 — 정산은 둘 다 해야 끝난다 */}
       <InviteBanner />

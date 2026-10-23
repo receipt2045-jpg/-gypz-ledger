@@ -46,7 +46,7 @@ export default function StartGuide() {
     else if (key === 'budget') navigate('/budget', { state: { ym } })
     else if (key === 'confess') navigate('/confess')
     else if (key === 'yearEnd') navigate('/year-end-tax')
-    else navigate('/info', { state: { scrollTo: 'calc' } })
+    else navigate('/info') // 계산기는 돈 공부 탭 맨 위
   }
 
   return (

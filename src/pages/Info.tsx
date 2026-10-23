@@ -1,7 +1,7 @@
 import SiteFooter from '../components/SiteFooter'
 import PcColumns from '../components/PcColumns'
-import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Gift, MessagesSquare, PenLine } from 'lucide-react'
 import Card from '../components/Card'
 import EconomySection from '../components/EconomySection'
@@ -11,22 +11,14 @@ import { markStartSeen } from '../lib/startGuide'
 
 /**
  * 돈 공부 탭 (2026-09-30 '정보'로 시작 — 게시판 + 자산 로드맵 자리를 합쳤다. 2026-10-06 이름을 '돈 공부'로).
- * 위에서부터: 오늘의 경제(결영이네 매일 글) → 계산기 → 공지(새 기능 소식) → 정보·혜택(준비 중) → 이야기(준비 중).
+ * 위에서부터: 계산기 → 오늘의 경제(결영이네 매일 글) → 정보·혜택(준비 중) → 이야기 → 공지(새 기능 소식).
  *
  * 이야기(글쓰기·신고)는 누가 쓰고 누가 지우는지 정한 뒤에 연다.
  * 4,000명 단톡방이 그대로 들어오면 관리 없이는 못 버틴다.
  */
 export default function Info() {
   const navigate = useNavigate()
-  const location = useLocation()
-  // 시작 가이드 5단계에서 오면 계산기 칸으로 바로 내려간다 (폰에선 오늘의 경제 아래에 있다)
-  const calcRef = useRef<HTMLElement>(null)
-  const toCalc = (location.state as { scrollTo?: string } | null)?.scrollTo === 'calc'
   const [posts, setPosts] = useState<Post[] | null>(null)
-  // 오늘의 경제가 늦게 뜨면 계산기가 밀려 내려간다 — 글을 받은 뒤에 한 번 더 맞춘다
-  useEffect(() => {
-    if (toCalc) calcRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-  }, [toCalc, posts])
   const [admin, setAdmin] = useState(false)
   const [meta, setMeta] = useState<Record<string, NewsMeta>>({})
 
@@ -60,44 +52,45 @@ export default function Info() {
         )}
       </header>
 
-      {/* PC에서는 두 칸 — 왼쪽(넓게): 오늘의 경제, 오른쪽: 계산기·공지 (2026-10-06) */}
+      {/* 계산기는 맨 위 (2026-10-23 결영이네 요청) — PC에선 한 줄로 */}
+      <section aria-label="계산기" className="space-y-3">
+        <SectionTitle>계산기</SectionTitle>
+        {/* 돈 공부 계산기 (2026-10-07) — 우리집 가계부 숫자로 먼저 채워지고, 아래에서 결영이네로 이어진다 */}
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+          {CALCS.map((c) => (
+            <button
+              key={c.title}
+              onClick={() => {
+                if (!c.to) return
+                markStartSeen('calcs')
+                navigate(c.to)
+              }}
+              disabled={!c.to}
+              className="flex flex-col items-start gap-1 rounded-card bg-white p-3.5 text-left shadow-card disabled:opacity-60"
+            >
+              <span className="text-[20px]" aria-hidden>
+                {c.icon}
+              </span>
+              <span className="text-[14px] font-bold text-ink">{c.title}</span>
+              <span className="text-[12px] leading-snug text-sub">
+                {c.to ? c.sub : '준비 중이에요'}
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* PC에서는 두 칸 — 왼쪽(넓게): 오늘의 경제, 오른쪽: 공지·이야기 (2026-10-06) */}
       <PcColumns
         wide="left"
         left={
           <>
-            {/* 경제 뉴스는 기사 하나씩, 증시 정리는 최근 하루치 — 바로 아래 계산기가 밀려나지 않게 (2026-10-06) */}
+            {/* 경제 뉴스는 기사 하나씩, 증시 정리는 최근 하루치 (2026-10-06) */}
             {posts && posts.length > 0 && <EconomySection posts={posts} meta={meta} />}
           </>
         }
         right={
           <>
-            <section ref={calcRef} aria-label="계산기" className="scroll-mt-4 space-y-3">
-              <SectionTitle>계산기</SectionTitle>
-              {/* 돈 공부 계산기 (2026-10-07) — 우리집 가계부 숫자로 먼저 채워지고, 아래에서 결영이네로 이어진다 */}
-              <div className="grid grid-cols-2 gap-2">
-                {CALCS.map((c) => (
-                  <button
-                    key={c.title}
-                    onClick={() => {
-                      if (!c.to) return
-                      markStartSeen('calcs')
-                      navigate(c.to)
-                    }}
-                    disabled={!c.to}
-                    className="flex flex-col items-start gap-1 rounded-card bg-white p-3.5 text-left shadow-card disabled:opacity-60"
-                  >
-                    <span className="text-[20px]" aria-hidden>
-                      {c.icon}
-                    </span>
-                    <span className="text-[14px] font-bold text-ink">{c.title}</span>
-                    <span className="text-[12px] leading-snug text-sub">
-                      {c.to ? c.sub : '준비 중이에요'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-
             <section aria-label="정보·혜택" className="space-y-3">
               <SectionTitle>정보 · 혜택</SectionTitle>
               <Soon
