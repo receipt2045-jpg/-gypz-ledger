@@ -4,6 +4,7 @@ import type {
   AssetSnapshot,
   BudgetItem,
   CategoryGroup,
+  Confession,
   MonthlyLedger,
   OccasionEntry,
   Profile,
@@ -110,16 +111,64 @@ const COIN_DELTA = [0, 200_000, -150_000, 400_000, 700_000, 1_100_000]
 function buildSnapshot(i: number): AssetSnapshot {
   const ym = MONTHS[i]
   const raw: Omit<AssetItem, 'id'>[] = [
-    { kind: 'asset', group: 'cash', name: '토스 비상금', owner: '공동', amount: 18_000_000 + i * 450_000 },
-    { kind: 'asset', group: 'cash', name: '신한 주택청약', owner: '남편', amount: 6_000_000 + i * 100_000 },
-    { kind: 'asset', group: 'cash', name: '우리 주택청약', owner: '아내', amount: 5_500_000 + i * 100_000 },
-    { kind: 'asset', group: 'stock', name: '토스증권 주식', owner: '공동', amount: 32_000_000 + STOCK_DELTA[i] },
-    { kind: 'asset', group: 'stock', name: '업비트 코인', owner: '아내', amount: 3_000_000 + COIN_DELTA[i] },
+    {
+      kind: 'asset',
+      group: 'cash',
+      name: '토스 비상금',
+      owner: '공동',
+      amount: 18_000_000 + i * 450_000,
+    },
+    {
+      kind: 'asset',
+      group: 'cash',
+      name: '신한 주택청약',
+      owner: '남편',
+      amount: 6_000_000 + i * 100_000,
+    },
+    {
+      kind: 'asset',
+      group: 'cash',
+      name: '우리 주택청약',
+      owner: '아내',
+      amount: 5_500_000 + i * 100_000,
+    },
+    {
+      kind: 'asset',
+      group: 'stock',
+      name: '토스증권 주식',
+      owner: '공동',
+      amount: 32_000_000 + STOCK_DELTA[i],
+    },
+    {
+      kind: 'asset',
+      group: 'stock',
+      name: '업비트 코인',
+      owner: '아내',
+      amount: 3_000_000 + COIN_DELTA[i],
+    },
     { kind: 'asset', group: 'realestate', name: '전세보증금', owner: '공동', amount: 300_000_000 },
-    { kind: 'asset', group: 'pension', name: '연금저축', owner: '공동', amount: 8_000_000 + i * 300_000 },
-    { kind: 'asset', group: 'consumable', name: '자동차(그랜저)', owner: '남편', amount: 15_000_000 - i * 150_000 },
+    {
+      kind: 'asset',
+      group: 'pension',
+      name: '연금저축',
+      owner: '공동',
+      amount: 8_000_000 + i * 300_000,
+    },
+    {
+      kind: 'asset',
+      group: 'consumable',
+      name: '자동차(그랜저)',
+      owner: '남편',
+      amount: 15_000_000 - i * 150_000,
+    },
     { kind: 'debt', group: 'cash', name: '전세자금대출', owner: '공동', amount: 120_000_000 },
-    { kind: 'debt', group: 'cash', name: '신용대출', owner: '남편', amount: 24_000_000 - i * 400_000 },
+    {
+      kind: 'debt',
+      group: 'cash',
+      name: '신용대출',
+      owner: '남편',
+      amount: 24_000_000 - i * 400_000,
+    },
   ]
   return {
     ym,
@@ -129,11 +178,41 @@ function buildSnapshot(i: number): AssetSnapshot {
 
 const OCCASIONS: OccasionEntry[] = [
   // 날짜는 MONTHS 순번으로 잡는다 — 달이 바뀌어도 샘플이 같이 움직이게
-  { id: 'occ-1', date: `${MONTHS[0]}-14`, category: '지인경조사', title: '대학동기 결혼식', amount: 100_000 },
-  { id: 'occ-2', date: `${MONTHS[1]}-21`, category: '가족경조사', title: '어머니 생신', amount: 300_000 },
-  { id: 'occ-3', date: `${MONTHS[3]}-18`, category: '지인경조사', title: '회사동료 결혼식', amount: 200_000 },
-  { id: 'occ-4', date: `${MONTHS[4]}-10`, category: '기타', title: '자동차 보험 갱신', amount: 780_000 },
-  { id: 'occ-5', date: `${MONTHS[5]}-05`, category: '가족경조사', title: '조카 돌잔치', amount: 150_000 },
+  {
+    id: 'occ-1',
+    date: `${MONTHS[0]}-14`,
+    category: '지인경조사',
+    title: '대학동기 결혼식',
+    amount: 100_000,
+  },
+  {
+    id: 'occ-2',
+    date: `${MONTHS[1]}-21`,
+    category: '가족경조사',
+    title: '어머니 생신',
+    amount: 300_000,
+  },
+  {
+    id: 'occ-3',
+    date: `${MONTHS[3]}-18`,
+    category: '지인경조사',
+    title: '회사동료 결혼식',
+    amount: 200_000,
+  },
+  {
+    id: 'occ-4',
+    date: `${MONTHS[4]}-10`,
+    category: '기타',
+    title: '자동차 보험 갱신',
+    amount: 780_000,
+  },
+  {
+    id: 'occ-5',
+    date: `${MONTHS[5]}-05`,
+    category: '가족경조사',
+    title: '조카 돌잔치',
+    amount: 150_000,
+  },
 ]
 
 const PROFILE: Profile = {
@@ -157,4 +236,38 @@ export function buildSeed(): AppData {
       variable: [...DEFAULT_CATEGORIES.variable],
     },
   }
+}
+
+/**
+ * 예시 소비 기록 — 최근 7일 (2026-10-23, 로그인 전 둘러보기).
+ * 기록이 비어 있으면 '오늘 카드'·'이번 달 쓴 돈'이 0원이라 뭘 하는 앱인지 안 보인다.
+ */
+export function sampleConfessions(): Confession[] {
+  const rows: [number, 1 | 2, string, number, string, boolean?][] = [
+    [0, 1, '식비', 9_000, '점심'],
+    [0, 2, '카페', 4_800, '아아'],
+    [1, 1, '식비', 12_000, '회사 앞 국밥'],
+    [1, 2, '식비', 68_000, '주말 장보기', true],
+    [2, 2, '생활용품', 23_000, '세제·휴지'],
+    [2, 1, '카페', 5_500, ''],
+    [3, 1, '배달', 24_000, '치킨', true],
+    [4, 1, '식비', 8_500, '점심'],
+    [4, 2, '꾸밈', 39_000, '니트'],
+    [5, 2, '식비', 11_000, '점심'],
+    [6, 1, '문화생활', 28_000, '영화', true],
+  ]
+  const now = new Date()
+  return rows.map(([ago, memberNo, category, amount, note, shared], i) => {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ago, 12, i)
+    return {
+      id: `sample-c${i}`,
+      memberNo,
+      category,
+      kind: 'variable',
+      amount,
+      ...(note ? { note } : {}),
+      ...(shared ? { shared: true } : { cardOwner: memberNo }),
+      createdAt: d.toISOString(),
+    }
+  })
 }

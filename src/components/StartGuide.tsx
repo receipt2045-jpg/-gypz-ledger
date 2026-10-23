@@ -21,9 +21,10 @@ import {
  */
 export default function StartGuide() {
   const navigate = useNavigate()
-  const { snapshots, ledgers, confessions } = useLedgerStore()
+  const { snapshots, ledgers, confessions, sample } = useLedgerStore()
   const [hidden, setHidden] = useState(isStartGuideHidden)
-  if (hidden) return null
+  // 예시 가계부에선 안 띄운다 — 할 일은 가입한 뒤 우리집 것으로
+  if (hidden || sample) return null
 
   const ym = currentYm()
   const seen = readStartSeen()

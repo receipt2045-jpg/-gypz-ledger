@@ -20,7 +20,8 @@ function koError(message: string): string {
   return message
 }
 
-export default function Login() {
+/** onPreview: 로그인 전 둘러보기(예시 가계부)로 돌아가기 — 없으면 링크를 숨긴다 */
+export default function Login({ onPreview }: { onPreview?: () => void } = {}) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [notice, setNotice] = useState('')
@@ -112,7 +113,8 @@ export default function Login() {
           </p>
           {members !== null && (
             <p className="mt-2 text-[13.5px] font-bold text-brand">
-              지금 <span className="tnum">{members.toLocaleString('ko-KR')}</span>명이 함께 쓰고 있어요
+              지금 <span className="tnum">{members.toLocaleString('ko-KR')}</span>명이 함께 쓰고
+              있어요
             </p>
           )}
 
@@ -124,6 +126,16 @@ export default function Login() {
                 로그인하면 배우자의 가계부로 바로 연결돼요
               </p>
             </div>
+          )}
+
+          {/* 가입이 망설여지면 예시부터 (2026-10-23) — 초대받은 사람은 바로 로그인하면 된다 */}
+          {onPreview && !pendingInvite() && (
+            <button
+              onClick={onPreview}
+              className="mt-3 text-[13px] font-bold text-brand underline underline-offset-2 active:opacity-60"
+            >
+              가입 전에 예시 가계부 둘러보기
+            </button>
           )}
 
           {/* 카톡 안에서 열면 로그인이 매번 풀린다 — 옮기라고 여기서 알려준다 */}

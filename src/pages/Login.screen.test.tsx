@@ -41,4 +41,13 @@ describe('로그인 화면 — 가입한 사람 수 표시', () => {
     expect(screen.getByText('모아불리 가계부')).toBeInTheDocument()
     expect(screen.queryByText(/명이 함께 쓰고 있어요/)).not.toBeInTheDocument()
   })
+
+  it('예시 가계부로 돌아가는 링크가 있다 (2026-10-23)', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    const onPreview = vi.fn()
+    render(<Login onPreview={onPreview} />)
+    screen.getByRole('button', { name: '가입 전에 예시 가계부 둘러보기' }).click()
+    expect(onPreview).toHaveBeenCalled()
+    await waitFor(() => expect(rpc).toHaveBeenCalled())
+  })
 })

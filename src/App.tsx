@@ -9,11 +9,13 @@ import { supabase } from './lib/supabase'
 import { attachSourceToUser, captureSource } from './lib/source'
 import { capturePendingInvite, restoreInviteFromAccount } from './lib/invite'
 import { applyMarketingChoice } from './lib/marketing'
+import { rememberLogin, startsAtLogin } from './lib/preview'
 import { getMyMembership, type Membership } from './lib/db'
 import { useLedgerStore } from './lib/store'
 import AppFrame from './components/AppFrame'
 import SyncBanner from './components/SyncBanner'
 import UpdateBanner from './components/UpdateBanner'
+import PreviewBar from './components/PreviewBar'
 import Home from './pages/Home'
 import Monthly from './pages/Monthly'
 import Assets from './pages/Assets'
@@ -73,6 +75,7 @@ export default function App() {
  * 둘 다 로그인 페이지를 거치며 화면에서 사라지는 값이라 localStorage에 맡겨 뒀다가 여기서 옮긴다.
  */
 async function onSignedIn(user: User) {
+  rememberLogin(true) // 다음에 이 기기로 오면 예시 대신 로그인 화면부터
   await attachSourceToUser(user)
   await applyMarketingChoice(user)
 }
@@ -92,10 +95,36 @@ function DevSample() {
   return <AppRoutes />
 }
 
+/**
+ * 로그인 전 둘러보기 (2026-10-23, 결영이네 요청: "예시 화면 먼저 보여주고 쓰고 싶게 만든 다음,
+ * 우리 부부 걸 쓰려면 회원가입"). 예시 데이터로 앱 전체를 띄우고 맨 위에 가입 안내 바를 붙인다.
+ * householdId가 null이라 눌러서 적은 것은 서버에 안 간다.
+ */
+function Preview({ onLogin }: { onLogin: () => void }) {
+  const loadSample = useLedgerStore((s) => s.loadSample)
+  const clear = useLedgerStore((s) => s.clear)
+  const status = useLedgerStore((s) => s.status)
+  useEffect(() => {
+    loadSample()
+    return () => clear() // 가입·로그인하면 예시를 지우고 우리집 것을 불러온다
+  }, [loadSample, clear])
+  if (status !== 'ready') return <Splash message="예시 가계부 불러오는 중…" />
+  return (
+    <>
+      {/* 안내 바가 화면 맨 위를 가리지 않게 그만큼 내린다 */}
+      <div className="h-[58px]" aria-hidden />
+      <AppRoutes />
+      <PreviewBar onStart={onLogin} onLogin={onLogin} />
+    </>
+  )
+}
+
 function AuthGate() {
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const devSample = import.meta.env.DEV && new URLSearchParams(window.location.search).has('sample')
+  // 처음 온 사람은 예시부터, 초대 링크·가입해 본 기기는 로그인부터
+  const [atLogin, setAtLogin] = useState(startsAtLogin)
 
   useEffect(() => {
     // 샘플 모드에선 로그인 상태를 보지 않는다 — 안 보면 onAuthStateChange가 clear()로 샘플을 지운다
@@ -110,14 +139,31 @@ function AuthGate() {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s)
       if (s) void onSignedIn(s.user)
-      if (!s) useLedgerStore.getState().clear()
+      // 로그아웃 상태로 시작할 때도 이 이벤트가 온다 — 둘러보기 예시까지 지우면 안 된다
+      if (!s && !useLedgerStore.getState().sample) useLedgerStore.getState().clear()
     })
     return () => sub.subscription.unsubscribe()
   }, [])
 
   if (devSample) return <DevSample />
   if (!authReady) return <Splash message="로그인 확인 중…" />
-  if (!session) return <Login />
+  if (!session)
+    return atLogin ? (
+      <Login
+        onPreview={() => {
+          rememberLogin(false)
+          setAtLogin(false)
+        }}
+      />
+    ) : (
+      <Preview
+        onLogin={() => {
+          rememberLogin(true)
+          setAtLogin(true)
+          window.scrollTo(0, 0)
+        }}
+      />
+    )
   // key로 사용자 전환 시 게이트 상태 초기화
   return <AuthedFlow key={session.user.id} user={session.user} />
 }

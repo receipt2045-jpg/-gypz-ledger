@@ -16,7 +16,7 @@ import type {
 import { DEFAULT_CATEGORIES, findCategoryGroup } from './constants'
 import { genId, resolveSnapshot } from './carryover'
 import { YEAREND_SAVE_KEY } from './yearEndTax'
-import { buildSeed } from '../seed'
+import { buildSeed, sampleConfessions } from '../seed'
 import * as db from './db'
 import { enqueue, flushQueue, migrateLegacyQueue, pendingCount, type PendingOp } from './syncQueue'
 
@@ -227,7 +227,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       memberNo: 1,
       inviteCode: null,
       sample: true,
-      confessions: [],
+      confessions: sampleConfessions(),
       aliases: {},
     }),
 
