@@ -77,3 +77,46 @@ export function missingConfessedItems(
   }
   return out.sort((a, b) => b.amount - a.amount)
 }
+
+export type SpendWho = 1 | 2 | 'shared'
+
+export interface MonthSpend {
+  /** 이번 달 쓴 돈 전부 (수입·무지출 빼고) */
+  spent: number
+  count: number
+  /** 생활비·용돈 예산 — 예산 표의 생활비 칸 + 고정비의 '용돈' */
+  budget: number
+  /** 그 예산에서 나간 돈 (생활비 기록 + '용돈' 기록) */
+  budgetSpent: number
+}
+
+/** 생활비·용돈 — 매일 쓰면서 줄여 갈 수 있는 돈 */
+const isLiving = (group: CategoryGroup, category: string) =>
+  group === 'variable' || (group === 'fixed' && category === '용돈')
+
+/**
+ * 한 사람(또는 공동)의 이번 달 지출 합계와 남은 생활비·용돈.
+ * 제보(10/23): "내가 쓴 기록 총 금액을 볼 수 있나요? 남은 생활비나 용돈 보면서 소비 조절하고 싶어요".
+ * 사람별 보기는 공동 기록을 뺀다 — 월간 탭의 사람별 보기와 같은 규칙.
+ */
+export function monthSpend(
+  confessions: Confession[],
+  items: Pick<BudgetItem, 'member' | 'group' | 'category' | 'planned' | 'shared'>[],
+  ym: string,
+  who: SpendWho,
+): MonthSpend {
+  const mine = (shared: boolean | undefined, member: 1 | 2) =>
+    who === 'shared' ? !!shared : !shared && member === who
+  const list = monthConfessions(confessions, ym).filter(
+    (c) =>
+      c.kind !== 'income' && c.category !== NO_SPEND && c.amount > 0 && mine(c.shared, c.memberNo),
+  )
+  return {
+    spent: list.reduce((s, c) => s + c.amount, 0),
+    count: list.length,
+    budget: items
+      .filter((it) => isLiving(it.group, it.category) && mine(it.shared, it.member))
+      .reduce((s, it) => s + it.planned, 0),
+    budgetSpent: list.filter((c) => isLiving(c.kind, c.category)).reduce((s, c) => s + c.amount, 0),
+  }
+}

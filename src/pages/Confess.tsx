@@ -35,6 +35,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import WeeklyCostCard from '../components/WeeklyCostCard'
+import MonthSpendCard from '../components/MonthSpendCard'
 import { useLedgerStore } from '../lib/store'
 import { pickReaction, streakOf, type Reaction } from '../lib/reactions'
 import { formatComma, formatWon } from '../lib/format'
@@ -426,6 +427,11 @@ export default function Confess() {
             )}
           </div>
 
+          {/* 방금 쓴 것까지 더해서 이번 달 얼마 남았는지 — 소비 조절은 기록한 순간에 */}
+          <div className="mb-5">
+            <MonthSpendCard initial={spender} />
+          </div>
+
           {/* 캐릭터 말풍선 */}
           <div className="space-y-3">
             {result.reaction.bubbles.map((b, i) => (
@@ -705,6 +711,7 @@ export default function Confess() {
       />
       <div className="flex-1 space-y-4 px-5 pb-10 pt-1">
         <WeeklyCostCard confessions={confessions} />
+        <MonthSpendCard />
 
         {/* 언제 쓴 건지 — 며칠 밀렸으면 지난 날짜로 적을 수 있다 */}
         <div className="flex items-center gap-2 rounded-card bg-card px-4 py-3 shadow-card">

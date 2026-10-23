@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { periodLabel, setMonthStartDay, ymOfDate, ymOfDay } from './format'
+import { daysLeftInYm, periodLabel, setMonthStartDay, ymOfDate, ymOfDay } from './format'
 import { ymOfIso } from './confessLedger'
 
 describe('우리집 한 달 시작일 (2026-10-07 제보: 급여일 15일 기준으로 한 달)', () => {
@@ -34,5 +34,19 @@ describe('우리집 한 달 시작일 (2026-10-07 제보: 급여일 15일 기준
   it('1~28일만 — 그 밖은 1일로', () => {
     setMonthStartDay(31)
     expect(periodLabel('2026-10')).toBeNull()
+  })
+})
+
+describe('daysLeftInYm — 남은 날 (오늘 포함)', () => {
+  afterEach(() => setMonthStartDay(1))
+
+  it('1일 시작: 10월 23일이면 31일까지 9일', () => {
+    expect(daysLeftInYm('2026-10', new Date(2026, 9, 23, 21))).toBe(9)
+    expect(daysLeftInYm('2026-10', new Date(2026, 9, 31))).toBe(1)
+  })
+
+  it('15일 시작: 10월 달은 11월 14일까지', () => {
+    setMonthStartDay(15)
+    expect(daysLeftInYm('2026-10', new Date(2026, 10, 10))).toBe(5)
   })
 })

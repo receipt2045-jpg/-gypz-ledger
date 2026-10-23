@@ -3,6 +3,7 @@ import {
   confessEntries,
   confessSums,
   missingConfessedItems,
+  monthSpend,
   monthConfessions,
   ymOfIso,
 } from './confessLedger'
@@ -18,8 +19,7 @@ const c = (
 ): Confession => ({ id, memberNo, kind, category, amount, createdAt })
 
 // 로컬 시간 기준 ISO 문자열 (테스트가 실행 환경 타임존에 흔들리지 않게)
-const localIso = (y: number, m: number, d: number, h = 12) =>
-  new Date(y, m - 1, d, h).toISOString()
+const localIso = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h).toISOString()
 
 const item = (member: 1 | 2, group: BudgetItem['group'], category: string): BudgetItem => ({
   id: `${member}-${group}-${category}`,
@@ -94,10 +94,11 @@ describe('confessEntries — 합계 밑에 펼쳐 볼 내역', () => {
   ]
 
   it('합계와 같은 키로 묶인다', () => {
-    expect(confessEntries(list, '2026-08').get('1:variable:식비')?.map((e) => e.id)).toEqual([
-      '2',
-      '1',
-    ])
+    expect(
+      confessEntries(list, '2026-08')
+        .get('1:variable:식비')
+        ?.map((e) => e.id),
+    ).toEqual(['2', '1'])
   })
 
   it('최근 것이 위에 온다', () => {
@@ -107,7 +108,11 @@ describe('confessEntries — 합계 밑에 펼쳐 볼 내역', () => {
   })
 
   it('사람이 다르면 섞이지 않는다', () => {
-    expect(confessEntries(list, '2026-08').get('2:variable:식비')?.map((e) => e.id)).toEqual(['3'])
+    expect(
+      confessEntries(list, '2026-08')
+        .get('2:variable:식비')
+        ?.map((e) => e.id),
+    ).toEqual(['3'])
   })
 
   it('다른 달은 들어오지 않는다', () => {
@@ -171,5 +176,47 @@ describe('missingConfessedItems — 정산에 빠진 고백 항목', () => {
     expect(missingConfessedItems(odd, 1, ['variable'], [])).toEqual([
       { group: 'variable', category: '커피:테이크아웃', amount: 5000 },
     ])
+  })
+})
+
+describe('monthSpend — 이번 달 쓴 돈 · 남은 생활비·용돈', () => {
+  const at = localIso(2026, 8, 10)
+  const conf: Confession[] = [
+    c('a', 1, 'variable', '식비', 30_000, at),
+    c('b', 1, 'fixed', '통신', 50_000, at),
+    c('d', 1, 'income', '부수입', 100_000, at),
+    c('e', 1, 'variable', '무지출', 0, at),
+    { ...c('f', 1, 'variable', '식비', 40_000, at), shared: true },
+    c('g', 2, 'variable', '카페', 5_000, at),
+    c('h', 1, 'variable', '식비', 9_000, localIso(2026, 7, 31)),
+  ]
+  const items = [
+    { ...item(1, 'variable', '식비'), planned: 200_000 },
+    { ...item(1, 'fixed', '용돈'), planned: 300_000 },
+    { ...item(1, 'fixed', '통신'), planned: 50_000 },
+    { ...item(1, 'variable', '장보기'), planned: 600_000, shared: true },
+  ]
+
+  it('사람별: 공동·수입·무지출·다른 달은 빼고, 예산은 생활비+용돈만', () => {
+    expect(monthSpend(conf, items, '2026-08', 1)).toEqual({
+      spent: 80_000,
+      count: 2,
+      budget: 500_000,
+      budgetSpent: 30_000,
+    })
+  })
+
+  it('공동: 공동 기록과 공동 칸 예산만', () => {
+    expect(monthSpend(conf, items, '2026-08', 'shared')).toEqual({
+      spent: 40_000,
+      count: 1,
+      budget: 600_000,
+      budgetSpent: 40_000,
+    })
+  })
+
+  it("'용돈'으로 적은 기록은 남은 용돈에서 빠진다", () => {
+    const r = monthSpend([c('y', 2, 'fixed', '용돈', 20_000, at)], [], '2026-08', 2)
+    expect(r.budgetSpent).toBe(20_000)
   })
 })

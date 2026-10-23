@@ -117,6 +117,14 @@ export function periodLabel(ym: string): string | null {
   return `${m}월 ${monthStartDay}일 ~ ${end.getMonth() + 1}월 ${end.getDate()}일`
 }
 
+/** 이 달이 끝나기까지 남은 날 (오늘 포함) — 하루에 얼마씩 쓸 수 있는지 나눌 때 */
+export function daysLeftInYm(ym: string, now: Date = new Date()): number {
+  const [y, m] = ym.split('-').map(Number)
+  const end = new Date(y, m, monthStartDay - 1) // 이 달의 마지막 날
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.max(0, Math.round((end.getTime() - today.getTime()) / 86_400_000) + 1)
+}
+
 /** 오늘 기준 현재 ym (한 달 시작일 반영) */
 export function currentYm(): string {
   return ymOfDate(new Date())
