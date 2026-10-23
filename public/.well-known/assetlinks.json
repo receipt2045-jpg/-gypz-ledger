@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.moabuli.app",
+      "sha256_cert_fingerprints": [
+        "4F:DC:A1:29:B5:C9:D5:32:45:B5:43:FE:C2:F9:EE:39:6E:57:36:EB:B9:79:F5:56:94:01:EF:5F:39:24:B9:0C"
+      ]
+    }
+  }
+]
