@@ -83,7 +83,9 @@ export function isNewShare(item: ShareItem, now: Date = new Date()): boolean {
 export const shareDate = (d: string) => `${Number(d.slice(5, 7))}월 ${Number(d.slice(8, 10))}일`
 
 /** 지금 보는 자료 말고 다른 자료 — 같은 분류 먼저, 그다음 최신순 */
-export function otherShares(currentPath: string, count = 4): ShareItem[] {
+export function otherShares(path: string, count = 4): ShareItem[] {
+  // moabuli.com/gold 링크는 Cloudflare가 /gold/로 돌려보내서 #/gold/로 열린다 — 끝 /는 떼고 비교
+  const currentPath = path.length > 1 ? path.replace(/\/+$/, '') : path
   const current = SHARES.find((s) => s.path === currentPath)
   return sharesByDate()
     .filter((s) => s.path !== currentPath)
