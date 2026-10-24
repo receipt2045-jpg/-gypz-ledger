@@ -245,6 +245,11 @@ export default function ParentalLeave() {
             {/* ── 나누기 */}
             <ShareBox input={v} result={r} showWho={both} />
 
+            {/* ── 다른 자료로 (2026-10-24) — 끝부분 순서: 다른 자료 → 원팀프로젝트 → 자료 출처 */}
+            <div className="mt-10">
+              <ShareMore />
+            </div>
+
             {/* ── 원팀프로젝트 */}
             <div className="mt-5 rounded-card border-[1.5px] border-brand bg-white p-5">
               <p className="text-[12px] font-bold text-brand">결영이네 원팀프로젝트</p>
@@ -272,9 +277,9 @@ export default function ParentalLeave() {
               </a>
             </p>
 
-            {/* ── 출처 */}
+            {/* ── 자료 출처 — 맨 끝 */}
             <div className="mt-8 px-1 text-[12px] leading-relaxed text-cap">
-              <p className="font-semibold text-sub">이 숫자는 어디서 왔나요</p>
+              <p className="font-semibold text-sub">자료 출처</p>
               <ul className="mt-1.5 space-y-1">
                 <li>
                   · 육아휴직 기간 — 한 명만 쉬면 12개월, 부부가 각자 3개월 이상 쉬면 한 사람당
@@ -301,11 +306,6 @@ export default function ParentalLeave() {
                 급여는 세전 월급(통상임금) 기준이라 실수령으로 넣으면 실제로는 같거나 조금 더
                 받아요. 방향을 보는 용도로만 쓰시고, 정확한 금액은 고용보험에서 확인하세요.
               </p>
-            </div>
-
-            {/* ── 다른 자료로 (2026-10-24) */}
-            <div className="mt-10">
-              <ShareMore />
             </div>
           </div>
         </div>

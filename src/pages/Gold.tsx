@@ -237,9 +237,15 @@ export default function Gold() {
             </div>
           </Section>
 
-          {/* ── 출처 */}
+          {/* ── 다른 자료로 (2026-10-24) — 공유 링크로 들어온 사람이 이어서 보게 */}
+          <ShareMore />
+
+          {/* ── 원팀프로젝트 배너 */}
+          <OneTeamCard onStory={() => navigate('/story')} />
+
+          {/* ── 자료 출처 — 맨 끝 */}
           <div className="px-1 pt-2 text-[12px] leading-relaxed text-cap">
-            <p className="font-semibold text-sub">이 숫자는 어디서 왔나요</p>
+            <p className="font-semibold text-sub">자료 출처</p>
             <ul className="mt-1.5 space-y-1">
               <li>
                 · 나무증권 — 금현물 온라인 매매수수료 0.2% + 부가세. 보관료는 수수료 안내에 없고,
@@ -263,12 +269,6 @@ export default function Gold() {
               안내를 한 번 더 봐 주세요. 투자를 권하는 글이 아니에요.
             </p>
           </div>
-
-          {/* ── 원팀프로젝트 배너 — 맨 끝 */}
-          <OneTeamCard onStory={() => navigate('/story')} />
-
-          {/* ── 다른 자료로 (2026-10-24) — 공유 링크로 들어온 사람이 이어서 보게 */}
-          <ShareMore />
         </div>
         <SiteFooter />
       </div>
