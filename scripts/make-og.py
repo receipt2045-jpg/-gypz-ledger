@@ -7,6 +7,7 @@
 실행:  py scripts/make-og.py
 결과:  public/og-image.png  — 앱 첫 화면 링크
        public/og-news.png   — moabuli.com/news 링크
+       public/og-gold.png   — moabuli.com/gold 링크 (2026-10-24)
 """
 import importlib.util
 import os
@@ -59,11 +60,20 @@ def app_card() -> Image.Image:
 
 
 def news_card() -> Image.Image:
+    return titled_card("오늘의 경제", "매일 아침 · 날짜별로 모아 보기")
+
+
+def gold_card() -> Image.Image:
+    return titled_card("금테크 정리", "수수료 적게 금 사는 법")
+
+
+def titled_card(title: str, sub: str) -> Image.Image:
+    """동전 아이콘 왼쪽 + 결영이네 / 큰 제목 / 회색 한 줄"""
     img = Image.new("RGB", (W, H), WHITE)
     d = ImageDraw.Draw(img)
     size = 300
     f_small, f_big, f_sub = font("Bold", 44), font("Bold", 104), font("Medium", 40)
-    lines = [("결영이네", f_small, BRAND), ("오늘의 경제", f_big, INK), ("매일 아침 · 날짜별로 모아 보기", f_sub, CAP)]
+    lines = [("결영이네", f_small, BRAND), (title, f_big, INK), (sub, f_sub, CAP)]
     text_w = max(d.textlength(t, font=f) for t, f, _ in lines)
     gap = 40
     x0 = (W - (size + gap + text_w)) / 2
@@ -79,6 +89,7 @@ def news_card() -> Image.Image:
 def main():
     app_card().save(PUBLIC / "og-image.png", optimize=True)
     news_card().save(PUBLIC / "og-news.png", optimize=True)
+    gold_card().save(PUBLIC / "og-gold.png", optimize=True)
     print("og images written")
 
 
