@@ -15,6 +15,7 @@ function sampleStock(p: Partial<Stock> & Pick<Stock, 'id' | 'name' | 'market'>):
   return {
     owner: 1,
     code: '',
+    exchange: '',
     currency: p.market === 'US' ? 'USD' : 'KRW',
     pickReason: '',
     targetPrice: null,
@@ -53,6 +54,7 @@ export const SAMPLE_STOCKS = {
       id: 'sample-hynix',
       name: 'SK하이닉스',
       code: '000660',
+      exchange: 'KOSPI',
       market: 'KR',
       owner: 1,
       pickReason: 'HBM 1등, AI 서버가 늘면 같이 큰다',
@@ -65,6 +67,7 @@ export const SAMPLE_STOCKS = {
       id: 'sample-apple',
       name: '애플',
       code: 'AAPL',
+      exchange: 'NASDAQ',
       market: 'US',
       owner: 2,
       targetPrice: 280,

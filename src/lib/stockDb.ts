@@ -22,6 +22,7 @@ function toStock(r: any): Stock {
     owner: r.owner === 'shared' ? 'shared' : (Number(r.owner) as 1 | 2),
     market: r.market,
     code: r.code ?? '',
+    exchange: r.exchange ?? '',
     name: r.name,
     currency: r.currency,
     pickReason: r.pick_reason ?? '',
@@ -60,6 +61,8 @@ export interface NewStock {
   owner: StockOwner
   market: StockMarket
   code: string
+  /** 상장한 곳 (stocks.ts exchangeLabel) */
+  exchange?: string
   name: string
   lastPrice?: number | null
 }
@@ -144,6 +147,7 @@ export function remoteStocks(householdId: string, memberNo: 1 | 2): StockApi {
           owner: String(n.owner),
           market: n.market,
           code: nz(n.code),
+          exchange: nz(n.exchange),
           name: n.name.trim(),
           currency: n.market === 'US' ? 'USD' : 'KRW',
           ...(n.lastPrice != null
@@ -223,6 +227,7 @@ export function localStocks(seed: { stocks: Stock[]; entries: StockEntry[] }): S
         owner: n.owner,
         market: n.market,
         code: n.code,
+        exchange: n.exchange ?? '',
         name: n.name.trim(),
         currency: n.market === 'US' ? 'USD' : 'KRW',
         pickReason: '',
@@ -284,6 +289,8 @@ export interface CaptureItem {
   name: string
   code: string
   market: StockMarket
+  /** 목록에서 찾았을 때만 (캡처엔 거래소가 잘 안 보인다) */
+  exchange?: string
   qty: number
   price: number
   current_price: number

@@ -14,6 +14,7 @@ import {
   money,
   positionOf,
   quoteLink,
+  stockTag,
   targetProgress,
   valuationOf,
   type Mood,
@@ -109,9 +110,7 @@ export default function StockJournal() {
           )}
         </div>
         <p className="mt-0.5 text-[12px] text-cap">
-          {stock.owner === 'shared' ? '함께' : names[stock.owner - 1]} ·{' '}
-          {stock.market === 'US' ? '미국' : '국내'}
-          {stock.code && ` · ${stock.code}`}
+          {stock.owner === 'shared' ? '함께' : names[stock.owner - 1]} · {stockTag(stock)}
         </p>
         <p className="tnum mt-2 text-[13.5px] text-sub">
           {pos.qty > 0 ? (

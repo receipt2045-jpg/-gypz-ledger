@@ -115,14 +115,22 @@ describe('종목 찾기', () => {
     ['삼성전자', '005930', 'P'],
     ['삼성전자우', '005935', 'P'],
     ['KODEX 200', '', 'E'],
-    ['애플', 'AAPL', 'U'],
+    ['애플', 'AAPL', 'U', 'N'],
+    ['아이온큐', 'IONQ', 'U', 'Y'],
   ]
   it('줄임말·코드·티커', () => {
     expect(searchStocks(list, '하이닉스')[0].name).toBe('SK하이닉스')
     expect(searchStocks(list, '삼전')[0].name).toBe('삼성전자')
     expect(searchStocks(list, '삼성전자')[0].name).toBe('삼성전자')
     expect(searchStocks(list, '005930')[0].code).toBe('005930')
-    expect(searchStocks(list, 'aapl')[0]).toMatchObject({ name: '애플', market: 'US' })
+    expect(searchStocks(list, 'aapl')[0]).toMatchObject({
+      name: '애플',
+      market: 'US',
+      exchange: 'NASDAQ',
+      label: 'AAPL · 나스닥',
+    })
+    expect(searchStocks(list, '아이온큐')[0].label).toBe('IONQ · 뉴욕증권거래소')
+    expect(searchStocks(list, '하이닉스')[0].label).toBe('코스피 · 000660')
     expect(searchStocks(list, 'kodex200')[0].name).toBe('KODEX 200')
   })
 })

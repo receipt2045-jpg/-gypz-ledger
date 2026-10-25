@@ -14,6 +14,8 @@ export interface Stock {
   owner: StockOwner
   market: StockMarket
   code: string
+  /** 상장한 곳 — KOSPI·KOSDAQ·KONEX·ETF·NASDAQ·NYSE·NYSE Arca, 모르면 '' */
+  exchange: string
   name: string
   currency: 'KRW' | 'USD'
   pickReason: string
@@ -223,22 +225,50 @@ export function parseStockLine(input: string): ParsedLine {
 
 // ── 종목 찾기 ────────────────────────────────
 
-/** [이름, 코드, 시장] — 시장: P 코스피 · Q 코스닥 · N 코넥스 · E 국내 ETF · U 미국 (scripts/build-stock-list.mjs) */
-export type StockListRow = [string, string, 'P' | 'Q' | 'N' | 'E' | 'U']
+/**
+ * [이름, 코드, 시장, (미국만) 거래소] (scripts/build-stock-list.mjs)
+ * 시장: P 코스피 · Q 코스닥 · N 코넥스 · E 국내 ETF · U 미국 / 거래소: N 나스닥 · Y 뉴욕증권거래소 · A NYSE Arca
+ */
+export type StockListRow =
+  [string, string, 'P' | 'Q' | 'N' | 'E' | 'U'] | [string, string, 'U', 'N' | 'Y' | 'A']
 
 export interface StockMatch {
   name: string
   code: string
   market: StockMarket
+  exchange: string
   label: string
 }
 
-const MARKET_LABEL: Record<StockListRow[2], string> = {
-  P: '코스피',
-  Q: '코스닥',
-  N: '코넥스',
+const EXCHANGE_OF = {
+  P: 'KOSPI',
+  Q: 'KOSDAQ',
+  N: 'KONEX',
   E: 'ETF',
-  U: '미국',
+  U: '',
+} as const
+const US_EXCHANGE_OF = { N: 'NASDAQ', Y: 'NYSE', A: 'NYSE Arca' } as const
+
+/** 거래소 이름 (2026-10-25 결영이네: "미국은 나스닥인지도") — S&P500·나스닥100은 지수라 여기 없다 */
+export function exchangeLabel(exchange: string): string {
+  return (
+    {
+      KOSPI: '코스피',
+      KOSDAQ: '코스닥',
+      KONEX: '코넥스',
+      ETF: 'ETF',
+      NASDAQ: '나스닥',
+      NYSE: '뉴욕증권거래소',
+      'NYSE Arca': 'NYSE Arca',
+    }[exchange] ?? ''
+  )
+}
+
+/** 종목 옆에 붙는 한 줄 — 미국: 'AAPL · 나스닥', 국내: '코스피 · 000660' */
+export function stockTag(s: Pick<Stock, 'market' | 'code' | 'exchange'>): string {
+  const ex = exchangeLabel(s.exchange)
+  if (s.market === 'US') return [s.code, ex || '미국'].filter(Boolean).join(' · ')
+  return [ex || '국내', s.code].filter(Boolean).join(' · ')
 }
 
 /** 줄임말·별명 → 목록에 있는 이름 */
@@ -263,11 +293,14 @@ const ALIASES: Record<string, string> = {
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '')
 
 export function toMatch(row: StockListRow): StockMatch {
+  const market: StockMarket = row[2] === 'U' ? 'US' : 'KR'
+  const exchange = row[2] === 'U' ? (row[3] ? US_EXCHANGE_OF[row[3]] : '') : EXCHANGE_OF[row[2]]
   return {
     name: row[0],
     code: row[1],
-    market: row[2] === 'U' ? 'US' : 'KR',
-    label: MARKET_LABEL[row[2]] + (row[1] && row[2] !== 'U' ? ` · ${row[1]}` : ''),
+    market,
+    exchange,
+    label: stockTag({ market, code: row[1], exchange }),
   }
 }
 

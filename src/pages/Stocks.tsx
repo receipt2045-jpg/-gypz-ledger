@@ -12,6 +12,7 @@ import {
   parseStockLine,
   positionOf,
   searchStocks,
+  stockTag,
   targetProgress,
   toTargetRate,
   valuationOf,
@@ -176,6 +177,7 @@ export default function Stocks() {
                   owner,
                   market: it.market,
                   code: it.code,
+                  exchange: it.exchange ?? '',
                   name: it.name,
                   lastPrice: it.current_price > 0 ? it.current_price : null,
                 },
@@ -234,6 +236,9 @@ export default function Stocks() {
                 <span className="min-w-0 truncate text-[15.5px] font-bold text-ink">
                   {s.name}
                   <OwnerBadge owner={s.owner} label={ownerName(s.owner)} />
+                  <span className="ml-1.5 align-[1px] text-[11.5px] font-medium text-cap">
+                    {stockTag(s)}
+                  </span>
                 </span>
                 <span className="tnum shrink-0 text-[15px] font-bold text-ink">
                   {money(val.value, s.currency)}
@@ -405,6 +410,7 @@ function QuickAdd({
           name: parsed.query,
           code: /^[A-Za-z.]{1,6}$/.test(parsed.query) ? parsed.query.toUpperCase() : '',
           market: /^[A-Za-z.]{1,6}$/.test(parsed.query) ? 'US' : 'KR',
+          exchange: '',
           label: '목록에 없는 이름으로 넣기',
         }
       : null
@@ -502,7 +508,14 @@ function CaptureAdd({
           const best = searchStocks(list, it.code || it.name, 1)[0]
           return best &&
             (best.code === it.code || best.name.replace(/\s/g, '') === it.name.replace(/\s/g, ''))
-            ? { ...it, name: best.name, code: best.code, market: best.market, on: true }
+            ? {
+                ...it,
+                name: best.name,
+                code: best.code,
+                market: best.market,
+                exchange: best.exchange,
+                on: true,
+              }
             : { ...it, on: true }
         }),
       )

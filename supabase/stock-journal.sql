@@ -89,3 +89,6 @@ create table if not exists public.stock_capture_log (
 create index if not exists stock_capture_log_user on public.stock_capture_log (user_id, created_at desc);
 alter table public.stock_capture_log enable row level security;
 -- 정책 없음 — 앱에서는 못 읽고 못 쓴다. 서버 함수(service role)만 쓴다.
+
+-- 상장한 곳 (2026-10-25 결영이네: "미국 주식은 티커랑 나스닥인지도") — KOSPI·KOSDAQ·NASDAQ·NYSE·NYSE Arca…
+alter table public.stocks add column if not exists exchange text check (char_length(exchange) <= 20);
