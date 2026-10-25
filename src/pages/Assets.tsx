@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Pencil } from 'lucide-react'
 import AssetGlance from '../components/AssetGlance'
 import Card from '../components/Card'
+import StockJournalCard from '../components/StockJournalCard'
 import { useLedgerStore } from '../lib/store'
 import { netWorthOf, resolveSnapshot, totalAssets } from '../lib/carryover'
 import { krwOf, useFxRates } from '../lib/fx'
@@ -68,6 +69,9 @@ export default function Assets() {
           <Pencil size={12} /> 등록·수정
         </button>
       </header>
+
+      {/* 주식 일지 (2026-10-25) — 종목별 매매 기록, 부부가 같이 */}
+      <StockJournalCard />
 
       {items.length === 0 && (
         <Card onClick={() => navigate('/asset-setup')}>

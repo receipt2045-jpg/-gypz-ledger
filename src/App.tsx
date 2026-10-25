@@ -19,6 +19,8 @@ import PreviewBar from './components/PreviewBar'
 import Home from './pages/Home'
 import Monthly from './pages/Monthly'
 import Assets from './pages/Assets'
+import Stocks from './pages/Stocks'
+import StockJournal from './pages/StockJournal'
 import Yearly from './pages/Yearly'
 import Settings from './pages/Settings'
 import Checkup from './pages/Checkup'
@@ -240,6 +242,9 @@ function AppRoutes() {
           <Route path="/board" element={<Navigate to="/info" replace />} />
           <Route path="/monthly" element={<Monthly />} />
           <Route path="/assets" element={<Assets />} />
+          {/* 주식 일지 (2026-10-25) — 자산 탭 주식 칸에서 들어온다 */}
+          <Route path="/stocks" element={<Stocks />} />
+          <Route path="/stocks/:id" element={<StockJournal />} />
           <Route path="/yearly" element={<Yearly />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
