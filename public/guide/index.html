@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>모아불리 사용 가이드북</title>
 
 <style>
@@ -197,6 +200,12 @@
   .day span { font-size: 12.5px; font-weight: 700; color: var(--blue); }
   .day p { margin: 0; font-size: 14.5px; color: var(--sub); max-width: none; line-height: 1.6; }
   .day b { color: var(--ink); font-weight: 700; }
+
+  /* 10월에 새로 생겼어요 (2026-10-25) */
+  .newband { text-align: center; margin: 56px auto 8px; display: grid; gap: 6px; justify-items: center; }
+  .newband span { background: #F04452; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .08em; padding: 3px 10px; border-radius: 999px; }
+  .newband h2 { margin: 0; font-size: clamp(22px, 3vw, 28px); font-weight: 800; }
+  .newband p { margin: 0; color: var(--sub); font-size: 15px; }
 </style>
 <div class="book">
 <div class="wrap">
@@ -601,6 +610,205 @@
           <li>파란 칸이 뜨면 <b>N개 모두 넣기</b>를 누르세요.</li>
           <li>고백에 없던 지출을 마지막에 더하세요.<em>카드 자동결제처럼 말 안 한 돈이 있을 거예요.</em></li>
           <li><b>정산 완료하기</b>를 누르면 끝.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 새로 생긴 것 (2026-10-25) -->
+  <div class="newband">
+    <span>NEW</span>
+    <h2>10월에 새로 생겼어요</h2>
+    <p>써 주신 분들 의견으로 만든 기능이에요.</p>
+  </div>
+
+  <!-- 10 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>10</i><span>이번 달 · 예산 표</span></div>
+      <h2>월급이 어디로 가는지<br>한 표에 놓아요</h2>
+      <p class="lede">남편 · 공동 · 아내 세 칸에<br>월급부터 생활비까지 차례로 빼요.<br><br>맨 아래 <b>남는 돈</b>이 0이 되면<br>이번 달 계획 끝이에요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">이번 달 예산</div>
+          <div class="ph-card">
+            <div class="ph-row" style="font-size:10px;color:#8B95A1;font-weight:700"><span style="white-space:nowrap;flex:1.3"></span><span style="flex:1;text-align:right">남편</span><span style="flex:1;text-align:right">공동</span><span style="flex:1;text-align:right">아내</span></div>
+            <div class="ph-row tnum" style="font-size:11px;padding:4px 0"><span style="white-space:nowrap;flex:1.3;font-weight:700">월급</span><span style="flex:1;text-align:right">420</span><span style="flex:1;text-align:right;color:#8B95A1">—</span><span style="flex:1;text-align:right">380</span></div>
+            <div class="ph-row tnum" style="font-size:10.5px;padding:4px 0;color:#8B95A1"><span style="white-space:nowrap;flex:1.3">↳ 공동통장</span><span style="flex:1;text-align:right">−200</span><span style="flex:1;text-align:right;color:#3182F6">+380</span><span style="flex:1;text-align:right">−180</span></div>
+            <div class="ph-row tnum" style="font-size:11px;padding:4px 0"><span style="white-space:nowrap;flex:1.3">−&nbsp;저축투자</span><span style="flex:1;text-align:right">150</span><span style="flex:1;text-align:right">50</span><span style="flex:1;text-align:right">130</span></div>
+            <div class="ph-row tnum" style="font-size:11px;padding:4px 0"><span style="white-space:nowrap;flex:1.3">− 고정비</span><span style="flex:1;text-align:right">40</span><span style="flex:1;text-align:right">150</span><span style="flex:1;text-align:right">40</span></div>
+            <div class="ph-row tnum" style="font-size:11px;padding:4px 0"><span style="white-space:nowrap;flex:1.3">− 생활비</span><span style="flex:1;text-align:right">30</span><span style="flex:1;text-align:right">180</span><span style="flex:1;text-align:right">30</span></div>
+            <div class="ph-div"></div>
+            <div class="ph-row tnum" style="font-size:11.5px;font-weight:800"><span style="white-space:nowrap;flex:1.3">= 남는 돈</span><span style="flex:1;text-align:right;color:#3182F6">0</span><span style="flex:1;text-align:right;color:#3182F6">0</span><span style="flex:1;text-align:right;color:#3182F6">0</span></div>
+          </div>
+          <div class="ph-mini" style="text-align:center">단위 만원 · 칸을 누르면 바로 고쳐요</div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>홈 바로가기에서 <b>예산 세우기</b>를 누르세요.</li>
+          <li>맨 위 <b>월급</b> 칸부터 넣으세요.<em>테두리가 있는 칸이 누르면 바뀌는 칸이에요.</em></li>
+          <li><b>공동통장으로</b> 각자 보낼 돈을 정하세요.<em>공동통장을 안 쓰면 0으로 두면 돼요.</em></li>
+          <li>저축·투자 → 고정비 → 생활비 순서로 채우세요.</li>
+          <li>남는 돈이 남으면 <b>저축으로</b>를 눌러 한 번에 넘기세요.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>11</i><span>오늘 · 남은 돈</span></div>
+      <h2>쓰는 순간,<br>얼마 남았는지 같이 보여요</h2>
+      <p class="lede">기록하는 화면 맨 위에<br>이번 달 쓴 돈과 남은 생활비·용돈이 떠요.<br><br>하루에 얼마씩 쓰면 되는지까지<br>나눠 드려요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">오늘 뭐에 썼나요?</div>
+          <div class="ph-card">
+            <div class="ph-row"><span class="ph-sub" style="font-weight:700">이번 달 쓴 돈</span><span><span class="ph-pill" style="background:#191F28;color:#fff">남편 (나)</span> <span class="ph-pill" style="background:#F2F4F6;color:#4E5968">아내</span> <span class="ph-pill" style="background:#F2F4F6;color:#4E5968">공동</span></span></div>
+            <div class="ph-big tnum" style="font-size:19px;margin-top:6px">382,000원 <span class="ph-mini">23건</span></div>
+            <div class="bar"><i style="width:36%"></i></div>
+            <div class="ph-strong" style="font-size:11.5px;margin-top:6px">생활비·용돈 60만원 중 <span style="color:#3182F6">218,000원 남았어요</span></div>
+            <div class="ph-mini">남은 9일, 하루 24,200원씩 쓰면 돼요</div>
+          </div>
+          <div class="ph-card" style="border:1.5px solid #9DC1FA">
+            <span class="ph-pill">우리집 맞춤</span>
+            <div class="ph-strong" style="font-size:12px;margin-top:6px">육아 지출이 생겼다면,<br>휴직하면 매달 얼마 남을지 미리 봐요</div>
+            <div class="ph-cta" style="margin-top:8px">육아휴직 계산해 보기</div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>홈 <b>오늘 카드</b>에서 <b>기록하기</b>를 누르세요.</li>
+          <li>맨 위 <b>이번 달 쓴 돈</b>을 보세요.<em>남편 · 아내 · 공동을 눌러 바꿔 볼 수 있어요.</em></li>
+          <li>예산 표에 생활비·용돈을 넣어 두면 <b>남은 돈</b>과 <b>하루 얼마</b>가 같이 나와요.</li>
+          <li>기록하고 나면 줄어든 금액이 바로 보여요.</li>
+          <li>기록에 맞는 <b>우리집 맞춤</b> 카드가 뜨면 한 번 눌러 보세요.<em>육아를 적으면 육아휴직 계산기, 예산을 넘으면 원팀프로젝트처럼요.</em></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>12</i><span>주식 일지</span></div>
+      <h2>왜 샀는지,<br>둘이 같이 남겨요</h2>
+      <p class="lede">증권사 화면 캡처 한 장이면<br>우리집 주식이 정리돼요.<br><br>종목마다 일지가 쌓이고,<br>배우자가 <b>한 줄</b>씩 남길 수 있어요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">주식 일지</div>
+          <div class="ph-card">
+            <div class="ph-cap">우리집 주식 지금 금액</div>
+            <div class="ph-big tnum" style="font-size:19px">1,284만원</div>
+            <div class="ph-up tnum">+148만원 (+13.0%)</div>
+          </div>
+          <div class="ph-card">
+            <div class="ph-row"><span class="ph-strong">SK하이닉스 <span class="ph-pill">남편</span></span><b class="tnum" style="font-size:11.5px">250만원</b></div>
+            <div class="ph-row"><span class="ph-mini">10주 · 코스피 · HBM 1등</span><span class="tnum" style="font-size:11px;color:#F04452;font-weight:700">+25%</span></div>
+            <div class="bar"><i style="width:62%"></i></div>
+            <div class="ph-mini">목표가 30만원까지 20% 남음 · <span style="color:#D6336C;font-weight:700">새 기록 1</span></div>
+          </div>
+          <div class="ph-card">
+            <div class="ph-mini">10월 24일 · 남편 · <b style="color:#F04452">5주 샀어요</b> · 😤 확신</div>
+            <div style="font-size:11.5px;margin-top:3px">“실적 발표 좋아서 추가”</div>
+            <div style="font-size:11px;margin-top:5px;padding-left:8px;border-left:2px solid #E5E8EB"><b style="color:#D6336C">아내</b> 이번엔 목표가 꼭 지키기 🙏</div>
+          </div>
+          <div class="ph-quick"><div style="background:#3182F6;color:#fff">📷 캡처로 추가</div><div>＋ 직접 입력</div></div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>아래 탭 <b>자산</b> 맨 위 <b>📒 주식 일지</b>를 누르세요.</li>
+          <li><b>캡처로 추가</b>를 누르고 증권사 앱의 <b>잔고 화면</b>을 올리세요.<em>종목·수량·평균단가·지금가를 읽어요. 사진은 남기지 않아요.</em></li>
+          <li>숫자를 확인하고 <b>누구 주식인지</b> 골라 저장하세요.<em>“하이닉스 10주”처럼 직접 써도 돼요.</em></li>
+          <li>종목을 누르면 일지가 열려요. <b>종목 선정 사유</b>와 <b>매도 계획</b>(목표가·손절가)을 적어 두세요.</li>
+          <li>사고팔 때마다 <b>오늘 기록하기</b>로 몇 주 · 왜 · 지금 기분을 남기세요.</li>
+          <li>배우자 기록 아래 <b>💬 한 줄 남기기</b>로 같이 이야기하세요.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>13</i><span>돈 공부</span></div>
+      <h2>계산기와 자료를<br>한곳에 모았어요</h2>
+      <p class="lede">계산기는 우리집 가계부 숫자로<br>먼저 채워져 있어요.<br><br>단톡방에서 나눈 자료도<br><b>자료 나눔</b>에 다 모여 있어요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">돈 공부</div>
+          <div class="ph-cap" style="margin-bottom:4px">계산기</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+            <div class="ph-card" style="margin:0"><div>🍼</div><div class="ph-strong" style="font-size:11px">육아휴직</div><div class="ph-mini">쉬는 동안 한 달에 얼마</div></div>
+            <div class="ph-card" style="margin:0"><div>🔑</div><div class="ph-strong" style="font-size:11px">내집마련 대출 찾기</div><div class="ph-mini">우리 조건에 유리한 대출</div></div>
+            <div class="ph-card" style="margin:0"><div>🏠</div><div class="ph-strong" style="font-size:11px">집 살 때 드는 돈</div><div class="ph-mini">집값 말고 잔금날 더</div></div>
+            <div class="ph-card" style="margin:0"><div>🌱</div><div class="ph-strong" style="font-size:11px">노후 준비</div><div class="ph-mini">지금 모으면 노후에 얼마</div></div>
+          </div>
+          <div class="ph-row" style="margin-top:10px"><span class="ph-cap">결영이네 자료 나눔</span><span class="ph-link">전체 보기 ›</span></div>
+          <div class="ph-card">
+            <div class="ph-item"><span><b style="color:#3182F6">1</b> 금 처음 산다면, 수수료부터</span></div>
+            <div class="ph-item"><span><b style="color:#3182F6">2</b> 우리 조건에 맞는 내집마련 대출</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>아래 탭에서 <b>돈 공부</b>를 누르세요.</li>
+          <li>맨 위 <b>계산기</b>에서 궁금한 걸 고르세요.<em>육아휴직 · 내집마련 대출 · 집 살 때 드는 돈 · 노후 준비 · 대출 이자</em></li>
+          <li>우리집 숫자가 먼저 채워져 있어요. 고치고 싶은 칸만 바꾸세요.</li>
+          <li><b>결영이네 자료 나눔</b>에서 단톡방에 올라온 정리 자료를 다시 볼 수 있어요.<em>한 번에 모아 보기: moabuli.com/#/share</em></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 -->
+  <section class="page">
+    <div class="head">
+      <div class="eyebrow"><i>14</i><span>둘이 같이</span></div>
+      <h2>배우자 초대는<br>링크 한 번이면 돼요</h2>
+      <p class="lede">한 사람만 쓰면 가계부의 반만 보여요.<br><br>링크를 받은 배우자가 가입하면<br><b>같은 가계부</b>로 바로 들어와요.</p>
+    </div>
+    <div class="pair">
+      <div class="shot">
+        <div class="phone">
+          <div class="ph-top">설정</div>
+          <div class="ph-card">
+            <div class="ph-strong" style="font-size:12px">💌 함께 쓰기</div>
+            <div class="ph-mini" style="margin-top:4px">배우자에게 아래 초대 코드를 알려주면 함께 쓸 수 있어요.</div>
+            <div class="ph-item" style="margin-top:6px"><span class="tnum" style="font-weight:800;letter-spacing:1px">A1B2C3D4</span><span class="ph-link">복사</span></div>
+            <div class="ph-cta">배우자에게 초대 보내기</div>
+          </div>
+          <div class="ph-card" style="background:#FDECF2">
+            <div class="ph-strong" style="color:#B03A62;font-size:11.5px">💌 초대를 받으셨어요</div>
+            <div class="ph-mini" style="color:#B03A62">로그인하면 배우자의 가계부로 바로 연결돼요</div>
+          </div>
+        </div>
+      </div>
+      <div class="how">
+        <h3>사용 방법</h3>
+        <ol>
+          <li>아래 탭 <b>설정</b>에서 <b>배우자에게 초대 보내기</b>를 누르세요.</li>
+          <li>카톡으로 링크를 보내세요.</li>
+          <li>배우자가 링크를 눌러 가입하면 같은 가계부로 들어와요.<em>코드를 직접 넣어도 돼요.</em></li>
+          <li>기록할 때 <b>누가 썼어요?</b>에서 배우자 몫도 대신 적을 수 있어요.</li>
+          <li>월말 정산은 각자 자기 몫만 하면 끝나요.</li>
         </ol>
       </div>
     </div>
