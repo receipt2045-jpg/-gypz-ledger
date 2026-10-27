@@ -23,29 +23,87 @@ export interface ParseResult {
 // 사용자가 카테고리를 고치면 가구 별칭(category_aliases)이 여기에 덮어써진다.
 export const BUILTIN_ALIASES: Record<string, string> = {
   // 식비
-  점심: '식비', 저녁: '식비', 아침: '식비', 밥: '식비', 김밥: '식비', 국밥: '식비',
-  회식: '식비', 외식: '식비', 마트: '식비', 장보기: '식비', 편의점: '식비', 술: '식비',
-  치킨: '배달', 피자: '배달', 배민: '배달', 요기요: '배달', 쿠팡이츠: '배달', 야식: '배달',
+  점심: '식비',
+  저녁: '식비',
+  아침: '식비',
+  밥: '식비',
+  김밥: '식비',
+  국밥: '식비',
+  회식: '식비',
+  외식: '식비',
+  마트: '식비',
+  장보기: '식비',
+  편의점: '식비',
+  술: '식비',
+  치킨: '배달',
+  피자: '배달',
+  배민: '배달',
+  요기요: '배달',
+  쿠팡이츠: '배달',
+  야식: '배달',
   // 카페
-  커피: '카페', 스벅: '카페', 스타벅스: '카페', 아아: '카페', 라떼: '카페', 디저트: '카페', 빵: '카페',
+  커피: '카페',
+  스벅: '카페',
+  스타벅스: '카페',
+  아아: '카페',
+  라떼: '카페',
+  디저트: '카페',
+  빵: '카페',
   // 교통/차
-  택시: '자동차', 주유: '자동차', 기름: '자동차', 세차: '자동차', 주차: '자동차',
-  버스: '자동차', 지하철: '자동차', 교통: '자동차', 톨비: '자동차',
+  택시: '자동차',
+  주유: '자동차',
+  기름: '자동차',
+  세차: '자동차',
+  주차: '자동차',
+  버스: '자동차',
+  지하철: '자동차',
+  교통: '자동차',
+  톨비: '자동차',
   // 생활
-  다이소: '생활용품', 세제: '생활용품', 휴지: '생활용품', 쿠팡: '생활용품',
+  다이소: '생활용품',
+  세제: '생활용품',
+  휴지: '생활용품',
+  쿠팡: '생활용품',
   // 구독/통신
-  넷플: '구독', 넷플릭스: '구독', 유튜브: '구독', 멜론: '구독', 디플: '구독',
-  폰: '통신', 요금제: '통신',
+  넷플: '구독',
+  넷플릭스: '구독',
+  유튜브: '구독',
+  멜론: '구독',
+  디플: '구독',
+  폰: '통신',
+  요금제: '통신',
   // 건강/꾸밈
-  병원: '건강', 약국: '건강', 약: '건강', 헬스: '건강', 필라테스: '건강',
-  미용실: '꾸밈', 화장품: '꾸밈', 네일: '꾸밈', 옷: '꾸밈', 신발: '꾸밈',
+  병원: '건강',
+  약국: '건강',
+  약: '건강',
+  헬스: '건강',
+  필라테스: '건강',
+  미용실: '꾸밈',
+  화장품: '꾸밈',
+  네일: '꾸밈',
+  옷: '꾸밈',
+  신발: '꾸밈',
   // 문화/육아/반려
-  영화: '문화생활', 공연: '문화생활', 게임: '문화생활', 책: '자기계발', 강의: '자기계발',
-  기저귀: '육아', 분유: '육아', 장난감: '육아', 학원: '육아',
-  사료: '반려견', 간식: '반려견', 동물병원: '반려견',
+  영화: '문화생활',
+  공연: '문화생활',
+  게임: '문화생활',
+  책: '자기계발',
+  강의: '자기계발',
+  기저귀: '육아',
+  분유: '육아',
+  장난감: '육아',
+  학원: '육아',
+  사료: '반려견',
+  간식: '반려견',
+  동물병원: '반려견',
   // 경조사/여행
-  축의금: '경조사', 부조: '경조사', 조의금: '경조사', 선물: '경조사',
-  숙소: '여행', 항공권: '여행', 비행기: '여행',
+  축의금: '경조사',
+  부조: '경조사',
+  조의금: '경조사',
+  선물: '경조사',
+  숙소: '여행',
+  항공권: '여행',
+  비행기: '여행',
 }
 
 // ── 금액 파싱 ──────────────────────────────────
@@ -58,13 +116,21 @@ export const BUILTIN_ALIASES: Record<string, string> = {
 // 수사가 들어간 평범한 말을 금액으로 오인하면 안 된다.
 
 const KO_DIGIT: Record<string, number> = {
-  영: 0, 공: 0, 일: 1, 이: 2, 삼: 3, 사: 4, 오: 5, 육: 6, 칠: 7, 팔: 8, 구: 9,
+  영: 0,
+  공: 0,
+  일: 1,
+  이: 2,
+  삼: 3,
+  사: 4,
+  오: 5,
+  육: 6,
+  칠: 7,
+  팔: 8,
+  구: 9,
 }
 const KO_SMALL: Record<string, number> = { 십: 10, 백: 100, 천: 1_000 }
 const KO_BIG: Record<string, number> = { 만: 10_000, 억: 100_000_000 }
-const KO_NUM = new Set([
-  ...Object.keys(KO_DIGIT), ...Object.keys(KO_SMALL), ...Object.keys(KO_BIG),
-])
+const KO_NUM = new Set([...Object.keys(KO_DIGIT), ...Object.keys(KO_SMALL), ...Object.keys(KO_BIG)])
 const HANGUL = /[가-힣]/
 
 interface AmountMatch {
@@ -261,12 +327,26 @@ function splitByAmounts(segment: string): { amount: number; label: string }[] {
 
 // ── 카테고리 매칭 ──────────────────────────────
 
+/** 받은 돈을 알아듣는 말 → 수입 항목 (2026-10-27 아이 앞으로 들어오는 돈) */
+const INCOME_WORDS: [RegExp, string][] = [
+  [/아동수당|부모급여|양육수당|첫만남|지원금/, '아동수당·지원금'],
+  // '용돈'만 있으면 쓴 돈(고정비 용돈) — 받은 말이 붙어야 들어온 돈
+  [/세뱃돈|축하금|용돈.{0,12}(받|주심|주셨|주셔)|(받은|주신)\s*용돈/, '용돈·선물'],
+]
+
 function findCategory(
   text: string,
   categories: Categories,
   aliases: Record<string, string>,
+  /** 금액이 하나뿐인 조각이면 조각 전체 — '엄마가 용돈 20만원 주심'의 '주심'까지 보려고 */
+  context: string = text,
 ): { category: string; kind: CategoryGroup } | null {
   const expenseGroups: CategoryGroup[] = ['variable', 'fixed']
+  // 0) 들어온 돈 (2026-10-27) — '용돈'은 지출 항목에도 있어서 받은 말이 붙은 것부터 먼저 본다
+  for (const [re, cat] of INCOME_WORDS) {
+    if (re.test(context) && categories.income.includes(cat))
+      return { category: cat, kind: 'income' }
+  }
   // 1) 사용자 카테고리명이 직접 들어 있으면 최우선
   for (const kind of expenseGroups) {
     for (const cat of categories[kind]) {
@@ -308,7 +388,12 @@ export function parseConfessionText(
     }
     for (const part of parts) {
       // 이름이 비면 조각 전체를 후보로 (한 건짜리 문장에서 어순이 뒤집힌 경우)
-      const found = findCategory(part.label || seg, categories, aliases)
+      const found = findCategory(
+        part.label || seg,
+        categories,
+        aliases,
+        parts.length === 1 ? seg : part.label || seg,
+      )
       const note = part.label || undefined
       const raw = part.label ? `${part.label} ${part.amount}원` : seg
       if (found) {

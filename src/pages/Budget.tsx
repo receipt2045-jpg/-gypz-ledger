@@ -130,13 +130,13 @@ export default function Budget() {
     touch()
     setItems((prev) => prev.filter((it) => it.id !== id))
   }
-  /** 누구 돈인지 바꾸기 — 남편 → 공동 → 아내 (월급은 공동이 없다) */
+  /** 누구 돈인지 바꾸기 — 남편 → 공동 → 아내 (들어오는 돈도 공동이 있다 — 아동수당 등, 2026-10-27) */
   const moveItem = (id: string) => {
     touch()
     setItems((prev) =>
       prev.map((it) => {
         if (it.id !== id) return it
-        const order: Col[] = it.group === 'income' ? [1, 2] : [1, 'j', 2]
+        const order: Col[] = [1, 'j', 2]
         const next = order[(order.indexOf(colOf(it)) + 1) % order.length]
         return next === 'j' ? { ...it, shared: true } : { ...it, shared: undefined, member: next }
       }),
@@ -273,8 +273,8 @@ export default function Budget() {
                 </div>
                 <p className="mt-1.5 text-[12px] text-cap">
                   {income > 0
-                    ? `우리집 월급 ${short(income)} 중 ${short(Math.max(0, decided))} 정했어요 · 0원이 되면 계획 끝`
-                    : '월급 칸부터 눌러서 채워 주세요'}
+                    ? `우리집 들어오는 돈 ${short(income)} 중 ${short(Math.max(0, decided))} 정했어요 · 0원이 되면 계획 끝`
+                    : '들어오는 돈(월급) 칸부터 눌러서 채워 주세요'}
                 </p>
               </div>
             </div>
@@ -307,20 +307,17 @@ export default function Budget() {
                     </tr>
                   </thead>
                   <tbody>
-                    <Row label="월급">
-                      {COLS.map((c) =>
-                        c === 'j' ? (
-                          <Dash key="j" />
-                        ) : (
-                          <Cell
-                            key={c}
-                            value={cellSum(items, 'income', c)}
-                            selected={sel?.row === 'income' && sel.col === c}
-                            onClick={() => setSel({ row: 'income', col: c })}
-                            label={`${name(c)} 월급`}
-                          />
-                        ),
-                      )}
+                    <Row label="들어오는 돈">
+                      {COLS.map((c) => (
+                        <Cell
+                          key={String(c)}
+                          value={cellSum(items, 'income', c)}
+                          selected={sel?.row === 'income' && sel.col === c}
+                          onClick={() => setSel({ row: 'income', col: c })}
+                          label={`${name(c)} 들어오는 돈`}
+                          tone={c === 'j' ? 'joint' : undefined}
+                        />
+                      ))}
                     </Row>
                     <Row label="↳ 공동통장으로" muted>
                       {COLS.map((c) => (
@@ -474,10 +471,6 @@ function Row({
       {children}
     </tr>
   )
-}
-
-function Dash() {
-  return <td className="border-t border-bg px-1.5 py-1 text-right text-cap/60">–</td>
 }
 
 function Cell({

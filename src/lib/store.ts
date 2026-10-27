@@ -13,7 +13,7 @@ import type {
   OccasionEntry,
   Profile,
 } from '../types'
-import { DEFAULT_CATEGORIES, findCategoryGroup } from './constants'
+import { DEFAULT_CATEGORIES, GIFT_INCOME, SUPPORT_INCOME, findCategoryGroup } from './constants'
 import { genId, resolveSnapshot } from './carryover'
 import { YEAREND_SAVE_KEY } from './yearEndTax'
 import { buildSeed, sampleConfessions } from '../seed'
@@ -187,6 +187,8 @@ interface LedgerState extends AppData {
   applyLoanSchedule: () => void
   /** 예전 이름('남편'·'아내')으로 남은 자산 주인을 지금 이름으로 — lib/assetOwner */
   repairAssetOwners: () => void
+  /** 이미 쓰는 집에도 새 기본 수입 항목(아동수당·지원금, 용돈·선물)을 한 번만 넣는다 (2026-10-27) */
+  ensureIncomeCategories: () => void
   /** 서버 최신 카테고리로 맞춘다 — 배우자·다른 기기에서 추가한 것까지 고를 때 보이게 */
   refreshCategories: () => Promise<void>
   // 데이터 관리
@@ -223,6 +225,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     // 대출 정보가 있는 부채 — 지난 갚는 날만큼 원금을 줄인다 (2026-10-07)
     get().applyLoanSchedule()
     get().repairAssetOwners()
+    get().ensureIncomeCategories()
     try {
       set({ confessions: await db.fetchConfessions(householdId) })
     } catch (err) {
@@ -433,6 +436,22 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const s = get()
     set({ categories: { ...s.categories, [group]: s.categories[group].filter((c) => c !== name) } })
     saveCategoryChange(s.householdId, { action: 'remove', group, name })
+  },
+
+  ensureIncomeCategories: () => {
+    const s = get()
+    if (!s.householdId) return
+    // 이 기기에서 한 번만 — 일부러 지운 집에 매번 되살아나지 않게
+    const key = `moabuli.incomeCats.v1:${s.householdId}`
+    try {
+      if (localStorage.getItem(key)) return
+      localStorage.setItem(key, '1')
+    } catch {
+      return
+    }
+    for (const name of [SUPPORT_INCOME, GIFT_INCOME]) {
+      if (!get().categories.income.includes(name)) get().addCategory('income', name)
+    }
   },
 
   repairAssetOwners: () => {

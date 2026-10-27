@@ -22,6 +22,8 @@ export function confessSums(confessions: Confession[], ym: string): Map<string, 
   for (const c of monthConfessions(confessions, ym)) {
     // 무지출(0원)은 기록일 뿐 지출이 아니므로 정산 합계에서 뺀다
     if (c.category === NO_SPEND || c.amount <= 0) continue
+    // 아이 통장에 모은 돈은 우리집 살림 정산에 안 넣는다 (2026-10-27)
+    if (c.child && c.childKeep !== false) continue
     const key = `${c.memberNo}:${c.kind}:${c.category}`
     m.set(key, (m.get(key) ?? 0) + c.amount)
   }
@@ -39,6 +41,7 @@ export function confessEntries(confessions: Confession[], ym: string): Map<strin
   const m = new Map<string, Confession[]>()
   for (const c of monthConfessions(confessions, ym)) {
     if (c.category === NO_SPEND || c.amount <= 0) continue
+    if (c.child && c.childKeep !== false) continue
     const key = `${c.memberNo}:${c.kind}:${c.category}`
     m.set(key, [...(m.get(key) ?? []), c])
   }

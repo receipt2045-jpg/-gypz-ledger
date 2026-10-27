@@ -94,3 +94,30 @@ describe('저장할 때 합치기', () => {
     expect(out.map((i) => i.id)).toEqual(['a'])
   })
 })
+
+describe('공동으로 들어오는 돈 (2026-10-27 아동수당)', () => {
+  it('공동 칸 들어오는 돈만큼 공동통장으로 덜 보낸다', () => {
+    const items = [
+      {
+        id: 'i',
+        group: 'variable' as const,
+        category: '식비',
+        member: 1 as const,
+        planned: 600_000,
+        actual: 0,
+        shared: true,
+      },
+      {
+        id: 'k',
+        group: 'income' as const,
+        category: '아동수당·지원금',
+        member: 1 as const,
+        planned: 100_000,
+        actual: 0,
+        shared: true,
+      },
+    ]
+    expect(sharedNeed(items)).toBe(500_000)
+    expect(leftOf(items, { 1: 250_000, 2: 250_000 }, 'j')).toBe(0)
+  })
+})

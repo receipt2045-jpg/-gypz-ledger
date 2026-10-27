@@ -48,13 +48,13 @@ describe('예산 표', () => {
     open()
     expect(screen.getByText(/지난달 예산을 채워 뒀어요/)).toBeInTheDocument()
     expect(screen.getByText('650만원')).toBeInTheDocument() // 750만 − 100만
-    // 줄 순서: 월급 → 공동통장 → 저축·투자 → 고정비 → 생활비
+    // 줄 순서: 들어오는 돈(2026-10-27 월급에서 이름 바꿈) → 공동통장 → 저축·투자 → 고정비 → 생활비
     const labels = screen
       .getAllByRole('row')
       .map((r) => r.querySelector('td')?.textContent)
       .filter(Boolean)
     expect(labels).toEqual([
-      '월급',
+      '들어오는 돈',
       '↳ 공동통장으로',
       '− 저축·투자',
       '− 고정비',
@@ -66,7 +66,7 @@ describe('예산 표', () => {
   it('칸을 눌러 금액을 고치고 저장하면 그 달 예산으로 남는다', async () => {
     seedStore({ ledgers: [ledger(TEST_YM, [item('a', 'income', '주수입', 1, 4_000_000)])] })
     const { user } = open()
-    await user.click(screen.getByRole('button', { name: /남편 월급/ }))
+    await user.click(screen.getByRole('button', { name: /남편 들어오는 돈/ }))
     const input = screen.getByDisplayValue('4,000,000')
     await user.clear(input)
     await user.type(input, '4200000')

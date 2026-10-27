@@ -5,6 +5,7 @@ import { ChevronRight, Pencil } from 'lucide-react'
 import AssetGlance from '../components/AssetGlance'
 import Card from '../components/Card'
 import StockJournalCard from '../components/StockJournalCard'
+import ChildMoneyCard from '../components/ChildMoneyCard'
 import { useLedgerStore } from '../lib/store'
 import { netWorthOf, resolveSnapshot, totalAssets } from '../lib/carryover'
 import { krwOf, useFxRates } from '../lib/fx'
@@ -38,6 +39,15 @@ export default function Assets() {
 
   const childNames = profile.childNames ?? []
   const owners = [profile.member1Name, profile.member2Name, '공동', ...childNames]
+  // 아이 이름 자산 (2026-10-27 아이 통장 카드) — 빚은 빼고
+  const childAssets = Object.fromEntries(
+    childNames.map((n) => [
+      n,
+      items
+        .filter((it) => it.owner === n)
+        .reduce((a, it) => a + (it.kind === 'debt' ? -it.amount : it.amount), 0),
+    ]),
+  )
 
   // 누구 것을 볼지 — 항목이 있는 사람만 버튼으로 (빈 화면을 눌러보게 만들지 않는다)
   const ALL = '함께'
@@ -72,6 +82,8 @@ export default function Assets() {
 
       {/* 주식 일지 (2026-10-25) — 종목별 매매 기록, 부부가 같이 */}
       <StockJournalCard />
+      {/* 아이 통장 (2026-10-27) — 아이 앞으로 들어온 돈·증여 기록 */}
+      <ChildMoneyCard childAssets={childAssets} />
 
       {items.length === 0 && (
         <Card onClick={() => navigate('/asset-setup')}>

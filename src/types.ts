@@ -143,6 +143,14 @@ export interface Confession {
    * 적은 사람이 정산 때 자기 항목으로 넣는 게 가장 자연스럽다.
    */
   shared?: boolean
+  /**
+   * 아이 앞으로 들어온 돈 (2026-10-27) — 설정의 자녀 이름. 수입 기록에만 붙는다.
+   * childKeep: 아이 통장에 모아요(true, 기본) / 살림에 보태요(false)
+   * gift: 부모·조부모가 준 돈 — 미성년 자녀 증여재산공제(10년 2,000만원) 누적에 센다
+   */
+  child?: string
+  childKeep?: boolean
+  gift?: boolean
   createdAt: string // ISO
 }
 

@@ -29,10 +29,21 @@ export const ASSET_GROUP_LABEL: Record<AssetGroup, string> = {
   consumable: '기타',
 }
 
-export const ASSET_GROUP_ORDER: AssetGroup[] = ['cash', 'stock', 'realestate', 'pension', 'consumable']
+export const ASSET_GROUP_ORDER: AssetGroup[] = [
+  'cash',
+  'stock',
+  'realestate',
+  'pension',
+  'consumable',
+]
+
+/** 아이 앞으로 들어오는 돈의 기본 수입 항목 (2026-10-27) */
+export const SUPPORT_INCOME = '아동수당·지원금'
+export const GIFT_INCOME = '용돈·선물'
 
 export const DEFAULT_CATEGORIES: Categories = {
-  income: ['주수입', '부수입', '투자수익', '기타'],
+  // 아동수당·지원금, 용돈·선물 (2026-10-27) — 월급과 섞지 않는다. 아이 이름으로 받을 수도 있다
+  income: ['주수입', '부수입', '투자수익', '아동수당·지원금', '용돈·선물', '기타'],
   saving: ['주택청약', '예금', '적금', '연금', '목적저금', '기타'],
   investment: ['주식', '부동산', '코인', '기타'],
   fixed: ['보험', '통신', '용돈', '주거', '구독', '기타'],

@@ -1,5 +1,6 @@
 import { applyCategoryChanges, type CategoryChange } from './categoryChanges'
 import { supabase } from './supabase'
+import type { ChildRecord } from './childMoney'
 import type { PeerRow } from './peerBenchmark'
 import type {
   AppData,
@@ -276,6 +277,24 @@ export async function pushCategories(householdId: string, categories: Categories
 
 // ── 일일 고백 (confessions) ────────────────────
 
+/** 아이 앞으로 들어온 돈 전부 (2026-10-27) — 62일 밖까지. 자산 탭 아이 카드(올해 합계·10년 증여)용 */
+export async function fetchChildRecords(householdId: string): Promise<ChildRecord[]> {
+  const { data, error } = await supabase
+    .from('confessions')
+    .select('child, category, amount, child_keep, gift, created_at')
+    .eq('household_id', householdId)
+    .not('child', 'is', null)
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    child: r.child,
+    category: r.category,
+    amount: Number(r.amount),
+    childKeep: r.child_keep !== false,
+    gift: r.gift === true,
+    createdAt: r.created_at,
+  }))
+}
+
 /** 최근 62일 고백 로그 (스트릭 계산 + 월 로그 표시용) */
 export async function fetchConfessions(householdId: string): Promise<Confession[]> {
   const since = new Date()
@@ -297,6 +316,9 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
     cardOwner: (r.card_owner ?? undefined) as 1 | 2 | undefined,
     cash: r.paid_cash === true ? true : undefined,
     shared: r.shared === true ? true : undefined,
+    child: r.child ?? undefined,
+    childKeep: r.child ? r.child_keep !== false : undefined,
+    gift: r.gift === true ? true : undefined,
     createdAt: r.created_at,
   }))
 }
@@ -355,6 +377,10 @@ export async function insertConfession(householdId: string, c: Confession) {
     // (confession-shared.sql · confession-paid-cash.sql 칸은 운영 DB에 다 있다)
     paid_cash: !!c.cash,
     shared: !!c.shared,
+    // 아이 앞으로 들어온 돈 (2026-10-27, confession-child.sql)
+    child: c.child ?? null,
+    child_keep: c.child ? c.childKeep !== false : null,
+    gift: !!c.gift,
     created_at: c.createdAt,
   })
   if (error) throw error

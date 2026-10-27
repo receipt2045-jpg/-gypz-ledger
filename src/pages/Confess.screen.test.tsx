@@ -430,3 +430,28 @@ describe('고백 페이지 — 현금 · 날짜 고치기', () => {
     expect(saved.memberNo).toBe(1)
   })
 })
+
+describe('아이 앞으로 들어온 돈 (2026-10-27)', () => {
+  it('아이를 고르고 아동수당·세뱃돈을 적으면 아이 이름으로, 아동수당은 증여에서 빠진다', async () => {
+    seedStore({ memberNo: 1, confessions: [] })
+    useLedgerStore.setState((s) => ({ profile: { ...s.profile, childNames: ['하율'] } }))
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByLabelText('아이 앞으로 하율'))
+    expect(screen.getByRole('button', { name: '하율 통장에 모아요' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: '' }),
+      '아동수당 10만원, 할머니가 세뱃돈 5만원',
+    )
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+    await user.click(screen.getByRole('button', { name: /2건 기록하기/ }))
+    const saved = useLedgerStore.getState().confessions
+    const support = saved.find((c) => c.category === '아동수당·지원금')!
+    const gift = saved.find((c) => c.category === '용돈·선물')!
+    expect(support).toMatchObject({ kind: 'income', child: '하율', childKeep: true })
+    expect(support.gift).toBeUndefined()
+    expect(gift).toMatchObject({ kind: 'income', child: '하율', gift: true })
+  })
+})

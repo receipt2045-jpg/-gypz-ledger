@@ -44,7 +44,7 @@ import { pickReaction, streakOf, type Reaction } from '../lib/reactions'
 import { currentYm, formatComma, formatWon } from '../lib/format'
 import { memberStyle } from '../lib/memberColors'
 import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
-import { GROUP_LABEL, NO_SPEND } from '../lib/constants'
+import { GROUP_LABEL, NO_SPEND, SUPPORT_INCOME } from '../lib/constants'
 import type { CategoryGroup, Confession } from '../types'
 
 // 카테고리 아이콘 매핑 (없으면 Coins)
@@ -194,7 +194,13 @@ export default function Confess() {
   const [cardOwner, setCardOwner] = useState<1 | 2 | 'cash'>(memberNo ?? 1)
   // 카드를 직접 고르기 전까지는 '쓴 사람 = 그 사람 카드'로 따라간다 (대부분 그렇다)
   const [cardPicked, setCardPicked] = useState(false)
+  // 아이 앞으로 들어온 돈 (2026-10-27) — 아동수당·용돈을 아이 이름으로. 수입 기록에만 붙는다
+  const childNames = profile.childNames ?? []
+  const [kid, setKid] = useState<string | null>(null)
+  const [kidKeep, setKidKeep] = useState(true) // 아이 통장에 모아요(기본) / 살림에 보태요
+  const [kidGift, setKidGift] = useState(true) // 부모·조부모가 준 돈 → 증여 누적에 센다
   const pickSpender = (m: 1 | 2 | 'shared') => {
+    setKid(null)
     setSpender(m)
     // 공동은 누구 카드인지 짐작할 수 없다 — 카드 선택은 그대로 둔다
     if (!cardPicked && m !== 'shared') setCardOwner(m)
@@ -293,7 +299,15 @@ export default function Confess() {
         createdAt,
         // 고른 사람 지출로 적는다 — 배우자 몫을 대신 적을 수 있다. 공동이면 적은 사람 + 표시
         memberNo: spenderNo,
-        shared: spender === 'shared' ? true : undefined,
+        shared: spender === 'shared' && !(kid && e.kind === 'income') ? true : undefined,
+        // 아이 앞으로 들어온 돈 — 수입만. 지원금은 나라에서 받은 돈이라 증여에 안 센다
+        ...(kid && e.kind === 'income'
+          ? {
+              child: kid,
+              childKeep: kidKeep,
+              gift: kidGift && e.category !== SUPPORT_INCOME ? true : undefined,
+            }
+          : {}),
         // 카드값이 아닌 것(저축·투자·수입)에는 카드 주인을 남기지 않는다
         cardOwner:
           (e.kind === 'variable' || e.kind === 'fixed') && cardOwner !== 'cash'
@@ -521,6 +535,8 @@ export default function Confess() {
     const expense: { kind: CategoryGroup; label: string; cats: string[] }[] = [
       { kind: 'variable', label: GROUP_LABEL.variable, cats: categories.variable },
       { kind: 'fixed', label: GROUP_LABEL.fixed, cats: categories.fixed },
+      // 들어온 돈도 고칠 수 있게 (2026-10-27 아동수당·용돈)
+      { kind: 'income', label: GROUP_LABEL.income, cats: categories.income },
     ]
     return (
       <Frame>
@@ -766,9 +782,11 @@ export default function Confess() {
                     key={m}
                     onClick={() => pickSpender(m)}
                     aria-label={`쓴 사람 ${label}`}
-                    aria-pressed={spender === m}
+                    aria-pressed={!kid && spender === m}
                     className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[13px] font-bold transition-colors ${
-                      spender === m ? 'bg-brand text-white' : 'bg-bg text-sub active:bg-line'
+                      !kid && spender === m
+                        ? 'bg-brand text-white'
+                        : 'bg-bg text-sub active:bg-line'
                     }`}
                   >
                     {label}
@@ -779,7 +797,60 @@ export default function Confess() {
               })}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          {childNames.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="w-[104px] shrink-0 text-[13px] font-bold text-sub">아이 앞으로</span>
+              <div className="flex flex-1 flex-wrap gap-1.5">
+                {childNames.map((name) => (
+                  <button
+                    key={name}
+                    onClick={() => {
+                      setKid(kid === name ? null : name)
+                      if (kid !== name) setSpender('shared')
+                    }}
+                    aria-label={`아이 앞으로 ${name}`}
+                    aria-pressed={kid === name}
+                    className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[13px] font-bold transition-colors ${
+                      kid === name ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700'
+                    }`}
+                  >
+                    🧒 {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {kid && (
+            <div className="space-y-2 rounded-btn bg-amber-50/60 px-3 py-2.5">
+              <div className="flex gap-1.5">
+                {([true, false] as const).map((keep) => (
+                  <button
+                    key={String(keep)}
+                    onClick={() => setKidKeep(keep)}
+                    aria-pressed={kidKeep === keep}
+                    className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[12.5px] font-bold ${
+                      kidKeep === keep ? 'bg-ink text-white' : 'bg-white text-sub'
+                    }`}
+                  >
+                    {keep ? `${kid} 통장에 모아요` : '살림에 보태요'}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-2 text-[12.5px] text-sub">
+                <input
+                  type="checkbox"
+                  checked={kidGift}
+                  onChange={(e) => setKidGift(e.target.checked)}
+                  className="h-4 w-4 accent-amber-500"
+                />
+                부모·조부모가 준 돈이에요 (증여 기록에 더해요)
+              </label>
+              <p className="text-[11.5px] leading-relaxed text-cap">
+                {kid} 앞으로는 들어온 돈(아동수당·용돈 등)만 적혀요. 쓴 돈은 공동으로 적혀요
+              </p>
+            </div>
+          )}
+          <div className={`flex items-center gap-2 ${kid ? 'hidden' : ''}`}>
             <span className="w-[104px] shrink-0 text-[13px] font-bold text-sub">
               어떻게 냈어요?
             </span>
@@ -799,7 +870,7 @@ export default function Confess() {
               ))}
             </div>
           </div>
-          <p className="text-[11.5px] leading-relaxed text-cap">
+          <p className={`text-[11.5px] leading-relaxed text-cap ${kid ? 'hidden' : ''}`}>
             {spender === 'shared'
               ? '공동 지출로 적혀요. 정산할 땐 적은 사람 항목으로 들어가요'
               : spender === memberNo
@@ -903,12 +974,18 @@ export default function Confess() {
                           >
                             <span
                               className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-                                c.shared
-                                  ? 'bg-line text-sub'
-                                  : memberStyle(c.memberNo, profile).badge
+                                c.child
+                                  ? 'bg-amber-50 text-amber-700'
+                                  : c.shared
+                                    ? 'bg-line text-sub'
+                                    : memberStyle(c.memberNo, profile).badge
                               }`}
                             >
-                              {c.shared ? '공동' : memberNames[c.memberNo - 1]}
+                              {c.child
+                                ? `🧒 ${c.child}`
+                                : c.shared
+                                  ? '공동'
+                                  : memberNames[c.memberNo - 1]}
                             </span>
                             <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
                               {c.category}

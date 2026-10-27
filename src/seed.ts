@@ -218,6 +218,7 @@ const OCCASIONS: OccasionEntry[] = [
 const PROFILE: Profile = {
   member1Name: '남편',
   member2Name: '아내',
+  childNames: ['하율'], // 아이 통장 카드가 예시에서도 보이게 (2026-10-27)
   targetNetWorth: 1_000_000_000, // 10억
   startYear: new Date().getFullYear(),
 }

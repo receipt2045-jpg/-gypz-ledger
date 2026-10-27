@@ -11,7 +11,8 @@ export const COLS: Col[] = [1, 'j', 2]
 
 /** 순서는 사용자 요청대로 — 월급 → 저축·투자 → 고정비 → 생활비 (공동통장 줄은 월급 바로 아래) */
 export const ROWS: { key: RowKey; label: string; groups: CategoryGroup[] }[] = [
-  { key: 'income', label: '월급', groups: ['income'] },
+  // '들어오는 돈' (2026-10-27) — 월급만이 아니라 아동수당·용돈처럼 공동통장으로 들어오는 돈도 받는다
+  { key: 'income', label: '들어오는 돈', groups: ['income'] },
   { key: 'save', label: '저축·투자', groups: ['saving', 'investment'] },
   { key: 'fixed', label: '고정비', groups: ['fixed'] },
   { key: 'variable', label: '생활비', groups: ['variable'] },
@@ -54,9 +55,13 @@ export function totalIncome(items: BudgetItem[]): number {
   return COLS.reduce((a, c) => a + cellSum(items, 'income', c), 0)
 }
 
-/** 공동통장에서 나갈 돈 — '나갈 돈 반반'·'소득 비율로'의 기준 */
+/** 공동통장에서 나갈 돈 — '나갈 돈 반반'·'소득 비율로'의 기준. 공동으로 바로 들어오는 돈(아동수당 등)만큼은 덜 보낸다 */
 export function sharedNeed(items: BudgetItem[]): number {
-  return (['save', 'fixed', 'variable'] as RowKey[]).reduce((a, r) => a + cellSum(items, r, 'j'), 0)
+  const out = (['save', 'fixed', 'variable'] as RowKey[]).reduce(
+    (a, r) => a + cellSum(items, r, 'j'),
+    0,
+  )
+  return Math.max(0, out - cellSum(items, 'income', 'j'))
 }
 
 /** 공동통장에서 나갈 돈을 반반으로, 또는 월급 비율로 나눈다 (만원 단위로 반올림) */

@@ -153,3 +153,30 @@ describe('한글 숫자 금액', () => {
     expect(r.entries.map((e) => e.category)).toEqual(['식비', '카페'])
   })
 })
+
+describe('들어온 돈 알아듣기 (2026-10-27 아동수당·용돈)', () => {
+  const cats = {
+    income: ['주수입', '부수입', '투자수익', '아동수당·지원금', '용돈·선물', '기타'],
+    saving: [],
+    investment: [],
+    fixed: ['보험', '통신', '용돈'],
+    variable: ['식비', '기타'],
+  }
+  it('아동수당·부모급여는 지원금, 세뱃돈·받은 용돈은 용돈·선물', () => {
+    const r = parseConfessionText(
+      '아동수당 10만원, 할머니가 세뱃돈 5만원, 엄마가 용돈 20만원 주심',
+      cats,
+    )
+    expect(r.entries.map((e) => [e.kind, e.category, e.amount])).toEqual([
+      ['income', '아동수당·지원금', 100_000],
+      ['income', '용돈·선물', 50_000],
+      ['income', '용돈·선물', 200_000],
+    ])
+  })
+  it('그냥 용돈은 여전히 쓴 돈(고정비 용돈)', () => {
+    expect(parseConfessionText('용돈 5만원', cats).entries[0]).toMatchObject({
+      kind: 'fixed',
+      category: '용돈',
+    })
+  })
+})
