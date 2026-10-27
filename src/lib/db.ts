@@ -100,6 +100,9 @@ export async function fetchHouseholdData(householdId: string): Promise<Household
     goal: (h.goal ?? undefined) as Profile['goal'],
     roadmap: (h.roadmap ?? undefined) as Profile['roadmap'],
     monthStartDay: h.month_start_day ?? undefined,
+    // 아이 생일·매달 들어오는 돈 (2026-10-27, household-child-recurring.sql)
+    childBirths: (h.child_births ?? undefined) as Profile['childBirths'],
+    childRecurring: (h.child_recurring ?? undefined) as Profile['childRecurring'],
   }
   const ledgers: MonthlyLedger[] = (lg.data ?? []).map((r) => ({
     ym: r.ym,
@@ -244,6 +247,9 @@ export async function pushProfile(householdId: string, profile: Profile) {
       ...(profile.roadmap !== undefined ? { roadmap: profile.roadmap } : {}),
       // 한 달 시작일 — month-start-day.sql을 실행한 DB에서, 바꾼 집만 보낸다 (없는 칸에 보내면 저장 전체가 실패)
       ...(profile.monthStartDay !== undefined ? { month_start_day: profile.monthStartDay } : {}),
+      // 아이 생일·매달 들어오는 돈 — 정한 집만 보낸다
+      ...(profile.childBirths !== undefined ? { child_births: profile.childBirths } : {}),
+      ...(profile.childRecurring !== undefined ? { child_recurring: profile.childRecurring } : {}),
     })
     .eq('id', householdId)
   if (error) throw error

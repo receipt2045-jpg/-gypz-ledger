@@ -15,6 +15,7 @@ import type {
 } from '../types'
 import { DEFAULT_CATEGORIES, GIFT_INCOME, SUPPORT_INCOME, findCategoryGroup } from './constants'
 import { genId, resolveSnapshot } from './carryover'
+import { dueMonths, payDate, recurringId } from './childRecurring'
 import { YEAREND_SAVE_KEY } from './yearEndTax'
 import { buildSeed, sampleConfessions } from '../seed'
 import * as db from './db'
@@ -139,6 +140,8 @@ interface LedgerState extends AppData {
   // 안 넘기면 지금까지처럼 내 지출.
   addConfession: (
     c: Omit<Confession, 'id' | 'createdAt' | 'memberNo'> & {
+      /** 정해진 id로 적을 때(매달 자동 기록) — 없으면 새로 만든다 */
+      id?: string
       createdAt?: string
       memberNo?: 1 | 2
     },
@@ -189,6 +192,8 @@ interface LedgerState extends AppData {
   repairAssetOwners: () => void
   /** 이미 쓰는 집에도 새 기본 수입 항목(아동수당·지원금, 용돈·선물)을 한 번만 넣는다 (2026-10-27) */
   ensureIncomeCategories: () => void
+  /** 아이 앞으로 매달 들어오는 돈 — 들어오는 날이 지난 달을 자동으로 적는다 (2026-10-27) */
+  runChildRecurring: (now?: Date) => void
   /** 서버 최신 카테고리로 맞춘다 — 배우자·다른 기기에서 추가한 것까지 고를 때 보이게 */
   refreshCategories: () => Promise<void>
   // 데이터 관리
@@ -231,6 +236,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     } catch (err) {
       console.error('[sync] 고백 로그 동기화 실패:', err)
     }
+    get().runChildRecurring()
   },
 
   // 샘플 둘러보기: 시드(예시) 데이터를 로컬에서만 보여줌.
@@ -275,7 +281,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const s = get()
     const full: Confession = {
       ...c,
-      id: genId(),
+      id: c.id ?? genId(),
       memberNo: c.memberNo ?? s.memberNo ?? 1,
       createdAt: c.createdAt ?? new Date().toISOString(),
     }
@@ -436,6 +442,38 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const s = get()
     set({ categories: { ...s.categories, [group]: s.categories[group].filter((c) => c !== name) } })
     saveCategoryChange(s.householdId, { action: 'remove', group, name })
+  },
+
+  runChildRecurring: (now = new Date()) => {
+    const s = get()
+    const rules = s.profile.childRecurring ?? []
+    if (rules.length === 0) return
+    // 내 구성원 번호를 모르면 서버가 기록을 거부한다 — 둘러보기(householdId 없음)는 화면에만 적는다
+    if (s.householdId && !s.memberNo) return
+    let changed = false
+    const next = rules.map((rule) => {
+      const due = dueMonths(rule, s.profile.childBirths?.[rule.child], now)
+      if (due.length === 0) return rule
+      for (const d of due) {
+        if (d.skipped) continue
+        const id = recurringId(rule.id, d.ym)
+        if (get().confessions.some((c) => c.id === id)) continue
+        get().addConfession({
+          id,
+          category: SUPPORT_INCOME,
+          kind: 'income',
+          amount: d.amount,
+          note: rule.label,
+          createdAt: payDate(d.ym, rule.day).toISOString(),
+          child: rule.child,
+          childKeep: rule.childKeep,
+          gift: rule.childKeep && rule.gift ? true : undefined,
+        })
+      }
+      changed = true
+      return { ...rule, doneYm: due[due.length - 1].ym }
+    })
+    if (changed) get().updateProfile({ childRecurring: next })
   },
 
   ensureIncomeCategories: () => {

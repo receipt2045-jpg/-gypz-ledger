@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import ChildMoneyCard from './ChildMoneyCard'
 import { renderScreen, seedStore } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
+import { addMonths, lastDueYm } from '../lib/childRecurring'
 
 function open() {
   seedStore({ memberNo: 1, confessions: [] })
@@ -64,5 +65,32 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
     await user.click(screen.getByRole('button', { name: '신고 기록 남기기' }))
     expect(await screen.findByText('기록한 증여는 다 신고했어요')).toBeInTheDocument()
     expect(screen.getByText('한 번에 신고')).toBeInTheDocument()
+  })
+
+  it('아동수당 매달 들어와요 — 석 달 전부터 고르면 지난 3건을 한 번에 넣고, 규칙이 남는다', async () => {
+    const { user } = open()
+    await user.click(screen.getByRole('button', { name: /찰떡이 앞으로 들어온 돈 적기/ }))
+    await user.click(screen.getByRole('switch', { name: '매달 들어와요' }))
+    // 아동수당 기본 금액이 채워진다
+    expect(screen.getByLabelText('들어온 금액')).toHaveValue('100,000')
+    const due = lastDueYm(25)
+    fireEvent.change(screen.getByLabelText('언제부터'), { target: { value: addMonths(due, -2) } })
+    // 한 달은 빼 본다
+    await user.click(screen.getByRole('button', { name: `${addMonths(due, -1)} 넣어요` }))
+    await user.click(screen.getByRole('button', { name: '2건 넣고 매달 적기' }))
+    const st = useLedgerStore.getState()
+    const auto = st.confessions.filter((c) => c.note === '아동수당')
+    expect(auto).toHaveLength(2)
+    expect(auto[0]).toMatchObject({ child: '찰떡이', amount: 100_000, childKeep: true })
+    expect(st.profile.childRecurring).toHaveLength(1)
+    expect(st.profile.childRecurring?.[0]).toMatchObject({ kind: 'allowance', doneYm: due })
+    // 카드에 매달 들어오는 돈과 자동 표시
+    expect(await screen.findByText('매달 들어오는 돈')).toBeInTheDocument()
+    expect(screen.getAllByText('자동').length).toBeGreaterThan(0)
+    // 다시 돌려도 같은 달이 또 적히지 않는다
+    st.runChildRecurring()
+    expect(useLedgerStore.getState().confessions.filter((c) => c.note === '아동수당')).toHaveLength(
+      2,
+    )
   })
 })

@@ -112,7 +112,7 @@ export function allowanceAmount(region: Region, voucher: boolean): number {
 }
 
 /** 그달에 아동수당을 받나. age = 태어난 달부터 센 개월 */
-function allowanceEligible(year: number, birthYear: number, age: number): boolean {
+export function allowanceEligible(year: number, birthYear: number, age: number): boolean {
   const limit = allowanceAge(year)
   if (age < limit * 12) return true
   // 바뀌는 동안(2026~2029)은 2017년생처럼 그해 나이 기준에 드는 출생연도 전체가 받는다(복지부 2026-04-23)

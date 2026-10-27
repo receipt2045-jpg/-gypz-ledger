@@ -34,6 +34,36 @@ export interface Profile {
   roadmap?: Roadmap // 자산 로드맵 페이지(/roadmap)의 가정·계획. 없으면 기본값으로 계산한다
   /** 우리집 한 달 시작일 1~28 (없으면 1). 15면 10월 = 10월 15일 ~ 11월 14일 — lib/format.ymOfDate */
   monthStartDay?: number
+  /** 아이 생일 'YYYY-MM-DD' (아이 이름 → 생일). 부모급여·아동수당 금액이 바뀌는 달·끝나는 달을 맞춘다 */
+  childBirths?: Record<string, string>
+  /** 아이 앞으로 매달 들어오는 돈 (2026-10-27) — lib/childRecurring */
+  childRecurring?: ChildRecurring[]
+}
+
+/** 매달 들어오는 아이 돈. 25일이 지나 앱을 열면 그달 기록을 자동으로 적는다 */
+export interface ChildRecurring {
+  id: string
+  child: string
+  /** allowance 아동수당 / parentPay 부모급여 / other 다른 지원금 */
+  kind: 'allowance' | 'parentPay' | 'other'
+  /** 기록 메모로 들어가는 이름 (예: 아동수당) */
+  label: string
+  /** 매달 금액. 부모급여는 0~11개월 금액 */
+  amount: number
+  /** 부모급여 12~23개월 금액 (생일을 알 때만 씀) */
+  amountAfter1?: number
+  /** 들어오는 날 1~28 */
+  day: number
+  /** 'YYYY-MM' 이 달부터 */
+  startYm: string
+  /** 받지 않은 달 'YYYY-MM' */
+  skip?: string[]
+  /** 이 달까지 적었다 'YYYY-MM' — 지운 기록이 되살아나지 않게 */
+  doneYm?: string
+  /** 멈춘 달 — 이 달 다음부터 안 적는다 */
+  stoppedYm?: string
+  childKeep: boolean
+  gift: boolean
 }
 
 /** 로드맵에 넣는 큰일. 종류마다 쓰는 칸이 다르다 — lib/roadmap.flowAt 참고 */

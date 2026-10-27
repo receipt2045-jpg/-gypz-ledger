@@ -336,19 +336,34 @@ export default function Settings() {
                     onChange={(d) => updateProfile({ monthStartDay: d })}
                   />
                 </Field>
-                <Field label="자녀" hint="자산 소유자로 쓸 수 있어요">
+                <Field label="자녀" hint="생일을 넣으면 부모급여·아동수당 바뀌는 달을 맞춰요">
                   {childNames.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-1.5">
+                    <div className="mb-2 space-y-1.5">
                       {childNames.map((c) => (
-                        <span
-                          key={c}
-                          className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-[13px] font-medium text-amber-600"
-                        >
-                          {c}
-                          <button onClick={() => removeChild(c)} aria-label={`${c} 삭제`}>
-                            <X size={13} className="text-amber-400" />
-                          </button>
-                        </span>
+                        <div key={c} className="flex items-center gap-2">
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-[13px] font-medium text-amber-600">
+                            {c}
+                            <button onClick={() => removeChild(c)} aria-label={`${c} 삭제`}>
+                              <X size={13} className="text-amber-400" />
+                            </button>
+                          </span>
+                          {/* 아이 생일 (2026-10-27) — 매달 들어오는 부모급여·아동수당 금액·끝나는 달 */}
+                          <input
+                            type="date"
+                            value={profile.childBirths?.[c] ?? ''}
+                            max={new Date().toLocaleDateString('sv-SE')}
+                            onChange={(e) =>
+                              updateProfile({
+                                childBirths: {
+                                  ...(profile.childBirths ?? {}),
+                                  [c]: e.target.value,
+                                },
+                              })
+                            }
+                            aria-label={`${c} 생일`}
+                            className="tnum min-w-0 flex-1 rounded-btn border border-line bg-white px-2 py-1.5 text-[13px] text-ink outline-none focus:border-brand"
+                          />
+                        </div>
                       ))}
                     </div>
                   )}
