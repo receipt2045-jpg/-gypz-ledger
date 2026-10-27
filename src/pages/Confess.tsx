@@ -887,6 +887,7 @@ export default function Confess() {
                           key={c.id}
                           c={c}
                           categories={categories}
+                          memberNames={memberNames}
                           onSave={(patch) => {
                             updateConfession(c.id, patch)
                             setEditing(null)
@@ -961,17 +962,23 @@ export default function Confess() {
 function EditRow({
   c,
   categories,
+  memberNames,
   onSave,
   onCancel,
 }: {
   c: Confession
   categories: Record<CategoryGroup, string[]>
+  memberNames: [string, string]
   onSave: (patch: {
     amount: number
     category: string
     kind: CategoryGroup
     note?: string
     createdAt?: string
+    memberNo: 1 | 2
+    shared?: boolean
+    cardOwner?: 1 | 2
+    cash?: boolean
   }) => void
   onCancel: () => void
 }) {
@@ -983,10 +990,21 @@ function EditRow({
   const [date, setDate] = useState(origDate)
   const today = new Date().toLocaleDateString('sv-SE')
   const groups: CategoryGroup[] = ['variable', 'fixed', 'income', 'saving', 'investment']
+  // 누가 썼는지·어떻게 냈는지 (2026-10-27 의견: "공동 생활비인데 아내로 눌러서 쓰고 나면 다시 공동으로 바꿀 수 있나요?")
+  // 공동은 memberNo(적은 사람)를 그대로 두고 표시만 — 새로 적을 때와 같은 규칙
+  const [who, setWho] = useState<1 | 2 | 'shared'>(c.shared ? 'shared' : c.memberNo)
+  const [paid, setPaid] = useState<1 | 2 | 'cash' | null>(c.cash ? 'cash' : (c.cardOwner ?? null))
+  const kind = pick.slice(0, pick.indexOf(':')) as CategoryGroup
+  const isSpend = kind === 'variable' || kind === 'fixed'
 
   const save = () => {
     const i = pick.indexOf(':')
     onSave({
+      memberNo: who === 'shared' ? c.memberNo : who,
+      shared: who === 'shared' ? true : undefined,
+      // 카드값이 아닌 것(저축·투자·수입)에는 카드 주인을 남기지 않는다
+      cardOwner: isSpend && paid !== null && paid !== 'cash' ? paid : undefined,
+      cash: isSpend && paid === 'cash' ? true : undefined,
       kind: pick.slice(0, i) as CategoryGroup,
       category: pick.slice(i + 1),
       amount,
@@ -1032,6 +1050,44 @@ function EditRow({
         />
         <span className="text-[13px] text-sub">원</span>
       </div>
+      <div className="flex items-center gap-2 text-[13px] text-sub">
+        <span className="w-[52px] shrink-0">누가</span>
+        <div className="flex flex-1 gap-1.5">
+          {([1, 2, 'shared'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setWho(m)}
+              aria-label={`누가 쓴 돈: ${m === 'shared' ? '공동' : memberNames[m - 1]}`}
+              aria-pressed={who === m}
+              className={`min-w-0 flex-1 truncate rounded-btn py-1.5 text-[12.5px] font-bold ${
+                who === m ? 'bg-brand text-white' : 'bg-white text-sub'
+              }`}
+            >
+              {m === 'shared' ? '공동' : memberNames[m - 1]}
+            </button>
+          ))}
+        </div>
+      </div>
+      {isSpend && (
+        <div className="flex items-center gap-2 text-[13px] text-sub">
+          <span className="w-[52px] shrink-0">어떻게</span>
+          <div className="flex flex-1 gap-1.5">
+            {([1, 2, 'cash'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setPaid(paid === m ? null : m)}
+                aria-label={`어떻게 냈나: ${m === 'cash' ? '현금' : `${memberNames[m - 1]} 카드`}`}
+                aria-pressed={paid === m}
+                className={`min-w-0 flex-1 truncate rounded-btn py-1.5 text-[12.5px] font-bold ${
+                  paid === m ? 'bg-ink text-white' : 'bg-white text-sub'
+                }`}
+              >
+                {m === 'cash' ? '현금' : `${memberNames[m - 1]} 카드`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <label className="flex items-center gap-2 text-[13px] text-sub">
         <span className="shrink-0">날짜</span>
         <input

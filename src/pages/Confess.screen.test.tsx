@@ -395,4 +395,38 @@ describe('고백 페이지 — 현금 · 날짜 고치기', () => {
     expect(new Date(saved.createdAt).toLocaleDateString('sv-SE')).toBe(target)
     expect(saved.amount).toBe(9_000)
   })
+  it('고칠 때 누가 썼는지·어떻게 냈는지도 바꾼다 (2026-10-27: 공동인데 아내로 적었어요)', async () => {
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        {
+          id: 'c1',
+          memberNo: 2,
+          category: '식비',
+          kind: 'variable',
+          amount: 21_070,
+          cardOwner: 2,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByLabelText('식비 기록 고치기'))
+    await user.click(screen.getByRole('button', { name: '누가 쓴 돈: 공동' }))
+    await user.click(screen.getByRole('button', { name: '어떻게 냈나: 현금' }))
+    await user.click(screen.getByRole('button', { name: '고치기' }))
+    let saved = useLedgerStore.getState().confessions[0]
+    expect(saved.shared).toBe(true)
+    expect(saved.cash).toBe(true)
+    expect(saved.cardOwner).toBeUndefined()
+    expect(saved.memberNo).toBe(2)
+
+    // 다시 남편 몫으로 — 공동 표시가 빠진다
+    await user.click(screen.getByLabelText('식비 기록 고치기'))
+    await user.click(screen.getByRole('button', { name: '누가 쓴 돈: 남편' }))
+    await user.click(screen.getByRole('button', { name: '고치기' }))
+    saved = useLedgerStore.getState().confessions[0]
+    expect(saved.shared).toBeUndefined()
+    expect(saved.memberNo).toBe(1)
+  })
 })

@@ -351,12 +351,11 @@ export async function insertConfession(householdId: string, c: Confession) {
     amount: c.amount,
     note: c.note ?? null,
     card_owner: c.cardOwner ?? null,
-    // 현금 (2026-10-21) — confession-paid-cash.sql 칸. 현금일 때만 보낸다(칸이 없는 옛 DB에서도 저장되게)
-    ...(c.cash ? { paid_cash: true } : {}),
+    // 공동·현금은 고치기(2026-10-27)에서 끌 수도 있어서 늘 보낸다 — upsert라 안 보내면 예전 값이 남는다.
+    // (confession-shared.sql · confession-paid-cash.sql 칸은 운영 DB에 다 있다)
+    paid_cash: !!c.cash,
+    shared: !!c.shared,
     created_at: c.createdAt,
-    // shared 칸은 confession-shared.sql을 실행해야 생긴다. 칸이 없는 DB에 항상 보내면
-    // 공동이 아닌 기록까지 저장이 깨지므로, 공동일 때만 보낸다.
-    ...(c.shared ? { shared: true } : {}),
   })
   if (error) throw error
 }

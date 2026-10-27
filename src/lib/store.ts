@@ -146,7 +146,20 @@ interface LedgerState extends AppData {
   removeConfession: (id: string) => void
   updateConfession: (
     id: string,
-    patch: Partial<Pick<Confession, 'amount' | 'category' | 'kind' | 'note' | 'createdAt'>>,
+    patch: Partial<
+      Pick<
+        Confession,
+        | 'amount'
+        | 'category'
+        | 'kind'
+        | 'note'
+        | 'createdAt'
+        | 'memberNo'
+        | 'shared'
+        | 'cardOwner'
+        | 'cash'
+      >
+    >,
   ) => void
   // 줄글 고백 학습 별칭 (단어 → 카테고리)
   aliases: Record<string, string>
@@ -279,6 +292,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const target = s.confessions.find((c) => c.id === id)
     if (!target) return
     // 제보 4건: "잘못 썼을 때 지우고 다시 쓰는 게 번거로워요" — 금액·항목·메모, 날짜(2026-10-21 의견)까지 고친다
+    // 누가 썼는지·어떻게 냈는지도 (2026-10-27 의견: "공동 생활비인데 아내로 눌러서 썼어요")
     const next: Confession = { ...target, ...patch }
     set({ confessions: s.confessions.map((c) => (c.id === id ? next : c)) })
     if (s.householdId && s.memberNo) {
