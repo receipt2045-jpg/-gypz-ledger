@@ -24,6 +24,28 @@ export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집
 
 export const SHARES: ShareItem[] = [
   {
+    slug: 'child-benefit',
+    path: '/child-benefit',
+    title: '부모급여·아동수당, 앞으로 몇 달 더 받을까',
+    sub: '아이 생일만 넣으면 2026년 바뀐 금액으로 남은 달과 합계를 계산해요',
+    category: '육아',
+    date: '2026-10-27',
+    minutes: 2,
+    emoji: '👶',
+    tint: 'bg-violet-50',
+  },
+  {
+    slug: 'gift-guide',
+    path: '/gift-guide',
+    title: '아이 통장에 넣은 돈, 증여 신고 해야 할까?',
+    sub: '한 번에·나눠서·정기금·기한 지나서까지, 홈택스 신고 순서도 정리했어요',
+    category: '육아',
+    date: '2026-10-27',
+    minutes: 5,
+    emoji: '🐷',
+    tint: 'bg-orange-50',
+  },
+  {
     slug: 'gold',
     path: '/gold',
     title: '금 처음 산다면, 수수료부터 보세요',

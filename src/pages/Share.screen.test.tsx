@@ -13,6 +13,7 @@ function open(path: string) {
         <Route path="/share" element={<Share />} />
         <Route path="/gold" element={<ShareMore />} />
         <Route path="/leave" element={<p>육아휴직 화면</p>} />
+        <Route path="/gift-guide" element={<p>증여 신고 화면</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -32,7 +33,7 @@ describe('자료 나눔 목록 · 다른 자료 (2026-10-24)', () => {
     const { user } = open('/gold')
     expect(screen.getByText('이런 자료도 있어요')).toBeInTheDocument()
     expect(screen.queryByText('금 처음 산다면, 수수료부터 보세요')).not.toBeInTheDocument()
-    await user.click(screen.getByText('육아휴직하면 매달 얼마 남을까'))
-    expect(screen.getByText('육아휴직 화면')).toBeInTheDocument()
+    await user.click(screen.getByText('아이 통장에 넣은 돈, 증여 신고 해야 할까?'))
+    expect(screen.getByText('증여 신고 화면')).toBeInTheDocument()
   })
 })

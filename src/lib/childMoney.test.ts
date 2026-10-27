@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { summarizeChild, type ChildRecord } from './childMoney'
+import {
+  giftReportStatus,
+  periodicGiftValue,
+  periodicMaxMonthly,
+  summarizeChild,
+  type ChildRecord,
+  type GiftReport,
+} from './childMoney'
 
 const r = (p: Partial<ChildRecord>): ChildRecord => ({
   child: '하율',
@@ -43,5 +50,48 @@ describe('아이 앞으로 들어온 돈 (2026-10-27)', () => {
       yearToHousehold: 100_000,
       gift10y: 350_000,
     })
+  })
+})
+
+describe('증여 신고 기록 (2026-10-27)', () => {
+  const now = new Date('2026-10-27T12:00:00')
+  const report = (amount: number, reportedOn: string, child = '찰떡이'): GiftReport => ({
+    id: reportedOn,
+    child,
+    reportedOn,
+    amount,
+    kind: 'lump',
+  })
+
+  it('증여로 적은 돈에서 신고한 돈을 빼면 아직 안 한 돈', () => {
+    expect(giftReportStatus([report(5_000_000, '2026-03-02')], '찰떡이', 8_000_000, now)).toEqual({
+      reported: 5_000_000,
+      unreported: 3_000_000,
+    })
+  })
+
+  it('정기금처럼 앞으로 줄 돈까지 신고했으면 안 한 돈은 0, 다른 아이·10년 넘은 신고는 안 센다', () => {
+    const reports = [
+      report(20_000_000, '2026-01-10'),
+      report(9_000_000, '2026-01-10', '콩떡이'),
+      report(3_000_000, '2015-05-01'),
+    ]
+    expect(giftReportStatus(reports, '찰떡이', 4_000_000, now)).toEqual({
+      reported: 20_000_000,
+      unreported: 0,
+    })
+  })
+})
+
+describe('유기정기금 평가 (연 3%)', () => {
+  it('월 20만원씩 10년 = 2,400만원을 넣어도 평가액은 약 2,047만원', () => {
+    expect(periodicGiftValue(200_000, 10)).toBe(20_472_487)
+  })
+
+  it('10년이면 월 19.5만원까지가 2,000만원 공제 안', () => {
+    const max = periodicMaxMonthly(10)
+    expect(max).toBe(195_000)
+    expect(periodicGiftValue(max, 10)).toBeLessThanOrEqual(20_000_000)
+    expect(periodicGiftValue(max + 1000, 10)).toBeGreaterThan(20_000_000)
   })
 })

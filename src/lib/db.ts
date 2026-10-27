@@ -1,6 +1,6 @@
 import { applyCategoryChanges, type CategoryChange } from './categoryChanges'
 import { supabase } from './supabase'
-import type { ChildRecord } from './childMoney'
+import type { ChildRecord, GiftReport } from './childMoney'
 import type { PeerRow } from './peerBenchmark'
 import type {
   AppData,
@@ -293,6 +293,49 @@ export async function fetchChildRecords(householdId: string): Promise<ChildRecor
     gift: r.gift === true,
     createdAt: r.created_at,
   }))
+}
+
+// ── 증여 신고 기록 (2026-10-27, supabase/child-gift-reports.sql) ──
+export async function fetchGiftReports(householdId: string): Promise<GiftReport[]> {
+  const { data, error } = await supabase
+    .from('child_gift_reports')
+    .select('id, child, reported_on, amount, kind, note')
+    .eq('household_id', householdId)
+    .order('reported_on', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    child: r.child,
+    reportedOn: r.reported_on,
+    amount: Number(r.amount),
+    kind: r.kind,
+    note: r.note ?? undefined,
+  }))
+}
+
+export async function insertGiftReport(
+  householdId: string,
+  r: Omit<GiftReport, 'id'>,
+): Promise<GiftReport> {
+  const { data, error } = await supabase
+    .from('child_gift_reports')
+    .insert({
+      household_id: householdId,
+      child: r.child,
+      reported_on: r.reportedOn,
+      amount: r.amount,
+      kind: r.kind,
+      note: r.note ?? null,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return { ...r, id: data.id }
+}
+
+export async function deleteGiftReport(id: string): Promise<void> {
+  const { error } = await supabase.from('child_gift_reports').delete().eq('id', id)
+  if (error) throw error
 }
 
 /** 최근 62일 고백 로그 (스트릭 계산 + 월 로그 표시용) */

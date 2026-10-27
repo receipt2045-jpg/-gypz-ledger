@@ -57,3 +57,59 @@ export function summarizeChild(
   }
   return out
 }
+
+// ── 증여 신고 기록 (2026-10-27) ──
+// 홈택스에 증여세 신고를 했는지 아이별로 남긴다. 한 번에(일시) 신고했는지, 매달 정해진 돈을
+// 주기로 하고 한 번에 신고(유기정기금)했는지도. 정기금은 계약한 전체 금액을 적는다.
+export type GiftReportKind = 'lump' | 'periodic'
+
+export interface GiftReport {
+  id: string
+  child: string
+  /** 'YYYY-MM-DD' 신고한 날 */
+  reportedOn: string
+  /** 신고한 증여 금액 (정기금은 계약한 전체 금액) */
+  amount: number
+  kind: GiftReportKind
+  note?: string
+}
+
+export const GIFT_REPORT_KIND_LABEL: Record<GiftReportKind, string> = {
+  lump: '한 번에',
+  periodic: '정기금',
+}
+
+/** 최근 10년 신고한 돈과, 증여로 기록했지만 아직 신고 안 한 돈 */
+export function giftReportStatus(
+  reports: GiftReport[],
+  child: string,
+  gift10y: number,
+  now: Date = new Date(),
+): { reported: number; unreported: number } {
+  const tenYearsAgo = new Date(now)
+  tenYearsAgo.setFullYear(now.getFullYear() - 10)
+  const reported = reports
+    .filter((r) => r.child === child && new Date(`${r.reportedOn}T12:00:00`) > tenYearsAgo)
+    .reduce((sum, r) => sum + r.amount, 0)
+  return { reported, unreported: Math.max(0, gift10y - reported) }
+}
+
+/**
+ * 유기정기금 평가액 — 매달 같은 돈을 정해진 해 동안 주기로 하고 처음에 한 번 신고하면,
+ * 해마다 받을 돈을 연 3%로 깎아 지금 가치로 더한 값을 증여한 돈으로 본다(상증법 시행령 62조).
+ * 첫해 몫도 1년 깎아서 센다 — 세무서·세무사마다 계산이 조금 다를 수 있어 참고용.
+ */
+export const PERIODIC_RATE = 0.03
+
+export function periodicGiftValue(monthly: number, years: number): number {
+  let sum = 0
+  for (let k = 1; k <= years; k++) sum += (monthly * 12) / (1 + PERIODIC_RATE) ** k
+  return Math.round(sum)
+}
+
+/** 평가액이 공제(미성년 2,000만) 안에 들어가는 월 최대 금액 — 천 원 단위로 내림 */
+export function periodicMaxMonthly(years: number, limit = GIFT_LIMIT_MINOR): number {
+  let factor = 0
+  for (let k = 1; k <= years; k++) factor += 12 / (1 + PERIODIC_RATE) ** k
+  return Math.floor(limit / factor / 1000) * 1000
+}

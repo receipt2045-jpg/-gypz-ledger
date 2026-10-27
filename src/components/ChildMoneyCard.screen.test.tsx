@@ -37,18 +37,32 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
     expect(await screen.findByText('+10만원')).toBeInTheDocument()
   })
 
-  it('용돈·선물 — 기본으로 증여, 살림에 보태요', async () => {
+  it('용돈·선물 — 기본으로 증여, 살림에 보태면 증여 체크칸이 사라지고 증여로 안 센다', async () => {
     const { user } = open()
     await user.click(screen.getByRole('button', { name: /찰떡이 앞으로 들어온 돈 적기/ }))
     await user.click(screen.getByRole('button', { name: '용돈·선물' }))
     await user.type(screen.getByLabelText('들어온 금액'), '50000')
-    await user.click(screen.getByRole('button', { name: '살림에 보태요' }))
     expect(screen.getByRole('checkbox')).toBeChecked()
+    await user.click(screen.getByRole('button', { name: '살림에 보태요' }))
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '적기' }))
-    expect(useLedgerStore.getState().confessions[0]).toMatchObject({
-      category: '용돈·선물',
-      gift: true,
-      childKeep: false,
-    })
+    const saved = useLedgerStore.getState().confessions[0]
+    expect(saved).toMatchObject({ category: '용돈·선물', childKeep: false })
+    expect(saved.gift).toBeUndefined()
+  })
+
+  it('증여로 적은 돈을 신고했다고 남기면 아직 안 한 돈이 줄어든다', async () => {
+    const { user } = open()
+    await user.click(screen.getByRole('button', { name: /찰떡이 앞으로 들어온 돈 적기/ }))
+    await user.click(screen.getByRole('button', { name: '용돈·선물' }))
+    await user.type(screen.getByLabelText('들어온 금액'), '3000000')
+    await user.click(screen.getByRole('button', { name: '적기' }))
+    expect(await screen.findByText('아직 안 한 돈 300만원')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '증여 신고했어요' }))
+    // 아직 안 한 돈이 미리 채워진다
+    expect(screen.getByLabelText('신고한 금액')).toHaveValue('3,000,000')
+    await user.click(screen.getByRole('button', { name: '신고 기록 남기기' }))
+    expect(await screen.findByText('기록한 증여는 다 신고했어요')).toBeInTheDocument()
+    expect(screen.getByText('한 번에 신고')).toBeInTheDocument()
   })
 })
