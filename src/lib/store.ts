@@ -440,7 +440,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
 
   ensureIncomeCategories: () => {
     const s = get()
-    if (!s.householdId) return
+    // 아이를 등록한 집에만 — 아이를 나중에 등록하면 그때 넣는다
+    if (!s.householdId || !(s.profile.childNames ?? []).length) return
     // 이 기기에서 한 번만 — 일부러 지운 집에 매번 되살아나지 않게
     const key = `moabuli.incomeCats.v1:${s.householdId}`
     try {

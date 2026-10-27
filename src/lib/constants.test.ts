@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CATEGORIES, findCategoryGroup } from './constants'
+import { DEFAULT_CATEGORIES, findCategoryGroup, visibleCategories } from './constants'
 import type { Categories } from '../types'
 
 const cats: Categories = DEFAULT_CATEGORIES
@@ -37,5 +37,19 @@ describe('findCategoryGroup — 이름이 다른 그룹에 있는지', () => {
 
   it('저축 이름을 투자에 넣으려 해도 잡힌다', () => {
     expect(findCategoryGroup(cats, '적금', 'investment')).toBe('saving')
+  })
+})
+
+describe('아이 없는 집엔 아동수당·용돈 수입 항목을 숨긴다 (2026-10-27)', () => {
+  it('아이를 등록 안 했으면 수입 목록에서 빠지고, 등록했으면 그대로', () => {
+    expect(visibleCategories(DEFAULT_CATEGORIES, []).income).toEqual([
+      '주수입',
+      '부수입',
+      '투자수익',
+      '기타',
+    ])
+    expect(visibleCategories(DEFAULT_CATEGORIES, ['찰떡이']).income).toContain('아동수당·지원금')
+    // 다른 그룹은 건드리지 않는다
+    expect(visibleCategories(DEFAULT_CATEGORIES).variable).toBe(DEFAULT_CATEGORIES.variable)
   })
 })

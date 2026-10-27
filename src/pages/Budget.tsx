@@ -33,6 +33,7 @@ import {
   type Col,
   type RowKey,
 } from '../lib/budgetPlan'
+import { visibleCategories } from '../lib/constants'
 import type { BudgetItem, CategoryGroup, Contributions } from '../types'
 
 const short = (n: number) => (n === 0 ? '0' : abbreviateKRW(n).replace(/원$/, ''))
@@ -52,13 +53,18 @@ export default function Budget() {
   const {
     ledgers,
     snapshots,
-    categories,
+    categories: allCategories,
     profile,
     memberNo,
     saveLedger,
     addCategory,
     refreshCategories,
   } = useLedgerStore()
+  // 아이 없는 집엔 아동수당·용돈 수입 항목을 숨긴다
+  const categories = useMemo(
+    () => visibleCategories(allCategories, profile.childNames),
+    [allCategories, profile.childNames],
+  )
   useEffect(() => {
     void refreshCategories()
   }, [refreshCategories])

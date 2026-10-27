@@ -40,6 +40,13 @@ export const ASSET_GROUP_ORDER: AssetGroup[] = [
 /** 아이 앞으로 들어오는 돈의 기본 수입 항목 (2026-10-27) */
 export const SUPPORT_INCOME = '아동수당·지원금'
 export const GIFT_INCOME = '용돈·선물'
+export const CHILD_INCOME = [SUPPORT_INCOME, GIFT_INCOME]
+
+/** 아이를 등록 안 한 집엔 아동수당·용돈 수입 항목을 안 보인다 — 저장된 항목은 그대로 둔다 (2026-10-27) */
+export function visibleCategories(categories: Categories, childNames?: string[]): Categories {
+  if (childNames && childNames.length > 0) return categories
+  return { ...categories, income: categories.income.filter((c) => !CHILD_INCOME.includes(c)) }
+}
 
 export const DEFAULT_CATEGORIES: Categories = {
   // 아동수당·지원금, 용돈·선물 (2026-10-27) — 월급과 섞지 않는다. 아이 이름으로 받을 수도 있다

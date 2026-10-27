@@ -1,7 +1,7 @@
 import MonthStartPicker from '../components/MonthStartPicker'
 import SiteFooter from '../components/SiteFooter'
 import PcColumns from '../components/PcColumns'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Copy,
@@ -28,7 +28,7 @@ import * as db from '../lib/db'
 import { amIStaff } from '../lib/qna'
 import { deleteMyAccount } from '../lib/db'
 import { COLOR_STYLE, MEMBER_COLORS, memberColor, type MemberColor } from '../lib/memberColors'
-import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
+import { GROUP_LABEL, GROUP_ORDER, visibleCategories } from '../lib/constants'
 import type { AppData, CategoryGroup } from '../types'
 
 const ADMIN_EMAIL = 'receipt2045@gmail.com'
@@ -36,7 +36,7 @@ const ADMIN_EMAIL = 'receipt2045@gmail.com'
 export default function Settings() {
   const {
     profile,
-    categories,
+    categories: allCategories,
     inviteCode,
     memberNo,
     updateProfile,
@@ -48,6 +48,11 @@ export default function Settings() {
     importData,
     exportData,
   } = useLedgerStore()
+  // 아이 없는 집엔 아동수당·용돈 수입 항목을 숨긴다
+  const categories = useMemo(
+    () => visibleCategories(allCategories, profile.childNames),
+    [allCategories, profile.childNames],
+  )
   const navigate = useNavigate()
   const fileRef = useRef<HTMLInputElement>(null)
   const [copied, setCopied] = useState(false)
@@ -97,6 +102,8 @@ export default function Settings() {
     const name = newChild.trim()
     if (!name || childNames.includes(name)) return
     updateProfile({ childNames: [...childNames, name] })
+    // 아이를 처음 등록하면 아동수당·지원금, 용돈·선물 수입 항목을 넣는다
+    useLedgerStore.getState().ensureIncomeCategories()
     setNewChild('')
   }
   const removeChild = (name: string) =>

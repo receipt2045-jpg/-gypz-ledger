@@ -202,10 +202,11 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
 
 /** 아이 앞으로 들어온 돈 적기 — 아동수당·지원금 / 용돈·선물 */
 function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void }) {
-  const { addConfession, categories } = useLedgerStore()
+  const { addConfession } = useLedgerStore()
   const today = new Date().toLocaleDateString('sv-SE')
-  const kinds = [SUPPORT_INCOME, GIFT_INCOME].filter((k) => categories.income.includes(k))
-  const [category, setCategory] = useState(kinds[0] ?? SUPPORT_INCOME)
+  // 아이 카드에선 항목 목록과 상관없이 늘 두 가지 — 아이를 막 등록한 집도 바로 적게
+  const kinds = [SUPPORT_INCOME, GIFT_INCOME]
+  const [category, setCategory] = useState(SUPPORT_INCOME)
   const [amount, setAmount] = useState(0)
   const [date, setDate] = useState(today)
   const [note, setNote] = useState('')

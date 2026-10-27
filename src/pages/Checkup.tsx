@@ -46,7 +46,7 @@ import {
   formatYmKorean,
   shiftYm,
 } from '../lib/format'
-import { GROUP_LABEL, findCategoryGroup } from '../lib/constants'
+import { GROUP_LABEL, findCategoryGroup, visibleCategories } from '../lib/constants'
 import { memberStyle } from '../lib/memberColors'
 import type { AssetItem, BudgetItem, Categories, CategoryGroup, Confession } from '../types'
 
@@ -123,7 +123,7 @@ export default function Checkup() {
   const {
     ledgers,
     snapshots,
-    categories,
+    categories: allCategories,
     profile,
     memberNo,
     inviteCode,
@@ -133,6 +133,11 @@ export default function Checkup() {
     addCategory,
     orderCategories,
   } = useLedgerStore()
+  // 아이 없는 집엔 아동수당·용돈 수입 항목을 숨긴다
+  const categories = useMemo(
+    () => visibleCategories(allCategories, profile.childNames),
+    [allCategories, profile.childNames],
+  )
 
   // 모드: 'budget'(예산 세우기, 계획 금액) / 'settle'(정산하기, 실제 금액)
   const nav = (location.state as { ym?: string; mode?: 'budget' | 'settle' } | null) ?? null

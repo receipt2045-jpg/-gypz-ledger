@@ -44,7 +44,7 @@ import { pickReaction, streakOf, type Reaction } from '../lib/reactions'
 import { currentYm, formatComma, formatWon } from '../lib/format'
 import { memberStyle } from '../lib/memberColors'
 import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
-import { GROUP_LABEL, NO_SPEND } from '../lib/constants'
+import { GROUP_LABEL, NO_SPEND, visibleCategories } from '../lib/constants'
 import type { CategoryGroup, Confession } from '../types'
 
 // 카테고리 아이콘 매핑 (없으면 Coins)
@@ -127,7 +127,7 @@ export default function Confess() {
   }, [refreshCategories])
   const navigate = useNavigate()
   const {
-    categories,
+    categories: allCategories,
     memberNo,
     confessions,
     aliases,
@@ -137,6 +137,11 @@ export default function Confess() {
     updateConfession,
     learnAliases,
   } = useLedgerStore()
+  // 아이 없는 집엔 아동수당·용돈 수입 항목을 숨긴다
+  const categories = useMemo(
+    () => visibleCategories(allCategories, profile.childNames),
+    [allCategories, profile.childNames],
+  )
 
   // 모드: 줄글(text, 기본) / 버튼(picker)
   const [mode, setMode] = useState<'text' | 'picker'>('text')
