@@ -6,6 +6,7 @@ import { BIZ, CONTACT, SERVICE } from '../lib/business'
 // 2026-09-01: 호스팅 수탁자 Netlify → Cloudflare 정정, 국외 이전을 동의 대신 공개 방식으로
 // 2026-09-02: 마케팅 정보 수신(선택) 항목 추가
 // 2026-09-02: AI 코칭 기능 제거 — Anthropic은 맞춤 리포트 초안 다듬기 용도로만 남음
+// 개인정보처리방침을 고치면 public/privacy.html(구글 플레이 제출용 정적 사본)도 같이 고친다.
 const UPDATED = '2026-09-02'
 
 /**
