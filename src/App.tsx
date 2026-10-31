@@ -43,6 +43,7 @@ import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import IntroSlides from './pages/IntroSlides'
 import Legal from './pages/Legal'
+import AuthConfirm from './pages/AuthConfirm'
 import ParentalLeave from './pages/ParentalLeave'
 import Gold from './pages/Gold'
 import GiftGuide from './pages/GiftGuide'
@@ -59,6 +60,8 @@ export default function App() {
       <Routes>
         {/* 방침·약관은 로그인 전에도 열람 가능 */}
         <Route path="/legal/:doc" element={<Legal />} />
+        {/* 메일 링크(가입 확인·비밀번호 재설정) — moabuli.com에서 직접 처리해야 앱으로 열린다 */}
+        <Route path="/auth/confirm" element={<AuthConfirm />} />
         {/* 육아휴직 계산기 — 영상·SNS에서 바로 들어오는 자리라 로그인 밖에 둔다 */}
         <Route path="/leave" element={<ParentalLeave />} />
         {/* 금테크 정리 — 단톡·인스타에서 바로 들어오는 자리라 로그인 밖에 둔다 */}
