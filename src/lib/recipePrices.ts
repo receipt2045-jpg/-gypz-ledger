@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { UnitPrices } from './recipes'
+import type { Pack, UnitPrices } from './recipes'
 
 /**
  * 재료값 — recipe_prices 표 (2026-11-01).
@@ -34,6 +34,16 @@ export async function fetchRecipePrices(): Promise<IngredientPrice[]> {
 export function unitPrices(rows: IngredientPrice[]): UnitPrices {
   const out: UnitPrices = {}
   for (const r of rows) if (r.unitPrice !== null && r.unitPrice > 0) out[r.ingredient] = r.unitPrice
+  return out
+}
+
+/** 장보기용 한 봉지 — 봉지 크기는 값 ÷ 1단위 값으로 되찾는다 (묶음 수까지 들어 있다) */
+export function packsOf(rows: IngredientPrice[]): Record<string, Pack> {
+  const out: Record<string, Pack> = {}
+  for (const r of rows) {
+    if (!r.price || !r.unitPrice) continue
+    out[r.ingredient] = { price: r.price, units: r.price / r.unitPrice, url: r.productUrl }
+  }
   return out
 }
 

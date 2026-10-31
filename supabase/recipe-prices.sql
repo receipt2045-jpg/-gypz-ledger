@@ -48,7 +48,9 @@ insert into public.recipe_prices (ingredient, keyword, size_token, pack_amount) 
   ('sugar', '백설탕 1kg', '1kg', 1000),
   ('garlic', '다진마늘 1kg', '1kg', 1000),
   ('sesameOil', '참기름 320ml', '320ml', 320),
-  ('oil', '식용유 1.8L', '1.8L', 1800)
+  ('oil', '식용유 1.8L', '1.8L', 1800),
+  ('pancakeMix', '부침가루 1kg', '1kg', 1000),
+  ('salt', '꽃소금 1kg', '1kg', 1000)
 on conflict (ingredient) do update
   set keyword = excluded.keyword,
       size_token = excluded.size_token,

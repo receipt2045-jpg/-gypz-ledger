@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 import OneTeamCard from '../components/OneTeamCard'
 import ShareMore from '../components/ShareMore'
 import SiteFooter from '../components/SiteFooter'
@@ -8,22 +8,20 @@ import {
   BASE_SERVINGS,
   DAILY,
   INGREDIENTS,
+  MAIN_INGREDIENTS,
+  PANTRY,
   RECIPES,
   SERVING_OPTIONS,
+  amountText,
   ingredientsFor,
-  mealCost,
   mealNutrition,
   recipeBySlug,
-  amountText,
+  recipesWith,
+  shoppingList,
+  type Pack,
   type Recipe,
-  type UnitPrices,
 } from '../lib/recipes'
-import {
-  fetchRecipePrices,
-  pricesDate,
-  unitPrices,
-  type IngredientPrice,
-} from '../lib/recipePrices'
+import { fetchRecipePrices, packsOf, pricesDate, type IngredientPrice } from '../lib/recipePrices'
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`
 /** 12,520 → "1만 2,500원" — 큰 숫자는 백 원 단위로 */
@@ -34,66 +32,125 @@ const wonShort = (n: number) => {
   if (!man) return `${rest.toLocaleString('ko-KR')}원`
   return rest ? `${man}만 ${rest.toLocaleString('ko-KR')}원` : `${man}만 원`
 }
-const PEOPLE_KEY = 'moabuli.recipes.people'
 
-function readPeople(): number {
+/** 재료 칩 그림 */
+const CHIP_EMOJI: Record<string, string> = {
+  pork: '🥩',
+  kimchi: '🥬',
+  tofu: '🧈',
+  egg: '🥚',
+  potato: '🥔',
+}
+const CHIP_NAME: Record<string, string> = {
+  pork: '돼지고기',
+  kimchi: '김치',
+  tofu: '두부',
+  egg: '달걀',
+  potato: '감자',
+}
+
+// ── 이 폰에 기억해 두기 — 장 보러 가서 다시 열어도 그대로 ──
+const KEY = {
+  people: 'moabuli.recipes.people',
+  owned: 'moabuli.recipes.owned',
+  cart: 'moabuli.recipes.cart',
+}
+
+function load<T>(key: string, fallback: T, ok: (v: unknown) => boolean): T {
   try {
-    const n = Number(localStorage.getItem(PEOPLE_KEY))
-    return (SERVING_OPTIONS as readonly number[]).includes(n) ? n : 4
+    const v = JSON.parse(localStorage.getItem(key) ?? 'null')
+    return ok(v) ? (v as T) : fallback
   } catch {
-    return 4
+    return fallback
   }
 }
+function save(key: string, v: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(v))
+  } catch {
+    /* 시크릿 모드 */
+  }
+}
+function useSaved<T>(key: string, fallback: T, ok: (v: unknown) => boolean) {
+  const [v, setV] = useState<T>(() => load(key, fallback, ok))
+  const set = (next: T) => {
+    setV(next)
+    save(key, next)
+  }
+  return [v, set] as const
+}
+const isStrings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === 'string')
 
 /**
  * 결영이네 집밥 레시피 (2026-11-01) — 로그인 없이 열리는 공개 페이지.
- * 사진 크게, 글 적게 (2026-11-01 "별로다" → 만개의레시피·우리의식탁 따라 다시).
- * 제일 중요한 두 가지: 한 끼 얼마(쿠팡 가격, 쓴 만큼만) · 영양소(식약처 음식 DB).
- * /recipes = 목록, /recipes/:slug = 한 가지 레시피.
+ * "집에 뭐 있어요?" → 그 재료로 되는 레시피 → 담기 → 추가로 살 재료만 봉지 단위로.
+ * 3일에 한 번 장 보는 집을 생각했다: 레시피 셋을 담으면 그게 사흘 장보기 목록이다.
+ * /recipes = 고르기, /recipes/cart = 장보기 목록, /recipes/:slug = 한 가지 레시피.
  */
 export default function Recipes() {
   const { slug } = useParams()
-  const [people, setPeopleState] = useState(readPeople)
-  const setPeople = (n: number) => {
-    setPeopleState(n)
-    try {
-      localStorage.setItem(PEOPLE_KEY, String(n))
-    } catch {
-      /* 시크릿 모드 */
-    }
-  }
+  const [people, setPeople] = useSaved<number>(KEY.people, 4, (v) =>
+    (SERVING_OPTIONS as readonly unknown[]).includes(v),
+  )
+  const [owned, setOwned] = useSaved<string[]>(KEY.owned, [], isStrings)
+  const [cart, setCart] = useSaved<string[]>(KEY.cart, [], isStrings)
+  const toggleCart = (s: string) =>
+    setCart(cart.includes(s) ? cart.filter((x) => x !== s) : [...cart, s])
+
   const [rows, setRows] = useState<IngredientPrice[]>([])
   useEffect(() => {
     fetchRecipePrices()
       .then(setRows)
       .catch(() => setRows([]))
   }, [])
-  const prices = useMemo(() => unitPrices(rows), [rows])
-  const recipe = slug ? recipeBySlug(slug.replace(/\/+$/, '')) : undefined
+  const packs = useMemo(() => packsOf(rows), [rows])
+
+  const page = slug?.replace(/\/+$/, '')
+  const recipe = page && page !== 'cart' ? recipeBySlug(page) : undefined
 
   return (
     <div className="flex min-h-screen justify-center bg-white break-keep">
       <div className="w-full max-w-app">
-        {recipe ? (
+        {page === 'cart' ? (
+          <Cart
+            cart={cart}
+            toggleCart={toggleCart}
+            owned={owned}
+            people={people}
+            setPeople={setPeople}
+            packs={packs}
+          />
+        ) : recipe ? (
           <Detail
             recipe={recipe}
             people={people}
             setPeople={setPeople}
-            prices={prices}
-            rows={rows}
+            inCart={cart.includes(recipe.slug)}
+            toggleCart={() => toggleCart(recipe.slug)}
+            owned={owned}
+            packs={packs}
           />
         ) : (
-          <List people={people} setPeople={setPeople} prices={prices} />
+          <Pick
+            owned={owned}
+            setOwned={setOwned}
+            people={people}
+            setPeople={setPeople}
+            cart={cart}
+            toggleCart={toggleCart}
+          />
         )}
 
         {/* 끝부분 순서: 다른 자료 → 원팀프로젝트 → 자료 출처 */}
-        <div className="space-y-4 bg-bg px-4 pb-10 pt-8">
+        <div className="space-y-4 bg-bg px-4 pb-28 pt-8">
           <ShareMore />
           <OneTeamCardLink />
           <Sources date={pricesDate(rows)} recipe={recipe} />
         </div>
         <SiteFooter />
       </div>
+
+      {page !== 'cart' && cart.length > 0 && <CartBar count={cart.length} />}
     </div>
   )
 }
@@ -123,56 +180,104 @@ function People({ people, setPeople }: { people: number; setPeople: (n: number) 
   )
 }
 
-function List({
+/** 이 레시피를 하려면 더 사야 하는 재료 이름 — 집에 있다고 고른 것과 양념은 빼고 */
+function extrasFor(r: Recipe, owned: string[]): string[] {
+  return r.ingredients
+    .map(([id]) => id)
+    .filter((id) => !owned.includes(id) && !PANTRY.has(id))
+    .map((id) => INGREDIENTS[id]?.name ?? id)
+}
+
+function Pick({
+  owned,
+  setOwned,
   people,
   setPeople,
-  prices,
+  cart,
+  toggleCart,
 }: {
+  owned: string[]
+  setOwned: (v: string[]) => void
   people: number
   setPeople: (n: number) => void
-  prices: UnitPrices
+  cart: string[]
+  toggleCart: (s: string) => void
 }) {
   const navigate = useNavigate()
+  const list = recipesWith(owned)
+  const toggleOwned = (id: string) =>
+    setOwned(owned.includes(id) ? owned.filter((x) => x !== id) : [...owned, id])
+  const open = (s: string) => {
+    navigate(`/recipes/${s}`)
+    window.scrollTo(0, 0)
+  }
+
   return (
     <div className="px-4 pb-6 pt-7">
       <p className="text-[13px] font-bold text-brand">결영이네 집밥</p>
-      <h1 className="mt-1 text-[26px] font-extrabold leading-snug text-ink">
-        오늘 저녁, 한 끼 얼마?
-      </h1>
-      <div className="mt-4 flex items-center justify-between">
-        <span className="text-[14px] text-sub">우리 집은</span>
+      <h1 className="mt-1 text-[26px] font-extrabold leading-snug text-ink">집에 뭐 있어요?</h1>
+      <p className="mt-1 text-[15px] text-sub">고르면 그걸로 만드는 레시피만 보여 드려요.</p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {MAIN_INGREDIENTS.map((id) => {
+          const on = owned.includes(id)
+          return (
+            <button
+              key={id}
+              onClick={() => toggleOwned(id)}
+              aria-pressed={on}
+              className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-[15px] font-bold ${
+                on ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink'
+              }`}
+            >
+              <span aria-hidden>{CHIP_EMOJI[id]}</span>
+              {CHIP_NAME[id]}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between">
+        <span className="text-[14px] text-sub">
+          레시피 <b className="text-ink">{list.length}</b>개
+        </span>
         <People people={people} setPeople={setPeople} />
       </div>
 
-      <ul className="mt-5 space-y-7">
-        {RECIPES.map((r) => {
-          const cost = mealCost(r, people, prices)
+      <ul className="mt-4 space-y-7">
+        {list.map((r) => {
+          const inCart = cart.includes(r.slug)
+          const extras = extrasFor(r, owned)
           return (
             <li key={r.slug}>
-              <button
-                onClick={() => {
-                  navigate(`/recipes/${r.slug}`)
-                  window.scrollTo(0, 0)
-                }}
-                className="block w-full text-left active:opacity-80"
-              >
-                <img
-                  src={r.photo.src}
-                  alt={r.name}
-                  loading="lazy"
-                  className="aspect-[4/3] w-full rounded-2xl bg-bg object-cover"
-                />
-                <p className="mt-2.5 text-[18px] font-extrabold text-ink">{r.name}</p>
-                <p className="mt-0.5 text-[15px] text-sub">
-                  {cost.total !== null ? (
-                    <b className="font-bold text-ink">
-                      {people}인 {wonShort(cost.total)}
-                    </b>
+              <div className="relative">
+                <button
+                  onClick={() => open(r.slug)}
+                  className="block w-full active:opacity-80"
+                  aria-label={`${r.name} 보기`}
+                >
+                  <img
+                    src={r.photo.src}
+                    alt={r.name}
+                    loading="lazy"
+                    className="aspect-[16/11] w-full rounded-2xl bg-bg object-cover"
+                  />
+                </button>
+                <CartButton inCart={inCart} onClick={() => toggleCart(r.slug)} floating />
+              </div>
+              <button onClick={() => open(r.slug)} className="mt-2.5 block w-full text-left">
+                <span className="block text-[18px] font-extrabold text-ink">{r.name}</span>
+                <span className="mt-0.5 block text-[14px] text-sub">
+                  {extras.length ? (
+                    <>
+                      <b className="font-bold text-ink">+ {extras.slice(0, 3).join('·')}</b>
+                      {extras.length > 3 ? ` 외 ${extras.length - 3}가지` : ''} 사면 돼요
+                    </>
                   ) : (
-                    <span className="text-cap">가격 받는 중</span>
+                    <b className="font-bold text-brand">더 살 것 없어요</b>
                   )}
                   <span className="text-cap"> · {r.minutes}분</span>
-                </p>
+                </span>
               </button>
             </li>
           )
@@ -182,23 +287,241 @@ function List({
   )
 }
 
+function CartButton({
+  inCart,
+  onClick,
+  floating = false,
+}: {
+  inCart: boolean
+  onClick: () => void
+  floating?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={inCart}
+      className={`flex items-center gap-1 rounded-full px-3.5 py-2 text-[14px] font-extrabold shadow ${
+        floating ? 'absolute bottom-3 right-3' : ''
+      } ${inCart ? 'bg-brand text-white' : 'bg-white text-ink'}`}
+    >
+      {inCart ? <Check size={16} /> : <Plus size={16} />}
+      {inCart ? '담음' : '담기'}
+    </button>
+  )
+}
+
+/** 담은 게 있으면 화면 맨 아래에 붙는 바 */
+function CartBar({ count }: { count: number }) {
+  const navigate = useNavigate()
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-4">
+      <button
+        onClick={() => {
+          navigate('/recipes/cart')
+          window.scrollTo(0, 0)
+        }}
+        className="flex w-full max-w-[448px] items-center justify-between rounded-2xl bg-ink px-5 py-4 text-white shadow-lg"
+      >
+        <span className="text-[16px] font-extrabold">{count}끼 담음</span>
+        <span className="flex items-center gap-0.5 text-[15px] font-bold">
+          장보기 목록 보기
+          <ChevronRight size={18} />
+        </span>
+      </button>
+    </div>
+  )
+}
+
+function Cart({
+  cart,
+  toggleCart,
+  owned,
+  people,
+  setPeople,
+  packs,
+}: {
+  cart: string[]
+  toggleCart: (s: string) => void
+  owned: string[]
+  people: number
+  setPeople: (n: number) => void
+  packs: Record<string, Pack>
+}) {
+  const navigate = useNavigate()
+  const [withPantry, setWithPantry] = useState(false)
+  const recipes = cart.map(recipeBySlug).filter((r): r is Recipe => !!r)
+  const list = shoppingList(recipes, people, owned, withPantry, packs)
+  const back = () => {
+    navigate('/recipes')
+    window.scrollTo(0, 0)
+  }
+
+  if (!recipes.length) {
+    return (
+      <div className="px-5 pb-10 pt-6">
+        <BackLink onClick={back} />
+        <h1 className="mt-4 text-[24px] font-extrabold text-ink">장보기 목록</h1>
+        <p className="mt-2 text-[15px] text-sub">아직 담은 레시피가 없어요.</p>
+        <button
+          onClick={back}
+          className="mt-5 w-full rounded-btn bg-ink py-3.5 text-[15px] font-bold text-white"
+        >
+          레시피 고르러 가기
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-5 pb-6 pt-6">
+      <BackLink onClick={back} />
+      <h1 className="mt-4 text-[24px] font-extrabold text-ink">장보기 목록</h1>
+      <div className="mt-1 flex items-center justify-between">
+        <span className="text-[15px] text-sub">{recipes.length}끼 · 인원</span>
+        <People people={people} setPeople={setPeople} />
+      </div>
+
+      {/* 합계 — 장 한 번에 실제로 내는 돈 */}
+      <div className="mt-4 rounded-2xl bg-ink px-5 py-4 text-white">
+        <p className="text-[13px] text-white/60">추가로 살 것 합계</p>
+        <p className="tnum text-[30px] font-extrabold leading-tight">
+          {list.total !== null ? wonShort(list.total) : '가격 받는 중'}
+        </p>
+        {list.total !== null && (
+          <p className="mt-0.5 text-[14px] text-white/75">
+            {recipes.length}끼로 나누면 한 끼 {wonShort(list.total / recipes.length)}
+          </p>
+        )}
+      </div>
+
+      <Part title="추가로 살 것" right={`${list.toBuy.length}가지`}>
+        <ul>
+          {list.toBuy.map((it) => (
+            <li
+              key={it.id}
+              className="flex items-center justify-between gap-3 border-b border-line py-3"
+            >
+              <span className="min-w-0">
+                <span className="block text-[16px] text-ink">{INGREDIENTS[it.id]?.name}</span>
+                <span className="block text-[13px] text-cap">
+                  {amountText(it.id, it.need)} 써요{it.packs > 1 ? ` · ${it.packs}개 사요` : ''}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-2.5">
+                <span className="tnum text-[15px] font-bold text-ink">
+                  {it.cost !== null ? won(it.cost) : '—'}
+                </span>
+                {it.url && (
+                  <a
+                    href={it.url}
+                    target="_blank"
+                    rel="sponsored noopener noreferrer"
+                    className="rounded-full border border-line px-2.5 py-0.5 text-[12px] font-bold text-sub"
+                  >
+                    구매
+                  </a>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <label className="mt-3 flex items-center gap-2 text-[14px] text-sub">
+          <input
+            type="checkbox"
+            checked={withPantry}
+            onChange={(e) => setWithPantry(e.target.checked)}
+            className="h-4 w-4 accent-[#191F28]"
+          />
+          간장·설탕 같은 양념과 쌀도 사야 해요
+        </label>
+      </Part>
+
+      {list.have.length > 0 && (
+        <Part title="집에 있는 것" right="빼고 계산했어요">
+          <div className="flex flex-wrap gap-1.5">
+            {list.have.map((id) => (
+              <span key={id} className="rounded-full bg-bg px-3 py-1 text-[13px] text-sub">
+                {INGREDIENTS[id]?.name}
+              </span>
+            ))}
+          </div>
+        </Part>
+      )}
+
+      <Part title="담은 레시피" right={`${recipes.length}끼`}>
+        <ul className="space-y-3">
+          {recipes.map((r) => (
+            <li key={r.slug} className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  navigate(`/recipes/${r.slug}`)
+                  window.scrollTo(0, 0)
+                }}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              >
+                <img
+                  src={r.photo.src}
+                  alt=""
+                  className="h-14 w-14 shrink-0 rounded-xl bg-bg object-cover"
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-[16px] font-bold text-ink">{r.name}</span>
+                  <span className="block text-[13px] text-cap">{r.minutes}분 · 순서 보기</span>
+                </span>
+              </button>
+              <button
+                onClick={() => toggleCart(r.slug)}
+                aria-label={`${r.name} 빼기`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg text-sub"
+              >
+                <X size={16} />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button
+          onClick={back}
+          className="mt-4 w-full rounded-btn border border-line py-3 text-[14px] font-bold text-sub"
+        >
+          + 레시피 더 담기
+        </button>
+      </Part>
+    </div>
+  )
+}
+
+function BackLink({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="-ml-1 flex items-center gap-0.5 text-[14px] font-semibold text-sub"
+    >
+      <ChevronLeft size={19} />
+      레시피 고르기
+    </button>
+  )
+}
+
 function Detail({
   recipe: r,
   people,
   setPeople,
-  prices,
-  rows,
+  inCart,
+  toggleCart,
+  owned,
+  packs,
 }: {
   recipe: Recipe
   people: number
   setPeople: (n: number) => void
-  prices: UnitPrices
-  rows: IngredientPrice[]
+  inCart: boolean
+  toggleCart: () => void
+  owned: string[]
+  packs: Record<string, Pack>
 }) {
   const navigate = useNavigate()
-  const cost = mealCost(r, people, prices)
   const n = mealNutrition(r)
-  const links = Object.fromEntries(rows.map((x) => [x.ingredient, x.productUrl]))
+  const extra = shoppingList([r], people, owned, false, packs)
 
   return (
     <article>
@@ -207,28 +530,29 @@ function Detail({
         <img src={r.photo.src} alt={r.name} className="aspect-[4/3] w-full bg-bg object-cover" />
         <button
           onClick={() => navigate('/recipes')}
-          aria-label="집밥 레시피 전체"
+          aria-label="레시피 고르기"
           className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-ink shadow"
         >
           <ChevronLeft size={22} />
         </button>
+        <CartButton inCart={inCart} onClick={toggleCart} floating />
       </div>
 
       <div className="px-5 pt-5">
         <h1 className="text-[26px] font-extrabold text-ink">{r.name}</h1>
         <p className="mt-1 text-[15px] text-sub">{r.sub}</p>
 
-        {/* 한 끼 얼마 — 숫자 하나만 크게 */}
+        {/* 더 사야 하는 돈 — 집에 있는 재료·양념은 빼고 */}
         <div className="mt-5 flex items-end justify-between border-y border-line py-4">
           <div>
-            <p className="text-[13px] text-cap">{people}인 한 끼</p>
-            <p className="tnum text-[30px] font-extrabold leading-tight text-ink">
-              {cost.total !== null ? wonShort(cost.total) : '—'}
+            <p className="text-[13px] text-cap">
+              {owned.length ? '집에 있는 재료 빼고 ' : ''}더 살 재료
+            </p>
+            <p className="tnum text-[28px] font-extrabold leading-tight text-ink">
+              {extra.total !== null ? wonShort(extra.total) : '—'}
             </p>
             <p className="text-[13px] text-cap">
-              {cost.perPerson !== null
-                ? `한 사람 ${won(cost.perPerson)}${r.withRice ? ' · 밥 포함' : ''}`
-                : '가격 받는 중'}
+              {extra.toBuy.map((i) => INGREDIENTS[i.id]?.name).join('·') || '더 살 것 없어요'}
             </p>
           </div>
           <People people={people} setPeople={setPeople} />
@@ -250,33 +574,25 @@ function Detail({
           한 사람 한 끼{r.withRice ? '(밥 한 공기 포함)' : ''} · 나트륨은 하루 권장량 대비
         </p>
 
-        {/* 재료 — 이름 · 양, 두 칸 */}
+        {/* 재료 — 이름 · 양 */}
         <Part title="재료" right={`${people}인분`}>
           <ul>
-            {ingredientsFor(r, people).map(([id, amount]) => {
-              const url = links[id]
-              return (
-                <li
-                  key={id}
-                  className="flex items-center justify-between border-b border-line py-3 text-[16px]"
-                >
-                  <span className="text-ink">{INGREDIENTS[id]?.name}</span>
-                  <span className="flex items-center gap-2.5">
-                    <span className="text-sub">{amountText(id, amount)}</span>
-                    {url && (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="sponsored noopener noreferrer"
-                        className="rounded-full border border-line px-2.5 py-0.5 text-[12px] font-bold text-sub"
-                      >
-                        구매
-                      </a>
-                    )}
-                  </span>
-                </li>
-              )
-            })}
+            {ingredientsFor(r, people).map(([id, amount]) => (
+              <li
+                key={id}
+                className="flex items-center justify-between border-b border-line py-3 text-[16px]"
+              >
+                <span className="text-ink">
+                  {INGREDIENTS[id]?.name}
+                  {owned.includes(id) && (
+                    <span className="ml-1.5 rounded bg-bg px-1.5 py-0.5 text-[11px] font-bold text-brand">
+                      집에 있음
+                    </span>
+                  )}
+                </span>
+                <span className="text-sub">{amountText(id, amount)}</span>
+              </li>
+            ))}
           </ul>
         </Part>
 
@@ -342,8 +658,8 @@ function Sources({ date, recipe }: { date: string | null; recipe?: Recipe }) {
       <p className="font-semibold text-sub">자료 출처</p>
       <ul className="mt-1.5 space-y-1">
         <li>
-          · 재료 가격 — 쿠팡 검색 결과{date ? ` (${date} 기준)` : ''}. 한 봉지 값을 1g(ml·개)당으로
-          나눠 쓴 만큼만 더했어요. 가격은 수시로 바뀌어요
+          · 재료 가격 — 쿠팡 검색 결과{date ? ` (${date} 기준)` : ''}. 같은 용량 중 1g(ml·개)당 가장
+          싼 상품이에요. 가격은 수시로 바뀌어요
         </li>
         <li>
           · 영양소 — 식품의약품안전처 「전국통합식품영양성분정보(음식) 표준데이터」(공공데이터포털).

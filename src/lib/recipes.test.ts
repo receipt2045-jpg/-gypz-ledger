@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   INGREDIENTS,
+  MAIN_INGREDIENTS,
   RECIPES,
+  recipesWith,
+  shoppingList,
   amountText,
   ingredientsFor,
   mealCost,
@@ -42,6 +45,43 @@ describe('집밥 레시피 (2026-11-01)', () => {
     const { egg: _egg, ...noEgg } = all
     expect(mealCost(r, 2, noEgg).total).toBeNull()
     expect(mealCost(r, 2, noEgg).missing).toEqual(['egg'])
+  })
+
+  it('돼지고기를 고르면 돼지고기가 들어가는 레시피만', () => {
+    const list = recipesWith(['pork'])
+    expect(list.length).toBeGreaterThanOrEqual(4)
+    for (const r of list) expect(r.ingredients.some(([id]) => id === 'pork')).toBe(true)
+  })
+
+  it('재료 다섯 개마다 레시피가 3개 이상', () => {
+    for (const id of MAIN_INGREDIENTS) expect(recipesWith([id]).length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('장보기 — 담은 레시피 재료를 합치고, 고른 재료·양념은 빼고, 봉지 단위로', () => {
+    const picked = ['kimchi-jjigae', 'jeyuk'].map((s) => recipeBySlug(s)!)
+    const packs = {
+      kimchi: { price: 9000, units: 1000, url: null },
+      tofu: { price: 1500, units: 300, url: null },
+      onion: { price: 3000, units: 1500, url: null },
+      greenOnion: { price: 2500, units: 500, url: null },
+    }
+    const list = shoppingList(picked, 2, ['pork'], false, packs)
+    expect(list.toBuy.map((i) => i.id).sort()).toEqual(['greenOnion', 'kimchi', 'onion', 'tofu'])
+    expect(list.have).toContain('pork')
+    expect(list.have).toContain('gochujang')
+    // 양파 100g + 100g → 1.5kg 한 봉지
+    expect(list.toBuy.find((i) => i.id === 'onion')).toMatchObject({
+      need: 200,
+      packs: 1,
+      cost: 3000,
+    })
+    expect(list.total).toBe(9000 + 1500 + 3000 + 2500)
+  })
+
+  it('양념도 사야 하면 목록에 넣고, 값이 없는 재료가 있으면 합계를 내지 않는다', () => {
+    const list = shoppingList([recipeBySlug('dubu-buchim')!], 2, [], true, {})
+    expect(list.toBuy.map((i) => i.id)).toContain('soySauce')
+    expect(list.total).toBeNull()
   })
 
   it('양 읽기 — 양념은 큰술, 채소는 개, 밥은 공기', () => {
