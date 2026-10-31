@@ -26,8 +26,8 @@ export const SHARES: ShareItem[] = [
   {
     slug: 'recipes',
     path: '/recipes',
-    title: '오늘 저녁, 한 끼 얼마일까',
-    sub: '흔한 집밥 9가지를 쿠팡 가격으로 쓴 만큼만 계산하고, 영양소까지 봐요',
+    title: '집에 뭐 있어요? 그걸로 저녁 고르기',
+    sub: '집에 있는 재료로 고르고, 더 살 재료와 영양소까지 봐요',
     category: '집밥',
     date: '2026-11-01',
     minutes: 3,

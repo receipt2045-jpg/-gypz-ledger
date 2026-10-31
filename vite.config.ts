@@ -36,7 +36,7 @@ const OG_PAGES: OgPage[] = [
   {
     dir: 'recipes',
     title: '결영이네 집밥 레시피',
-    description: '오늘 저녁, 한 끼 얼마일까. 흔한 집밥 9가지를 쓴 만큼만 계산하고 영양소까지 봐요.',
+    description: '집에 있는 재료로 레시피를 고르면, 더 살 재료와 영양소까지 알려 줘요.',
     image: 'https://moabuli.com/og-recipes.png?v=1',
   },
 ]

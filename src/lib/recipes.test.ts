@@ -53,8 +53,8 @@ describe('집밥 레시피 (2026-11-01)', () => {
     for (const r of list) expect(r.ingredients.some(([id]) => id === 'pork')).toBe(true)
   })
 
-  it('재료 다섯 개마다 레시피가 3개 이상', () => {
-    for (const id of MAIN_INGREDIENTS) expect(recipesWith([id]).length).toBeGreaterThanOrEqual(3)
+  it('재료 다섯 개마다 레시피가 5개 이상', () => {
+    for (const id of MAIN_INGREDIENTS) expect(recipesWith([id]).length).toBeGreaterThanOrEqual(5)
   })
 
   it('장보기 — 담은 레시피 재료를 합치고, 고른 재료·양념은 빼고, 봉지 단위로', () => {
