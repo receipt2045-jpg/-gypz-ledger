@@ -59,6 +59,24 @@ gypz-ledger/
 - **외부 링크**: moabuli.com·Supabase·구글 로그인 도메인이 아닌 주소는 `@capacitor/browser`(크롬 커스텀 탭) 또는 시스템 브라우저로 연다. `target="_blank"`와 `window.open`, 그리고 앱 밖 도메인으로의 이동을 모두 잡는다.
 - `?src=app` 유입 표시는 앱 시작 주소에 그대로 붙인다(기존 집계 유지).
 
+## 웹뷰에서 안 되는 웹 기능 메우기
+
+앱 화면은 크롬이 아니라 안드로이드 System WebView라 아래 기능이 그대로는 안 된다. `src/lib/native.ts`에서 앱일 때만 네이티브로 바꿔 부른다(웹은 지금 코드 그대로).
+
+| 기능 | 쓰는 곳 | 웹뷰에서 | 대체 |
+|---|---|---|---|
+| 음성 인식(Web Speech API) | Confess 마이크 버튼 | 없음 → 버튼 사라짐 | `@capacitor-community/speech-recognition` (ko-KR) |
+| `navigator.share` (텍스트·링크) | invite.ts, leaveShare.ts, qna.ts, AdminPosts | 없음 → 클립보드 복사로 떨어짐 | `@capacitor/share` |
+| `navigator.share` (파일) | cardImage.ts(성적표), ParentalLeave | 없음 | `@capacitor/filesystem`에 임시 저장 → `@capacitor/share` |
+| `a.download` (blob 저장) | Settings 데이터 내보내기, cardImage·ParentalLeave 폴백 | 아무 반응 없음 | 위와 같이 파일 저장 후 공유 창 |
+
+그대로 되는 것: `<input type="file">` 사진 선택(Capacitor가 파일 선택 창 처리), 클립보드 복사(https), localStorage.
+
+## 기존 사용자 데이터
+
+- 가계부 데이터는 서버(Supabase)에 있으므로 이전 작업 없음 — 같은 계정으로 다시 로그인하면 끝.
+- 폰에만 있던 값(계산기 저장값: 육아휴직·연말정산·아이 지원금, 배너 숨김 표시)은 크롬 저장소에 있어 새 앱으로 넘어가지 않는다. 앱 공개 전이라 영향 작음 — 이전하지 않는다.
+
 ## 뒤로가기 · 오프라인
 
 - `@capacitor/app` `backButton`: `canGoBack`이면 `history.back()`, 아니면 `App.exitApp()`.
@@ -67,7 +85,7 @@ gypz-ledger/
 ## 출시
 
 1. 로컬 빌드 → 서명된 APK를 결영 갤럭시에 설치(내부 테스트 트랙 또는 직접 설치)해 체크리스트 확인:
-   이메일 로그인 / 구글 로그인 / 로그아웃 / 가입 확인 메일 링크 / 비밀번호 재설정 링크 / 원팀·상담·카톡 외부 링크 / 뒤로가기 / 비행기 모드 안내 화면 / 화면 위아래가 잘리지 않는지(상태바·내비게이션바).
+   이메일 로그인 / 구글 로그인 / 로그아웃 / 가입 확인 메일 링크 / 비밀번호 재설정 링크 / 원팀·상담·카톡 외부 링크 / 뒤로가기 / 비행기 모드 안내 화면 / 음성 소비 기록 / 초대 링크·성적표·육아휴직·묻고 답하기 공유 / 데이터 내보내기 / 주식 기록 사진 올리기 / 화면 위아래가 잘리지 않는지(상태바·내비게이션바).
 2. 이상 없으면 AAB(1.1.0)를 프로덕션에 올리고 심사 제출 — 결영 확인 후.
 3. 지금 심사 중인 1.0.0(TWA)이 승인된 뒤에 올린다.
 
