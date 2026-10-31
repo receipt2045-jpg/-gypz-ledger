@@ -23,7 +23,7 @@ export function isExternalUrl(href: string, origin = window.location.origin): bo
 }
 
 /** 앱 링크로 들어온 주소가 우리 사이트(http/https + moabuli.com)인지 */
-function isOurUrl(href: string): boolean {
+export function isOurUrl(href: string): boolean {
   try {
     const u = new URL(href)
     return (u.protocol === 'https:' || u.protocol === 'http:') && OUR_HOSTS.has(u.hostname)
@@ -40,8 +40,11 @@ function listen<T>(register: () => Promise<T>, name: string): void {
   register().catch((err) => console.error(`[nativeShell] ${name} 리스너 등록 실패`, err))
 }
 
+let installed = false
+
 export function installNativeShell(): void {
-  if (!isNative()) return
+  if (!isNative() || installed) return
+  installed = true
 
   listen(
     () =>
@@ -77,6 +80,8 @@ export function installNativeShell(): void {
     const href = url?.toString() ?? ''
     if (href && isExternalUrl(href)) {
       openOutside(href)
+      // 주의: 바깥 주소는 null을 돌려준다(새 창이 아니라 앱 밖 브라우저로 열었다는 뜻).
+      // 호출하는 쪽이 null을 "팝업 차단"으로 읽고 location.href로 되돌리면 웹뷰가 우리 화면을 떠난다.
       return null
     }
     return open(url, target, features)
