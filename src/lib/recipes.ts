@@ -59,10 +59,20 @@ export interface Per100 {
   sodium: number
 }
 
+/** 음식 사진 — 위키미디어 공용(Commons)에서 출처만 밝히면 상업적으로 써도 되는 것(CC0·CC BY·CC BY-SA)만 */
+export interface Photo {
+  src: string
+  /** 사진 설명 페이지 */
+  page: string
+  license: string
+  author: string
+}
+
 export interface Recipe {
   slug: string
   name: string
   emoji: string
+  photo: Photo
   minutes: number
   /** 한 줄 소개 */
   sub: string
@@ -93,6 +103,12 @@ export const RECIPES: Recipe[] = [
     slug: 'kimchi-jjigae',
     name: '돼지고기 김치찌개',
     emoji: '🍲',
+    photo: {
+      src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Kimchi_jjigae_-_San_Francisco%2C_CA.jpg/960px-Kimchi_jjigae_-_San_Francisco%2C_CA.jpg',
+      page: 'https://commons.wikimedia.org/wiki/File:Kimchi_jjigae_-_San_Francisco,_CA.jpg',
+      license: 'CC0',
+      author: 'Daderot',
+    },
     minutes: 25,
     sub: '신김치 하나면 끝나는 기본 찌개',
     ingredients: [
@@ -127,6 +143,12 @@ export const RECIPES: Recipe[] = [
     slug: 'doenjang-jjigae',
     name: '애호박 된장찌개',
     emoji: '🥘',
+    photo: {
+      src: 'https://upload.wikimedia.org/wikipedia/commons/0/01/Doenjang-jjigae_2.jpg',
+      page: 'https://commons.wikimedia.org/wiki/File:Doenjang-jjigae_2.jpg',
+      license: 'CC BY 4.0',
+      author: '스물셋',
+    },
     minutes: 20,
     sub: '냉장고 채소로 끓이는 된장찌개',
     ingredients: [
@@ -160,6 +182,12 @@ export const RECIPES: Recipe[] = [
     slug: 'miyeokguk',
     name: '소고기 미역국',
     emoji: '🥣',
+    photo: {
+      src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Korean_soup-Miyeokguk-01.jpg/960px-Korean_soup-Miyeokguk-01.jpg',
+      page: 'https://commons.wikimedia.org/wiki/File:Korean_soup-Miyeokguk-01.jpg',
+      license: 'CC BY 2.0',
+      author: 'karendotcom127',
+    },
     minutes: 30,
     sub: '아이도 잘 먹는 순한 국',
     ingredients: [
@@ -191,6 +219,12 @@ export const RECIPES: Recipe[] = [
     slug: 'jeyuk',
     name: '제육볶음',
     emoji: '🌶️',
+    photo: {
+      src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Jeyuk-bokkeum_1.jpg/960px-Jeyuk-bokkeum_1.jpg',
+      page: 'https://commons.wikimedia.org/wiki/File:Jeyuk-bokkeum_1.jpg',
+      license: 'CC BY-SA 2.0',
+      author: 'Charles Haynes',
+    },
     minutes: 25,
     sub: '밥도둑 1순위',
     ingredients: [
@@ -226,6 +260,12 @@ export const RECIPES: Recipe[] = [
     slug: 'bulgogi',
     name: '소불고기',
     emoji: '🥩',
+    photo: {
+      src: 'https://upload.wikimedia.org/wikipedia/commons/7/76/Bulgogi_3.jpg',
+      page: 'https://commons.wikimedia.org/wiki/File:Bulgogi_3.jpg',
+      license: 'CC BY 2.0',
+      author: 'Debbie Tingzon',
+    },
     minutes: 25,
     sub: '안 매워서 아이 반찬으로 좋아요',
     ingredients: [
@@ -260,6 +300,12 @@ export const RECIPES: Recipe[] = [
     slug: 'dakbokkeumtang',
     name: '닭볶음탕',
     emoji: '🍗',
+    photo: {
+      src: 'https://upload.wikimedia.org/wikipedia/commons/f/f7/13-hadirector1_hoya00571_hoya0057.jpg',
+      page: 'https://commons.wikimedia.org/wiki/File:13-hadirector1_hoya00571_hoya0057.jpg',
+      license: 'CC0',
+      author: 'Derek Woodward',
+    },
     minutes: 45,
     sub: '주말 저녁 온 가족 메뉴',
     ingredients: [
@@ -296,6 +342,12 @@ export const RECIPES: Recipe[] = [
     slug: 'curry',
     name: '돼지고기 카레라이스',
     emoji: '🍛',
+    photo: {
+      src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Curry_rice.jpg/960px-Curry_rice.jpg',
+      page: 'https://commons.wikimedia.org/wiki/File:Curry_rice.jpg',
+      license: 'CC0',
+      author: 'wizdata',
+    },
     minutes: 30,
     sub: '한 냄비로 아이 밥까지 해결',
     ingredients: [
@@ -329,6 +381,12 @@ export const RECIPES: Recipe[] = [
     slug: 'kimchi-fried-rice',
     name: '김치볶음밥',
     emoji: '🍳',
+    photo: {
+      src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Kimchi_fried_rice.jpg/960px-Kimchi_fried_rice.jpg',
+      page: 'https://commons.wikimedia.org/wiki/File:Kimchi_fried_rice.jpg',
+      license: 'CC0',
+      author: 'Sharon Ang',
+    },
     minutes: 15,
     sub: '남은 밥과 김치로 15분',
     ingredients: [
@@ -362,6 +420,12 @@ export const RECIPES: Recipe[] = [
     slug: 'gyeran-mari',
     name: '달걀말이',
     emoji: '🥚',
+    photo: {
+      src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Gyeran-mari_3.jpg/960px-Gyeran-mari_3.jpg',
+      page: 'https://commons.wikimedia.org/wiki/File:Gyeran-mari_3.jpg',
+      license: 'CC BY 4.0',
+      author: 'Asadal',
+    },
     minutes: 15,
     sub: '달걀 4개로 만드는 아이 반찬',
     ingredients: [
