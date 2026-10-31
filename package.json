@@ -11,14 +11,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor-community/speech-recognition": "^7.0.1",
+    "@capacitor-community/speech-recognition": "7.0.1",
     "@capacitor/android": "^8.6.0",
     "@capacitor/app": "^8.1.2",
     "@capacitor/browser": "^8.0.5",
     "@capacitor/core": "^8.6.0",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/share": "^8.0.3",
-    "@capgo/capacitor-social-login": "^8.7.5",
+    "@capgo/capacitor-social-login": "8.7.5",
     "@supabase/supabase-js": "^2.110.6",
     "lucide-react": "^0.427.0",
     "react": "^18.3.1",

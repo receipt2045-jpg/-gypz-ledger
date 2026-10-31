@@ -2,7 +2,6 @@
  * 구글 로그인 (2026-10-31). 앱 웹뷰 안에서는 구글이 웹 로그인 화면을 막는다.
  * 앱은 폰의 구글 계정 선택 창 → ID 토큰 → Supabase, 웹은 예전처럼 리디렉션.
  */
-import { SocialLogin } from '@capgo/capacitor-social-login'
 import { isNative } from './native'
 import { supabase } from './supabase'
 
@@ -20,6 +19,8 @@ export async function loginWithGoogle(redirectTo: string): Promise<{ error: stri
   if (!webClientId) return { error: '구글 로그인을 준비 중이에요. 이메일로 로그인해 주세요.' }
   let idToken: string | null | undefined
   try {
+    // 웹 사용자에게는 플러그인 코드(와 그 부작용)가 로드되지 않도록 앱에서만 불러온다
+    const { SocialLogin } = await import('@capgo/capacitor-social-login')
     ready ??= SocialLogin.initialize({ google: { webClientId } })
     await ready
     const res = await SocialLogin.login({ provider: 'google', options: {} })
