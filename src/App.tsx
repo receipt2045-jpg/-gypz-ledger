@@ -45,6 +45,7 @@ import IntroSlides from './pages/IntroSlides'
 import Legal from './pages/Legal'
 import ParentalLeave from './pages/ParentalLeave'
 import Gold from './pages/Gold'
+import Recipes from './pages/Recipes'
 import GiftGuide from './pages/GiftGuide'
 import ChildBenefit from './pages/ChildBenefit'
 import Share from './pages/Share'
@@ -63,6 +64,9 @@ export default function App() {
         <Route path="/leave" element={<ParentalLeave />} />
         {/* 금테크 정리 — 단톡·인스타에서 바로 들어오는 자리라 로그인 밖에 둔다 */}
         <Route path="/gold" element={<Gold />} />
+        {/* 집밥 레시피 — 한 끼 얼마·영양소. 공유 링크로 들어오는 자리라 로그인 밖에 둔다 */}
+        <Route path="/recipes" element={<Recipes />} />
+        <Route path="/recipes/:slug" element={<Recipes />} />
         {/* 아이 통장 증여 신고 정리 · 부모급여·아동수당 계산기 (2026-10-27) — 공개 자료 */}
         <Route path="/gift-guide" element={<GiftGuide />} />
         <Route path="/child-benefit" element={<ChildBenefit />} />

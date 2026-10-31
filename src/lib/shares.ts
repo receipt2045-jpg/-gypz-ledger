@@ -2,7 +2,7 @@
 // 단톡·인스타로 나눈 자료를 한곳에 모은다. 새 자료 = 페이지 하나 + 여기 한 줄.
 // 이 목록 하나로 공개 목록(/share), 돈 공부 탭, 각 자료 맨 끝 '다른 자료'가 같이 바뀐다.
 
-export type ShareCategory = '재테크' | '육아' | '내집마련'
+export type ShareCategory = '재테크' | '육아' | '내집마련' | '집밥'
 
 export interface ShareItem {
   slug: string
@@ -20,9 +20,20 @@ export interface ShareItem {
   tint: string
 }
 
-export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집마련']
+export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집마련', '집밥']
 
 export const SHARES: ShareItem[] = [
+  {
+    slug: 'recipes',
+    path: '/recipes',
+    title: '오늘 저녁, 한 끼 얼마일까',
+    sub: '흔한 집밥 9가지를 쿠팡 가격으로 쓴 만큼만 계산하고, 영양소까지 봐요',
+    category: '집밥',
+    date: '2026-11-01',
+    minutes: 3,
+    emoji: '🍚',
+    tint: 'bg-orange-50',
+  },
   {
     slug: 'child-benefit',
     path: '/child-benefit',
@@ -108,9 +119,11 @@ export const shareDate = (d: string) => `${Number(d.slice(5, 7))}월 ${Number(d.
 export function otherShares(path: string, count = 4): ShareItem[] {
   // moabuli.com/gold 링크는 Cloudflare가 /gold/로 돌려보내서 #/gold/로 열린다 — 끝 /는 떼고 비교
   const currentPath = path.length > 1 ? path.replace(/\/+$/, '') : path
-  const current = SHARES.find((s) => s.path === currentPath)
+  // 레시피 한 가지(/recipes/kimchi-jjigae)도 '집밥 레시피' 자료 안이다
+  const inside = (s: ShareItem) => currentPath === s.path || currentPath.startsWith(`${s.path}/`)
+  const current = SHARES.find(inside)
   return sharesByDate()
-    .filter((s) => s.path !== currentPath)
+    .filter((s) => !inside(s))
     .sort((a, b) => {
       const sa = current && a.category === current.category ? 0 : 1
       const sb = current && b.category === current.category ? 0 : 1

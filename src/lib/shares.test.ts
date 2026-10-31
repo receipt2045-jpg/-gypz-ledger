@@ -18,6 +18,10 @@ describe('결영이네 자료 나눔 (2026-10-24)', () => {
     expect(otherShares('/gold/').map((s) => s.path)).not.toContain('/gold')
   })
 
+  it('레시피 한 가지를 볼 때도 집밥 레시피 자료는 뺀다', () => {
+    expect(otherShares('/recipes/kimchi-jjigae').map((s) => s.path)).not.toContain('/recipes')
+  })
+
   it('목록에 없는 페이지(다른 계산기)에선 최신순 그대로', () => {
     expect(otherShares('/calc/retire', 2)).toEqual(sharesByDate().slice(0, 2))
   })

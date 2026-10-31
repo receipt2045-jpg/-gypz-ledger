@@ -29,8 +29,15 @@ const OG_PAGES: OgPage[] = [
   {
     dir: 'gold',
     title: '결영이네 금테크 정리',
-    description: '금 처음 산다면, 수수료부터 보세요. 100만 원어치 사고팔면 얼마 떼이는지 비교했어요.',
+    description:
+      '금 처음 산다면, 수수료부터 보세요. 100만 원어치 사고팔면 얼마 떼이는지 비교했어요.',
     image: 'https://moabuli.com/og-gold.png?v=1',
+  },
+  {
+    dir: 'recipes',
+    title: '결영이네 집밥 레시피',
+    description: '오늘 저녁, 한 끼 얼마일까. 흔한 집밥 9가지를 쓴 만큼만 계산하고 영양소까지 봐요.',
+    image: 'https://moabuli.com/og-recipes.png?v=1',
   },
 ]
 
