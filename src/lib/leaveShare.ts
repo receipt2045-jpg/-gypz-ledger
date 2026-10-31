@@ -1,4 +1,5 @@
 import { DEFAULT_INPUT, MONTHS_MAX, type LeaveInput } from './parentalLeave'
+import { shareText } from './native'
 
 /**
  * 육아휴직 계산기 공유 — 링크에 우리집 숫자를 실어 보낸다.
@@ -95,19 +96,5 @@ export const SHARE_TEXT =
 /** 공유 시트 → 안 되면 링크 복사 */
 export async function shareLeaveLink(v: LeaveInput): Promise<'shared' | 'copied' | 'failed'> {
   const url = leaveShareUrl(v, window.location.origin)
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: '모아불리 육아휴직 계산기', text: SHARE_TEXT, url })
-      return 'shared'
-    } catch (err) {
-      // 공유 시트를 닫은 것 — 복사로 내려가지 않고 조용히 끝낸다
-      if (err instanceof DOMException && err.name === 'AbortError') return 'shared'
-    }
-  }
-  try {
-    await navigator.clipboard.writeText(`${SHARE_TEXT}\n${url}`)
-    return 'copied'
-  } catch {
-    return 'failed'
-  }
+  return shareText({ title: '모아불리 육아휴직 계산기', text: SHARE_TEXT, url })
 }

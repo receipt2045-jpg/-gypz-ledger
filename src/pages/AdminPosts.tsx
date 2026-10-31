@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Send, Trash2 } from 'lucide-react'
 import Card from '../components/Card'
 import PostCard from '../components/PostCard'
+import { shareText } from '../lib/native'
 import {
   POST_KIND_LABEL,
   amIAdmin,
@@ -66,21 +67,9 @@ export default function AdminPosts() {
 
   const shareKakao = async () => {
     if (!posted) return
-    const text = kakaoText(posted, withLink)
-    if (navigator.share) {
-      try {
-        await navigator.share({ text })
-        return
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(text)
-      setMsg('글을 복사했어요. 카톡방에 붙여넣어 주세요.')
-    } catch {
-      setMsg('복사가 안 되는 브라우저예요.')
-    }
+    const r = await shareText({ text: kakaoText(posted, withLink) })
+    if (r === 'copied') setMsg('글을 복사했어요. 카톡방에 붙여넣어 주세요.')
+    if (r === 'failed') setMsg('복사가 안 되는 브라우저예요.')
   }
 
   const remove = async (id: string) => {

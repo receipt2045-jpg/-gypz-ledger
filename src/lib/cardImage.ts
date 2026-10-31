@@ -1,3 +1,4 @@
+import { shareFile } from './native'
 import type { MonthlyCardData } from './monthlyCard'
 import { abbreviateKRW, formatWon, formatYmKorean } from './format'
 
@@ -141,21 +142,5 @@ export async function shareCard(d: MonthlyCardData): Promise<'shared' | 'saved' 
   const file = await cardToFile(d)
   if (!file) return 'failed'
 
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: `${formatYmKorean(d.ym)} 우리집 성적표` })
-      return 'shared'
-    } catch (err) {
-      // 사용자가 공유 시트를 닫은 경우 — 저장으로 내려가지 않고 조용히 끝낸다
-      if (err instanceof DOMException && err.name === 'AbortError') return 'shared'
-    }
-  }
-
-  const url = URL.createObjectURL(file)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = file.name
-  a.click()
-  URL.revokeObjectURL(url)
-  return 'saved'
+  return shareFile(file, `${formatYmKorean(d.ym)} 우리집 성적표`)
 }

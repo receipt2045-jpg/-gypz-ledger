@@ -20,6 +20,7 @@ import {
 import Card from '../components/Card'
 import FeedbackCard from '../components/FeedbackCard'
 import { shareInvite } from '../lib/invite'
+import { saveFile } from '../lib/native'
 import { marketingConsentOf, setMarketingConsent } from '../lib/marketing'
 import { listRequests } from '../lib/reportAdmin'
 import { useLedgerStore } from '../lib/store'
@@ -160,13 +161,8 @@ export default function Settings() {
 
   const handleExport = () => {
     const data = exportData()
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `gypz-ledger-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    const name = `gypz-ledger-${new Date().toISOString().slice(0, 10)}.json`
+    void saveFile(new File([JSON.stringify(data, null, 2)], name, { type: 'application/json' }))
   }
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -26,6 +26,7 @@ import { leaveCardFile } from '../lib/leaveCard'
 import { leaveNumbersFromLedgers, type LedgerNumbers } from '../lib/leaveFromLedger'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
+import { shareFile } from '../lib/native'
 import { fetchHouseholdData, getMyMembership } from '../lib/db'
 import { formatMonthKorean } from '../lib/format'
 import type { MonthlyLedger } from '../types'
@@ -500,19 +501,7 @@ function ImageSheet({ file, onClose }: { file: File; onClose: () => void }) {
     typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
 
   const onSave = async () => {
-    if (canShareFile) {
-      try {
-        await navigator.share({ files: [file], title: '모아불리 육아휴직 계산' })
-        return
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
-      }
-    }
-    if (!url) return
-    const a = document.createElement('a')
-    a.href = url
-    a.download = file.name
-    a.click()
+    await shareFile(file, '모아불리 육아휴직 계산')
   }
 
   return (
