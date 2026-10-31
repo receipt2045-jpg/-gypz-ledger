@@ -46,6 +46,8 @@ import { memberStyle } from '../lib/memberColors'
 import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
 import { GROUP_LABEL, NO_SPEND, visibleCategories } from '../lib/constants'
 import type { CategoryGroup, Confession } from '../types'
+import { NativeSpeech, type SpeechRecognitionLike } from '../lib/nativeSpeech'
+import { isNative } from '../lib/native'
 
 // 카테고리 아이콘 매핑 (없으면 Coins)
 const ICONS: Record<string, typeof Coins> = {
@@ -85,6 +87,7 @@ const QUICK_CHIPS = [1_000, 5_000, 10_000, 50_000]
 // iOS 홈화면 PWA에선 Web Speech API가 동작하지 않으므로 마이크 버튼을 숨긴다.
 // (그 경우에도 키보드의 딕테이션 키로 같은 경험 가능)
 function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
+  if (isNative()) return NativeSpeech
   const w = window as unknown as Record<string, unknown>
   const ctor = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as
     (new () => SpeechRecognitionLike) | undefined
@@ -95,17 +98,6 @@ function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
     window.matchMedia('(display-mode: standalone)').matches
   if (isIos && standalone) return null
   return ctor
-}
-
-interface SpeechRecognitionLike {
-  lang: string
-  continuous: boolean
-  interimResults: boolean
-  onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
-  onend: (() => void) | null
-  onerror: (() => void) | null
-  start: () => void
-  stop: () => void
 }
 
 /** 확인 화면에서 다루는 항목 (파싱 결과 + 수정 추적) */
