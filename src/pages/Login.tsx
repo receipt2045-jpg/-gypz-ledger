@@ -4,6 +4,7 @@ import InAppBrowserNotice from '../components/InAppBrowserNotice'
 import { supabase } from '../lib/supabase'
 import { pendingInvite } from '../lib/invite'
 import { stashMarketingChoice } from '../lib/marketing'
+import { loginWithGoogle as googleSignIn } from '../lib/googleLogin'
 
 // OAuth 로그인 후 돌아올 주소 (배포 주소가 바뀌어도 자동 대응)
 const redirectTo = window.location.origin + import.meta.env.BASE_URL
@@ -92,12 +93,9 @@ export default function Login({ onPreview }: { onPreview?: () => void } = {}) {
     setError('')
     // 구글로 나갔다 돌아오면 화면 상태가 사라진다 — 고른 값을 맡겨 두고 간다
     stashMarketingChoice(marketing)
-    const { error: err } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo },
-    })
-    if (err) setError(koError(err.message))
-    // 성공하면 구글 로그인 페이지로 리디렉션됨
+    const { error: err } = await googleSignIn(redirectTo)
+    if (err) setError(koError(err))
+    // 웹: 성공하면 구글 로그인 페이지로 리디렉션됨 / 앱: 계정 선택 후 바로 로그인
   }
 
   return (
