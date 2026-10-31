@@ -12,6 +12,10 @@ vi.mock('@capacitor/filesystem', () => ({
 
 import { isNative, saveFile, shareFile, shareText } from './native'
 
+const origCreate = URL.createObjectURL
+const origRevoke = URL.revokeObjectURL
+const hadClipboard = 'clipboard' in navigator
+
 beforeEach(() => {
   vi.clearAllMocks()
   isNativePlatform.mockReturnValue(false)
@@ -21,6 +25,9 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  URL.createObjectURL = origCreate
+  URL.revokeObjectURL = origRevoke
+  if (!hadClipboard) delete (navigator as { clipboard?: unknown }).clipboard
 })
 
 describe('shareText', () => {

@@ -1,10 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const native = vi.hoisted(() => ({ on: false }))
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => native.on } }))
 vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn(async () => ({})), exitApp: vi.fn() } }))
 vi.mock('@capacitor/browser', () => ({ Browser: { open: vi.fn(async () => {}) } }))
-import { Browser } from '@capacitor/browser'
-import { installNativeShell, isExternalUrl, isOurUrl } from './nativeShell'
+import { isExternalUrl, isOurUrl } from './nativeShell'
 
 describe('isExternalUrl', () => {
   const o = 'https://moabuli.com'
@@ -36,8 +35,31 @@ describe('isOurUrl', () => {
 })
 
 describe('installNativeShell (앱)', () => {
-  it('바깥 링크 안쪽 자식을 눌러도 앱 밖 브라우저로 열고, 두 번 불러도 한 번만 건다', () => {
+  const originalOpen = window.open
+  const realAdd = document.addEventListener.bind(document)
+  let added: Array<[string, EventListenerOrEventListenerObject, unknown]> = []
+
+  beforeEach(() => {
+    vi.resetModules() // installed 플래그와 Browser 목을 매번 새로
     native.on = true
+    added = []
+    document.addEventListener = ((type: string, fn: EventListenerOrEventListenerObject, opts?: unknown) => {
+      added.push([type, fn, opts])
+      realAdd(type, fn, opts as boolean)
+    }) as typeof document.addEventListener
+  })
+
+  afterEach(() => {
+    native.on = false
+    window.open = originalOpen
+    document.addEventListener = realAdd
+    for (const [type, fn, opts] of added) document.removeEventListener(type, fn, opts as boolean)
+    document.body.innerHTML = ''
+  })
+
+  it('바깥 링크 안쪽 자식을 눌러도 앱 밖 브라우저로 열고, 두 번 불러도 한 번만 건다', async () => {
+    const { Browser } = await import('@capacitor/browser')
+    const { installNativeShell } = await import('./nativeShell')
     installNativeShell()
     installNativeShell()
     const a = document.createElement('a')
