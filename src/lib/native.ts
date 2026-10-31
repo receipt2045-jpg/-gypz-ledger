@@ -12,6 +12,8 @@ export function isNative(): boolean {
 }
 
 const aborted = (err: unknown) => err instanceof DOMException && err.name === 'AbortError'
+/** 앱 공유 창을 사용자가 닫았을 때 플러그인이 던지는 오류 (Share canceled) */
+const cancelled = (err: unknown) => /cancell?ed/i.test(err instanceof Error ? err.message : String(err))
 
 /** 공유 창 → 안 되면 복사. 사용자가 창을 닫은 것도 'shared'(조용히 끝낸다) */
 export async function shareText(p: {
@@ -22,12 +24,11 @@ export async function shareText(p: {
   if (isNative()) {
     try {
       await Share.share({ text: p.text, url: p.url, title: p.title })
-    } catch {
-      /* 닫은 것 */
+      return 'shared'
+    } catch (err) {
+      if (cancelled(err)) return 'shared'
     }
-    return 'shared'
-  }
-  if (navigator.share) {
+  } else if (navigator.share) {
     try {
       await navigator.share({ text: p.text, url: p.url, title: p.title })
       return 'shared'
@@ -60,8 +61,8 @@ async function nativeShareFile(file: File, title: string): Promise<boolean> {
     })
     try {
       await Share.share({ title, files: [uri] })
-    } catch {
-      /* 닫은 것 */
+    } catch (err) {
+      if (!cancelled(err)) return false
     }
     return true
   } catch {

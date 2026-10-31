@@ -162,7 +162,9 @@ export default function Settings() {
   const handleExport = () => {
     const data = exportData()
     const name = `gypz-ledger-${new Date().toISOString().slice(0, 10)}.json`
-    void saveFile(new File([JSON.stringify(data, null, 2)], name, { type: 'application/json' }))
+    void saveFile(new File([JSON.stringify(data, null, 2)], name, { type: 'application/json' })).then((r) => {
+      if (r === 'failed') alert('파일을 저장하지 못했어요. 다시 시도해 주세요.')
+    })
   }
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {

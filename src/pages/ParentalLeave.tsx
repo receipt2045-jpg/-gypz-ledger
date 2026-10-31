@@ -26,7 +26,7 @@ import { leaveCardFile } from '../lib/leaveCard'
 import { leaveNumbersFromLedgers, type LedgerNumbers } from '../lib/leaveFromLedger'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
-import { shareFile } from '../lib/native'
+import { isNative, shareFile } from '../lib/native'
 import { fetchHouseholdData, getMyMembership } from '../lib/db'
 import { formatMonthKorean } from '../lib/format'
 import type { MonthlyLedger } from '../types'
@@ -534,7 +534,7 @@ function ImageSheet({ file, onClose }: { file: File; onClose: () => void }) {
           className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white"
         >
           <Download size={17} />
-          {canShareFile ? '사진에 저장하거나 보내기' : '이미지 저장하기'}
+          {canShareFile || isNative() ? '사진에 저장하거나 보내기' : '이미지 저장하기'}
         </button>
         <p className="mt-2 text-center text-[12px] text-cap">
           저장이 안 되면 이미지를 길게 눌러 저장하세요.

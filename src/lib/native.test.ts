@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const isNativePlatform = vi.fn(() => false)
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => isNativePlatform() } }))
@@ -13,9 +13,14 @@ vi.mock('@capacitor/filesystem', () => ({
 import { isNative, saveFile, shareFile, shareText } from './native'
 
 beforeEach(() => {
+  vi.clearAllMocks()
   isNativePlatform.mockReturnValue(false)
   Object.assign(navigator, { share: undefined, canShare: undefined })
   Object.assign(navigator, { clipboard: { writeText: vi.fn(async () => {}) } })
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('shareText', () => {
@@ -30,6 +35,13 @@ describe('shareText', () => {
     isNativePlatform.mockReturnValue(true)
     nativeShare.mockRejectedValueOnce(new Error('Share canceled'))
     expect(await shareText({ text: 'a' })).toBe('shared')
+  })
+
+  it('앱에서 공유가 진짜 실패하면 복사로 내려간다', async () => {
+    isNativePlatform.mockReturnValue(true)
+    nativeShare.mockRejectedValueOnce(new Error('boom'))
+    expect(await shareText({ text: 'a', url: 'https://x' })).toBe('copied')
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('a\nhttps://x')
   })
 
   it('웹에 navigator.share가 없으면 텍스트와 주소를 복사한다', async () => {
@@ -64,6 +76,21 @@ describe('shareFile / saveFile', () => {
     expect(await shareFile(file, '성적표')).toBe('saved')
     expect(click).toHaveBeenCalled()
     expect(await saveFile(file)).toBe('saved')
+  })
+
+  it('앱에서 파일 쓰기가 실패하면 failed', async () => {
+    isNativePlatform.mockReturnValue(true)
+    writeFile.mockRejectedValueOnce(new Error('disk'))
+    expect(await shareFile(file, '성적표')).toBe('failed')
+    expect(nativeShare).not.toHaveBeenCalled()
+  })
+
+  it('앱에서 파일 공유 창을 닫으면 shared, 진짜 실패면 failed', async () => {
+    isNativePlatform.mockReturnValue(true)
+    nativeShare.mockRejectedValueOnce(new Error('Share canceled'))
+    expect(await shareFile(file, 't')).toBe('shared')
+    nativeShare.mockRejectedValueOnce(new Error('boom'))
+    expect(await shareFile(file, 't')).toBe('failed')
   })
 
   it('앱에서 saveFile은 공유 창으로 넘긴다', async () => {
