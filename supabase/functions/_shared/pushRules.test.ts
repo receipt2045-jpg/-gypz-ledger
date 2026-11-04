@@ -310,8 +310,8 @@ describe('promo_reconfirm (2년마다 동의 재확인)', () => {
         userId: 'u1',
         kind: 'promo_reconfirm',
         refKey: 'reconfirm:2026-11',
-        title: '소식·혜택 알림, 계속 받으시겠어요?',
-        body: '2024년 12월 4일에 동의하셨어요. 그만 받으려면 설정 > 알림에서 꺼 주세요.',
+        title: '소식·혜택 알림 수신 동의 안내',
+        body: '2024년 12월 4일에 동의하셨어요. 계속 받으시려면 따로 하실 건 없어요. 그만 받으려면 설정 > 알림에서 꺼 주세요.',
         path: '/settings',
       },
     ])

@@ -27,7 +27,7 @@ import {
 const SECRET = Deno.env.get("PUSH_CRON_SECRET") ?? "";
 const DAY = 24 * 60 * 60 * 1000;
 const PAGE = 1000; // PostgREST 한 번에 돌려주는 최대 줄 수
-const IN_CHUNK = 200; // .in() 목록 길이(주소가 길어지지 않게)
+const IN_CHUNK = 100; // .in() 목록 길이(주소가 길어지지 않게)
 const SEND_CONCURRENCY = 10;
 
 // deno-lint-ignore no-explicit-any

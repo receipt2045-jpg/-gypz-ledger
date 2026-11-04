@@ -248,8 +248,8 @@ export function planPushes(input: PushInput): PushPlan {
           userId,
           kind: 'promo_reconfirm',
           refKey: `reconfirm:${today.ym}`,
-          title: '소식·혜택 알림, 계속 받으시겠어요?',
-          body: `${koreanDate(pref.promoConsentAt)}에 동의하셨어요. 그만 받으려면 설정 > 알림에서 꺼 주세요.`,
+          title: '소식·혜택 알림 수신 동의 안내',
+          body: `${koreanDate(pref.promoConsentAt)}에 동의하셨어요. 계속 받으시려면 따로 하실 건 없어요. 그만 받으려면 설정 > 알림에서 꺼 주세요.`,
           path: '/settings',
         })
       }
