@@ -28,15 +28,24 @@ function AppNotificationSettings() {
   const [loaded, setLoaded] = useState(false)
   const [perm, setPerm] = useState<PushPermission>('prompt')
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [msg, setMsg] = useState('')
   const [hint, setHint] = useState('')
 
   useEffect(() => {
     let alive = true
-    Promise.all([pushPermission(), fetchPrefs().catch(() => null)]).then(([p, pr]) => {
+    // 읽기 실패와 "설정 없음"을 구분한다 — 실패했을 때 켜기 카드를 보이면 있는 설정을 덮어쓸 수 있다
+    Promise.all([
+      pushPermission(),
+      fetchPrefs().then(
+        (pr) => ({ pr, failed: false }),
+        () => ({ pr: null, failed: true }),
+      ),
+    ]).then(([p, { pr, failed }]) => {
       if (!alive) return
       setPerm(p)
       setPrefs(pr)
+      setLoadFailed(failed)
       setLoaded(true)
     })
     return () => {
@@ -45,6 +54,9 @@ function AppNotificationSettings() {
   }, [])
 
   if (!loaded) return null
+  if (loadFailed) {
+    return <p className="text-[13.5px] font-medium text-danger">알림 설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</p>
+  }
 
   const enable = async () => {
     setHint('')
@@ -63,23 +75,24 @@ function AppNotificationSettings() {
     }
   }
 
-  if (perm !== 'granted' || !prefs) {
-    return (
-      <div className="rounded-btn bg-bg px-4 py-3">
-        <p className="text-[14px] font-semibold text-ink">
-          {perm === 'denied' ? '폰 설정에서 알림이 꺼져 있어요' : '알림이 아직 꺼져 있어요'}
-        </p>
-        <button
-          onClick={enable}
-          className="mt-2 h-10 rounded-btn bg-brand px-4 text-[14px] font-bold text-white active:bg-brand-dark"
-        >
-          알림 켜기
-        </button>
-        {hint && <p className="mt-2 text-[12.5px] text-sub">{hint}</p>}
-        {msg && <p className="mt-2 text-[12.5px] font-medium text-danger">{msg}</p>}
-      </div>
-    )
-  }
+  const enableCard = (
+    <div className="rounded-btn bg-bg px-4 py-3">
+      <p className="text-[14px] font-semibold text-ink">
+        {perm === 'denied' ? '폰 설정에서 알림이 꺼져 있어요' : '알림이 아직 꺼져 있어요'}
+      </p>
+      <button
+        onClick={enable}
+        className="mt-2 h-10 rounded-btn bg-brand px-4 text-[14px] font-bold text-white active:bg-brand-dark"
+      >
+        알림 켜기
+      </button>
+      {hint && <p className="mt-2 text-[12.5px] text-sub">{hint}</p>}
+      {msg && !prefs && <p className="mt-2 text-[12.5px] font-medium text-danger">{msg}</p>}
+    </div>
+  )
+
+  // 설정이 아직 없는 사람
+  if (!prefs) return enableCard
 
   const change = async (patch: PrefsPatch) => {
     const before = prefs
@@ -109,6 +122,8 @@ function AppNotificationSettings() {
 
   return (
     <div className="space-y-2">
+      {/* 폰 알림 권한이 꺼져 있어도 스위치(특히 광고 동의 철회)는 그대로 보인다 */}
+      {perm !== 'granted' && enableCard}
       <SwitchRow label="기록 리마인더" checked={prefs.reminderOn} onChange={(v) => change({ reminderOn: v })}>
         <select
           aria-label="리마인더 시각"

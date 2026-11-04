@@ -111,6 +111,26 @@ describe('설정 > 알림', () => {
     expect(await screen.findByText(/수신 거부가 처리됐어요$/)).toBeInTheDocument()
   })
 
+  it('설정을 못 읽으면 켜기 카드 대신 오류를 보여 준다 (있는 설정을 덮어쓰지 않게)', async () => {
+    h.fetchPrefs.mockRejectedValue(new Error('network'))
+    render(<NotificationSettings />)
+    expect(await screen.findByText('알림 설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '알림 켜기' })).not.toBeInTheDocument()
+    expect(h.createPrefs).not.toHaveBeenCalled()
+  })
+
+  it('설정이 있는데 폰 알림이 꺼져 있어도 광고 동의 스위치로 철회할 수 있다', async () => {
+    h.perm.mockResolvedValue('denied')
+    h.fetchPrefs.mockResolvedValue({ ...PREFS, promoOn: true, promoConsentAt: '2026-11-04T01:00:00.000Z' })
+    render(<NotificationSettings />)
+    expect(await screen.findByText('폰 설정에서 알림이 꺼져 있어요')).toBeInTheDocument()
+    const promo = screen.getByRole('switch', { name: '결영이네 소식·혜택 (광고)' })
+    expect(promo).toBeChecked()
+    await userEvent.click(promo)
+    expect(h.setPromo).toHaveBeenCalledWith(false, expect.any(Date))
+    expect(await screen.findByText(/수신 거부가 처리됐어요$/)).toBeInTheDocument()
+  })
+
   it('저장에 실패하면 되돌린다', async () => {
     h.updatePrefs.mockRejectedValue(new Error('x'))
     render(<NotificationSettings />)
