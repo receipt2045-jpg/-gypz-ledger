@@ -17,6 +17,10 @@ const config: CapacitorConfig = {
     SocialLogin: {
       providers: { google: true, facebook: false, apple: false, twitter: false },
     },
+    // 앱을 열어 둔 채로도 알림이 뜨게 한다(기본값은 앱이 켜져 있으면 안 보여 준다)
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
   },
 }
 export default config

@@ -29,5 +29,8 @@ select cron.schedule(
 );
 
 -- 확인: select jobname, schedule, active from cron.job where jobname = 'push-dispatch';
--- 결과의 status_code가 401이면 Vault의 push_cron_secret이 없거나 함수 시크릿(PUSH_CRON_SECRET)과 값이 다르다는 뜻이다.
+-- 결과의 status_code가 401이면 원인은 둘 중 하나다:
+--   1) Vault의 push_cron_secret이 없거나 함수 시크릿(PUSH_CRON_SECRET)과 값이 다르다.
+--   2) 함수를 Verify JWT를 켠 채로 다시 배포했다(크론은 JWT 없이 부른다). supabase/config.toml의 verify_jwt = false로 배포하거나 대시보드에서 끈다.
+-- 크론 실행 기록: select status, return_message, start_time from cron.job_run_details order by start_time desc limit 5;
 -- 최근 결과: select status_code, content from net._http_response order by created desc limit 5;

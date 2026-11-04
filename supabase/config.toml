@@ -1,0 +1,4 @@
+# Supabase CLI 설정 — 함수별 배포 옵션만 둔다.
+# push-dispatch는 pg_cron이 x-push-secret 헤더로만 부른다(JWT 없음). Verify JWT가 켜져 있으면 401이 난다.
+[functions.push-dispatch]
+verify_jwt = false
