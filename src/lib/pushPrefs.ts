@@ -100,30 +100,30 @@ export async function fetchPrefs(): Promise<NotificationPrefs | null> {
   return data ? fromRow(data as PrefsRow) : null
 }
 
-/** 처음 알림을 켤 때 — 기본값으로 만든다. 광고는 체크했을 때만 동의 시각과 함께 */
+/**
+ * 처음 알림을 켤 때 — 기본값으로 만든다. 광고는 체크했을 때만(동의 시각은 서버 트리거가 찍는다).
+ * 이미 행이 있으면(앞서 읽기가 실패했던 경우 등) 덮어쓰지 않고, 저장된 값을 다시 읽어 돌려준다.
+ */
 export async function createPrefs(promo: boolean, now: Date): Promise<NotificationPrefs> {
   const uid = await myId()
-  const prefs: NotificationPrefs = {
-    reminderOn: true,
-    reminderTime: DEFAULT_REMINDER_TIME,
-    settleOn: true,
-    newsOn: true,
-    promoOn: promo,
-    promoConsentAt: promo ? now.toISOString() : null,
-  }
-  const { error } = await supabase.from('notification_prefs').upsert({
-    user_id: uid,
-    reminder_on: prefs.reminderOn,
-    reminder_time: prefs.reminderTime,
-    settle_on: prefs.settleOn,
-    news_on: prefs.newsOn,
-    promo_on: prefs.promoOn,
-    promo_consent_at: prefs.promoConsentAt,
-    promo_reconfirm_sent_at: null,
-    updated_at: now.toISOString(),
-  })
+  const { error } = await supabase.from('notification_prefs').upsert(
+    {
+      user_id: uid,
+      reminder_on: true,
+      reminder_time: DEFAULT_REMINDER_TIME,
+      settle_on: true,
+      news_on: true,
+      promo_on: promo,
+      promo_consent_at: promo ? now.toISOString() : null,
+      promo_reconfirm_sent_at: null,
+      updated_at: now.toISOString(),
+    },
+    { onConflict: 'user_id', ignoreDuplicates: true },
+  )
   if (error) throw error
-  return prefs
+  const stored = await fetchPrefs()
+  if (!stored) throw new Error('알림 설정을 저장하지 못했어요')
+  return stored
 }
 
 export async function updatePrefs(patch: PrefsPatch): Promise<void> {
@@ -149,6 +149,15 @@ export async function setPromo(on: boolean, now: Date): Promise<void> {
 
 export async function registerToken(token: string): Promise<void> {
   const { error } = await supabase.rpc('register_push_token', { p_token: token, p_platform: 'android' })
+  if (error) throw error
+}
+
+/**
+ * 회원 탈퇴 때 서버의 푸시 데이터(토큰·알림 설정·보낸 기록)를 지운다.
+ * 웹에서 탈퇴해도 폰에 남은 토큰이 있을 수 있어 앱 여부와 상관없이 부른다. 여러 번 불러도 괜찮다.
+ */
+export async function deleteMyPushData(): Promise<void> {
+  const { error } = await supabase.rpc('delete_my_push_data')
   if (error) throw error
 }
 

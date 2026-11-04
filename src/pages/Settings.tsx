@@ -27,7 +27,8 @@ import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import * as db from '../lib/db'
 import { amIStaff } from '../lib/qna'
-import { deleteMyAccount } from '../lib/db'
+import { deleteMyAccount, signOutEverywhere } from '../lib/db'
+import { deleteMyPushData } from '../lib/pushPrefs'
 import NotificationSettings from '../components/NotificationSettings'
 import { forgetPushToken } from '../lib/pushNative'
 import { COLOR_STYLE, MEMBER_COLORS, memberColor, type MemberColor } from '../lib/memberColors'
@@ -92,6 +93,8 @@ export default function Settings() {
     setDeleting(true)
     try {
       await forgetPushToken()
+      // 서버의 푸시 토큰·설정·기록 삭제 — 웹에서 탈퇴해도 폰에 토큰이 남아 있을 수 있어 앱 여부와 상관없이 부른다. 실패해도 탈퇴는 계속
+      await deleteMyPushData().catch((err) => console.warn('[push] 푸시 데이터 삭제 실패', err))
       await deleteMyAccount()
       await supabase.auth.signOut()
       alert('탈퇴가 완료됐어요. 그동안 함께해 주셔서 고마웠어요 🤍')
@@ -489,10 +492,7 @@ export default function Settings() {
                 <MarketingToggle />
                 <PasswordForm />
                 <button
-                  onClick={async () => {
-                    await forgetPushToken() // 이 폰으로 알림이 더 가지 않게 (웹은 아무것도 안 함)
-                    await supabase.auth.signOut()
-                  }}
+                  onClick={() => signOutEverywhere()}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
                 >
                   <LogOut size={18} /> 로그아웃

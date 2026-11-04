@@ -12,7 +12,9 @@ vi.mock('../lib/db', () => ({
   joinHousehold: (c: string) => joinHousehold(c),
   createHousehold: () => createHousehold(),
   pushProfile: vi.fn(),
+  signOutEverywhere: () => signOutEverywhere(),
 }))
+const signOutEverywhere = vi.fn()
 
 beforeEach(() => localStorage.clear())
 
@@ -65,6 +67,14 @@ describe('가구 연결 화면 — 초대 링크로 온 사람', () => {
 
     expect(screen.getByText('새 가계부 만들기')).toBeInTheDocument()
     expect(localStorage.getItem('moabuli_invite')).toBeNull()
+  })
+})
+
+describe('가구 연결 화면 — 로그아웃', () => {
+  it("'다른 계정으로 로그인'은 푸시 토큰을 지우는 공통 로그아웃을 쓴다", async () => {
+    const { user } = renderScreen(<Onboarding onDone={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: '다른 계정으로 로그인' }))
+    expect(signOutEverywhere).toHaveBeenCalled()
   })
 })
 

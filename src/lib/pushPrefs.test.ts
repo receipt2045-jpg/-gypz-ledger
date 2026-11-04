@@ -6,13 +6,25 @@ const h = vi.hoisted(() => {
     eq,
     update: vi.fn(() => ({ eq })),
     upsert: vi.fn(async () => ({ error: null })),
+    stored: {
+      reminder_on: true,
+      reminder_time: '21:00:00',
+      settle_on: true,
+      news_on: true,
+      promo_on: true,
+      promo_consent_at: '2026-11-04T01:00:00.000Z',
+    } as Record<string, unknown> | null,
     rpc: vi.fn(async () => ({ error: null })),
   }
 })
 vi.mock('./supabase', () => ({
   supabase: {
     auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'u1' } } })) },
-    from: vi.fn(() => ({ update: h.update, upsert: h.upsert })),
+    from: vi.fn(() => ({
+      update: h.update,
+      upsert: h.upsert,
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: h.stored, error: null }) }) }),
+    })),
     rpc: h.rpc,
   },
 }))
@@ -21,6 +33,7 @@ import {
   TIME_SLOTS,
   consentNotice,
   createPrefs,
+  deleteMyPushData,
   firstConsentText,
   markAsked,
   readAskedAt,
@@ -29,7 +42,17 @@ import {
   shouldAskPush,
 } from './pushPrefs'
 
-beforeEach(() => localStorage.clear())
+beforeEach(() => {
+  localStorage.clear()
+  h.stored = {
+    reminder_on: true,
+    reminder_time: '21:00:00',
+    settle_on: true,
+    news_on: true,
+    promo_on: true,
+    promo_consent_at: '2026-11-04T01:00:00.000Z',
+  }
+})
 
 describe('처음 안내 7일 규칙', () => {
   const now = new Date('2026-11-10T12:00:00+09:00')
@@ -66,19 +89,34 @@ describe('DB', () => {
   const now = new Date('2026-11-04T10:00:00+09:00')
   it('처음 켤 때 기본값으로 만든다 (광고는 체크했을 때만 동의 시각과 함께)', async () => {
     const p = await createPrefs(true, now)
+    // 저장된 행을 다시 읽어 돌려준다(동의 시각은 서버 트리거가 찍은 값)
     expect(p).toEqual({
       reminderOn: true,
       reminderTime: '21:00',
       settleOn: true,
       newsOn: true,
       promoOn: true,
-      promoConsentAt: now.toISOString(),
+      promoConsentAt: '2026-11-04T01:00:00.000Z',
     })
     expect(h.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: 'u1', promo_on: true, promo_consent_at: now.toISOString(), promo_reconfirm_sent_at: null }),
+      { onConflict: 'user_id', ignoreDuplicates: true },
     )
-    const off = await createPrefs(false, now)
-    expect(off.promoConsentAt).toBeNull()
+  })
+  it('이미 설정이 있으면 덮어쓰지 않는다 (ignoreDuplicates) — 저장된 값을 그대로 돌려준다', async () => {
+    h.stored = { ...(h.stored as object), promo_on: false, promo_consent_at: null, news_on: false }
+    const p = await createPrefs(true, now)
+    expect(h.upsert).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ ignoreDuplicates: true }))
+    expect(p.newsOn).toBe(false)
+    expect(p.promoOn).toBe(false)
+  })
+  it('저장 뒤 다시 읽어도 없으면 실패로 본다', async () => {
+    h.stored = null
+    await expect(createPrefs(false, now)).rejects.toThrow()
+  })
+  it('탈퇴 때 푸시 데이터는 RPC 한 번으로 지운다', async () => {
+    await deleteMyPushData()
+    expect(h.rpc).toHaveBeenCalledWith('delete_my_push_data')
   })
   it('광고 켜기는 동의 시각을 새로 남기고 재확인 기록을 지운다', async () => {
     await setPromo(true, now)

@@ -10,7 +10,7 @@ import { attachSourceToUser, captureSource } from './lib/source'
 import { capturePendingInvite, restoreInviteFromAccount } from './lib/invite'
 import { applyMarketingChoice } from './lib/marketing'
 import { rememberLogin, startsAtLogin } from './lib/preview'
-import { getMyMembership, type Membership } from './lib/db'
+import { getMyMembership, signOutEverywhere, type Membership } from './lib/db'
 import { useLedgerStore } from './lib/store'
 import AppFrame from './components/AppFrame'
 import SyncBanner from './components/SyncBanner'
@@ -326,7 +326,7 @@ function Splash({ message, error }: { message: string; error?: boolean }) {
         </p>
         {error && (
           <button
-            onClick={() => supabase.auth.signOut()}
+            onClick={() => signOutEverywhere()}
             className="mt-6 text-[13px] text-cap underline"
           >
             로그아웃

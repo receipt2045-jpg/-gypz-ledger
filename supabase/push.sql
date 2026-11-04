@@ -174,9 +174,29 @@ begin
 end;
 $$;
 
-revoke all on function public.register_push_token(text, text) from public;
-revoke all on function public.forget_push_token(text) from public;
-revoke all on function public.push_audience_count(text) from public;
+-- 회원 탈퇴 때 푸시 데이터를 지운다. delete_my_account는 auth.users를 지우지 않아 cascade가 안 돈다.
+-- 여러 번 불러도 괜찮다(없으면 0행 삭제).
+create or replace function public.delete_my_push_data()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception '로그인이 필요해요';
+  end if;
+  delete from push_tokens where user_id = auth.uid();
+  delete from notification_prefs where user_id = auth.uid();
+  delete from push_log where user_id = auth.uid();
+end;
+$$;
+
+revoke all on function public.register_push_token(text, text) from public, anon;
+revoke all on function public.forget_push_token(text) from public, anon;
+revoke all on function public.push_audience_count(text) from public, anon;
+revoke all on function public.delete_my_push_data() from public, anon;
 grant execute on function public.register_push_token(text, text) to authenticated;
 grant execute on function public.forget_push_token(text) to authenticated;
 grant execute on function public.push_audience_count(text) to authenticated;
+grant execute on function public.delete_my_push_data() to authenticated;

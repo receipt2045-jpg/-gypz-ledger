@@ -1,5 +1,6 @@
 import { applyCategoryChanges, type CategoryChange } from './categoryChanges'
 import { supabase } from './supabase'
+import { forgetPushToken } from './pushNative'
 import type { ChildRecord, GiftReport } from './childMoney'
 import type { PeerRow } from './peerBenchmark'
 import type {
@@ -510,6 +511,16 @@ export async function sendFeedback(input: {
     app_version: 'v1.0',
   })
   if (error) throw error
+}
+
+/** 로그아웃 — 이 폰으로 그 사람 알림이 더 가지 않게 토큰부터 지운다(웹·플러그인 없는 앱은 아무것도 안 함). 모든 로그아웃은 이걸 쓴다 */
+export async function signOutEverywhere() {
+  try {
+    await forgetPushToken()
+  } catch (err) {
+    console.warn('[push] 로그아웃 전 토큰 지우기', err)
+  }
+  await supabase.auth.signOut()
 }
 
 /** 회원 탈퇴: 내 가구·모든 데이터 삭제 후 로그아웃 (RPC delete_my_account) */

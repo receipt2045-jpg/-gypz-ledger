@@ -2,8 +2,7 @@ import MonthStartPicker from '../components/MonthStartPicker'
 import { useState } from 'react'
 import { Heart, KeyRound, Plus, Target } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
-import { supabase } from '../lib/supabase'
-import { createHousehold, joinHousehold, pushProfile, type Membership } from '../lib/db'
+import { createHousehold, joinHousehold, pushProfile, signOutEverywhere, type Membership } from '../lib/db'
 import { abbreviateKRW } from '../lib/format'
 import { clearPendingInvite, pendingInvite } from '../lib/invite'
 
@@ -253,7 +252,7 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
 
           {mode !== 'profile' && (
             <button
-              onClick={() => supabase.auth.signOut()}
+              onClick={() => signOutEverywhere()}
               className="mt-8 w-full text-center text-[13px] text-cap underline"
             >
               다른 계정으로 로그인
