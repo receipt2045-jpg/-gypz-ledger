@@ -51,7 +51,7 @@
 | `news` | 08:00 창 | `news_on`, 오늘 `post_date`의 `news`/`market` 글이 있음 | `YYYY-MM-DD` | 제목 "오늘의 경제" / 본문 = 그 글 제목 | `/info/:id` |
 | `notice` | 캠페인 `send_at` 이후 첫 실행 | `news_on` | `campaign:id` | 운영자 입력 | 운영자 선택 |
 | `promo` | 캠페인 `send_at` 이후 첫 실행, 단 08:00~20:59에만 | `promo_on` | `campaign:id` | "(광고) " + 제목 / 본문 + "\n수신 거부: 설정 > 알림" | 운영자 선택 |
-| `promo_reconfirm` | `promo_consent_at` + 23개월이 지난 뒤 첫 실행(08~21시) | `promo_on`, `promo_reconfirm_sent_at`이 null 또는 그 이전 동의 기준 | `consent:YYYY-MM-DD` | "소식·혜택 알림, 계속 받으시겠어요?" / "○○년 ○월 ○일에 동의하셨어요. 그만 받으려면 설정 > 알림에서 꺼 주세요." | `/settings` |
+| `promo_reconfirm` | 기준일 + 23개월이 지난 뒤 첫 실행(08:00~20:59). 기준일 = `max(promo_consent_at, promo_reconfirm_sent_at)` | `promo_on`. 보낸 뒤 `promo_reconfirm_sent_at = now` (그래서 2년마다 반복) | `reconfirm:YYYY-MM` | "소식·혜택 알림, 계속 받으시겠어요?" / "○○년 ○월 ○일에 동의하셨어요. 그만 받으려면 설정 > 알림에서 꺼 주세요." | `/settings` |
 
 - **정산일**: 집의 `households.month_start_day`(d)인 날. 그날 정산 대상 달 = `shiftYm(그날의 ym, -1)` (`src/lib/format.ts`의 `ymOfDate` 규칙과 같다: d일이 되면 새 달이 시작되고, 끝난 달이 정산 대상).
 - **5분 창**: 실행 시각 `now`에 대해 목표 시각 `t`가 `now-5분 < t ≤ now`이면 보낸다. 서버가 한 번 건너뛰어도 `push_log` unique로 중복은 막히지만, 창을 놓친 알림은 보내지 않는다(늦은 알림보다 안 보내는 게 낫다). 단 캠페인(`notice`/`promo`)은 `send_at` 이후 첫 실행에서 보낸다.
