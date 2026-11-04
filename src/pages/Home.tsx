@@ -34,6 +34,7 @@ import {
 import { TERM_TIP } from '../lib/constants'
 import { NO_CONTRIBUTIONS, totalLeft } from '../lib/budgetPlan'
 import { computeRoadmap, roadmapInput } from '../lib/roadmap'
+import PushAskSheet from '../components/PushAskSheet'
 
 /**
  * 홈 = 대시보드만. 기록(고백·예산·정산·자산 등록)은 각 탭에서:
@@ -105,6 +106,8 @@ export default function Home() {
 
   return (
     <div className="animate-fade-up space-y-4 pb-24">
+      {/* 앱 처음 알림 안내 (웹·예시에선 안 뜬다) */}
+      <PushAskSheet />
       {/* 달 선택 + 설정 */}
       <div className="relative flex items-center justify-center gap-3 pt-2">
         <button

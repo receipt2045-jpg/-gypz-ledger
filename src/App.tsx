@@ -51,6 +51,7 @@ import ChildBenefit from './pages/ChildBenefit'
 import Share from './pages/Share'
 import PublicNews from './pages/PublicNews'
 import Roadmap from './pages/Roadmap'
+import { syncPushToken } from './lib/pushNative'
 
 export default function App() {
   return (
@@ -94,6 +95,7 @@ async function onSignedIn(user: User) {
   rememberLogin(true) // 다음에 이 기기로 오면 예시 대신 로그인 화면부터
   await attachSourceToUser(user)
   await applyMarketingChoice(user)
+  void syncPushToken(user.id) // 앱에서 알림을 켠 사람만 토큰을 다시 등록 (웹은 아무것도 안 함)
 }
 
 /**

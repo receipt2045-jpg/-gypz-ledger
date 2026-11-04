@@ -6,6 +6,7 @@ import './index.css'
 import { hashFromPath } from './lib/pathToHash'
 import { isNative } from './lib/native'
 import { installNativeShell } from './lib/nativeShell'
+import { installPush } from './lib/pushNative'
 
 // 링크 서비스가 #을 떼고 열어도(moabuli.com/leave, /%23/leave) 원래 화면으로 간다
 const fixed = hashFromPath(window.location.pathname, window.location.search, window.location.hash)
@@ -13,6 +14,8 @@ if (fixed) window.history.replaceState(null, '', fixed)
 
 // 앱(하이브리드)일 때만 뒤로가기·바깥 링크·앱 링크를 처리한다
 installNativeShell()
+// 앱일 때만: 알림 채널·토큰·알림 누르면 그 화면으로 (2026-11-04)
+installPush()
 
 // 앱 설치용 서비스 워커 — 배포본에서만(앱에선 오프라인을 앱이 처리하므로 등록 안 함). 화면 파일은 저장하지 않는다(public/sw.js 참고)
 if (import.meta.env.PROD && 'serviceWorker' in navigator && !isNative()) {
