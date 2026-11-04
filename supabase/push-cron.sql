@@ -29,4 +29,5 @@ select cron.schedule(
 );
 
 -- 확인: select jobname, schedule, active from cron.job where jobname = 'push-dispatch';
+-- 결과의 status_code가 401이면 Vault의 push_cron_secret이 없거나 함수 시크릿(PUSH_CRON_SECRET)과 값이 다르다는 뜻이다.
 -- 최근 결과: select status_code, content from net._http_response order by created desc limit 5;

@@ -85,6 +85,39 @@ create policy "push_campaigns admin" on public.push_campaigns
   using (lower(auth.jwt() ->> 'email') = 'receipt2045@gmail.com')
   with check (lower(auth.jwt() ->> 'email') = 'receipt2045@gmail.com');
 
+-- 동의 기록 보호 — 광고 수신 동의 시각은 법적 기록이라 클라이언트가 못 바꾼다.
+-- service_role(발송 함수)만 promo_reconfirm_sent_at을 바꿀 수 있다. 그 외(SQL Editor 직접 실행 포함)는 아래 규칙으로 덮어쓴다.
+create or replace function public.notification_prefs_guard()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+declare
+  is_service boolean := coalesce(auth.role(), '') = 'service_role';
+begin
+  new.updated_at := now();
+  if is_service then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    new.promo_consent_at := case when new.promo_on then now() else null end;
+    new.promo_reconfirm_sent_at := null;
+  else
+    if new.promo_on and not old.promo_on then
+      new.promo_consent_at := now();
+    else
+      new.promo_consent_at := old.promo_consent_at;
+    end if;
+    new.promo_reconfirm_sent_at := old.promo_reconfirm_sent_at;
+  end if;
+  return new;
+end;
+$;
+drop trigger if exists notification_prefs_guard on public.notification_prefs;
+create trigger notification_prefs_guard
+  before insert or update on public.notification_prefs
+  for each row execute function public.notification_prefs_guard();
+
 -- ── RPC ──
 -- 같은 폰에 다른 계정이 로그인하면 토큰 주인을 바꾼다(RLS로는 남의 행을 못 바꿔서 security definer)
 create or replace function public.register_push_token(p_token text, p_platform text default 'android')
@@ -128,6 +161,9 @@ as $$
 begin
   if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'receipt2045@gmail.com' then
     raise exception '운영자만 볼 수 있어요';
+  end if;
+  if p_kind is null or p_kind not in ('notice', 'promo') then
+    raise exception '알림 종류가 올바르지 않아요';
   end if;
   return (
     select count(distinct t.user_id)::int
