@@ -91,7 +91,7 @@ create or replace function public.notification_prefs_guard()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $$
 declare
   is_service boolean := coalesce(auth.role(), '') = 'service_role';
 begin
@@ -112,7 +112,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 drop trigger if exists notification_prefs_guard on public.notification_prefs;
 create trigger notification_prefs_guard
   before insert or update on public.notification_prefs
