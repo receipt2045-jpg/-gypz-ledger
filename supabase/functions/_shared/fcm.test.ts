@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buildFcmBody, createFcmSender, isInvalidToken, sendToUser, signJwt, type ServiceAccount } from './fcm.ts'
+import { buildFcmBody, createFcmSender, isInvalidToken, runPool, sendToUser, signJwt, type ServiceAccount } from './fcm.ts'
 
 async function testAccount(): Promise<{ sa: ServiceAccount; publicKey: CryptoKey }> {
   const pair = (await crypto.subtle.generateKey(
@@ -46,10 +46,36 @@ describe('buildFcmBody', () => {
 })
 
 describe('isInvalidToken', () => {
-  it('UNREGISTERED·INVALID_ARGUMENT는 지울 토큰', () => {
+  it('UNREGISTERED와, 등록 토큰을 가리키는 INVALID_ARGUMENT만 지울 토큰', () => {
     expect(isInvalidToken(404, unregistered.json)).toBe(true)
-    expect(isInvalidToken(400, { error: { status: 'INVALID_ARGUMENT' } })).toBe(true)
-    expect(isInvalidToken(400, { error: { status: 'INVALID_ARGUMENT', details: [{ errorCode: 'INVALID_ARGUMENT' }] } })).toBe(true)
+    expect(
+      isInvalidToken(400, {
+        error: { status: 'INVALID_ARGUMENT', message: 'The registration token is not a valid FCM registration token' },
+      }),
+    ).toBe(true)
+    expect(
+      isInvalidToken(400, {
+        error: {
+          status: 'INVALID_ARGUMENT',
+          message: 'Request contains an invalid argument.',
+          details: [{ '@type': 'type.googleapis.com/google.rpc.BadRequest', fieldViolations: [{ field: 'message.token' }] }],
+        },
+      }),
+    ).toBe(true)
+  })
+  it('본문 오류·이유 없는 INVALID_ARGUMENT·NOT_FOUND는 지우지 않는다', () => {
+    expect(isInvalidToken(400, { error: { status: 'INVALID_ARGUMENT' } })).toBe(false)
+    expect(isInvalidToken(400, { error: { status: 'INVALID_ARGUMENT', details: [{ errorCode: 'INVALID_ARGUMENT' }] } })).toBe(false)
+    expect(
+      isInvalidToken(400, {
+        error: {
+          status: 'INVALID_ARGUMENT',
+          message: 'Invalid value at message.data',
+          details: [{ fieldViolations: [{ field: 'message.data[0].value' }] }],
+        },
+      }),
+    ).toBe(false)
+    expect(isInvalidToken(404, { error: { status: 'NOT_FOUND' } })).toBe(false)
   })
   it('일시 오류는 지우지 않는다', () => {
     expect(isInvalidToken(500, { error: { status: 'INTERNAL' } })).toBe(false)
@@ -76,6 +102,31 @@ describe('signJwt', () => {
   })
 })
 
+describe('runPool', () => {
+  it('동시에 limit개까지만 돌리고, 던진 건은 onError로 넘기며 나머지는 끝낸다', async () => {
+    let running = 0
+    let peak = 0
+    const done: number[] = []
+    const errors: number[] = []
+    await runPool(
+      [1, 2, 3, 4, 5, 6, 7],
+      3,
+      async (n) => {
+        running++
+        peak = Math.max(peak, running)
+        await new Promise((r) => setTimeout(r, 5))
+        running--
+        if (n === 4) throw new Error('boom')
+        done.push(n)
+      },
+      (n) => errors.push(n),
+    )
+    expect(peak).toBe(3)
+    expect(done.sort()).toEqual([1, 2, 3, 5, 6, 7])
+    expect(errors).toEqual([4])
+  })
+})
+
 describe('createFcmSender / sendToUser', () => {
   it('OAuth 토큰은 한 번만 받고, v1 주소로 Bearer와 함께 보낸다', async () => {
     const { sa } = await testAccount()
@@ -95,6 +146,30 @@ describe('createFcmSender / sendToUser', () => {
     const f = fakeFetch((t) => (t === 'gone-token' ? unregistered : t === 'flaky-token' ? { status: 503 } : { status: 200 }))
     const r = await sendToUser(createFcmSender(sa, f), ['good-token', 'gone-token', 'flaky-token'], msg)
     expect(r).toEqual({ ok: 1, errors: 1, invalid: ['gone-token'] })
+  })
+
+  it('본문 잘못(INVALID_ARGUMENT)은 토큰을 지우지 않고 error', async () => {
+    const { sa } = await testAccount()
+    const f = fakeFetch(() => ({ status: 400, json: { error: { status: 'INVALID_ARGUMENT', message: 'Invalid value at message.data' } } }))
+    expect(await createFcmSender(sa, f).send('tok', msg)).toBe('error')
+  })
+
+  it('ready는 OAuth 실패를 던지고(상태만), 성공하면 한 번만 받는다', async () => {
+    const { sa } = await testAccount()
+    const bad = vi.fn(async () => new Response('{}', { status: 401 }))
+    await expect(createFcmSender(sa, bad).ready()).rejects.toThrow('google oauth 401')
+    const f = fakeFetch(() => ({ status: 200 }))
+    const sender = createFcmSender(sa, f)
+    await sender.ready()
+    await sender.send('tok', msg)
+    expect(f.mock.calls.filter(([u]) => u === 'https://oauth2.googleapis.com/token')).toHaveLength(1)
+  })
+
+  it('FCM·OAuth 호출에는 제한 시간 signal이 붙는다', async () => {
+    const { sa } = await testAccount()
+    const f = fakeFetch(() => ({ status: 200 }))
+    await createFcmSender(sa, f).send('tok', msg)
+    for (const [, init] of f.mock.calls) expect(init?.signal).toBeInstanceOf(AbortSignal)
   })
 
   it('OAuth가 실패하면 던지지 않고 error', async () => {

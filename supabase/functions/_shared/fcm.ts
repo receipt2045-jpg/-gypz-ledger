@@ -29,8 +29,13 @@ export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>
 export type SendResult = 'ok' | 'invalid' | 'error'
 
 export interface FcmSender {
+  /** OAuth 토큰을 미리 받아 둔다. 실패하면 던진다(메시지에는 HTTP 상태만 담는다) */
+  ready(): Promise<void>
   send(token: string, m: FcmMessage): Promise<SendResult>
 }
+
+/** FCM·OAuth 호출 한 번의 제한 시간 */
+export const FETCH_TIMEOUT_MS = 10_000
 
 export function buildFcmBody(token: string, m: FcmMessage) {
   return {
@@ -43,12 +48,42 @@ export function buildFcmBody(token: string, m: FcmMessage) {
   }
 }
 
-/** 지워야 할 토큰(앱 삭제·만료·잘못된 값)인지. 그 외 실패는 일시 오류로 본다 */
+/**
+ * 지워야 할 토큰(앱 삭제·만료·잘못된 값)인지. 그 외 실패는 일시 오류로 본다.
+ * UNREGISTERED만 확실하다. 400 INVALID_ARGUMENT는 등록 토큰 자체를 가리킬 때만(본문 잘못은 지우면 안 된다).
+ */
 export function isInvalidToken(status: number, json: unknown): boolean {
-  const err = (json as { error?: { status?: string; details?: { errorCode?: string }[] } } | null)?.error
-  const codes = (err?.details ?? []).map((d) => d.errorCode)
-  if (codes.includes('UNREGISTERED') || codes.includes('INVALID_ARGUMENT')) return true
-  return (status === 404 && err?.status === 'NOT_FOUND') || (status === 400 && err?.status === 'INVALID_ARGUMENT')
+  type Detail = { errorCode?: string; fieldViolations?: { field?: string; description?: string }[] }
+  const err = (json as { error?: { status?: string; message?: string; details?: Detail[] } } | null)?.error
+  const details = err?.details ?? []
+  if (details.some((d) => d.errorCode === 'UNREGISTERED')) return true
+  if (status !== 400 || err?.status !== 'INVALID_ARGUMENT') return false
+  const refersToToken = (s?: string) => /registration token|message\.token/i.test(s ?? '')
+  return (
+    refersToToken(err.message) ||
+    details.some((d) => (d.fieldViolations ?? []).some((v) => refersToToken(v.field) || refersToToken(v.description)))
+  )
+}
+
+/** 동시에 limit개까지만 돌린다. 한 건이 던져도 나머지는 계속 돈다(던진 건은 onError로) */
+export async function runPool<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+  onError: (item: T, err: unknown) => void = () => {},
+): Promise<void> {
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const item = items[next++]
+      try {
+        await fn(item)
+      } catch (err) {
+        onError(item, err)
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
 }
 
 const enc = new TextEncoder()
@@ -99,6 +134,7 @@ export function createFcmSender(
             grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             assertion: await signJwt(sa, nowSec()),
           }).toString(),
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         })
         if (!res.ok) throw new Error(`google oauth ${res.status}`)
         return ((await res.json()) as { access_token: string }).access_token
@@ -111,12 +147,16 @@ export function createFcmSender(
   }
 
   return {
+    async ready() {
+      await getAccess()
+    },
     async send(token, m) {
       try {
         const res = await fetchFn(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
           method: 'POST',
           headers: { authorization: `Bearer ${await getAccess()}`, 'content-type': 'application/json' },
           body: JSON.stringify(buildFcmBody(token, m)),
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         })
         if (res.ok) return 'ok'
         const json = await res.json().catch(() => null)
