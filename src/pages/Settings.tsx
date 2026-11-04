@@ -28,6 +28,8 @@ import { supabase } from '../lib/supabase'
 import * as db from '../lib/db'
 import { amIStaff } from '../lib/qna'
 import { deleteMyAccount } from '../lib/db'
+import NotificationSettings from '../components/NotificationSettings'
+import { forgetPushToken } from '../lib/pushNative'
 import { COLOR_STYLE, MEMBER_COLORS, memberColor, type MemberColor } from '../lib/memberColors'
 import { GROUP_LABEL, GROUP_ORDER, visibleCategories } from '../lib/constants'
 import type { AppData, CategoryGroup } from '../types'
@@ -89,6 +91,7 @@ export default function Settings() {
       return
     setDeleting(true)
     try {
+      await forgetPushToken()
       await deleteMyAccount()
       await supabase.auth.signOut()
       alert('탈퇴가 완료됐어요. 그동안 함께해 주셔서 고마웠어요 🤍')
@@ -472,6 +475,12 @@ export default function Settings() {
               </div>
             </Card>
 
+            {/* 알림 (2026-11-04) — 앱에서만 스위치, 웹은 안내 한 줄 */}
+            <Card>
+              <h2 className="mb-3 text-[15px] font-bold text-ink">알림</h2>
+              <NotificationSettings />
+            </Card>
+
             {/* 계정 */}
             <Card>
               <h2 className="mb-3 text-[15px] font-bold text-ink">계정</h2>
@@ -480,7 +489,10 @@ export default function Settings() {
                 <MarketingToggle />
                 <PasswordForm />
                 <button
-                  onClick={() => supabase.auth.signOut()}
+                  onClick={async () => {
+                    await forgetPushToken() // 이 폰으로 알림이 더 가지 않게 (웹은 아무것도 안 함)
+                    await supabase.auth.signOut()
+                  }}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
                 >
                   <LogOut size={18} /> 로그아웃
