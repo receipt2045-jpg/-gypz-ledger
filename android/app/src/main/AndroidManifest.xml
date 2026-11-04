@@ -9,6 +9,18 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- 푸시 알림 (2026-11-04): 알림 줄 아이콘·기본 채널(앱이 'moabuli' 채널을 만든다) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_moabuli" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="moabuli" />
+        <!-- 알림을 켜기 전에는 토큰을 만들지 않는다 (register()를 부를 때 만든다) -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
+
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
@@ -48,6 +60,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 음성으로 소비 기록 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- 푸시 알림 (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Firebase가 끼워 넣을 수 있는 광고 ID 권한은 뺀다 (광고 ID를 쓰지 않는다) -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
 
     <!-- 쓰지 않는 생체 인증 권한(라이브러리가 끼워 넣음)은 뺀다 -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
