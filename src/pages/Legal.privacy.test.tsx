@@ -22,6 +22,8 @@ describe('개인정보처리방침 — 푸시 알림 (2026-11-04)', () => {
     expect(text).toContain('Firebase Cloud Messaging')
     expect(text).toContain('(광고)')
     expect(text).toContain('설정 > 알림')
+    expect(text).toContain('보낸 알림 기록')
+    expect(text).toContain('회원 탈퇴 시까지')
   })
 
   it('정적 사본(public/privacy.html)도 같이 고쳤다', () => {
@@ -29,5 +31,7 @@ describe('개인정보처리방침 — 푸시 알림 (2026-11-04)', () => {
     expect(html).toContain('푸시 토큰')
     expect(html).toContain('Firebase Cloud Messaging')
     expect(html).toContain('(광고)')
+    expect(html).toContain('보낸 알림 기록')
+    expect(html).toContain('회원 탈퇴 시까지')
   })
 })
