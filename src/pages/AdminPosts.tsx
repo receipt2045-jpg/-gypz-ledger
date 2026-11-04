@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Send, Trash2 } from 'lucide-react'
 import Card from '../components/Card'
 import PostCard from '../components/PostCard'
+import AdminPush from './AdminPush'
 import { shareText } from '../lib/native'
 import {
   POST_KIND_LABEL,
@@ -25,6 +26,7 @@ import {
 export default function AdminPosts() {
   const navigate = useNavigate()
   const [admin, setAdmin] = useState<boolean | null>(null)
+  const [tab, setTab] = useState<'posts' | 'push'>('posts')
   const [raw, setRaw] = useState('')
   const [draft, setDraft] = useState<PostDraft | null>(null)
   const [busy, setBusy] = useState(false)
@@ -93,7 +95,24 @@ export default function AdminPosts() {
           >
             <ChevronLeft size={26} />
           </button>
-          <h1 className="text-[22px] font-extrabold text-ink">오늘의 경제 올리기</h1>
+          <h1 className="text-[22px] font-extrabold text-ink">
+            {tab === 'posts' ? '오늘의 경제 올리기' : '알림 보내기'}
+          </h1>
+          {admin && (
+            <div role="tablist" className="mt-3 flex gap-2">
+              {(['posts', 'push'] as const).map((t) => (
+                <button
+                  key={t}
+                  role="tab"
+                  aria-selected={tab === t}
+                  onClick={() => setTab(t)}
+                  className={`rounded-full px-3.5 py-1.5 text-[13px] font-bold ${tab === t ? 'bg-ink text-white' : 'bg-white text-sub'}`}
+                >
+                  {t === 'posts' ? '오늘의 경제' : '알림 보내기'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {admin === false && (
@@ -102,7 +121,7 @@ export default function AdminPosts() {
           </Card>
         )}
 
-        {admin && (
+        {admin && tab === 'posts' && (
           <div className="space-y-4">
             <Card>
               <p className="text-[13.5px] font-medium text-sub">
@@ -214,6 +233,7 @@ export default function AdminPosts() {
             )}
           </div>
         )}
+        {admin && tab === 'push' && <AdminPush />}
       </div>
     </div>
   )
