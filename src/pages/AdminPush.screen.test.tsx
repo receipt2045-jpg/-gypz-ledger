@@ -79,6 +79,24 @@ describe('관리자 > 알림 보내기', () => {
     expect(await screen.findByText(/보내져요|예약했어요/)).toBeInTheDocument()
   })
 
+  it.each([
+    ['2026-11-04T20:54:00+09:00', '5분 안에 보내져요.'],
+    ['2026-11-04T20:55:00+09:00', '광고 알림은 아침 8시에 보내져요.'],
+    ['2026-11-04T22:10:00+09:00', '광고 알림은 아침 8시에 보내져요.'],
+  ])('홍보를 지금 보내면 %s에는 "%s"라고 알려 준다', async (at, expected) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(at))
+    try {
+      vi.spyOn(window, 'confirm').mockReturnValue(true)
+      render(<AdminPush />)
+      await fill('홍보', '연말 특강', '자리 남았어요')
+      await userEvent.click(screen.getByRole('button', { name: '보내기' }))
+      expect(await screen.findByText(expected)).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('확인에서 취소하면 저장하지 않는다', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     render(<AdminPush />)

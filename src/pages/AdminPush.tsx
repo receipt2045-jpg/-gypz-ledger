@@ -19,7 +19,10 @@ import {
   type CampaignKind,
 } from '../lib/pushAdmin'
 
-const field = 'mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-[14px] text-ink'
+/** push-dispatch는 5분마다 돈다 — 20:55 이후에 적은 홍보는 다음 실행이 21:00 이후라 08:00으로 미뤄진다 */
+const DISPATCH_LAG_MS = 5 * 60 * 1000
+
+const field ='mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-[14px] text-ink'
 
 /**
  * 관리자 > 알림 보내기 (2026-11-04, 푸시 2단계). /admin/posts의 두 번째 탭.
@@ -84,7 +87,7 @@ export default function AdminPush() {
       setMsg(
         when === 'later'
           ? '예약했어요.'
-          : kind === 'promo' && !promoHourOk(now)
+          : kind === 'promo' && !promoHourOk(new Date(now.getTime() + DISPATCH_LAG_MS))
             ? '광고 알림은 아침 8시에 보내져요.'
             : '5분 안에 보내져요.',
       )
