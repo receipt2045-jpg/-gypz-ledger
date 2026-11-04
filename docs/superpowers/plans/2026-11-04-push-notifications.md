@@ -33,7 +33,7 @@
 7. **"○명에게 보내요"**: RPC `push_audience_count(kind)` — 토큰이 있는 사람 중 공지는 `news_on`, 홍보는 `promo_on`.
 8. **[설정 열기]**: 폰 설정 화면을 여는 플러그인을 더하지 않는다. 버튼은 [알림 켜기](권한 다시 요청)이고, 폰에서 막혀 있으면 "폰 설정 > 애플리케이션 > 모아불리 > 알림에서 켜 주세요"를 보여 준다. (결영 확인 필요 — 원하면 3단계에서 플러그인 추가)
 9. **재확인 문구 날짜**: `2024년 12월 4일`처럼 네 자리 연도.
-10. **앱이 켜져 있을 때 온 알림**: 안드로이드 FCM 기본대로 알림 줄에 안 뜬다. 이번엔 그대로 둔다.
+10. **앱이 켜져 있을 때 온 알림**: `capacitor.config.ts`의 `plugins.PushNotifications.presentationOptions: ['badge', 'sound', 'alert']`로 앱을 열어 둔 채로도 알림 줄에 뜨게 한다(최종 리뷰 반영). 알림을 누르면 그 화면으로 가는 건 그대로.
 11. **캠페인 보낸 수·실패 수**: 사람 기준(폰이 여러 대면 하나라도 성공하면 보냄 1).
 12. `push_log` 오래된 행 정리는 이번에 안 한다.
 
@@ -641,7 +641,7 @@ describe('promo_reconfirm (2년마다 동의 재확인)', () => {
         userId: 'u1',
         kind: 'promo_reconfirm',
         refKey: 'reconfirm:2026-11',
-        title: '소식·혜택 알림, 계속 받으시겠어요?',
+        title: '소식·혜택 알림 수신 동의 안내',
         body: '2024년 12월 4일에 동의하셨어요. 그만 받으려면 설정 > 알림에서 꺼 주세요.',
         path: '/settings',
       },
@@ -924,7 +924,7 @@ export function planPushes(input: PushInput): PushPlan {
           userId,
           kind: 'promo_reconfirm',
           refKey: `reconfirm:${today.ym}`,
-          title: '소식·혜택 알림, 계속 받으시겠어요?',
+          title: '소식·혜택 알림 수신 동의 안내',
           body: `${koreanDate(pref.promoConsentAt)}에 동의하셨어요. 그만 받으려면 설정 > 알림에서 꺼 주세요.`,
           path: '/settings',
         })
@@ -3566,7 +3566,7 @@ git commit -m "Firebase 앱 설정(google-services.json, 공개 설정값) — �
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -- android/app/google-services.json
 ```
 
-- [ ] **Step 2: 서비스 계정 키 → Supabase 시크릿** — Firebase 콘솔 > 프로젝트 설정 > 서비스 계정 > 새 비공개 키 생성. 파일은 레포 밖 `가계부/android-signing/firebase-push-sa.json`에 저장. 셸에서 값을 출력하지 않고 넣는다:
+- [ ] **Step 2: 서비스 계정 키 → Supabase 시크릿** — 먼저 GCP 콘솔 > API 및 서비스 > "Firebase Cloud Messaging API (V1)"이 **사용 설정**돼 있는지 확인한다(꺼져 있으면 발송이 403). 키는 Firebase 기본 Admin SDK 계정 대신 **전용 서비스 계정**을 새로 만들어(IAM > 서비스 계정, 예: `moabuli-push`) 역할 `roles/firebasecloudmessaging.admin`만 주고, 그 계정의 새 비공개 키를 만든다. 파일은 레포 밖 `가계부/android-signing/firebase-push-sa.json`에 저장. 셸에서 값을 출력하지 않고 넣는다:
 
 ```bash
 SA_FILE="/c/Users/recei/OneDrive/문서/Claude/Projects/가계부/android-signing/firebase-push-sa.json"
@@ -3577,28 +3577,43 @@ printf '%s' "$S" > "/c/Users/recei/OneDrive/문서/Claude/Projects/가계부/and
 ```
 (Supabase CLI 로그인이 안 돼 있으면 결영이 대시보드 > Edge Functions > Secrets에서 직접 넣는다. `android-signing/`은 레포 밖이다.)
 
-- [ ] **Step 3: DB** — Supabase 대시보드 > SQL Editor에서 `supabase/push.sql` 전체 실행. 확인:
+- [ ] **Step 3: DB** — Supabase 대시보드 > SQL Editor에서 `supabase/push.sql` 전체 실행(트리거 `notification_prefs_guard`와 RPC 4개 `register_push_token`·`forget_push_token`·`push_audience_count`·`delete_my_push_data` 포함 — 최종 리뷰로 추가·수정된 부분이라 이 파일 전체를 다시 실행한다). 확인:
 ```sql
 select table_name from information_schema.tables where table_schema = 'public' and table_name in ('push_tokens','notification_prefs','push_log','push_campaigns');
 ```
 → 4행.
+```sql
+select tgname from pg_trigger where tgrelid = 'public.notification_prefs'::regclass and tgname = 'notification_prefs_guard' and not tgisinternal;
+```
+→ 1행.
+```sql
+select p.proname, p.prosecdef,
+       has_function_privilege('anon', p.oid, 'execute') as anon_can,
+       has_function_privilege('authenticated', p.oid, 'execute') as authed_can
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('register_push_token','forget_push_token','push_audience_count','delete_my_push_data')
+order by 1;
+```
+→ 4행, 모두 `prosecdef = true`, `anon_can = false`, `authed_can = true`.
 
 - [ ] **Step 4: 함수 배포** (`_shared`를 같이 묶어야 해서 CLI로)
 
 ```bash
 npx supabase functions deploy push-dispatch --no-verify-jwt --project-ref sygmpteafxlrhfbipkep
 ```
-확인: 헤더 없이 부르면 403.
+(`supabase/config.toml`에도 `verify_jwt = false`가 있어 플래그를 빼먹어도 같다. 대시보드에서 다시 배포하면 Verify JWT가 켜질 수 있으니 CLI로만 배포한다.) 확인: 헤더 없이 부르면 인증 실패 **401**.
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" -X POST https://sygmpteafxlrhfbipkep.supabase.co/functions/v1/push-dispatch
 ```
-→ `403`
+→ `401`
 
 - [ ] **Step 5: 크론** — 결영이 SQL Editor에서 `android-signing/push-cron-secret.txt`의 값을 넣어 `select vault.create_secret('<값>', 'push_cron_secret');` 한 번 실행(값을 대화에 붙여넣지 않는다). 그다음 `supabase/push-cron.sql` 전체 실행. 5분 뒤:
 ```sql
 select status_code, content from net._http_response order by created desc limit 3;
+select status, return_message, start_time from cron.job_run_details order by start_time desc limit 3;
 ```
-→ `200`, `{"ok":true,…}`
+→ `200`, `{"ok":true,…}`, 크론 `status = succeeded`. `401`이면 Vault 값이 함수 시크릿 `PUSH_CRON_SECRET`과 다르거나(Vault 불일치), 함수가 Verify JWT를 켠 채로 배포된 것이다 — `--no-verify-jwt`로 다시 배포하고 Vault 값을 `vault.update_secret`으로 맞춘다.
 
 - [ ] **Step 6: 웹 배포** — 결영 확인 후 `git push origin main` (Cloudflare Pages). 웹은 바뀌는 게 설정 > 알림 안내 한 줄뿐이고, 1.1.0 앱은 `pushSupported()` false라 그대로다.
 
@@ -3614,8 +3629,13 @@ select status_code, content from net._http_response order by created desc limit 
   7. 광고 스위치 켜기·끄기 → "○○년 ○월 ○일 수신 동의(거부)가 처리됐어요".
   8. 로그아웃 → `push_tokens`에서 그 폰 토큰이 사라진다.
   9. 웹(크롬 moabuli.com) 설정 > 알림: "알림은 모아불리 앱에서 받을 수 있어요" 한 줄, 다른 화면 변화 없음.
+  10. 앱을 완전히 종료한 상태(콜드 스타트)에서 알림이 오면 → 눌렀을 때 앱이 켜지며 알림에 담긴 화면이 열린다.
+  11. 앱을 열어 둔 상태에서 알림이 와도 알림 줄에 뜬다(`presentationOptions`).
+  12. 시험 계정으로 회원 탈퇴 → `select (select count(*) from push_tokens where user_id = '<uid>') + (select count(*) from notification_prefs where user_id = '<uid>') + (select count(*) from push_log where user_id = '<uid>');` 가 **0**. 웹에서 탈퇴한 경우도 같다.
+  13. 광고 스위치를 껐다가 다시 켜면 `promo_consent_at`이 **서버 시각**으로 새로 찍힌다(`select promo_on, promo_consent_at from notification_prefs where user_id = '<uid>';`).
+  14. SQL Editor에서 `update notification_prefs set promo_consent_at = '2020-01-01' where user_id = '<uid>';` 를 실행해도 트리거 `notification_prefs_guard`가 되돌려 값이 그대로다.
 
-- [ ] **Step 9: Play Console 데이터 보안** — "기기 또는 기타 ID"(목적: 앱 기능, 광고 또는 마케팅 — 알림) 추가. 1.1.0 때의 마이크(오디오) 항목과 함께 저장. 개인정보처리방침 URL은 그대로(`moabuli.com/privacy.html`, 시행일 2026-11-04 확인).
+- [ ] **Step 9: Play Console 데이터 보안** — "기기 또는 기타 ID"(목적: 앱 기능, 광고 또는 마케팅 — 알림) 추가. 1.1.0 때의 마이크(오디오) 항목과 함께 저장. **보낸 알림 기록(push_log: 알림 종류·시각, 사용자 ID에 연결)을 데이터 보안에 따로 선언해야 하는지 판단한다** — 기기 식별값과 같은 "기기 또는 기타 ID" 항목의 수집 목적(앱 기능)에 포함해 선언할지, 별도 항목이 필요한지 Play 도움말 기준으로 결정하고 결과를 기록한다. 개인정보처리방침 URL은 그대로(`moabuli.com/privacy.html`, 시행일 2026-11-04 확인).
 
 - [ ] **Step 10: 프로덕션 (결영 확인 후)** — 1.0.0 승인 뒤, 1.1.0 대신 1.2.0을 바로 낼지 결영이 고른다. 출시 노트 예:
 
