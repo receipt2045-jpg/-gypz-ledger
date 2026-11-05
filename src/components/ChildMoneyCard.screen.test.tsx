@@ -146,4 +146,47 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
       expect(screen.queryByText('찰떡이 통장 금액에도 더할까요?')).not.toBeInTheDocument()
     })
   })
+
+  describe('최근 기록 고치기', () => {
+    const seed = () => {
+      const r = open()
+      useLedgerStore.setState({
+        confessions: [
+          {
+            id: 'c1',
+            category: '용돈·선물',
+            kind: 'income',
+            amount: 50_000,
+            createdAt: new Date().toISOString(),
+            child: '찰떡이',
+            childKeep: true,
+          } as never,
+        ],
+      })
+      return r
+    }
+
+    it('금액과 증여 체크를 고쳐 저장한다', async () => {
+      const { user } = seed()
+      await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
+      const amt = screen.getByLabelText('고칠 금액')
+      await user.clear(amt)
+      await user.type(amt, '70000')
+      await user.click(screen.getByRole('checkbox', { name: '증여 기록에 더해요' }))
+      await user.click(screen.getByRole('button', { name: '저장' }))
+      const c = useLedgerStore.getState().confessions.find((x) => x.id === 'c1')
+      expect(c).toMatchObject({ amount: 70_000, gift: true })
+    })
+
+    it('취소하면 그대로', async () => {
+      const { user } = seed()
+      await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
+      const amt = screen.getByLabelText('고칠 금액')
+      await user.clear(amt)
+      await user.type(amt, '1')
+      await user.click(screen.getByRole('button', { name: '취소' }))
+      expect(useLedgerStore.getState().confessions[0].amount).toBe(50_000)
+      expect(screen.queryByLabelText('고칠 금액')).not.toBeInTheDocument()
+    })
+  })
 })

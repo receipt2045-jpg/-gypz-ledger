@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useLedgerStore } from '../lib/store'
 import { deleteGiftReport, fetchChildRecords, fetchGiftReports, insertGiftReport } from '../lib/db'
 import {
@@ -25,7 +25,7 @@ import {
   lastDueYm,
   nextPay,
 } from '../lib/childRecurring'
-import type { ChildRecurring } from '../types'
+import type { ChildRecurring, Confession } from '../types'
 import Toggle from './Toggle'
 
 /**
@@ -36,10 +36,11 @@ import Toggle from './Toggle'
  */
 export default function ChildMoneyCard({ childAssets }: { childAssets: Record<string, number> }) {
   const navigate = useNavigate()
-  const { householdId, confessions, profile, removeConfession } = useLedgerStore()
+  const { householdId, confessions, profile, removeConfession, updateConfession } = useLedgerStore()
   const children = profile.childNames ?? []
   const [records, setRecords] = useState<ChildRecord[] | null>(null)
   const [writing, setWriting] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
   const [reports, setReports] = useState<GiftReport[]>([])
 
   useEffect(() => {
@@ -178,7 +179,18 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
                 {confessions
                   .filter((c) => c.child === name)
                   .slice(0, 4)
-                  .map((c) => (
+                  .map((c) =>
+                    editing === c.id ? (
+                      <ChildRecordEdit
+                        key={c.id}
+                        c={c}
+                        onSave={(patch) => {
+                          updateConfession(c.id, patch)
+                          setEditing(null)
+                        }}
+                        onCancel={() => setEditing(null)}
+                      />
+                    ) : (
                     <div key={c.id} className="flex items-center gap-2 py-2 text-[13px]">
                       <span className="tnum shrink-0 text-[11.5px] text-cap">
                         {new Date(c.createdAt).getMonth() + 1}/{new Date(c.createdAt).getDate()}
@@ -202,6 +214,13 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
                         +{formatWon(c.amount)}
                       </span>
                       <button
+                        onClick={() => setEditing(c.id)}
+                        aria-label={`${c.category} 기록 고치기`}
+                        className="shrink-0 text-cap active:text-brand"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
                         onClick={() => removeConfession(c.id)}
                         aria-label="기록 지우기"
                         className="shrink-0 text-cap active:text-danger"
@@ -209,7 +228,8 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
                         <Trash2 size={14} />
                       </button>
                     </div>
-                  ))}
+                    ),
+                  )}
               </div>
             )}
           </div>
@@ -869,6 +889,118 @@ function GiftReportForm({
           className="h-9 flex-[2] rounded-btn bg-ink text-[13px] font-bold text-white disabled:opacity-40"
         >
           신고 기록 남기기
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** 최근 기록 한 줄 고치기 — 들어온 돈 적기와 같은 항목·규칙 (증여 체크는 통장에 모을 때만) */
+function ChildRecordEdit({
+  c,
+  onSave,
+  onCancel,
+}: {
+  c: Confession
+  onSave: (patch: Pick<Confession, 'category' | 'amount' | 'note' | 'createdAt' | 'childKeep' | 'gift'>) => void
+  onCancel: () => void
+}) {
+  const [category, setCategory] = useState(c.category)
+  const [amount, setAmount] = useState(c.amount)
+  const origDate = new Date(c.createdAt).toLocaleDateString('sv-SE')
+  const [date, setDate] = useState(origDate)
+  const [note, setNote] = useState(c.note ?? '')
+  const [keep, setKeep] = useState(c.childKeep !== false)
+  const [gift, setGift] = useState(!!c.gift)
+  const today = new Date().toLocaleDateString('sv-SE')
+
+  const save = () => {
+    if (amount <= 0) return
+    onSave({
+      category,
+      amount,
+      note: note.trim() || undefined,
+      // 날짜를 안 건드렸으면 원래 시각 그대로
+      createdAt: date === origDate ? c.createdAt : new Date(`${date}T12:00:00`).toISOString(),
+      childKeep: keep,
+      gift: keep && gift ? true : undefined,
+    })
+  }
+
+  return (
+    <div className="space-y-2 rounded-btn bg-amber-50/60 px-3 py-3">
+      <div className="flex gap-1.5">
+        {[SUPPORT_INCOME, GIFT_INCOME].map((k) => (
+          <button
+            key={k}
+            onClick={() => setCategory(k)}
+            aria-pressed={category === k}
+            className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[12.5px] font-bold ${
+              category === k ? 'bg-amber-500 text-white' : 'bg-white text-sub'
+            }`}
+          >
+            {k}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          inputMode="numeric"
+          aria-label="고칠 금액"
+          value={amount ? formatComma(amount) : ''}
+          onChange={(e) =>
+            setAmount(Math.min(Number(e.target.value.replace(/\D/g, '')) || 0, 999_999_999))
+          }
+          className="tnum min-w-0 flex-1 rounded-btn border border-line bg-white px-3 py-2 text-right text-[15px] font-bold text-ink outline-none focus:border-amber-500"
+        />
+        <span className="text-[13px] text-sub">원</span>
+        <input
+          type="date"
+          value={date}
+          max={today}
+          onChange={(e) => setDate(e.target.value || origDate)}
+          aria-label="고칠 날짜"
+          className="tnum w-[132px] shrink-0 rounded-btn border border-line bg-white px-2 py-2 text-[12.5px] text-ink outline-none"
+        />
+      </div>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="메모 (선택)"
+        aria-label="고칠 메모"
+        maxLength={30}
+        className="w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none placeholder:text-cap"
+      />
+      <label className="flex items-center gap-2 text-[12.5px] text-sub">
+        <input
+          type="checkbox"
+          checked={keep}
+          onChange={(e) => setKeep(e.target.checked)}
+          className="h-4 w-4 accent-amber-500"
+        />
+        아이 통장에 모아요
+      </label>
+      {keep && (
+        <label className="flex items-center gap-2 text-[12.5px] text-sub">
+          <input
+            type="checkbox"
+            checked={gift}
+            onChange={(e) => setGift(e.target.checked)}
+            className="h-4 w-4 accent-amber-500"
+          />
+          증여 기록에 더해요
+        </label>
+      )}
+      <div className="flex gap-2">
+        <button onClick={onCancel} className="h-10 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub">
+          취소
+        </button>
+        <button
+          onClick={save}
+          disabled={amount <= 0}
+          className="h-10 flex-[2] rounded-btn bg-amber-500 text-[13.5px] font-bold text-white disabled:opacity-40"
+        >
+          저장
         </button>
       </div>
     </div>

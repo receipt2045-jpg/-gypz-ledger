@@ -161,6 +161,8 @@ interface LedgerState extends AppData {
         | 'shared'
         | 'cardOwner'
         | 'cash'
+        | 'gift'
+        | 'childKeep'
       >
     >,
   ) => void
