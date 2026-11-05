@@ -5,6 +5,7 @@ import { useLedgerStore } from '../lib/store'
 import { deleteGiftReport, fetchChildRecords, fetchGiftReports, insertGiftReport } from '../lib/db'
 import {
   GIFT_LIMIT_MINOR,
+  addToChildAccount,
   GIFT_REPORT_KIND_LABEL,
   giftReportStatus,
   summarizeChild,
@@ -12,9 +13,9 @@ import {
   type GiftReport,
   type GiftReportKind,
 } from '../lib/childMoney'
-import { abbreviateKRW, formatComma, formatWon } from '../lib/format'
+import { abbreviateKRW, currentYm, formatComma, formatWon } from '../lib/format'
 import { GIFT_INCOME, SUPPORT_INCOME } from '../lib/constants'
-import { genId } from '../lib/carryover'
+import { genId, resolveSnapshot } from '../lib/carryover'
 import { BENEFIT_RULES } from '../lib/childBenefit'
 import {
   RECURRING_DEFAULT_AMOUNT,
@@ -220,7 +221,7 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
 
 /** 아이 앞으로 들어온 돈 적기 — 아동수당·지원금 / 용돈·선물. 지원금은 '매달 들어와요'로 자동 기록을 걸 수 있다 */
 function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void }) {
-  const { addConfession, profile, updateProfile, runChildRecurring } = useLedgerStore()
+  const { addConfession, profile, updateProfile, runChildRecurring, snapshots, saveSnapshot } = useLedgerStore()
   const today = new Date().toLocaleDateString('sv-SE')
   const thisYm = today.slice(0, 7)
   // 아이 카드에선 항목 목록과 상관없이 늘 두 가지 — 아이를 막 등록한 집도 바로 적게
@@ -230,6 +231,8 @@ function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void })
   const [date, setDate] = useState(today)
   const [note, setNote] = useState('')
   const [keep, setKeep] = useState(true)
+  // 통장에 모은 돈을 적은 뒤, 아이 자산(통장 금액)에도 더할지 묻는 단계 (2026-11-05)
+  const [offerAmount, setOfferAmount] = useState<number | null>(null)
   // 용돈·선물은 보통 부모·조부모가 준 돈 — 기본으로 증여에 센다.
   // 아동수당도 아이 통장으로 받았으면 체크해서 넣을 수 있다 (2026-10-27 결영이네 의견)
   const [gift, setGift] = useState(false)
@@ -299,7 +302,36 @@ function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void })
       childKeep: keep,
       gift: keep && effectiveGift ? true : undefined,
     })
+    if (keep) setOfferAmount(amount)
+    else onDone()
+  }
+
+  const addToAsset = () => {
+    if (offerAmount === null) return
+    const ym = currentYm()
+    const base = resolveSnapshot(snapshots, ym)
+    saveSnapshot({ ...base, ym, items: addToChildAccount(base.items, name, offerAmount) })
     onDone()
+  }
+
+  if (offerAmount !== null) {
+    return (
+      <div className="mt-3 space-y-2.5 rounded-btn bg-amber-50/60 px-3 py-3">
+        <p className="text-[13.5px] font-bold text-ink">{name} 통장 금액에도 더할까요?</p>
+        <p className="text-[12px] text-sub">자산 화면의 통장 금액이 {abbreviateKRW(offerAmount)} 늘어요.</p>
+        <div className="flex gap-2">
+          <button onClick={onDone} className="h-10 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub">
+            아니요
+          </button>
+          <button
+            onClick={addToAsset}
+            className="h-10 flex-[2] rounded-btn bg-amber-500 text-[13.5px] font-bold text-white"
+          >
+            더하기
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

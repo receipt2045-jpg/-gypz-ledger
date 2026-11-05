@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import type { AssetItem } from '../types'
 import {
+  addToChildAccount,
   giftReportStatus,
   periodicGiftValue,
   periodicMaxMonthly,
@@ -93,5 +95,47 @@ describe('유기정기금 평가 (연 3%)', () => {
     expect(max).toBe(195_000)
     expect(periodicGiftValue(max, 10)).toBeLessThanOrEqual(20_000_000)
     expect(periodicGiftValue(max + 1000, 10)).toBeGreaterThan(20_000_000)
+  })
+})
+
+describe('addToChildAccount — 아이 통장 자산에 더하기', () => {
+  const item = (p: Partial<AssetItem>): AssetItem => ({
+    id: 'a1',
+    kind: 'asset',
+    group: 'cash',
+    name: '찰떡이 통장',
+    amount: 100_000,
+    owner: '찰떡이',
+    ...p,
+  })
+
+  it('아이 이름의 현금 자산이 있으면 금액을 더한다', () => {
+    const out = addToChildAccount([item({})], '찰떡이', 50_000)
+    expect(out).toHaveLength(1)
+    expect(out[0].amount).toBe(150_000)
+  })
+
+  it('없으면 "찰떡이 통장" 항목을 새로 만든다', () => {
+    const out = addToChildAccount([item({ id: 'x', owner: '공동' })], '찰떡이', 30_000)
+    expect(out).toHaveLength(2)
+    expect(out[1]).toMatchObject({ kind: 'asset', group: 'cash', name: '찰떡이 통장', amount: 30_000, owner: '찰떡이' })
+    expect(out[1].id).toBeTruthy()
+  })
+
+  it('아이 소유라도 빚·주식은 건드리지 않고 통장을 새로 만든다', () => {
+    const debt = item({ id: 'd', kind: 'debt', amount: 5_000 })
+    const stock = item({ id: 's', group: 'stock', amount: 7_000 })
+    const out = addToChildAccount([debt, stock], '찰떡이', 10_000)
+    expect(out[0]).toEqual(debt)
+    expect(out[1]).toEqual(stock)
+    expect(out).toHaveLength(3)
+    expect(out[2].amount).toBe(10_000)
+  })
+
+  it('외화 항목은 건너뛴다', () => {
+    const usd = item({ id: 'u', currency: 'USD', fxAmount: 100 })
+    const out = addToChildAccount([usd], '찰떡이', 10_000)
+    expect(out[0]).toEqual(usd)
+    expect(out).toHaveLength(2)
   })
 })

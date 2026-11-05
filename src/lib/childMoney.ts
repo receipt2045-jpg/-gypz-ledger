@@ -3,6 +3,8 @@
 // 증여: 미성년 자녀가 부모·조부모(직계존속)에게 받은 돈은 10년간 합쳐 2,000만원까지 증여세가 없다.
 // 이 앱은 '부모·조부모가 준 돈'으로 표시한 기록만 더해서 보여준다 — 참고용.
 import { SUPPORT_INCOME } from './constants'
+import { genId } from './carryover'
+import type { AssetItem } from '../types'
 
 export const GIFT_LIMIT_MINOR = 20_000_000
 
@@ -112,4 +114,26 @@ export function periodicMaxMonthly(years: number, limit = GIFT_LIMIT_MINOR): num
   let factor = 0
   for (let k = 1; k <= years; k++) factor += 12 / (1 + PERIODIC_RATE) ** k
   return Math.floor(limit / factor / 1000) * 1000
+}
+
+/**
+ * 아이 통장에 들어온 돈을 자산 항목에 더한다 (2026-11-05).
+ * 아이 이름이 소유자인 원화 현금 자산이 있으면 거기에 더하고, 없으면 '{아이} 통장'을 새로 만든다.
+ * 빚·주식 같은 다른 항목과 외화 항목은 건드리지 않는다.
+ */
+export function addToChildAccount(items: AssetItem[], child: string, amount: number): AssetItem[] {
+  const idx = items.findIndex(
+    (it) =>
+      it.owner === child &&
+      it.kind === 'asset' &&
+      it.group === 'cash' &&
+      (!it.currency || it.currency === 'KRW'),
+  )
+  if (idx < 0) {
+    return [
+      ...items,
+      { id: genId(), kind: 'asset', group: 'cash', name: `${child} 통장`, amount, owner: child },
+    ]
+  }
+  return items.map((it, i) => (i === idx ? { ...it, amount: it.amount + amount } : it))
 }
