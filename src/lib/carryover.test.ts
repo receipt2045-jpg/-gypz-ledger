@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  displayYm,
   effectiveAmount,
   deriveAssetsFromPrevious,
   deriveItemsFromPrevious,
@@ -8,6 +9,7 @@ import {
   resolveSnapshot,
 } from './carryover'
 import type { AssetItem, BudgetItem } from '../types'
+import { currentYm, shiftYm } from './format'
 
 const item = (
   id: string,
@@ -163,5 +165,18 @@ describe('effectiveAmount — 정산한 사람 것은 실제값으로 (제보 20
 
   it('결산 전이고 실제값이 없으면 계획값 — 아직 정산 안 한 사람 것', () => {
     expect(effectiveAmount(it0(400_000, 0), false)).toBe(400_000)
+  })
+})
+
+describe('displayYm', () => {
+  it('스냅샷이 없으면 이번 달', () => {
+    expect(displayYm([])).toBe(currentYm())
+  })
+  it('가장 늦은 스냅샷이 이번 달보다 뒤면 그 달', () => {
+    const later = shiftYm(currentYm(), 2)
+    expect(displayYm([{ ym: later, items: [] }])).toBe(later)
+  })
+  it('가장 늦은 스냅샷이 이번 달보다 앞이면 이번 달', () => {
+    expect(displayYm([{ ym: shiftYm(currentYm(), -3), items: [] }])).toBe(currentYm())
   })
 })

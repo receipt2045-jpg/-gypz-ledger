@@ -282,3 +282,10 @@ export function sortItemsByGroup(items: BudgetItem[]): BudgetItem[] {
     return a.member - b.member
   })
 }
+
+/** 자산 화면이 보여 주는 달 — 가장 늦은 스냅샷 달과 이번 달 중 늦은 쪽 */
+export function displayYm(snapshots: AssetSnapshot[]): string {
+  const now = currentYm()
+  const last = snapshots.length ? snapshots[snapshots.length - 1].ym : now
+  return last > now ? last : now
+}

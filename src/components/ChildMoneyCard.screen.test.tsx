@@ -123,6 +123,15 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
       expect(screen.queryByText('찰떡이 통장 금액에도 더할까요?')).not.toBeInTheDocument()
     })
 
+    it('[더하기] — 아이 통장 항목이 없으면 새로 만든다', async () => {
+      const { user } = open()
+      await saveGift(user)
+      await user.click(screen.getByRole('button', { name: '더하기' }))
+      const snap = useLedgerStore.getState().snapshots.find((s) => s.ym === currentYm())
+      expect(snap?.items).toHaveLength(1)
+      expect(snap?.items[0]).toMatchObject({ name: '찰떡이 통장', amount: 100_000, owner: '찰떡이', group: 'cash', kind: 'asset' })
+    })
+
     it('[아니요] — 스냅샷은 그대로', async () => {
       const { user } = open()
       await saveGift(user)

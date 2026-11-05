@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import Toggle from './Toggle'
 import { isNative } from '../lib/native'
 import { askPushPermission, pushPermission, pushSupported, startPush, type PushPermission } from '../lib/pushNative'
@@ -152,7 +152,7 @@ function AppNotificationSettings() {
       </div>
       <SwitchRow label="월말 정산" desc="정산일 저녁 8시" checked={prefs.settleOn} onChange={(v) => change({ settleOn: v })} />
       <SwitchRow label="오늘의 경제·공지" desc="매일 아침 8시" checked={prefs.newsOn} onChange={(v) => change({ newsOn: v })} />
-      <SwitchRow label="결영이네 소식·혜택" desc="광고 · 동의한 분만" checked={prefs.promoOn} onChange={changePromo} />
+      <SwitchRow label="결영이네 소식·혜택" desc="광고성 알림 · 동의한 분께만" checked={prefs.promoOn} onChange={changePromo} />
       {msg && <p className="pl-1 text-[12.5px] font-medium text-brand">{msg}</p>}
     </div>
   )
@@ -171,13 +171,14 @@ function SwitchRow({
   onChange: (v: boolean) => void
   disabled?: boolean
 }) {
+  const id = useId()
   return (
     <div className="flex items-center justify-between gap-3 rounded-btn bg-bg px-4 py-3">
-      <div className="min-w-0">
-        <p className="text-[14.5px] font-semibold text-ink">{label}</p>
-        {desc && <p className="text-[12px] text-sub">{desc}</p>}
-      </div>
-      <Toggle label={label} checked={checked} onChange={onChange} disabled={disabled} />
+      <label htmlFor={id} className="min-w-0 flex-1">
+        <span className="block text-[14.5px] font-semibold text-ink">{label}</span>
+        {desc && <span className="block text-[12px] text-sub">{desc}</span>}
+      </label>
+      <Toggle id={id} label={label} checked={checked} onChange={onChange} disabled={disabled} />
     </div>
   )
 }

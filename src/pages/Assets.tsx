@@ -7,7 +7,7 @@ import Card from '../components/Card'
 import StockJournalCard from '../components/StockJournalCard'
 import ChildMoneyCard from '../components/ChildMoneyCard'
 import { useLedgerStore } from '../lib/store'
-import { netWorthOf, resolveSnapshot, totalAssets } from '../lib/carryover'
+import { displayYm, netWorthOf, resolveSnapshot, totalAssets } from '../lib/carryover'
 import { krwOf, useFxRates } from '../lib/fx'
 import { abbreviateKRW, currentYm, formatYmKorean } from '../lib/format'
 import { computeRoadmap, roadmapInput } from '../lib/roadmap'
@@ -26,7 +26,7 @@ export default function Assets() {
   const navigate = useNavigate()
   const { snapshots, profile } = useLedgerStore()
   const rates = useFxRates()
-  const latestYm = snapshots.length ? snapshots[snapshots.length - 1].ym : currentYm()
+  const latestYm = displayYm(snapshots)
 
   const stored = resolveSnapshot(snapshots, latestYm)
   // 외화 항목은 실시간 환율로 원화 환산 (현재 화면 기준)

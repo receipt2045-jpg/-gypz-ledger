@@ -13,9 +13,9 @@ import {
   type GiftReport,
   type GiftReportKind,
 } from '../lib/childMoney'
-import { abbreviateKRW, currentYm, formatComma, formatWon } from '../lib/format'
+import { abbreviateKRW, formatComma, formatWon } from '../lib/format'
 import { GIFT_INCOME, SUPPORT_INCOME } from '../lib/constants'
-import { genId, resolveSnapshot } from '../lib/carryover'
+import { displayYm, genId, resolveSnapshot } from '../lib/carryover'
 import { BENEFIT_RULES } from '../lib/childBenefit'
 import {
   RECURRING_DEFAULT_AMOUNT,
@@ -308,7 +308,7 @@ function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void })
 
   const addToAsset = () => {
     if (offerAmount === null) return
-    const ym = currentYm()
+    const ym = displayYm(snapshots)
     const base = resolveSnapshot(snapshots, ym)
     saveSnapshot({ ...base, ym, items: addToChildAccount(base.items, name, offerAmount) })
     onDone()
@@ -352,13 +352,15 @@ function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void })
       </div>
       {category === SUPPORT_INCOME && (
         <div className="flex items-center justify-between rounded-btn bg-white px-3 py-2.5">
-          <span className="text-[13px] font-bold text-ink">
+          <label htmlFor="child-repeat-toggle" className="text-[13px] font-bold text-ink">
             매달 들어와요
             <span className="block text-[11px] font-normal text-cap">
               한 번 정하면 다음 달부터 알아서 적어요
             </span>
-          </span>
+          </label>
           <Toggle
+            id="child-repeat-toggle"
+            color="amber"
             label="매달 들어와요"
             checked={repeat}
             onChange={(v) => {
