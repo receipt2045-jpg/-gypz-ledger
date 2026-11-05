@@ -288,11 +288,12 @@ export async function pushCategories(householdId: string, categories: Categories
 export async function fetchChildRecords(householdId: string): Promise<ChildRecord[]> {
   const { data, error } = await supabase
     .from('confessions')
-    .select('child, category, amount, child_keep, gift, created_at')
+    .select('id, child, category, amount, child_keep, gift, created_at')
     .eq('household_id', householdId)
     .not('child', 'is', null)
   if (error) throw error
   return (data ?? []).map((r) => ({
+    id: r.id as string | undefined,
     child: r.child,
     category: r.category,
     amount: Number(r.amount),

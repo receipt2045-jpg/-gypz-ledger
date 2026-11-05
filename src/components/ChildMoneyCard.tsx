@@ -43,17 +43,50 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
   const [editing, setEditing] = useState<string | null>(null)
   const [reports, setReports] = useState<GiftReport[]>([])
 
+  // 아이 기록이 바뀐 걸 알아보는 표시 — 개수만 보면 고친 것(금액·증여)을 놓친다
+  const sig = useMemo(
+    () =>
+      confessions
+        .filter((c) => c.child)
+        .map(
+          (c) =>
+            `${c.id}:${c.amount}:${c.category}:${c.gift ? 1 : 0}:${c.childKeep === false ? 0 : 1}:${c.createdAt}`,
+        )
+        .join('|'),
+    [confessions],
+  )
+
   useEffect(() => {
     let live = true
     if (!householdId || children.length === 0) return
     fetchChildRecords(householdId)
-      .then((r) => live && setRecords(r))
+      .then((r) => {
+        if (!live) return
+        // 서버 저장은 뒤에서 따로 가니, 앱에 있는 같은 id 기록의 값을 덮어 바로 맞춘다
+        const local = new Map(confessions.map((c) => [c.id, c]))
+        setRecords(
+          r.map((rec) => {
+            const c = rec.id ? local.get(rec.id) : undefined
+            return c
+              ? {
+                  ...rec,
+                  amount: c.amount,
+                  category: c.category,
+                  gift: !!c.gift,
+                  childKeep: c.childKeep !== false,
+                  createdAt: c.createdAt,
+                }
+              : rec
+          }),
+        )
+      })
       .catch(() => live && setRecords(null))
     return () => {
       live = false
     }
     // 아이 이름이 바뀌거나 새 기록이 생기면 다시 읽는다
-  }, [householdId, children.length, confessions.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- confessions는 sig로 바뀜을 알아본다
+  }, [householdId, children.length, sig])
 
   // 서버에서 못 읽으면(둘러보기 등) 앱에 있는 최근 기록으로
   const all: ChildRecord[] = useMemo(

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import ChildMoneyCard from './ChildMoneyCard'
 import { renderScreen, seedStore } from '../test/renderScreen'
@@ -17,6 +17,14 @@ function open() {
   }))
   return renderScreen(<ChildMoneyCard childAssets={{}} />)
 }
+
+const fetched = vi.hoisted(() => ({ records: [] as unknown[] }))
+vi.mock('../lib/db', async (orig) => ({
+  ...(await orig<typeof import('../lib/db')>()),
+  fetchChildRecords: async () => fetched.records,
+  fetchGiftReports: async () => [],
+  insertConfession: async () => undefined,
+}))
 
 describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', () => {
   it('아동수당 — 기본은 증여 아님, 아이 통장으로 받았으면 체크해서 증여에 넣는다', async () => {
@@ -188,5 +196,26 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
       expect(useLedgerStore.getState().confessions[0].amount).toBe(50_000)
       expect(screen.queryByLabelText('고칠 금액')).not.toBeInTheDocument()
     })
+  })
+
+  it('고친 금액이 서버가 돌려준 옛 값보다 먼저 합계에 반영된다', async () => {
+    const thisYear = new Date().toISOString()
+    fetched.records = [
+      { id: 'c1', child: '찰떡이', category: '용돈·선물', amount: 50_000, childKeep: true, gift: false, createdAt: thisYear },
+    ]
+    const { user } = open()
+    useLedgerStore.setState({
+      householdId: 'h1',
+      confessions: [
+        { id: 'c1', category: '용돈·선물', kind: 'income', amount: 50_000, createdAt: thisYear, child: '찰떡이', childKeep: true } as never,
+      ],
+    })
+    expect(await screen.findByText('+5만원')).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
+    const amt = screen.getByLabelText('고칠 금액')
+    await user.clear(amt)
+    await user.type(amt, '70000')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    expect(await screen.findByText('+7만원')).toBeInTheDocument()
   })
 })

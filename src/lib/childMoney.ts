@@ -9,6 +9,8 @@ import type { AssetItem } from '../types'
 export const GIFT_LIMIT_MINOR = 20_000_000
 
 export interface ChildRecord {
+  /** 서버에서 읽은 기록이면 기록 id — 앱에서 막 고친 값을 덮어쓸 때 쓴다 */
+  id?: string
   child: string
   category: string
   amount: number

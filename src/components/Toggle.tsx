@@ -15,6 +15,7 @@ export default function Toggle({
   color?: 'brand' | 'amber'
 }) {
   const on = color === 'amber' ? 'bg-amber-500' : 'bg-brand'
+  const ring = color === 'amber' ? 'focus-visible:ring-amber-500/40' : 'focus-visible:ring-brand/40'
   return (
     <button
       id={id}
@@ -24,7 +25,7 @@ export default function Toggle({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-40 ${
+      className={`relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 ${ring} disabled:opacity-40 ${
         checked ? on : 'bg-[#D1D6DB]'
       }`}
     >
