@@ -81,15 +81,15 @@ describe('설정 > 알림', () => {
     await userEvent.click(await screen.findByRole('button', { name: '알림 켜기' }))
     expect(h.createPrefs).toHaveBeenCalledWith(false, expect.any(Date))
     expect(h.start).toHaveBeenCalled()
-    expect(await screen.findByRole('switch', { name: '기록 리마인더' })).toBeChecked()
+    expect(await screen.findByRole('switch', { name: '기록 리마인더' })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('종류별 스위치와 리마인더 시각(30분 단위)', async () => {
     render(<NotificationSettings />)
     const reminder = await screen.findByRole('switch', { name: '기록 리마인더' })
-    expect(screen.getByRole('switch', { name: '월말 정산' })).toBeChecked()
-    expect(screen.getByRole('switch', { name: '오늘의 경제·공지' })).toBeChecked()
-    expect(screen.getByRole('switch', { name: '결영이네 소식·혜택 (광고)' })).not.toBeChecked()
+    expect(screen.getByRole('switch', { name: '월말 정산' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('switch', { name: '오늘의 경제·공지' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('switch', { name: '결영이네 소식·혜택' })).toHaveAttribute('aria-checked', 'false')
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '리마인더 시각' }), '07:30')
     expect(h.updatePrefs).toHaveBeenCalledWith({ reminderTime: '07:30' })
@@ -100,9 +100,17 @@ describe('설정 > 알림', () => {
     expect(screen.getByRole('combobox', { name: '리마인더 시각' })).toBeDisabled()
   })
 
+  it('리마인더 설명에 고른 시각이 보인다', async () => {
+    h.fetchPrefs.mockResolvedValue({ ...PREFS, reminderTime: '14:30' })
+    render(<NotificationSettings />)
+    expect(await screen.findByText('매일 오후 2시 30분, 기록 안 한 날만')).toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '리마인더 시각' }), '08:00')
+    expect(screen.getByText('매일 아침 8시, 기록 안 한 날만')).toBeInTheDocument()
+  })
+
   it('광고 켜기·끄기는 바로 처리 결과를 알려 준다', async () => {
     render(<NotificationSettings />)
-    const promo = await screen.findByRole('switch', { name: '결영이네 소식·혜택 (광고)' })
+    const promo = await screen.findByRole('switch', { name: '결영이네 소식·혜택' })
     await userEvent.click(promo)
     expect(h.setPromo).toHaveBeenCalledWith(true, expect.any(Date))
     expect(await screen.findByText(/^\d{4}년 \d+월 \d+일 수신 동의가 처리됐어요$/)).toBeInTheDocument()
@@ -124,8 +132,8 @@ describe('설정 > 알림', () => {
     h.fetchPrefs.mockResolvedValue({ ...PREFS, promoOn: true, promoConsentAt: '2026-11-04T01:00:00.000Z' })
     render(<NotificationSettings />)
     expect(await screen.findByText('폰 설정에서 알림이 꺼져 있어요')).toBeInTheDocument()
-    const promo = screen.getByRole('switch', { name: '결영이네 소식·혜택 (광고)' })
-    expect(promo).toBeChecked()
+    const promo = screen.getByRole('switch', { name: '결영이네 소식·혜택' })
+    expect(promo).toHaveAttribute('aria-checked', 'true')
     await userEvent.click(promo)
     expect(h.setPromo).toHaveBeenCalledWith(false, expect.any(Date))
     expect(await screen.findByText(/수신 거부가 처리됐어요$/)).toBeInTheDocument()
@@ -137,6 +145,6 @@ describe('설정 > 알림', () => {
     const settle = await screen.findByRole('switch', { name: '월말 정산' })
     await userEvent.click(settle)
     expect(await screen.findByText('바꾸지 못했어요. 잠시 후 다시 해 주세요')).toBeInTheDocument()
-    await waitFor(() => expect(settle).toBeChecked())
+    await waitFor(() => expect(settle).toHaveAttribute('aria-checked', 'true'))
   })
 })

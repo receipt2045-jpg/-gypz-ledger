@@ -25,6 +25,14 @@ export const TIME_SLOTS: string[] = Array.from(
   (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`,
 )
 
+/** 'HH:MM' → "밤 9시", "오후 2시 30분" (0–5 밤, 6–10 아침, 11 오전, 12 낮, 13–17 오후, 18–20 저녁, 21–23 밤) */
+export function timeLabel(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  const word = h <= 5 ? '밤' : h <= 10 ? '아침' : h === 11 ? '오전' : h === 12 ? '낮' : h <= 17 ? '오후' : h <= 20 ? '저녁' : '밤'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${word} ${h12}시${m ? ` ${m}분` : ''}`
+}
+
 // ── 처음 안내: [나중에]·권한 거부면 7일 동안 다시 안 띄운다 ──
 const ASKED_KEY = 'pushAskedAt'
 const ASK_AGAIN_MS = 7 * 24 * 60 * 60 * 1000

@@ -25,6 +25,7 @@ import {
   nextPay,
 } from '../lib/childRecurring'
 import type { ChildRecurring } from '../types'
+import Toggle from './Toggle'
 
 /**
  * 자산 탭 — 아이 통장 (2026-10-27).
@@ -318,25 +319,22 @@ function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void })
         ))}
       </div>
       {category === SUPPORT_INCOME && (
-        <label className="flex items-center justify-between rounded-btn bg-white px-3 py-2.5">
+        <div className="flex items-center justify-between rounded-btn bg-white px-3 py-2.5">
           <span className="text-[13px] font-bold text-ink">
             매달 들어와요
             <span className="block text-[11px] font-normal text-cap">
               한 번 정하면 다음 달부터 알아서 적어요
             </span>
           </span>
-          <input
-            type="checkbox"
-            role="switch"
-            aria-label="매달 들어와요"
+          <Toggle
+            label="매달 들어와요"
             checked={repeat}
-            onChange={(e) => {
-              setRepeat(e.target.checked)
-              if (e.target.checked && amount === 0) setAmount(RECURRING_DEFAULT_AMOUNT[rKind])
+            onChange={(v) => {
+              setRepeat(v)
+              if (v && amount === 0) setAmount(RECURRING_DEFAULT_AMOUNT[rKind])
             }}
-            className="h-5 w-5 accent-amber-500"
           />
-        </label>
+        </div>
       )}
       {isRepeat && (
         <div className="flex gap-1.5">

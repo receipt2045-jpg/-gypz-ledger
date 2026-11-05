@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
+import Toggle from './Toggle'
 import { isNative } from '../lib/native'
 import { askPushPermission, pushPermission, pushSupported, startPush, type PushPermission } from '../lib/pushNative'
 import {
@@ -7,6 +8,7 @@ import {
   createPrefs,
   fetchPrefs,
   setPromo,
+  timeLabel,
   updatePrefs,
   type NotificationPrefs,
   type PrefsPatch,
@@ -124,24 +126,33 @@ function AppNotificationSettings() {
     <div className="space-y-2">
       {/* 폰 알림 권한이 꺼져 있어도 스위치(특히 광고 동의 철회)는 그대로 보인다 */}
       {perm !== 'granted' && enableCard}
-      <SwitchRow label="기록 리마인더" checked={prefs.reminderOn} onChange={(v) => change({ reminderOn: v })}>
-        <select
-          aria-label="리마인더 시각"
-          value={prefs.reminderTime}
-          disabled={!prefs.reminderOn}
-          onChange={(e) => change({ reminderTime: e.target.value })}
-          className="rounded-btn border border-line bg-white px-2 py-1.5 text-[14px] text-ink disabled:opacity-40"
-        >
-          {TIME_SLOTS.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-      </SwitchRow>
-      <SwitchRow label="월말 정산" checked={prefs.settleOn} onChange={(v) => change({ settleOn: v })} />
-      <SwitchRow label="오늘의 경제·공지" checked={prefs.newsOn} onChange={(v) => change({ newsOn: v })} />
-      <SwitchRow label="결영이네 소식·혜택 (광고)" checked={prefs.promoOn} onChange={changePromo} />
+      <div>
+        <SwitchRow
+          label="기록 리마인더"
+          desc={`매일 ${timeLabel(prefs.reminderTime)}, 기록 안 한 날만`}
+          checked={prefs.reminderOn}
+          onChange={(v) => change({ reminderOn: v })}
+        />
+        <div className="mt-1 flex items-center justify-between rounded-btn bg-bg px-4 py-2.5">
+          <span className="text-[12.5px] text-sub">알림 시각</span>
+          <select
+            aria-label="리마인더 시각"
+            value={prefs.reminderTime}
+            disabled={!prefs.reminderOn}
+            onChange={(e) => change({ reminderTime: e.target.value })}
+            className="rounded-btn border border-line bg-white px-2 py-1.5 text-[14px] text-ink disabled:opacity-40"
+          >
+            {TIME_SLOTS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <SwitchRow label="월말 정산" desc="정산일 저녁 8시" checked={prefs.settleOn} onChange={(v) => change({ settleOn: v })} />
+      <SwitchRow label="오늘의 경제·공지" desc="매일 아침 8시" checked={prefs.newsOn} onChange={(v) => change({ newsOn: v })} />
+      <SwitchRow label="결영이네 소식·혜택" desc="광고 · 동의한 분만" checked={prefs.promoOn} onChange={changePromo} />
       {msg && <p className="pl-1 text-[12.5px] font-medium text-brand">{msg}</p>}
     </div>
   )
@@ -149,28 +160,24 @@ function AppNotificationSettings() {
 
 function SwitchRow({
   label,
+  desc,
   checked,
   onChange,
-  children,
+  disabled,
 }: {
   label: string
+  desc?: string
   checked: boolean
   onChange: (v: boolean) => void
-  children?: ReactNode
+  disabled?: boolean
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-btn bg-bg px-4 py-3">
-      <label className="flex min-w-0 flex-1 items-center justify-between gap-3">
-        <span className="text-[14.5px] font-semibold text-ink">{label}</span>
-        <input
-          type="checkbox"
-          role="switch"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          className="h-5 w-5 shrink-0 accent-brand"
-        />
-      </label>
-      {children}
+    <div className="flex items-center justify-between gap-3 rounded-btn bg-bg px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-[14.5px] font-semibold text-ink">{label}</p>
+        {desc && <p className="text-[12px] text-sub">{desc}</p>}
+      </div>
+      <Toggle label={label} checked={checked} onChange={onChange} disabled={disabled} />
     </div>
   )
 }

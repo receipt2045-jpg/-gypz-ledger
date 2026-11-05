@@ -132,3 +132,19 @@ describe('DB', () => {
     expect(h.rpc).toHaveBeenCalledWith('register_push_token', { p_token: 'tok-123', p_platform: 'android' })
   })
 })
+
+describe('timeLabel', () => {
+  it.each([
+    ['00:00', '밤 12시'],
+    ['06:00', '아침 6시'],
+    ['11:30', '오전 11시 30분'],
+    ['12:00', '낮 12시'],
+    ['14:30', '오후 2시 30분'],
+    ['18:00', '저녁 6시'],
+    ['21:00', '밤 9시'],
+    ['23:30', '밤 11시 30분'],
+  ])('%s → %s', async (t, label) => {
+    const { timeLabel } = await import('./pushPrefs')
+    expect(timeLabel(t)).toBe(label)
+  })
+})
