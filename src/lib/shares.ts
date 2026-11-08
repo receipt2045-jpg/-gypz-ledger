@@ -24,6 +24,17 @@ export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집
 
 export const SHARES: ShareItem[] = [
   {
+    slug: 'coupang',
+    path: '/coupang',
+    title: '쿠팡에서 쓴 돈, 돌려받는 3가지',
+    sub: '최저가 알림 → 기프티콘 → 결제금액 2% 현금까지, 순서대로 정리했어요',
+    category: '재테크',
+    date: '2026-11-09',
+    minutes: 3,
+    emoji: '🛒',
+    tint: 'bg-red-50',
+  },
+  {
     slug: 'child-benefit',
     path: '/child-benefit',
     title: '부모급여·아동수당, 앞으로 몇 달 더 받을까',

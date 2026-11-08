@@ -67,6 +67,10 @@ def gold_card() -> Image.Image:
     return titled_card("금테크 정리", "수수료 적게 금 사는 법")
 
 
+def coupang_card() -> Image.Image:
+    return titled_card("쿠팡 꿀팁", "쓴 돈 돌려받는 3가지")
+
+
 def titled_card(title: str, sub: str) -> Image.Image:
     """동전 아이콘 왼쪽 + 결영이네 / 큰 제목 / 회색 한 줄"""
     img = Image.new("RGB", (W, H), WHITE)
@@ -90,6 +94,7 @@ def main():
     app_card().save(PUBLIC / "og-image.png", optimize=True)
     news_card().save(PUBLIC / "og-news.png", optimize=True)
     gold_card().save(PUBLIC / "og-gold.png", optimize=True)
+    coupang_card().save(PUBLIC / "og-coupang.png", optimize=True)
     print("og images written")
 
 

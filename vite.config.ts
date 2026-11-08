@@ -32,6 +32,12 @@ const OG_PAGES: OgPage[] = [
     description: '금 처음 산다면, 수수료부터 보세요. 100만 원어치 사고팔면 얼마 떼이는지 비교했어요.',
     image: 'https://moabuli.com/og-gold.png?v=1',
   },
+  {
+    dir: 'coupang',
+    title: '결영이네 쿠팡 꿀팁',
+    description: '쿠팡에서 쓴 돈, 돌려받는 3가지. 최저가 알림부터 결제금액 2% 현금까지 정리했어요.',
+    image: 'https://moabuli.com/og-coupang.png?v=1',
+  },
 ]
 
 function ogHtml(html: string, page: OgPage): string {
