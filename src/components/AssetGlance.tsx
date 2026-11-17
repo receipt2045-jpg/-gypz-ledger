@@ -215,7 +215,7 @@ function Together({
         </Card>
       )}
 
-      <Trend series={series} onEdit={onEdit} />
+      <AssetTrend series={series} onEdit={onEdit} />
 
       {debts > 0 && (
         <div
@@ -251,7 +251,13 @@ function Together({
  * 전체 자산 흐름 — 기록이 두 달 이상 있을 때만.
  * 점(또는 아래 달)을 누르면 그 달을 간단히 보여 주고, 거기서 그 달 자산을 고치러 간다 (2026-11-17 의견).
  */
-function Trend({ series, onEdit }: { series: SeriesPoint[]; onEdit?: (to: EditTarget) => void }) {
+export function AssetTrend({
+  series,
+  onEdit,
+}: {
+  series: SeriesPoint[]
+  onEdit?: (to: EditTarget) => void
+}) {
   const [sel, setSel] = useState<string | null>(null)
   const pts = series.filter((p) => p.value > 0)
   if (pts.length < 2) return null

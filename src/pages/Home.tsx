@@ -5,6 +5,9 @@ import { BarChart3, Check, ChevronLeft, ChevronRight, Settings, TrendingUp } fro
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import InviteBanner from '../components/InviteBanner'
+import { AssetTrend, type EditTarget } from '../components/AssetGlance'
+import { assetTrend } from '../lib/assetTrend'
+import { useFxRates } from '../lib/fx'
 import { type MonthPoint } from '../components/MonthlyCombo'
 import { LazyMonthlyCombo } from '../components/LazyCharts'
 import ProgressBar from '../components/ProgressBar'
@@ -55,6 +58,10 @@ export default function Home() {
   const snapshot = resolveSnapshot(snapshots, ym)
   const netWorth = netWorthOf(snapshot)
   const series = netWorthSeries(snapshots, ym, 6)
+  // 전체 자산 흐름 — 자산 탭과 같은 그래프. 점을 누르면 지난달과 견준 표 (2026-11-17 의견)
+  const rates = useFxRates()
+  const trend = useMemo(() => assetTrend(snapshots, profile, rates), [snapshots, profile, rates])
+  const editAsset = (to: EditTarget) => navigate('/asset-setup', { state: to })
   const prev = series.length >= 2 ? series[series.length - 2].value : netWorth
   const delta = signedAbbrev(netWorth - prev)
 
@@ -174,6 +181,9 @@ export default function Home() {
           saved={totalAssets(snapshot) - (profile.goal.baseAssets ?? totalAssets(snapshot))}
         />
       )}
+
+      {/* 전체 자산 흐름 — 홈에서도 바로 (2026-11-17 의견). 점을 누르면 그 달 표 */}
+      <AssetTrend series={trend.series} onEdit={editAsset} />
 
       {/* 혼자 쓰는 집이면 배우자 초대 — 정산은 둘 다 해야 끝난다 */}
       <InviteBanner />

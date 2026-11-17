@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { displayOwner } from '../lib/assetOwner'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Pencil } from 'lucide-react'
 import AssetGlance, { type EditTarget } from '../components/AssetGlance'
@@ -7,11 +6,12 @@ import Card from '../components/Card'
 import StockJournalCard from '../components/StockJournalCard'
 import ChildMoneyCard from '../components/ChildMoneyCard'
 import { useLedgerStore } from '../lib/store'
-import { displayYm, netWorthOf, resolveSnapshot, totalAssets } from '../lib/carryover'
-import { krwOf, useFxRates } from '../lib/fx'
+import { netWorthOf, resolveSnapshot } from '../lib/carryover'
+import { useFxRates } from '../lib/fx'
 import { abbreviateKRW, currentYm, formatYmKorean } from '../lib/format'
 import { computeRoadmap, roadmapInput } from '../lib/roadmap'
-import { assetSeries, isOwned } from '../lib/assetGlance'
+import { isOwned } from '../lib/assetGlance'
+import { assetTrend } from '../lib/assetTrend'
 
 /**
  * 자산 탭 — 한 화면에 담아 캡처 한 장으로 보이게 (2026-10-05).
@@ -29,16 +29,9 @@ export default function Assets() {
   const navigate = useNavigate()
   const { snapshots, profile } = useLedgerStore()
   const rates = useFxRates()
-  const latestYm = displayYm(snapshots)
-
-  const stored = resolveSnapshot(snapshots, latestYm)
-  // 외화 항목은 실시간 환율로 원화 환산 (현재 화면 기준)
-  const items = stored.items.map((it) => ({
-    ...it,
-    amount: krwOf(it, rates),
-    owner: displayOwner(it.owner, profile),
-  }))
-  const assets = totalAssets({ ...stored, items })
+  // 외화 항목은 실시간 환율로 원화 환산 (현재 화면 기준).
+  // 전체 자산 흐름 — 기록한 달부터 최근 12개월까지 (2026-11-17: 지난달도 눌러서 보게)
+  const { latestYm, items, series } = assetTrend(snapshots, profile, rates)
 
   const childNames = profile.childNames ?? []
   const owners = [profile.member1Name, profile.member2Name, '공동', ...childNames]
@@ -58,20 +51,6 @@ export default function Assets() {
   const ownerTabs = owners.filter((name) => items.some((it) => isOwned(it.owner, name)))
   const showTabs = items.length > 0 && ownerTabs.length > 1
   const picked = showTabs && tab !== ALL ? tab : null
-
-  // 전체 자산 흐름 — 기록한 달부터 최근 12개월까지 (2026-11-17: 지난달도 눌러서 보게).
-  // 마지막(지금) 점은 실시간 환율 반영값으로 맞춘다
-  const series = assetSeries(snapshots, latestYm, 12).map((d, i, arr) =>
-    i === arr.length - 1
-      ? { ...d, value: assets, items }
-      : {
-          ...d,
-          items: resolveSnapshot(snapshots, d.ym).items.map((it) => ({
-            ...it,
-            owner: displayOwner(it.owner, profile),
-          })),
-        },
-  )
 
   // 눌러서 고치기 — 지난달은 그 달을, 아니면 자산 등록 화면이 늘 고치던 달을
   const edit = (to: EditTarget) => navigate('/asset-setup', { state: to })
