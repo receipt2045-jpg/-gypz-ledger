@@ -3,10 +3,12 @@ import AmountInput from '../components/AmountInput'
 import ShareArticle, { ShareHero, ShareSection } from '../components/ShareArticle'
 import {
   BALANCE_STEPS,
+  BANK5Y,
   COFIX,
-  RISE_STEPS,
   computeCofix,
+  riseSteps,
   monthlyPay,
+  pp,
   type CofixInput,
   type RepayKind,
 } from '../lib/cofix'
@@ -18,18 +20,23 @@ const SAVE_KEY = 'moabuli.cofix.v1'
 
 type LoanType = 'variable' | 'fixed'
 
-function loadInput(): CofixInput & { type: LoanType } {
-  const fallback = {
+type SavedInput = Omit<CofixInput, 'rise'> & { type: LoanType }
+
+function loadInput(): SavedInput {
+  const fallback: SavedInput = {
     balance: 300_000_000,
     rate: 4,
-    rise: 0.19,
     years: 30,
     repay: 'amortized' as RepayKind,
     type: 'variable' as LoanType,
   }
   try {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null')
-    return saved && typeof saved.balance === 'number' ? { ...fallback, ...saved } : fallback
+    if (!saved || typeof saved.balance !== 'number') return fallback
+    // 오르는 만큼은 저장하지 않는다 — 달마다 새 발표 숫자로
+    const rest = { ...saved }
+    delete rest.rise
+    return { ...fallback, ...rest }
   } catch {
     return fallback
   }
@@ -52,8 +59,11 @@ export default function Cofix() {
       }
       return next
     })
-  const r = useMemo(() => computeCofix(v), [v])
   const fixed = v.type === 'fixed'
+  // 변동형 = 코픽스, 5년 고정형 = 금융채 5년 — 둘 다 달마다 새 숫자
+  const rise = fixed ? BANK5Y.change : COFIX.change
+  const r = useMemo(() => computeCofix({ ...v, rise }), [v, rise])
+  const verb = COFIX.change > 0 ? '올랐어요' : COFIX.change < 0 ? '내렸어요' : '그대로예요'
 
   return (
     <ShareArticle
@@ -70,12 +80,14 @@ export default function Cofix() {
           }
           lead={
             <>
-              {COFIX.nowLabel} 코픽스가 {COFIX.prev}%에서{' '}
-              <b className="font-bold text-[#FFD66B]">{COFIX.now}%</b>로 올랐어요.
+              {COFIX.publishedDay} 발표된 {COFIX.publishedLabel} 코픽스는
+              <br />
+              {COFIX.prev}%에서 <b className="font-bold text-[#FFD66B]">{COFIX.now}%</b>로{' '}
+              {COFIX.change === 0 ? '그대로예요' : `${pp(COFIX.change)} ${verb}`}.
               <br />
               남은 대출금과 지금 금리만 넣으면
               <br />
-              한 달에 얼마 더 내는지 바로 보여줘요.
+              한 달에 얼마 달라지는지 바로 보여줘요.
             </>
           }
         />
@@ -100,16 +112,21 @@ export default function Cofix() {
             </Field>
             <Chips
               label="내 금리가 오르는 만큼"
-              hint="지난번 금리 정한 날보다 코픽스가 오른 만큼"
-              value={v.rise}
+              hint={
+                fixed
+                  ? `5년 고정형은 금융채 5년을 따라가요 · 지난달 16일보다 바뀐 만큼, 달마다 새로 바뀌어요`
+                  : '지난번 금리 정한 날보다 코픽스가 오른 만큼 · 달마다 새 발표로 바뀌어요'
+              }
+              value={rise}
               options={[
-                [0.19, '0.19%p (한 달)'],
-                [COFIX.twoMonthRise, `${COFIX.twoMonthRise}%p (두 달)`],
-                [0.5, '0.5%p'],
-                [1, '1%p'],
+                [
+                  rise,
+                  fixed
+                    ? `${BANK5Y.label} 금융채 5년 ${pp(rise)}`
+                    : `${COFIX.publishedLabel} 코픽스 ${pp(rise)}`,
+                ],
               ]}
-              onChange={(rise) => set({ rise })}
-              wrap
+              onChange={() => undefined}
             />
             <Chips
               label="갚는 방식"
@@ -134,9 +151,12 @@ export default function Cofix() {
           <ul className="mt-1.5 space-y-1">
             <li>
               · 코픽스(신규취급액 기준) {COFIX.prevLabel} {COFIX.prev}% → {COFIX.nowLabel}{' '}
-              {COFIX.now}% — 은행연합회 소비자포털 공시
+              {COFIX.now}% — 은행연합회 공시({COFIX.publishedDay}), 네이버 증권에서 달마다 받아와요
             </li>
-            <li>· 결영이네 카페 머니그랩 글 「10월 신규 코픽스 연 3.62%」(2026-11)</li>
+            <li>
+              · 금융채 5년 {BANK5Y.rate}%({BANK5Y.day}) — 신한은행 주요시장금리(직전 3영업일 평균),
+              매달 16일 값을 받아와요
+            </li>
           </ul>
           <p className="mt-3">
             {Number(COFIX.updated.slice(5, 7))}월 {Number(COFIX.updated.slice(8, 10))}일 기준,
@@ -147,24 +167,26 @@ export default function Cofix() {
       }
     >
       {/* ── 2. 결과 */}
-      <ShareSection no={2} title="다음 금리변경일부터">
-        {fixed ? (
+      <ShareSection no={2} title={fixed ? '다음에 금리를 정할 때' : '다음 금리변경일부터'}>
+        {
           <div className="rounded-2xl bg-[#F2F7FF] px-5 py-5 text-center">
-            <p className="text-[14px] font-bold text-sub">5년 고정형이면</p>
-            <p className="mt-1 text-[24px] font-extrabold text-brand">고정 기간엔 그대로예요</p>
-            <p className="mt-2 text-[13.5px] leading-relaxed text-sub">
-              처음 금리를 금융채로 정해서 5년은 안 바뀌어요.
-              <br />
-              5년이 지나 변동형으로 바뀌면 그때 아래 금액만큼 달라져요.
+            <p className="text-[14px] font-bold text-sub">
+              {r.diff < 0 ? '한 달에 덜 내는 돈' : '한 달에 더 내는 돈'}
             </p>
+            <p className="tnum mt-1 text-[34px] font-extrabold text-brand">
+              {r.diff > 0 ? '+' : r.diff < 0 ? '−' : ''}
+              {man(Math.abs(r.diff))}만원
+            </p>
+            <p className="tnum mt-1 text-[13.5px] text-sub">1년이면 {man(Math.abs(r.diffYear))}만원</p>
+            {fixed && (
+              <p className="mt-2 text-[12.5px] leading-relaxed text-sub">
+                이미 받은 고정형은 5년 동안 그대로예요.
+                <br />
+                새로 받거나 5년이 지나 다시 정할 때 이만큼 달라져요.
+              </p>
+            )}
           </div>
-        ) : (
-          <div className="rounded-2xl bg-[#F2F7FF] px-5 py-5 text-center">
-            <p className="text-[14px] font-bold text-sub">한 달에 더 내는 돈</p>
-            <p className="tnum mt-1 text-[34px] font-extrabold text-brand">+{man(r.diff)}만원</p>
-            <p className="tnum mt-1 text-[13.5px] text-sub">1년이면 {man(r.diffYear)}만원</p>
-          </div>
-        )}
+        }
         <div className="mt-3 space-y-2">
           <Row
             name="지금"
@@ -172,8 +194,8 @@ export default function Cofix() {
             value={`월 ${man(r.before)}만원`}
           />
           <Row
-            name={fixed ? '변동형으로 바뀌면' : '금리변경일 뒤'}
-            sub={`연 ${(v.rate + v.rise).toFixed(2)}%`}
+            name={fixed ? '다시 정하면' : '금리변경일 뒤'}
+            sub={`연 ${(v.rate + rise).toFixed(2)}%`}
             value={`월 ${man(r.after)}만원`}
             strong
           />
@@ -189,20 +211,20 @@ export default function Cofix() {
       <ShareSection no={3} title="금리가 오르는 만큼 한 달에 더">
         <Table
           head={['오르는 만큼', '한 달', '1년']}
-          rows={RISE_STEPS.map((rise) => {
-            const d = computeCofix({ ...v, rise }).diff
-            return [`+${rise}%p`, `${man(d)}만`, `${man(d * 12)}만`, rise === v.rise]
+          rows={riseSteps(rise).map((step) => {
+            const d = computeCofix({ ...v, rise: step }).diff
+            return [pp(step), `${man(d)}만`, `${man(d * 12)}만`, step === rise]
           })}
         />
       </ShareSection>
 
       {/* ── 4. 잔액마다 */}
-      <ShareSection no={4} title={`대출금마다 (+${v.rise}%p)`}>
+      <ShareSection no={4} title={`대출금마다 (${pp(rise)})`}>
         <Table
           head={['남은 대출금', '한 달', '1년']}
           rows={BALANCE_STEPS.map((b) => {
             const d =
-              monthlyPay(b, v.rate + v.rise, v.years, v.repay) - monthlyPay(b, v.rate, v.years, v.repay)
+              monthlyPay(b, v.rate + rise, v.years, v.repay) - monthlyPay(b, v.rate, v.years, v.repay)
             return [eok(b), `${man(d)}만`, `${man(d * 12)}만`, false]
           })}
         />
