@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { LOAN_CATEGORY, addLoanItems, loanLedgerAmounts } from '../lib/loan'
 import PcShell from '../components/PcShell'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -276,15 +276,7 @@ export default function Checkup() {
       if (names.length > 1) orderCategories(g, names)
     }
     // 정산을 끝내지 않고 나가도 바꾼 순서가 남게 — 삭제와 같은 방식으로 바로 저장
-    if (!member) return
-    void fetchBase().then((base) => {
-      saveLedger({
-        ym,
-        items: mergeMemberItems(base.items, items, member),
-        closed: base.closed,
-        settledMembers: base.settledMembers ?? [],
-      })
-    })
+    saveNow(items)
   }
   const addItem = (group: CategoryGroup, category: string, forMember: 1 | 2) => {
     setItems((prev) => [
@@ -332,10 +324,28 @@ export default function Checkup() {
     if (!member) return
     const next = items.filter((it) => it.id !== id)
     setItems(next)
-    void fetchBase().then((base) => {
+    saveNow(next)
+  }
+
+  /**
+   * 지우기·순서 바꾸기를 바로 저장한다 (정산 완료 상태는 그대로).
+   *
+   * 제보(2026-11-17): "새로 만든 칸이 안 지워지고, 지운 금액이 다시 살아나요".
+   * '둘 다 제가 입력할게요'로 배우자 항목을 지우면, 저장할 때 배우자 몫을 서버 것으로
+   * 채워 넣어서 지운 항목이 그대로 남았다 — 나갔다 오면 되살아났다.
+   * 둘 다 입력할 땐 화면 목록이 두 사람 몫 전부라 그대로 저장한다(정산 완료와 같은 규칙).
+   * 저장은 차례로 보낸다 — 빨리 두 번 지우면 앞의 저장이 늦게 끝나 뒤의 것을 덮을 수 있었다.
+   */
+  const saveChain = useRef(Promise.resolve())
+  const saveNow = (nextItems: BudgetItem[]) => {
+    if (!member) return
+    const m = member
+    const both = bothMode
+    saveChain.current = saveChain.current.then(async () => {
+      const base = await fetchBase()
       saveLedger({
         ym,
-        items: mergeMemberItems(base.items, next, member),
+        items: both ? nextItems : mergeMemberItems(base.items, nextItems, m),
         closed: base.closed,
         settledMembers: base.settledMembers ?? [],
       })

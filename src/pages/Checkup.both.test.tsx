@@ -142,3 +142,28 @@ describe('둘 다 입력 — 누구 항목인지 알아보게', () => {
     expect(rows).toHaveLength(3)
   })
 })
+
+describe('정산 — 지운 항목이 되살아나지 않게 (2026-11-17 제보)', () => {
+  it('둘 다 입력에서 배우자 항목을 지우면 바로 저장에서도 빠진다', async () => {
+    const { user } = openCheckup()
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    // 나는 아내(2번) — 수입 스텝 첫 줄인 배우자(남편) 주수입을 지운다
+    await user.click(screen.getAllByLabelText('삭제')[0])
+    await new Promise((r) => setTimeout(r, 0))
+    const ids = savedItems().map((it) => it.id)
+    expect(ids).not.toContain('h-inc')
+    expect(ids).toContain('w-inc')
+  })
+
+  it('둘 다 입력에서 새로 만든 항목도 지우면 저장에 안 남는다', async () => {
+    const { user } = openCheckup()
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    await user.click(screen.getByRole('button', { name: /항목 추가/ }))
+    await user.click(screen.getByRole('button', { name: '추가' }))
+    expect(screen.getAllByLabelText('삭제')).toHaveLength(3)
+    await user.click(screen.getAllByLabelText('삭제')[2])
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.getAllByLabelText('삭제')).toHaveLength(2)
+    expect(savedItems().filter((it) => it.group === 'income')).toHaveLength(2)
+  })
+})

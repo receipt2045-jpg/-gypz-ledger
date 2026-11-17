@@ -19,7 +19,14 @@ import { dueMonths, payDate, recurringId } from './childRecurring'
 import { YEAREND_SAVE_KEY } from './yearEndTax'
 import { buildSeed, sampleConfessions } from '../seed'
 import * as db from './db'
-import { enqueue, flushQueue, migrateLegacyQueue, pendingCount, type PendingOp } from './syncQueue'
+import {
+  dropQueued,
+  enqueue,
+  flushQueue,
+  migrateLegacyQueue,
+  pendingCount,
+  type PendingOp,
+} from './syncQueue'
 
 /** op 하나를 실제로 서버에 보낸다 */
 async function sendOp(op: PendingOp, hid: string): Promise<void> {
@@ -59,6 +66,29 @@ function onSaveFailed(op: PendingOp) {
     enqueue(op)
     useLedgerStore.setState({ pendingSync: pendingCount() })
   }
+}
+
+/**
+ * 달 통째·프로필처럼 '그때 상태 전체'를 덮어쓰는 저장 (2026-11-17).
+ * 같은 key는 마지막에 보낸 것만 의미가 있다:
+ * - 성공하면 큐에 남은 옛 실패분을 버린다(나중에 다시 보내 최신을 되돌리지 않게)
+ * - 더 새 저장이 이미 나간 뒤 옛 저장이 실패하면 큐에 넣지 않는다
+ */
+const lastPush = new Map<string, number>()
+let pushSeq = 0
+function pushLatest(op: PendingOp, run: () => Promise<void>) {
+  const n = ++pushSeq
+  lastPush.set(op.key, n)
+  run()
+    .then(() => {
+      if (lastPush.get(op.key) !== n) return
+      dropQueued(op.key)
+      useLedgerStore.setState({ pendingSync: pendingCount() })
+    })
+    .catch((err) => {
+      if (lastPush.get(op.key) !== n) return
+      onSaveFailed(op)(err)
+    })
 }
 
 /**
@@ -351,7 +381,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const hid = get().householdId
     if (hid) {
       const op: PendingOp = { kind: 'profile', key: 'profile', payload: profile }
-      db.pushProfile(hid, profile).catch(onSaveFailed(op))
+      pushLatest(op, () => db.pushProfile(hid, profile))
     }
   },
 
@@ -364,7 +394,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     set({ profile, confessions: s.confessions.map(swapConfession) })
     if (hid) {
       const op: PendingOp = { kind: 'profile', key: 'profile', payload: profile }
-      db.pushProfile(hid, profile).catch(onSaveFailed(op))
+      pushLatest(op, () => db.pushProfile(hid, profile))
     }
     for (const l of s.ledgers) get().saveLedger(swapLedger(l))
   },
@@ -383,7 +413,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const hid = get().householdId
     if (hid) {
       const op: PendingOp = { kind: 'ledger', key: `ledger:${ledger.ym}`, payload: ledger }
-      db.pushLedger(hid, ledger).catch(onSaveFailed(op))
+      pushLatest(op, () => db.pushLedger(hid, ledger))
     }
   },
 
@@ -395,7 +425,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const hid = get().householdId
     if (hid) {
       const op: PendingOp = { kind: 'snapshot', key: `snapshot:${snapshot.ym}`, payload: snapshot }
-      db.pushSnapshot(hid, snapshot).catch(onSaveFailed(op))
+      pushLatest(op, () => db.pushSnapshot(hid, snapshot))
     }
   },
 

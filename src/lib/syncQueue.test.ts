@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mergeOp, type PendingOp } from './syncQueue'
+import { QUEUE_KEY, dropQueued, enqueue, mergeOp, pendingCount, type PendingOp } from './syncQueue'
 import type { MonthlyLedger, OccasionEntry } from '../types'
 
 const ledger = (ym: string, amount: number): PendingOp => ({
@@ -7,7 +7,9 @@ const ledger = (ym: string, amount: number): PendingOp => ({
   key: `ledger:${ym}`,
   payload: {
     ym,
-    items: [{ id: 'a', group: 'variable', category: '식비', member: 1, planned: 0, actual: amount }],
+    items: [
+      { id: 'a', group: 'variable', category: '식비', member: 1, planned: 0, actual: amount },
+    ],
     closed: false,
   } as MonthlyLedger,
 })
@@ -15,7 +17,13 @@ const ledger = (ym: string, amount: number): PendingOp => ({
 const occasion = (id: string): PendingOp => ({
   kind: 'occasion',
   key: `occasion:${id}`,
-  payload: { id, date: '2026-08-01', category: '가족경조사', title: '축의금', amount: 100000 } as OccasionEntry,
+  payload: {
+    id,
+    date: '2026-08-01',
+    category: '가족경조사',
+    title: '축의금',
+    amount: 100000,
+  } as OccasionEntry,
 })
 
 const occasionDelete = (id: string): PendingOp => ({
@@ -63,7 +71,11 @@ describe('mergeOp — 재시도 큐 병합', () => {
       key: 'confession:c1',
       payload: { id: 'c1' } as never,
     }
-    const del: PendingOp = { kind: 'confessionDelete', key: 'confessionDelete:c1', payload: { id: 'c1' } }
+    const del: PendingOp = {
+      kind: 'confessionDelete',
+      key: 'confessionDelete:c1',
+      payload: { id: 'c1' },
+    }
     let list = mergeOp([], add)
     list = mergeOp(list, del)
     expect(list).toEqual([])
@@ -105,5 +117,22 @@ describe('mergeOp — 재시도 큐 병합', () => {
     let list = mergeOp([], c('c1'))
     list = mergeOp(list, c('c2'))
     expect(list).toHaveLength(2)
+  })
+})
+
+describe('dropQueued — 바로 보내기에 성공하면 옛 실패분을 버린다 (2026-11-17)', () => {
+  it('같은 key만 지우고 나머지는 남긴다', () => {
+    localStorage.removeItem(QUEUE_KEY)
+    const ledgerOp = (ym: string): PendingOp => ({
+      kind: 'ledger',
+      key: `ledger:${ym}`,
+      payload: { ym, items: [], closed: false },
+    })
+    enqueue(ledgerOp('2026-10'))
+    enqueue(ledgerOp('2026-11'))
+    dropQueued('ledger:2026-11')
+    expect(pendingCount()).toBe(1)
+    dropQueued('ledger:2026-10')
+    expect(pendingCount()).toBe(0)
   })
 })

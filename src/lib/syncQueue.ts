@@ -85,6 +85,16 @@ export function enqueue(op: PendingOp) {
   write(mergeOp(read(), op))
 }
 
+/**
+ * 같은 key를 바로 보내는 데 성공했으면 큐에 남은 옛 실패분은 버린다 (2026-11-17).
+ * 안 버리면 다음에 앱을 열 때 옛 상태를 다시 보내 최신 저장을 되돌린다 — "지운 게 다시 살아나요".
+ */
+export function dropQueued(key: string) {
+  const list = read()
+  const next = list.filter((o) => o.key !== key)
+  if (next.length !== list.length) write(next)
+}
+
 export function pendingCount(): number {
   return read().length
 }
