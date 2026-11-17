@@ -4,7 +4,15 @@ import { Fragment, useState } from 'react'
 import { ChevronRight, Pencil } from 'lucide-react'
 import Card from './Card'
 import PcColumns from './PcColumns'
-import { groupRows, isOwned, memberTable, ownerRows, type TableRow } from '../lib/assetGlance'
+import {
+  groupRows,
+  isOwned,
+  memberTable,
+  monthCompare,
+  ownerRows,
+  type CompareRow,
+  type TableRow,
+} from '../lib/assetGlance'
 import { abbreviateKRW, formatMonthKorean, formatYmKorean } from '../lib/format'
 import type { AssetItem } from '../types'
 
@@ -364,7 +372,16 @@ function Trend({ series, onEdit }: { series: SeriesPoint[]; onEdit?: (to: EditTa
   )
 }
 
-/** 흐름에서 고른 달 — 전체 자산, 지난달과 차이, 종류별, 부채 한 줄씩 */
+/** +1,200 / −300 / – (만원) */
+const signed = (n: number) => (n === 0 ? '–' : `${n > 0 ? '+' : '−'}${man(Math.abs(n))}`)
+/** 늘면 좋은 돈(자산)은 파랑, 빚은 반대로 */
+const diffColor = (n: number | null, debt = false) =>
+  !n ? 'text-cap' : n > 0 !== debt ? 'text-brand' : 'text-danger'
+
+/**
+ * 흐름에서 고른 달 — 지난달과 견준 표 (2026-11-17 의견: "표로, 어떤 자산이 얼만큼 늘었는지").
+ * 종류별 금액·증감 → 자산 합계·부채·순자산, 아래에 금액이 바뀐 항목.
+ */
 function MonthBrief({
   p,
   prev,
@@ -376,41 +393,94 @@ function MonthBrief({
   latest: boolean
   onEdit?: (to: EditTarget) => void
 }) {
-  const its = p.items ?? []
-  const rows = groupRows(its)
-  const debts = its.filter((it) => it.kind === 'debt').reduce((a, it) => a + it.amount, 0)
-  const diff = prev ? p.value - prev.value : 0
+  const c = monthCompare(p.items ?? [], prev?.items ?? null)
+  const [allChanged, setAllChanged] = useState(false)
+  const changed = allChanged ? c.changed : c.changed.slice(0, 5)
+  const cell = 'border border-[#D9DEE4] px-2 py-1.5'
+  const num = `${cell} tnum text-right`
+  const line = (r: CompareRow, cls: string, debt = false) => (
+    <tr key={r.key} className={cls}>
+      <td className={cell}>{r.label}</td>
+      <td className={num}>
+        {debt && r.amount > 0 ? '−' : ''}
+        {man(r.amount)}
+      </td>
+      <td className={`${num} ${diffColor(r.diff, debt)}`}>
+        {r.diff === null ? '' : signed(r.diff)}
+      </td>
+    </tr>
+  )
   return (
-    <div className="mt-2 rounded-btn bg-bg px-3.5 py-3">
+    <div className="mt-2 rounded-btn bg-bg px-3 py-3">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-[13px] font-bold text-ink">{formatYmKorean(p.ym)} 전체 자산</p>
-        {prev && diff !== 0 && (
-          <p
-            className={`tnum text-[12px] font-semibold ${diff > 0 ? 'text-brand' : 'text-danger'}`}
-          >
-            지난달보다 {diff > 0 ? '+' : '−'}
-            {short(Math.abs(diff))}
+        <p className="text-[11.5px] text-cap">단위 만원</p>
+      </div>
+      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+        <p className="tnum text-[20px] font-extrabold text-ink">{abbreviateKRW(p.value)}</p>
+        {prev && p.value !== prev.value && (
+          <p className={`tnum text-[12px] font-semibold ${diffColor(p.value - prev.value)}`}>
+            지난달보다 {p.value > prev.value ? '+' : '−'}
+            {short(Math.abs(p.value - prev.value))}
           </p>
         )}
       </div>
-      <p className="tnum mt-0.5 text-[20px] font-extrabold text-ink">{abbreviateKRW(p.value)}</p>
-      {rows.length > 0 && (
-        <p className="tnum mt-1 text-[12px] leading-relaxed text-sub">
-          {/* 금액 중간에서 줄이 끊기지 않게 항목마다 묶는다 */}
-          {rows.map((r, i) => (
-            <Fragment key={r.group}>
-              {i > 0 && ' · '}
-              <span className="whitespace-nowrap">
-                {r.label} {short(r.amount)}
-              </span>
-            </Fragment>
-          ))}
-        </p>
+      <table className="mt-2 w-full table-fixed border-collapse bg-white text-[12.5px]">
+        <colgroup>
+          <col className="w-[34%]" />
+          <col className="w-[36%]" />
+          <col className="w-[30%]" />
+        </colgroup>
+        <thead>
+          <tr className="bg-[#EEF1F5] text-[11.5px] text-sub">
+            <th className={`${cell} font-semibold`}>종류</th>
+            <th className={`${cell} font-semibold`}>금액</th>
+            <th className={`${cell} font-semibold`}>지난달보다</th>
+          </tr>
+        </thead>
+        <tbody>
+          {c.groups.map((r) => line(r, 'text-ink'))}
+          {line(c.assetTotal, 'bg-brand/10 font-bold text-ink')}
+          {(c.debt.amount > 0 || (c.debt.diff ?? 0) !== 0) && line(c.debt, 'text-ink', true)}
+          {line(c.net, 'bg-[#F7F8FA] font-bold text-ink')}
+        </tbody>
+      </table>
+      {!prev && (
+        <p className="mt-1.5 text-[11.5px] text-cap">처음 기록한 달이라 견줄 지난달이 없어요</p>
       )}
-      {debts > 0 && (
-        <p className="tnum text-[12px] text-sub">
-          부채 {short(debts)} · 순자산 {short(p.value - debts)}
-        </p>
+      {changed.length > 0 && (
+        <div className="mt-2.5">
+          <p className="text-[12px] font-bold text-sub">지난달보다 바뀐 항목</p>
+          <ul className="mt-1 divide-y divide-line/70 rounded-btn bg-white px-2.5">
+            {changed.map((it) => (
+              <li key={it.key} className="flex items-center gap-2 py-1.5 text-[12.5px]">
+                <span className="min-w-0 flex-1 truncate text-ink">
+                  {it.kind === 'debt' && <span className="text-danger">빚 </span>}
+                  {it.name}
+                  {it.owner && <span className="text-cap"> · {it.owner}</span>}
+                  {it.amount === 0 && <span className="text-cap"> · 없어짐</span>}
+                </span>
+                <span
+                  className={`tnum shrink-0 font-bold ${diffColor(it.diff, it.kind === 'debt')}`}
+                >
+                  {it.diff > 0 ? '+' : '−'}
+                  {short(Math.abs(it.diff))}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {c.changed.length > 5 && (
+            <button
+              onClick={() => setAllChanged((v) => !v)}
+              className="mt-1 w-full py-1 text-center text-[12px] font-bold text-sub"
+            >
+              {allChanged ? '접기' : `${c.changed.length - 5}개 더 보기`}
+            </button>
+          )}
+        </div>
+      )}
+      {prev && c.changed.length === 0 && (
+        <p className="mt-2 text-[11.5px] text-cap">지난달과 금액이 같아요</p>
       )}
       {onEdit && (
         <button

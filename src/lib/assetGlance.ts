@@ -140,3 +140,87 @@ export function memberTable(items: AssetItem[]) {
     net: assetTotal - debtTotal,
   }
 }
+
+export interface CompareRow {
+  key: string
+  label: string
+  amount: number
+  /** 지난달보다 늘어난 돈 — 비교할 달이 없으면 null */
+  diff: number | null
+}
+
+export interface ChangedItem {
+  key: string
+  name: string
+  owner?: string
+  kind: AssetItem['kind']
+  amount: number
+  diff: number
+}
+
+/**
+ * 흐름 그래프에서 고른 달 — 지난달과 비교한 표 (2026-11-17 의견: "어떤 자산이 얼만큼 늘었는지").
+ * 종류별 금액·증감, 자산 합계·부채·순자산 증감, 그리고 금액이 바뀐 항목(큰 순).
+ * 앞달에서 이어 온 달은 항목 id가 달라서 종류(자산/부채)·주인·이름으로 맞춘다.
+ */
+export function monthCompare(cur: AssetItem[], prev: AssetItem[] | null) {
+  const sum = (list: AssetItem[], f: (it: AssetItem) => boolean) =>
+    list.filter(f).reduce((a, it) => a + it.amount, 0)
+  const row = (key: string, label: string, f: (it: AssetItem) => boolean): CompareRow => {
+    const amount = sum(cur, f)
+    return { key, label, amount, diff: prev ? amount - sum(prev, f) : null }
+  }
+  const groups = ASSET_GROUP_ORDER.map((g) =>
+    row(g, ASSET_GROUP_LABEL[g], (it) => it.kind === 'asset' && it.group === g),
+  )
+    .filter((r) => r.amount > 0 || (r.diff ?? 0) !== 0)
+    .sort((a, b) => b.amount - a.amount)
+  const assetTotal = row('assets', '자산 합계', (it) => it.kind === 'asset')
+  const debt = row('debt', '부채', (it) => it.kind === 'debt')
+  const net: CompareRow = {
+    key: 'net',
+    label: '순자산',
+    amount: assetTotal.amount - debt.amount,
+    diff: prev ? (assetTotal.diff ?? 0) - (debt.diff ?? 0) : null,
+  }
+
+  const changed: ChangedItem[] = []
+  if (prev) {
+    const keyOf = (it: AssetItem) => `${it.kind}|${it.owner ?? ''}|${it.name}`
+    const before = new Map<string, number>()
+    for (const it of prev) before.set(keyOf(it), (before.get(keyOf(it)) ?? 0) + it.amount)
+    const now = new Map<string, AssetItem & { total: number }>()
+    for (const it of cur) {
+      const k = keyOf(it)
+      const got = now.get(k)
+      now.set(k, { ...it, total: (got?.total ?? 0) + it.amount })
+    }
+    for (const [k, it] of now) {
+      const diff = it.total - (before.get(k) ?? 0)
+      if (diff !== 0)
+        changed.push({
+          key: k,
+          name: it.name,
+          owner: it.owner,
+          kind: it.kind,
+          amount: it.total,
+          diff,
+        })
+    }
+    // 지난달엔 있었는데 이번 달엔 없는 항목
+    for (const it of prev) {
+      const k = keyOf(it)
+      if (now.has(k) || changed.some((c) => c.key === k)) continue
+      changed.push({
+        key: k,
+        name: it.name,
+        owner: it.owner,
+        kind: it.kind,
+        amount: 0,
+        diff: -(before.get(k) ?? 0),
+      })
+    }
+    changed.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
+  }
+  return { groups, assetTotal, debt, net, changed }
+}

@@ -124,7 +124,7 @@ describe('자산 탭 — 2026-11-17 의견', () => {
     expect(total.compareDocumentPosition(stock) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('흐름 그래프에서 지난달을 누르면 그 달을 간단히 보고, 그 달 자산을 고치러 간다', async () => {
+  it('흐름 그래프에서 지난달을 누르면 지난달과 견준 표로 보고, 그 달 자산을 고치러 간다', async () => {
     seed()
     // 그다음 달에 전세보증금이 1억 늘었다
     const items = useLedgerStore.getState().snapshots[0].items
@@ -143,7 +143,15 @@ describe('자산 탭 — 2026-11-17 의견', () => {
     expect(screen.getByText('2026년 9월 전체 자산')).toBeInTheDocument()
     // 3억 2,485만 → 4억 2,485만
     expect(screen.getByText('지난달보다 +1억')).toBeInTheDocument()
-    expect(screen.getByText(/집 4억/)).toBeInTheDocument()
+    // 표 — 종류별 금액과 지난달보다 (만원)
+    const house = screen.getByRole('row', { name: /^집/ })
+    expect(house).toHaveTextContent('40,000')
+    expect(house).toHaveTextContent('+10,000')
+    expect(screen.getByRole('row', { name: /^예적금/ })).toHaveTextContent('–')
+    // 바뀐 항목
+    expect(screen.getByText('지난달보다 바뀐 항목')).toBeInTheDocument()
+    expect(screen.getByText('전세보증금')).toBeInTheDocument()
+    expect(screen.getByText('+1억')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /9월 자산 고치기/ }))
     expect(navigate).toHaveBeenCalledWith('/asset-setup', { state: { ym: '2026-09' } })
   })

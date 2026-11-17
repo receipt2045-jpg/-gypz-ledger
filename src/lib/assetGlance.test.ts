@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupRows, memberTable, ownerRows, percents } from './assetGlance'
+import { groupRows, memberTable, monthCompare, ownerRows, percents } from './assetGlance'
 import type { AssetItem } from '../types'
 
 const a = (
@@ -57,5 +57,78 @@ describe('자산 한눈에 — 사람별 표', () => {
     expect(t.assetTotal).toBe(20_750_000)
     expect(t.debts.map((r) => r.name)).toEqual(['신용대출'])
     expect(t.net).toBe(-1_250_000)
+  })
+})
+
+describe('흐름에서 고른 달 — 지난달과 비교 (2026-11-17)', () => {
+  const prev: AssetItem[] = [
+    {
+      id: 'p1',
+      kind: 'asset',
+      group: 'realestate',
+      name: '아파트',
+      amount: 1_000_000_000,
+      owner: '공동',
+    },
+    { id: 'p2', kind: 'asset', group: 'cash', name: '청약', amount: 5_000_000, owner: '남편' },
+    { id: 'p3', kind: 'asset', group: 'stock', name: '코인', amount: 3_000_000, owner: '아내' },
+    {
+      id: 'p4',
+      kind: 'debt',
+      group: 'realestate',
+      name: '주담대',
+      amount: 500_000_000,
+      owner: '공동',
+    },
+  ]
+  // 이어 온 달이라 id가 다르다
+  const cur: AssetItem[] = [
+    {
+      id: 'c1',
+      kind: 'asset',
+      group: 'realestate',
+      name: '아파트',
+      amount: 1_000_000_000,
+      owner: '공동',
+    },
+    { id: 'c2', kind: 'asset', group: 'cash', name: '청약', amount: 6_000_000, owner: '남편' },
+    { id: 'c5', kind: 'asset', group: 'cash', name: '비상금', amount: 2_000_000, owner: '공동' },
+    {
+      id: 'c4',
+      kind: 'debt',
+      group: 'realestate',
+      name: '주담대',
+      amount: 498_000_000,
+      owner: '공동',
+    },
+  ]
+
+  it('종류별·합계·부채·순자산 증감', () => {
+    const c = monthCompare(cur, prev)
+    expect(c.groups.map((r) => `${r.label} ${r.amount} ${r.diff}`)).toEqual([
+      '집 1000000000 0',
+      '예적금 8000000 3000000',
+      '투자 0 -3000000',
+    ])
+    expect(c.assetTotal.diff).toBe(0)
+    expect(c.debt.diff).toBe(-2_000_000)
+    // 빚이 200만 줄어 순자산은 200만 늘었다
+    expect(c.net.diff).toBe(2_000_000)
+  })
+
+  it('바뀐 항목 — 이름·주인으로 맞추고, 새로 생긴 것·없어진 것도', () => {
+    const c = monthCompare(cur, prev)
+    expect(c.changed.map((it) => `${it.name} ${it.diff}`)).toEqual([
+      '코인 -3000000',
+      '비상금 2000000',
+      '주담대 -2000000',
+      '청약 1000000',
+    ])
+  })
+
+  it('비교할 달이 없으면 증감은 비워 둔다', () => {
+    const c = monthCompare(cur, null)
+    expect(c.groups.every((r) => r.diff === null)).toBe(true)
+    expect(c.changed).toEqual([])
   })
 })
