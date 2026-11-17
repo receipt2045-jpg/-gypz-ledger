@@ -224,43 +224,51 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
                         onCancel={() => setEditing(null)}
                       />
                     ) : (
-                    <div key={c.id} className="flex items-center gap-2 py-2 text-[13px]">
-                      <span className="tnum shrink-0 text-[11.5px] text-cap">
-                        {new Date(c.createdAt).getMonth() + 1}/{new Date(c.createdAt).getDate()}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-ink">
-                        {c.category}
-                        {c.note && <span className="text-cap"> · {c.note}</span>}
-                        {isRecurringRecord(c.id, c.createdAt, profile.childRecurring ?? []) && (
-                          <span className="ml-1 rounded bg-brand/10 px-1 text-[10.5px] font-bold text-brand">
-                            자동
-                          </span>
-                        )}
-                        {c.gift && (
-                          <span className="ml-1 text-[11px] font-bold text-amber-600">증여</span>
-                        )}
-                        {c.childKeep === false && (
-                          <span className="ml-1 text-[11px] font-bold text-sub">살림에</span>
-                        )}
-                      </span>
-                      <span className="tnum shrink-0 font-bold text-brand">
-                        +{formatWon(c.amount)}
-                      </span>
-                      <button
+                      // 줄 어디를 눌러도 고치기 (2026-11-17 의견)
+                      <div
+                        key={c.id}
                         onClick={() => setEditing(c.id)}
-                        aria-label={`${c.category} 기록 고치기`}
-                        className="shrink-0 text-cap active:text-brand"
+                        className="-mx-1 flex cursor-pointer items-center gap-2 rounded px-1 py-2 text-[13px] active:bg-bg"
                       >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => removeConfession(c.id)}
-                        aria-label="기록 지우기"
-                        className="shrink-0 text-cap active:text-danger"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                        <span className="tnum shrink-0 text-[11.5px] text-cap">
+                          {new Date(c.createdAt).getMonth() + 1}/{new Date(c.createdAt).getDate()}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-ink">
+                          {c.category}
+                          {c.note && <span className="text-cap"> · {c.note}</span>}
+                          {isRecurringRecord(c.id, c.createdAt, profile.childRecurring ?? []) && (
+                            <span className="ml-1 rounded bg-brand/10 px-1 text-[10.5px] font-bold text-brand">
+                              자동
+                            </span>
+                          )}
+                          {c.gift && (
+                            <span className="ml-1 text-[11px] font-bold text-amber-600">증여</span>
+                          )}
+                          {c.childKeep === false && (
+                            <span className="ml-1 text-[11px] font-bold text-sub">살림에</span>
+                          )}
+                        </span>
+                        <span className="tnum shrink-0 font-bold text-brand">
+                          +{formatWon(c.amount)}
+                        </span>
+                        <button
+                          onClick={() => setEditing(c.id)}
+                          aria-label={`${c.category} 기록 고치기`}
+                          className="shrink-0 text-cap active:text-brand"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeConfession(c.id)
+                          }}
+                          aria-label="기록 지우기"
+                          className="shrink-0 text-cap active:text-danger"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     ),
                   )}
               </div>
@@ -274,7 +282,8 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
 
 /** 아이 앞으로 들어온 돈 적기 — 아동수당·지원금 / 용돈·선물. 지원금은 '매달 들어와요'로 자동 기록을 걸 수 있다 */
 function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void }) {
-  const { addConfession, profile, updateProfile, runChildRecurring, snapshots, saveSnapshot } = useLedgerStore()
+  const { addConfession, profile, updateProfile, runChildRecurring, snapshots, saveSnapshot } =
+    useLedgerStore()
   const today = new Date().toLocaleDateString('sv-SE')
   const thisYm = today.slice(0, 7)
   // 아이 카드에선 항목 목록과 상관없이 늘 두 가지 — 아이를 막 등록한 집도 바로 적게
@@ -371,9 +380,14 @@ function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void })
     return (
       <div className="mt-3 space-y-2.5 rounded-btn bg-amber-50/60 px-3 py-3">
         <p className="text-[13.5px] font-bold text-ink">{name} 통장 금액에도 더할까요?</p>
-        <p className="text-[12px] text-sub">자산 화면의 통장 금액이 {abbreviateKRW(offerAmount)} 늘어요.</p>
+        <p className="text-[12px] text-sub">
+          자산 화면의 통장 금액이 {abbreviateKRW(offerAmount)} 늘어요.
+        </p>
         <div className="flex gap-2">
-          <button onClick={onDone} className="h-10 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub">
+          <button
+            onClick={onDone}
+            className="h-10 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub"
+          >
             아니요
           </button>
           <button
@@ -651,7 +665,18 @@ function RecurringList({ name }: { name: string }) {
           const ended = !next
           return (
             <li key={r.id} className="py-2">
-              <div className="flex items-baseline justify-between gap-2 text-[13px]">
+              {/* 이름·금액 줄을 눌러도 금액 고치기 (2026-11-17 의견) */}
+              <div
+                onClick={
+                  ended || editing === r.id
+                    ? undefined
+                    : () => {
+                        setDraft(r.amount)
+                        setEditing(r.id)
+                      }
+                }
+                className={`flex items-baseline justify-between gap-2 text-[13px] ${ended ? '' : 'cursor-pointer'}`}
+              >
                 <span className="min-w-0 truncate font-bold text-ink">
                   {r.label}
                   <span className="ml-1 font-normal text-cap">매달 {r.day}일</span>
@@ -935,7 +960,9 @@ function ChildRecordEdit({
   onCancel,
 }: {
   c: Confession
-  onSave: (patch: Pick<Confession, 'category' | 'amount' | 'note' | 'createdAt' | 'childKeep' | 'gift'>) => void
+  onSave: (
+    patch: Pick<Confession, 'category' | 'amount' | 'note' | 'createdAt' | 'childKeep' | 'gift'>,
+  ) => void
   onCancel: () => void
 }) {
   const [category, setCategory] = useState(c.category)
@@ -1025,7 +1052,10 @@ function ChildRecordEdit({
         </label>
       )}
       <div className="flex gap-2">
-        <button onClick={onCancel} className="h-10 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub">
+        <button
+          onClick={onCancel}
+          className="h-10 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub"
+        >
           취소
         </button>
         <button

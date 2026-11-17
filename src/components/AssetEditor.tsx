@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import LoanEditor, { LoanForm } from './LoanEditor'
 import { dayString, type LoanInfo } from '../lib/loan'
 import { ChevronDown, ChevronRight, Pencil, Plus, StickyNote, X } from 'lucide-react'
@@ -25,6 +25,7 @@ export default function AssetEditor({
   assets,
   ownerOptions,
   defaultOwner,
+  focusId,
   onChange,
   onNote,
   onUpdate,
@@ -34,6 +35,8 @@ export default function AssetEditor({
   assets: AssetItem[]
   ownerOptions: string[] // 소유자 선택지 (공동·부부·자녀)
   defaultOwner: string
+  /** 자산 탭에서 누른 항목 — 그 줄로 내려가 잠깐 표시한다 */
+  focusId?: string
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
   onUpdate: (id: string, patch: Partial<Omit<AssetItem, 'id'>>) => void
@@ -112,6 +115,7 @@ export default function AssetEditor({
           onNote={onNote}
           onUpdate={onUpdate}
           onRemove={onRemove}
+          focus={it.id === focusId}
         />
       ))}
       {debtItems.length > 0 && <p className="px-1 pt-2 text-[13px] font-bold text-danger">부채</p>}
@@ -125,6 +129,7 @@ export default function AssetEditor({
           onNote={onNote}
           onUpdate={onUpdate}
           onRemove={onRemove}
+          focus={it.id === focusId}
           debt
         />
       ))}
@@ -260,6 +265,7 @@ function AssetRow({
   onUpdate,
   onRemove,
   debt,
+  focus = false,
 }: {
   item: AssetItem
   ownerOptions: string[] // 소유자 선택지 (공동·부부·자녀)
@@ -269,8 +275,18 @@ function AssetRow({
   onUpdate: (id: string, patch: Partial<Omit<AssetItem, 'id'>>) => void
   onRemove: (id: string) => void
   debt?: boolean
+  focus?: boolean
 }) {
   const [memoOpen, setMemoOpen] = useState(false)
+  // 자산 탭에서 이 항목을 눌러서 왔으면 이 줄로 내려가 잠깐 테두리를 띄운다
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [lit, setLit] = useState(focus)
+  useEffect(() => {
+    if (!focus) return
+    rowRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+    const t = window.setTimeout(() => setLit(false), 2000)
+    return () => window.clearTimeout(t)
+  }, [focus])
   const [editing, setEditing] = useState(false)
   // 수정 폼 임시값
   const [eKind, setEKind] = useState<'asset' | 'debt'>(item.kind)
@@ -366,7 +382,11 @@ function AssetRow({
   // 금액 칸을 이름 줄 아래 한 줄로 (2026-10-07 제보: "금액을 넣을 때 일부만 보여 불편해요").
   // 예전엔 아이콘·이름·버튼 셋과 한 줄을 나눠 써서 폰에서 금액 칸이 80px 남짓이었다.
   return (
-    <div className="rounded-card bg-card px-4 py-3 shadow-card">
+    <div
+      ref={rowRef}
+      data-focus={lit || undefined}
+      className={`rounded-card bg-card px-4 py-3 shadow-card transition-shadow ${lit ? 'ring-2 ring-brand' : ''}`}
+    >
       <div className="flex items-center gap-2.5">
         <AssetIcon group={item.group} kind={item.kind} size={34} />
         <button onClick={startEdit} className="min-w-0 flex-1 text-left" aria-label="항목 수정">

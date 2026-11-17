@@ -16,7 +16,14 @@ function seedWithLedger() {
         closed: false,
         settledMembers: [],
         items: [
-          { id: 'a', group: 'income', category: '주수입', member: 2, planned: 3_000_000, actual: 0 },
+          {
+            id: 'a',
+            group: 'income',
+            category: '주수입',
+            member: 2,
+            planned: 3_000_000,
+            actual: 0,
+          },
         ],
       },
     ],
@@ -68,7 +75,13 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     seedWithLedger()
     useLedgerStore.setState({
       occasions: [
-        { id: 'o1', date: `${TEST_YM}-10`, category: '가족경조사', title: '어머니 생신', amount: 200_000 },
+        {
+          id: 'o1',
+          date: `${TEST_YM}-10`,
+          category: '가족경조사',
+          title: '어머니 생신',
+          amount: 200_000,
+        },
         { id: 'o2', date: '2026-03-05', category: '세금', title: '자동차세', amount: 150_000 },
       ],
     })
@@ -107,7 +120,14 @@ describe('가계부 탭 — 정산 취소', () => {
           closed,
           settledMembers,
           items: [
-            { id: 'a', group: 'income', category: '주수입', member: 2, planned: 3_000_000, actual: 3_000_000 },
+            {
+              id: 'a',
+              group: 'income',
+              category: '주수입',
+              member: 2,
+              planned: 3_000_000,
+              actual: 3_000_000,
+            },
           ],
         },
       ],
@@ -152,7 +172,14 @@ describe('가계부 탭 — 한 달 통째로 지우기', () => {
           closed: false,
           settledMembers: [],
           items: [
-            { id: 'p', group: 'income', category: '주수입', member: 2, planned: 1_000_000, actual: 0 },
+            {
+              id: 'p',
+              group: 'income',
+              category: '주수입',
+              member: 2,
+              planned: 1_000_000,
+              actual: 0,
+            },
           ],
         },
         {
@@ -160,12 +187,22 @@ describe('가계부 탭 — 한 달 통째로 지우기', () => {
           closed: false,
           settledMembers: [],
           items: [
-            { id: 'a', group: 'income', category: '주수입', member: 2, planned: 3_000_000, actual: 0 },
+            {
+              id: 'a',
+              group: 'income',
+              category: '주수입',
+              member: 2,
+              planned: 3_000_000,
+              actual: 0,
+            },
           ],
         },
       ],
       snapshots: [
-        { ym: TEST_YM, items: [{ id: 's1', kind: 'asset', group: 'cash', name: '통장', amount: 1_000 }] },
+        {
+          ym: TEST_YM,
+          items: [{ id: 's1', kind: 'asset', group: 'cash', name: '통장', amount: 1_000 }],
+        },
       ],
     })
 
@@ -270,10 +307,34 @@ describe('가계부 탭 — 소비 기록을 남편 · 아내 · 공동으로 �
     seedStore({
       memberNo: 2,
       confessions: [
-        { id: 'a', memberNo: 1, category: '식비', kind: 'variable', amount: 10_000, createdAt: at(3) },
-        { id: 'b', memberNo: 2, category: '카페', kind: 'variable', amount: 4_000, createdAt: at(4) },
+        {
+          id: 'a',
+          memberNo: 1,
+          category: '식비',
+          kind: 'variable',
+          amount: 10_000,
+          createdAt: at(3),
+        },
+        {
+          id: 'b',
+          memberNo: 2,
+          category: '카페',
+          kind: 'variable',
+          amount: 4_000,
+          createdAt: at(4),
+        },
         ...(withShared
-          ? [{ id: 'c', memberNo: 2 as const, shared: true, category: '주거', kind: 'fixed' as const, amount: 500_000, createdAt: at(5) }]
+          ? [
+              {
+                id: 'c',
+                memberNo: 2 as const,
+                shared: true,
+                category: '주거',
+                kind: 'fixed' as const,
+                amount: 500_000,
+                createdAt: at(5),
+              },
+            ]
           : []),
       ],
     })
@@ -281,7 +342,8 @@ describe('가계부 탭 — 소비 기록을 남편 · 아내 · 공동으로 �
   it('공동 기록이 있으면 세 칸 합계가 나온다 — 공동은 적은 사람 합계에 섞이지 않는다', () => {
     seed(true)
     renderScreen(<Monthly />)
-    const cell = (name: string) => screen.getByText(name, { selector: 'p' }).parentElement!.textContent
+    const cell = (name: string) =>
+      screen.getByText(name, { selector: 'p' }).parentElement!.textContent
     expect(cell('남편')).toContain('10,000원')
     expect(cell('아내')).toContain('4,000원') // 아내가 적은 공동 50만은 여기 안 들어간다
     expect(cell('공동')).toContain('500,000원')
@@ -291,5 +353,16 @@ describe('가계부 탭 — 소비 기록을 남편 · 아내 · 공동으로 �
     seed(false)
     renderScreen(<Monthly />)
     expect(screen.queryByText('공동', { selector: 'p' })).not.toBeInTheDocument()
+  })
+})
+
+describe('가계부 탭 — 예산 세우기·정산하기가 먼저 (2026-11-17 의견)', () => {
+  it('달 고르는 줄 바로 아래, 한눈에 보기·소비 기록보다 위에', () => {
+    seedWithLedger()
+    renderScreen(<Monthly />)
+    const budget = screen.getByRole('button', { name: /예산 세우기/ })
+    const confess = screen.getByRole('button', { name: /오늘의 소비 기록/ })
+    expect(budget.compareDocumentPosition(confess) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('button', { name: /정산하기/ })).toBeInTheDocument()
   })
 })

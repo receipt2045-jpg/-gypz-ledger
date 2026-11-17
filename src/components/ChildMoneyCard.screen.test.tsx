@@ -118,7 +118,16 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
         snapshots: [
           {
             ym: currentYm(),
-            items: [{ id: 'k1', kind: 'asset', group: 'cash', name: '찰떡이 통장', amount: 50_000, owner: '찰떡이' }],
+            items: [
+              {
+                id: 'k1',
+                kind: 'asset',
+                group: 'cash',
+                name: '찰떡이 통장',
+                amount: 50_000,
+                owner: '찰떡이',
+              },
+            ],
           },
         ],
       })
@@ -137,7 +146,13 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
       await user.click(screen.getByRole('button', { name: '더하기' }))
       const snap = useLedgerStore.getState().snapshots.find((s) => s.ym === currentYm())
       expect(snap?.items).toHaveLength(1)
-      expect(snap?.items[0]).toMatchObject({ name: '찰떡이 통장', amount: 100_000, owner: '찰떡이', group: 'cash', kind: 'asset' })
+      expect(snap?.items[0]).toMatchObject({
+        name: '찰떡이 통장',
+        amount: 100_000,
+        owner: '찰떡이',
+        group: 'cash',
+        kind: 'asset',
+      })
     })
 
     it('[아니요] — 스냅샷은 그대로', async () => {
@@ -186,6 +201,12 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
       expect(c).toMatchObject({ amount: 70_000, gift: true })
     })
 
+    it('연필이 아니라 줄 아무 데나 눌러도 고치기가 열린다 (2026-11-17)', async () => {
+      const { user } = seed()
+      await user.click(await screen.findByText('+50,000원'))
+      expect(screen.getByLabelText('고칠 금액')).toBeInTheDocument()
+    })
+
     it('취소하면 그대로', async () => {
       const { user } = seed()
       await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
@@ -201,13 +222,29 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
   it('고친 금액이 서버가 돌려준 옛 값보다 먼저 합계에 반영된다', async () => {
     const thisYear = new Date().toISOString()
     fetched.records = [
-      { id: 'c1', child: '찰떡이', category: '용돈·선물', amount: 50_000, childKeep: true, gift: false, createdAt: thisYear },
+      {
+        id: 'c1',
+        child: '찰떡이',
+        category: '용돈·선물',
+        amount: 50_000,
+        childKeep: true,
+        gift: false,
+        createdAt: thisYear,
+      },
     ]
     const { user } = open()
     useLedgerStore.setState({
       householdId: 'h1',
       confessions: [
-        { id: 'c1', category: '용돈·선물', kind: 'income', amount: 50_000, createdAt: thisYear, child: '찰떡이', childKeep: true } as never,
+        {
+          id: 'c1',
+          category: '용돈·선물',
+          kind: 'income',
+          amount: 50_000,
+          createdAt: thisYear,
+          child: '찰떡이',
+          childKeep: true,
+        } as never,
       ],
     })
     expect(await screen.findByText('+5만원')).toBeInTheDocument()

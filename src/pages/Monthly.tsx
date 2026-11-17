@@ -144,6 +144,22 @@ export default function Monthly() {
         </p>
       )}
 
+      {/* 기록하기 — 예산 세우기(월초) / 정산하기(월말). 달 고르자마자 보이게 맨 위로 (2026-11-17 의견) */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => navigate('/budget', { state: { ym } })}
+          className="h-12 flex-1 rounded-btn bg-white text-[14px] font-bold text-ink shadow-card active:bg-line"
+        >
+          📝 예산 세우기
+        </button>
+        <button
+          onClick={() => navigate('/checkup', { state: { ym, mode: 'settle' } })}
+          className="h-12 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white shadow-cta active:bg-brand-dark"
+        >
+          ✅ {formatYmKorean(ym).split(' ')[1]} 정산하기
+        </button>
+      </div>
+
       {/* 한눈에 — 폰은 맨 위, PC는 오른쪽 칸 맨 위 */}
       <div className="lg:hidden">
         <MonthlyGlance ledger={ledger} />
@@ -176,22 +192,6 @@ export default function Monthly() {
                 기록하기 <ChevronRight size={15} />
               </span>
             </button>
-
-            {/* 기록하기 — 예산 세우기(월초) / 정산하기(월말) */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => navigate('/budget', { state: { ym } })}
-                className="h-12 flex-1 rounded-btn bg-white text-[14px] font-bold text-ink shadow-card active:bg-line"
-              >
-                📝 예산 세우기
-              </button>
-              <button
-                onClick={() => navigate('/checkup', { state: { ym, mode: 'settle' } })}
-                className="h-12 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white shadow-cta active:bg-brand-dark"
-              >
-                ✅ {formatYmKorean(ym).split(' ')[1]} 정산하기
-              </button>
-            </div>
 
             {/* 비정기 지출 바로 적기 — 경조사·명절은 월말 정산까지 기다리면 잊어버린다 */}
             <button

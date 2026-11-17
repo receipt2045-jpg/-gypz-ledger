@@ -96,6 +96,8 @@ export function assetSeries(snapshots: AssetSnapshot[], endYm: string, count: nu
 }
 
 export interface TableRow {
+  /** 자산 항목 id — 표에서 줄을 누르면 그 항목으로 바로 고치러 간다 */
+  id: string
   label: string
   name: string
   amount: number
@@ -120,12 +122,14 @@ export function memberTable(items: AssetItem[]) {
   const debtTotal = debts.reduce((a, it) => a + it.amount, 0)
   return {
     assets: assets.map<TableRow>((it, i) => ({
+      id: it.id,
       label: ASSET_GROUP_LABEL[it.group],
       name: it.name,
       amount: it.amount,
       pct: pcts[i],
     })),
     debts: debts.map<TableRow>((it) => ({
+      id: it.id,
       label: '부채',
       name: it.name,
       amount: it.amount,

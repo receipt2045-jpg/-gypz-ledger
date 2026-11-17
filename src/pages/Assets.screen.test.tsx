@@ -1,7 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import Assets from './Assets'
 import { renderScreen, seedStore, TEST_YM } from '../test/renderScreen'
+import { useLedgerStore } from '../lib/store'
+import { shiftYm } from '../lib/format'
+
+const navigate = vi.hoisted(() => vi.fn())
+vi.mock('react-router-dom', async (orig) => ({
+  ...(await orig<typeof import('react-router-dom')>()),
+  useNavigate: () => navigate,
+}))
+beforeEach(() => navigate.mockReset())
 
 const seed = () =>
   seedStore({
@@ -102,5 +111,54 @@ describe('자산 탭 — 한 화면 (2026-10-05)', () => {
     renderScreen(<Assets />)
     expect(screen.getByText('아직 등록된 자산이 없어요')).toBeInTheDocument()
     expect(screen.queryByText(/우리집 전체 자산/)).not.toBeInTheDocument()
+  })
+})
+
+describe('자산 탭 — 2026-11-17 의견', () => {
+  it('자산 구성이 맨 위, 주식 일지·아이 통장은 그 아래', () => {
+    seed()
+    useLedgerStore.setState((s) => ({ profile: { ...s.profile, childNames: ['찰떡이'] } }))
+    renderScreen(<Assets />)
+    const total = screen.getByText(/우리집 전체 자산/)
+    const stock = screen.getByText('주식 일지')
+    expect(total.compareDocumentPosition(stock) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('흐름 그래프에서 지난달을 누르면 그 달을 간단히 보고, 그 달 자산을 고치러 간다', async () => {
+    seed()
+    // 그다음 달에 전세보증금이 1억 늘었다
+    const items = useLedgerStore.getState().snapshots[0].items
+    useLedgerStore.setState({
+      snapshots: [
+        { ym: TEST_YM, items },
+        {
+          ym: shiftYm(TEST_YM, 1),
+          items: items.map((it) => (it.id === 'a1' ? { ...it, amount: 400_000_000 } : it)),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Assets />)
+    expect(screen.getByText('점을 누르면 그 달 자산을 볼 수 있어요')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '2026년 9월 자산 보기' }))
+    expect(screen.getByText('2026년 9월 전체 자산')).toBeInTheDocument()
+    // 3억 2,485만 → 4억 2,485만
+    expect(screen.getByText('지난달보다 +1억')).toBeInTheDocument()
+    expect(screen.getByText(/집 4억/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /9월 자산 고치기/ }))
+    expect(navigate).toHaveBeenCalledWith('/asset-setup', { state: { ym: '2026-09' } })
+  })
+
+  it('어디를 눌러도 고치러 간다 — 전체 자산 카드, 이름, 표의 줄', async () => {
+    seed()
+    const { user } = renderScreen(<Assets />)
+    await user.click(screen.getByText(/우리집 전체 자산/))
+    expect(navigate).toHaveBeenLastCalledWith('/asset-setup', { state: {} })
+    await user.click(screen.getByRole('button', { name: '아내 자산 고치기' }))
+    expect(navigate).toHaveBeenLastCalledWith('/asset-setup', { state: { owner: '아내' } })
+    await user.click(screen.getByRole('button', { name: '남편' }))
+    await user.click(screen.getByText('남편청약'))
+    expect(navigate).toHaveBeenLastCalledWith('/asset-setup', {
+      state: { owner: '남편', focusId: expect.any(String), focusName: '남편청약' },
+    })
   })
 })
