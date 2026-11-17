@@ -38,6 +38,12 @@ const OG_PAGES: OgPage[] = [
     description: '쿠팡에서 쓴 돈, 돌려받는 3가지. 최저가 알림부터 결제금액 2% 현금까지 정리했어요.',
     image: 'https://moabuli.com/og-coupang.png?v=1',
   },
+  {
+    dir: 'cofix',
+    title: '코픽스 오르면, 우리집 이자는 얼마 더?',
+    description: '남은 대출금과 금리만 넣으면 다음 금리변경일부터 한 달에 더 내는 이자를 바로 계산해요.',
+    image: 'https://moabuli.com/og-cofix.png?v=1',
+  },
 ]
 
 function ogHtml(html: string, page: OgPage): string {

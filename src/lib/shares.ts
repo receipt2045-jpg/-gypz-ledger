@@ -24,6 +24,17 @@ export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집
 
 export const SHARES: ShareItem[] = [
   {
+    slug: 'cofix',
+    path: '/cofix',
+    title: '코픽스 오르면, 우리집 이자는 얼마 더?',
+    sub: '남은 대출금·금리만 넣으면 다음 금리변경일부터 한 달에 더 내는 돈을 계산해요',
+    category: '내집마련',
+    date: '2026-11-17',
+    minutes: 2,
+    emoji: '📈',
+    tint: 'bg-blue-50',
+  },
+  {
     slug: 'coupang',
     path: '/coupang',
     title: '쿠팡에서 쓴 돈, 돌려받는 3가지',
