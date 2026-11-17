@@ -80,7 +80,8 @@ export default function Cofix() {
           }
           lead={
             <>
-              {COFIX.publishedDay} 발표된 {COFIX.publishedLabel} 코픽스는
+              {COFIX.publishedDay} 발표된 {COFIX.publishedLabel} 코픽스
+              <span className="text-white/60">(신규취급액 코픽스 기준)</span>는
               <br />
               {COFIX.prev}%에서 <b className="font-bold text-[#FFD66B]">{COFIX.now}%</b>로{' '}
               {COFIX.change === 0 ? '그대로예요' : `${pp(COFIX.change)} ${verb}`}.
