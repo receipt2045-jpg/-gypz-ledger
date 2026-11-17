@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import AssetSetup from './AssetSetup'
 import { renderScreen, savedAssets, seedStore, TEST_YM } from '../test/renderScreen'
 import type { AssetItem } from '../types'
+import { currentYm, shiftYm } from '../lib/format'
 
 const asset = (id: string, name: string, amount: number, owner: string): AssetItem => ({
   id,
@@ -94,5 +95,23 @@ describe('자산 탭에서 눌러서 왔을 때 (2026-11-17)', () => {
     expect(screen.getByText(/2026년 8월 자산을 고쳐요/)).toBeInTheDocument()
     expect(screen.getByText('아내 주거래')).toBeInTheDocument()
     expect(container.querySelector('[data-focus]')).toHaveTextContent('아내 주거래')
+  })
+})
+
+describe('자산 탭에 보이는 달을 고친다 (2026-11-17 점검)', () => {
+  it('이번 달이 따로 저장돼 있으면 정산 전 지난달이 아니라 이번 달 금액이 열린다', async () => {
+    const now = currentYm()
+    const prev = shiftYm(now, -1)
+    seedStore({
+      ledgers: [{ ym: prev, items: [], closed: false, settledMembers: [] }],
+      snapshots: [
+        { ym: prev, items: [asset('a', '아내 주거래', 3_000_000, '아내')] },
+        // 대출 자동 상환·아이 통장 더하기로 이번 달이 따로 저장된 경우
+        { ym: now, items: [asset('a2', '아내 주거래', 3_500_000, '아내')] },
+      ],
+    })
+    const { user } = renderScreen(<AssetSetup />)
+    await user.click(screen.getByRole('button', { name: /아내/ }))
+    expect(screen.getByDisplayValue('3,500,000')).toBeInTheDocument()
   })
 })

@@ -289,3 +289,15 @@ export function displayYm(snapshots: AssetSnapshot[]): string {
   const last = snapshots.length ? snapshots[snapshots.length - 1].ym : now
   return last > now ? last : now
 }
+
+/**
+ * 자산 등록 화면이 고칠 달 (2026-11-17).
+ * 보통은 정산할 달(activeYm) — 그 뒤 달은 거기서 이어 와서 자산 탭에 그대로 보인다.
+ * 그런데 대출 자동 상환·아이 통장 더하기가 그 뒤 달(이번 달)을 따로 저장해 두면,
+ * 정산할 달을 고쳐도 자산 탭(이번 달)엔 안 보였다 — 그때는 자산 탭이 보여 주는 달을 고친다.
+ */
+export function assetEditYm(ledgers: MonthlyLedger[], snapshots: AssetSnapshot[]): string {
+  const target = activeYm(ledgers)
+  const shown = displayYm(snapshots)
+  return snapshots.some((s) => s.ym > target && s.ym <= shown) ? shown : target
+}

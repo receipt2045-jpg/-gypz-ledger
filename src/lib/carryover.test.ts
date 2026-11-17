@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  assetEditYm,
   displayYm,
   effectiveAmount,
   deriveAssetsFromPrevious,
@@ -144,8 +145,17 @@ describe('deriveAssetsFromPrevious — 이름이 같아도 id가 안 겹친다',
 
 describe('resolveSnapshot — 이미 불어난 데이터 정리', () => {
   it('id가 겹친 항목은 읽을 때 하나만 남는다', () => {
-    const dup = { id: 'same', kind: 'asset', group: 'stock', name: '미국주식', amount: 13_600_000 } as AssetItem
-    const snap = resolveSnapshot([{ ym: '2026-08', items: [dup, { ...dup }, { ...dup }] }], '2026-08')
+    const dup = {
+      id: 'same',
+      kind: 'asset',
+      group: 'stock',
+      name: '미국주식',
+      amount: 13_600_000,
+    } as AssetItem
+    const snap = resolveSnapshot(
+      [{ ym: '2026-08', items: [dup, { ...dup }, { ...dup }] }],
+      '2026-08',
+    )
     expect(snap.items).toHaveLength(1)
   })
 })
@@ -178,5 +188,20 @@ describe('displayYm', () => {
   })
   it('가장 늦은 스냅샷이 이번 달보다 앞이면 이번 달', () => {
     expect(displayYm([{ ym: shiftYm(currentYm(), -3), items: [] }])).toBe(currentYm())
+  })
+})
+
+describe('assetEditYm — 자산 등록이 고칠 달 (2026-11-17)', () => {
+  const now = currentYm()
+  const prevYm = shiftYm(now, -1)
+  const open = [{ ym: prevYm, items: [], closed: false, settledMembers: [] }]
+  const snap = (ym: string) => ({ ym, items: [] })
+
+  it('보통은 정산할 달 — 이번 달은 거기서 이어 온다', () => {
+    expect(assetEditYm(open, [snap(prevYm)])).toBe(prevYm)
+  })
+
+  it('이번 달이 따로 저장돼 있으면(대출 자동 상환·아이 통장) 자산 탭이 보여 주는 이번 달을', () => {
+    expect(assetEditYm(open, [snap(prevYm), snap(now)])).toBe(now)
   })
 })

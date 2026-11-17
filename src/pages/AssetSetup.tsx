@@ -6,7 +6,7 @@ import { Baby, ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
 import AssetEditor from '../components/AssetEditor'
 import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
-import { activeYm, genId, mergeAssets, netWorthOf, resolveSnapshot } from '../lib/carryover'
+import { assetEditYm, genId, mergeAssets, netWorthOf, resolveSnapshot } from '../lib/carryover'
 import { memberStyle } from '../lib/memberColors'
 import { abbreviateKRW, formatYmKorean } from '../lib/format'
 import type { AssetItem } from '../types'
@@ -28,7 +28,7 @@ export default function AssetSetup() {
       focusName?: string
       ym?: string
     } | null) ?? {}
-  const [ym] = useState(() => nav.ym ?? activeYm(ledgers))
+  const [ym] = useState(() => nav.ym ?? assetEditYm(ledgers, snapshots))
   // 지난달을 고치러 왔으면 어느 달인지 위에 적어 둔다
   const monthNote = nav.ym ? `${formatYmKorean(nav.ym)} 자산을 고쳐요 · ` : ''
   // 화면을 열 때의 원본 — 저장할 때 '내가 지운 것'과 '배우자가 그사이 추가한 것'을 가르는 기준
