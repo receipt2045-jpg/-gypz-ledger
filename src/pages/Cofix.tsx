@@ -99,7 +99,8 @@ export default function Cofix() {
               <NumberBox value={v.rate} step={0.01} suffix="%" onChange={(rate) => set({ rate })} />
             </Field>
             <Chips
-              label="오르는 폭"
+              label="내 금리가 오르는 만큼"
+              hint="지난번 금리 정한 날보다 코픽스가 오른 만큼"
               value={v.rise}
               options={[
                 [0.19, '0.19%p (한 달)'],
@@ -185,9 +186,9 @@ export default function Cofix() {
       </ShareSection>
 
       {/* ── 3. 오르는 폭마다 */}
-      <ShareSection no={3} title="오르는 폭마다 한 달에 더">
+      <ShareSection no={3} title="금리가 오르는 만큼 한 달에 더">
         <Table
-          head={['오르는 폭', '한 달', '1년']}
+          head={['오르는 만큼', '한 달', '1년']}
           rows={RISE_STEPS.map((rise) => {
             const d = computeCofix({ ...v, rise }).diff
             return [`+${rise}%p`, `${man(d)}만`, `${man(d * 12)}만`, rise === v.rise]
@@ -299,12 +300,14 @@ function NumberBox({
 
 function Chips<T extends string | number>({
   label,
+  hint,
   value,
   options,
   onChange,
   wrap = false,
 }: {
   label: string
+  hint?: ReactNode
   value: T
   options: [T, string][]
   onChange: (v: T) => void
@@ -313,6 +316,7 @@ function Chips<T extends string | number>({
   return (
     <div>
       <p className="text-[14px] font-semibold text-ink">{label}</p>
+      {hint && <p className="mt-0.5 text-[12.5px] leading-relaxed text-cap">{hint}</p>}
       <div className={`mt-1.5 ${wrap ? 'grid grid-cols-2' : 'flex'} gap-1.5`} role="group" aria-label={label}>
         {options.map(([k, text]) => (
           <button
