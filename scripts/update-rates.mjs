@@ -20,7 +20,8 @@ function writeIfChanged(rel, obj) {
   } catch {
     // 처음
   }
-  if (prev === next) return false
+  // 윈도 git은 CRLF로 꺼내 놓으니 줄바꿈은 빼고 비교
+  if (prev.replace(/\r\n/g, '\n') === next) return false
   writeFileSync(file, next)
   return true
 }
