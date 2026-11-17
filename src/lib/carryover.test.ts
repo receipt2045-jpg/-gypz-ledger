@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   assetEditYm,
+  openingYm,
   displayYm,
   effectiveAmount,
   deriveAssetsFromPrevious,
@@ -203,5 +204,26 @@ describe('assetEditYm — 자산 등록이 고칠 달 (2026-11-17)', () => {
 
   it('이번 달이 따로 저장돼 있으면(대출 자동 상환·아이 통장) 자산 탭이 보여 주는 이번 달을', () => {
     expect(assetEditYm(open, [snap(prevYm), snap(now)])).toBe(now)
+  })
+})
+
+describe('openingYm — 가계부를 열 때 처음 보이는 달 (2026-11-17)', () => {
+  const now = '2026-11'
+  it('정산 안 한 지난달이 있으면 그 달', () => {
+    expect(openingYm([{ ym: '2026-10', items: [], closed: false }], now)).toBe('2026-10')
+  })
+  it('다음 달 예산을 미리 세웠어도 이번 달부터', () => {
+    expect(
+      openingYm(
+        [
+          { ym: '2026-11', items: [], closed: false },
+          { ym: '2026-12', items: [], closed: false },
+        ],
+        now,
+      ),
+    ).toBe('2026-11')
+  })
+  it('이번 달을 일찍 정산해도 이번 달', () => {
+    expect(openingYm([{ ym: '2026-11', items: [], closed: true }], now)).toBe('2026-11')
   })
 })

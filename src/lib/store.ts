@@ -159,6 +159,10 @@ interface LedgerState extends AppData {
   inviteCode: string | null
   sample: boolean // 샘플 둘러보기 모드 (householdId가 없어 DB 저장은 자동으로 건너뜀)
   confessions: Confession[] // 일일 고백 로그 (최근 62일, 정산과 독립)
+  /** 서버에서 읽어 온 소비 기록이 언제부터인지 (ISO) — 그 앞은 loadOlderConfessions로 */
+  confessionsFrom: string | null
+  /** until까지 앞선 소비 기록을 더 읽어 온다 (지난달 보기·지난 기록 더 보기) */
+  loadOlderConfessions: (until: Date) => Promise<void>
   pendingSync: number // 아직 서버에 못 보낸 저장 건수 (연결되면 자동 재전송)
   syncFailed: boolean // 재시도할 수 없는 저장 실패 (전체 초기화·가져오기)
   init: (membership: db.Membership) => Promise<void>
@@ -242,6 +246,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
   inviteCode: null,
   sample: false,
   confessions: [],
+  confessionsFrom: null,
   aliases: {},
   pendingSync: 0,
   syncFailed: false,
@@ -264,7 +269,11 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     get().repairAssetOwners()
     get().ensureIncomeCategories()
     try {
-      set({ confessions: await db.fetchConfessions(householdId) })
+      const since = db.confessionWindowStart()
+      set({
+        confessions: await db.fetchConfessions(householdId, since),
+        confessionsFrom: since.toISOString(),
+      })
     } catch (err) {
       console.error('[sync] 고백 로그 동기화 실패:', err)
     }
@@ -282,6 +291,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       inviteCode: null,
       sample: true,
       confessions: sampleConfessions(),
+      confessionsFrom: null,
       aliases: {},
     }),
 
@@ -294,10 +304,30 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       inviteCode: null,
       sample: false,
       confessions: [],
+      confessionsFrom: null,
       aliases: {},
       pendingSync: 0,
       syncFailed: false,
     }),
+
+  loadOlderConfessions: async (until) => {
+    const { householdId, confessionsFrom } = get()
+    if (!householdId || !confessionsFrom) return
+    const from = new Date(confessionsFrom)
+    if (until >= from) return
+    // 같은 기간을 두 번 읽지 않게 먼저 경계를 옮긴다 (실패하면 되돌린다)
+    set({ confessionsFrom: until.toISOString() })
+    try {
+      const older = await db.fetchConfessionsBetween(householdId, until, from)
+      set((s) => {
+        const have = new Set(s.confessions.map((c) => c.id))
+        return { confessions: [...s.confessions, ...older.filter((c) => !have.has(c.id))] }
+      })
+    } catch (err) {
+      console.error('[sync] 지난 소비 기록 읽기 실패:', err)
+      set({ confessionsFrom: from.toISOString() })
+    }
+  },
 
   learnAliases: (patch) => {
     const merged = { ...get().aliases, ...patch }

@@ -49,7 +49,8 @@ export default function Home() {
 
   // 보고 있는 달 — 정산해도 자동으로 넘어가지 않고, ◀▶로 직접 선택
   const latestLedgerYm = ledgers.length ? ledgers[ledgers.length - 1].ym : activeYm(ledgers)
-  const [ym, setYm] = useState(latestLedgerYm)
+  // 다음 달 예산을 미리 세웠어도 처음엔 이번 달 (11-01 의견: "로그인하면 12월부터 봐져요")
+  const [ym, setYm] = useState(() => (latestLedgerYm > currentYm() ? currentYm() : latestLedgerYm))
   const maxYm = shiftYm(latestLedgerYm, 1) // 다음 달까지(예산 미리보기)
 
   const ledger = resolveLedger(ledgers, ym)

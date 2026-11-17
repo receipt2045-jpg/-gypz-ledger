@@ -301,3 +301,13 @@ export function assetEditYm(ledgers: MonthlyLedger[], snapshots: AssetSnapshot[]
   const shown = displayYm(snapshots)
   return snapshots.some((s) => s.ym > target && s.ym <= shown) ? shown : target
 }
+
+/**
+ * 가계부·홈을 열 때 처음 보여 줄 달 (2026-11-17 점검, 11-01 의견: "로그인하면 12월부터 봐져요").
+ * 정산할 달(activeYm)인데, 다음 달 예산을 미리 세웠거나 이번 달을 일찍 정산해서 다음 달이 되면
+ * 이번 달로 맞춘다 — 미래 달은 ▶로 넘어가서 본다.
+ */
+export function openingYm(ledgers: MonthlyLedger[], now: string = currentYm()): string {
+  const ym = activeYm(ledgers)
+  return ym > now ? now : ym
+}

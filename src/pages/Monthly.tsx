@@ -9,8 +9,9 @@ import MonthlyGlance from '../components/MonthlyGlance'
 import OccasionSection from '../components/OccasionSection'
 import SectionList from '../components/SectionList'
 import { useLedgerStore } from '../lib/store'
+import { useMonthConfessions } from '../lib/useMonthConfessions'
 import { buildMonthlyCard } from '../lib/monthlyCard'
-import { activeYm, resolveLedger } from '../lib/carryover'
+import { openingYm, resolveLedger } from '../lib/carryover'
 import { formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import { confessSums, monthConfessions } from '../lib/confessLedger'
@@ -36,7 +37,10 @@ export default function Monthly() {
     saveLedger,
     removeMonth,
   } = useLedgerStore()
-  const [ym, setYm] = useState(() => activeYm(ledgers))
+  // 처음 보이는 달 — 다음 달 예산을 미리 세웠어도 이번 달부터 (11-01 의견: "로그인하면 12월부터 봐져요")
+  const [ym, setYm] = useState(() => openingYm(ledgers))
+  // 62일보다 앞선 달을 열면 그 달 소비 기록을 서버에서 더 읽어 온다 (2026-11-17)
+  useMonthConfessions(ym)
   // 오늘 내가 소비 기록을 했는지 — 탭 바와 같은 기준(로컬 날짜)
   const todayKey = new Date().toLocaleDateString('sv-SE')
   const confessedToday = confessions.some(
@@ -65,7 +69,7 @@ export default function Monthly() {
   const filteredItems =
     member === 0 ? ledger.items : ledger.items.filter((it) => it.member === member && !it.shared)
 
-  // 이번 달 고백 내역 (최근 62일만 로드되므로 오래된 달엔 자연히 비어 있음)
+  // 이 달 고백 내역 — 오래된 달은 useMonthConfessions가 읽어 온 뒤 채워진다
   const monthLog = useMemo(() => {
     const list = monthConfessions(confessions, ym)
     // 공동 지출은 한 사람 것이 아니라 사람별 보기에선 빼고 '함께 보기'에만 둔다

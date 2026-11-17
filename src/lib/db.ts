@@ -346,10 +346,20 @@ export async function deleteGiftReport(id: string): Promise<void> {
   if (error) throw error
 }
 
+/** 앱을 열 때 읽는 소비 기록 기간 — 그 앞은 필요할 때 fetchConfessionsBetween으로 */
+export const CONFESSION_WINDOW_DAYS = 62
+
+export function confessionWindowStart(now = new Date()): Date {
+  const since = new Date(now)
+  since.setDate(since.getDate() - CONFESSION_WINDOW_DAYS)
+  return since
+}
+
 /** 최근 62일 고백 로그 (스트릭 계산 + 월 로그 표시용) */
-export async function fetchConfessions(householdId: string): Promise<Confession[]> {
-  const since = new Date()
-  since.setDate(since.getDate() - 62)
+export async function fetchConfessions(
+  householdId: string,
+  since: Date = confessionWindowStart(),
+): Promise<Confession[]> {
   const { data, error } = await supabase
     .from('confessions')
     .select('*')
@@ -357,7 +367,31 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
     .gte('created_at', since.toISOString())
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (data ?? []).map((r) => ({
+  return (data ?? []).map(rowToConfession)
+}
+
+/**
+ * 62일보다 앞선 소비 기록 (2026-11-17 의견: "이전에 입력해둔 소비기록이 사라져요").
+ * 지난달을 열거나 '지난 기록 더 보기'를 누를 때 [from, to) 사이만 더 읽는다.
+ */
+export async function fetchConfessionsBetween(
+  householdId: string,
+  from: Date,
+  to: Date,
+): Promise<Confession[]> {
+  const { data, error } = await supabase
+    .from('confessions')
+    .select('*')
+    .eq('household_id', householdId)
+    .gte('created_at', from.toISOString())
+    .lt('created_at', to.toISOString())
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(rowToConfession)
+}
+
+function rowToConfession(r: any): Confession {
+  return {
     id: r.id,
     memberNo: r.member_no as 1 | 2,
     category: r.category,
@@ -371,7 +405,7 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
     childKeep: r.child ? r.child_keep !== false : undefined,
     gift: r.gift === true ? true : undefined,
     createdAt: r.created_at,
-  }))
+  }
 }
 
 /**

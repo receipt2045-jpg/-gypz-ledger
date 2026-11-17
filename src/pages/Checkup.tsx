@@ -27,6 +27,7 @@ import { buildMonthlyCard } from '../lib/monthlyCard'
 import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
 import { confessEntries, confessSums, missingConfessedItems } from '../lib/confessLedger'
+import { useMonthConfessions } from '../lib/useMonthConfessions'
 import {
   activeYm,
   emptyItem,
@@ -182,6 +183,8 @@ export default function Checkup() {
     [snapshots, ym],
   )
 
+  // 62일보다 앞선 달을 정산하면 그 달 소비 기록을 마저 읽어 와야 합계가 맞는다 (2026-11-17)
+  useMonthConfessions(ym)
   // 정산 모드: 이번 달 고백 합계를 항목별 초안으로 제안 (예산 모드는 미래 계획이라 제외)
   const confessHints = useMemo(
     () => (isBudget ? null : confessSums(confessions, ym)),

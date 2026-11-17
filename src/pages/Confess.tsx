@@ -128,6 +128,8 @@ export default function Confess() {
     removeConfession,
     updateConfession,
     learnAliases,
+    householdId,
+    loadOlderConfessions,
   } = useLedgerStore()
   // 아이 없는 집엔 아동수당·용돈 수입 항목을 숨긴다
   const categories = useMemo(
@@ -206,9 +208,22 @@ export default function Confess() {
   // 제보(9/15·9/16, 3건): "9월 1일 소비를 아무리 입력해도 저장이 안 돼요", "버튼으로 오늘 기록 안 돼요".
   // 저장은 됐는데 안 보였다. 9월 15일 오후엔 9월 1일 낮 12시 기록이 '최근 14일' 밖이라
   // 목록에서 빠졌다. 고른 날짜의 기록은 기간과 상관없이 항상 보여준다.
+  //
+  // 2026-11-17 의견: "과거 기록을 일주일 단위로만 볼 수 있어 불편해요", "이전에 입력해둔 소비기록이 사라져요".
+  // 처음엔 14일만, '지난 기록 더 보기'로 30일씩 더 — 앱에 없는 앞선 기록은 서버에서 더 읽어 온다.
+  const [days, setDays] = useState(14)
+  const showMore = () => {
+    const next = days + 30
+    setDays(next)
+    const until = new Date()
+    until.setHours(0, 0, 0, 0)
+    until.setDate(until.getDate() - next)
+    void loadOlderConfessions(until)
+  }
   const recent = useMemo(() => {
     const since = new Date()
-    since.setDate(since.getDate() - 14)
+    since.setHours(0, 0, 0, 0)
+    since.setDate(since.getDate() - days)
     return confessions
       .filter(
         (c) =>
@@ -216,7 +231,16 @@ export default function Confess() {
           new Date(c.createdAt).toLocaleDateString('sv-SE') === logDate,
       )
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  }, [confessions, logDate])
+  }, [confessions, logDate, days])
+  // 더 볼 게 있는지 — 앱에 더 앞선 기록이 있거나, 서버에서 더 읽을 수 있으면
+  const sinceLabel = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() - days)
+    return `${d.getMonth() + 1}월 ${d.getDate()}일`
+  })()
+  const hasOlder =
+    !!householdId ||
+    confessions.some((c) => new Date(c.createdAt).getTime() < Date.now() - days * 86_400_000)
 
   // 고치는 중인 기록 — 한 번에 하나만
   const [editing, setEditing] = useState<string | null>(null)
@@ -867,7 +891,7 @@ export default function Confess() {
           </button>
         )}
 
-        {/* 내가 쓴 기록 (최근 14일) — 잘못 쓴 건 여기서 바로 지운다 */}
+        {/* 우리집 기록 (처음엔 최근 14일, 더 보기로 30일씩) — 잘못 쓴 건 여기서 바로 고치거나 지운다 */}
         {recentByDate.length > 0 && (
           <div className="rounded-card bg-card px-4 py-3.5 shadow-card">
             <p className="mb-2 text-[13px] font-bold text-cap">
@@ -942,6 +966,14 @@ export default function Confess() {
                 </div>
               ))}
             </div>
+            {hasOlder && (
+              <button
+                onClick={showMore}
+                className="mt-3 w-full rounded-btn bg-bg py-2.5 text-[13px] font-bold text-sub active:bg-line"
+              >
+                지난 기록 더 보기 · 지금 {sinceLabel}부터
+              </button>
+            )}
           </div>
         )}
       </div>

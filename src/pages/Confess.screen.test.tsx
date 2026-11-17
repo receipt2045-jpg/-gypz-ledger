@@ -430,3 +430,42 @@ describe('고백 페이지 — 현금 · 날짜 고치기', () => {
     expect(saved.memberNo).toBe(1)
   })
 })
+
+describe('지난 기록 더 보기 (2026-11-17 의견: "과거 기록을 일주일 단위로만 볼 수 있어요")', () => {
+  it('처음엔 최근 14일, 더 보기를 누르면 그 앞 기록도 보인다', async () => {
+    const daysAgo = (n: number) => {
+      const d = new Date()
+      d.setDate(d.getDate() - n)
+      d.setHours(12, 0, 0, 0)
+      return d.toISOString()
+    }
+    seedStore({
+      memberNo: 1,
+      confessions: [
+        {
+          id: 'r',
+          memberNo: 1,
+          kind: 'variable',
+          category: '식비',
+          amount: 1000,
+          note: '요즘',
+          createdAt: daysAgo(2),
+        },
+        {
+          id: 'o',
+          memberNo: 1,
+          kind: 'variable',
+          category: '식비',
+          amount: 2000,
+          note: '예전',
+          createdAt: daysAgo(25),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
+    expect(screen.getByText(/요즘/)).toBeInTheDocument()
+    expect(screen.queryByText(/예전/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /지난 기록 더 보기/ }))
+    expect(screen.getByText(/예전/)).toBeInTheDocument()
+  })
+})
