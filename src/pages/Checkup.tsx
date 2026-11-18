@@ -337,6 +337,14 @@ export default function Checkup() {
    */
   const removeItem = (id: string) => {
     if (!member) return
+    // 금액이 든 항목을 X 한 번에 지우면 되돌릴 길이 없다 — 한 번 묻는다 (2026-11-19 점검)
+    const target = items.find((it) => it.id === id)
+    if (
+      target &&
+      target[field] > 0 &&
+      !window.confirm(`${target.category} ${formatWon(target[field])}을 지울까요?`)
+    )
+      return
     const next = items.filter((it) => it.id !== id)
     setItems(next)
     saveNow(next)
@@ -562,7 +570,7 @@ export default function Checkup() {
               />
               <ResultRow label="계획 지출" value={formatWon(planned.expense)} />
               <ResultRow
-                label="예상 잉여현금"
+                label="예상 남는 돈"
                 value={formatWon(planned.surplus)}
                 danger={planned.surplus < 0}
               />
@@ -602,7 +610,7 @@ export default function Checkup() {
 
           <div className="mt-7 w-full space-y-2.5 rounded-card bg-card p-5 text-left shadow-card">
             <ResultRow label="저축·투자율" value={formatPercent(s.savingInvestRate)} accent />
-            <ResultRow label="잉여현금" value={formatWon(s.surplus)} danger={s.surplus < 0} />
+            <ResultRow label="남는 돈" value={formatWon(s.surplus)} danger={s.surplus < 0} />
             <ResultRow
               label="순자산 증감"
               value={`${nwDelta >= 0 ? '+' : '−'}${abbreviateKRW(Math.abs(nwDelta))}`}
@@ -717,7 +725,7 @@ export default function Checkup() {
         {/* 잉여현금 실시간 표시 */}
         <div className="mb-2 flex items-center justify-between rounded-btn bg-ink px-4 py-2.5">
           <span className="text-[13px] font-semibold text-white/80">
-            {bothMode ? '우리집' : memberName} {isBudget ? '예상 잉여현금' : '잉여현금'}
+            {bothMode ? '우리집' : memberName} {isBudget ? '예상 남는 돈' : '남는 돈'}
           </span>
           <span
             className={`tnum text-[16px] font-extrabold ${liveSurplus < 0 ? 'text-[#FF8A93]' : 'text-white'}`}

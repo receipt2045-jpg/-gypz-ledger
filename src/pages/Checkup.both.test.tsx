@@ -1,9 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import Checkup from './Checkup'
 import { renderScreen, savedItems, seedStore, TEST_YM } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
 import type { BudgetItem, MonthlyLedger } from '../types'
+
+// 금액이 든 항목은 지우기 전에 묻는다 (2026-11-19) — 여기선 '예'로 답한다
+beforeEach(() => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+})
 
 const item = (
   id: string,

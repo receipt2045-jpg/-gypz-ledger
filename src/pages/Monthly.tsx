@@ -12,7 +12,14 @@ import { useLedgerStore } from '../lib/store'
 import { useMonthConfessions } from '../lib/useMonthConfessions'
 import { buildMonthlyCard } from '../lib/monthlyCard'
 import { openingYm, resolveLedger } from '../lib/carryover'
-import { formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
+import {
+  currentYm,
+  formatWon,
+  formatYmKorean,
+  periodLabel,
+  shiftYm,
+  ymOfDay,
+} from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import { confessSums, monthConfessions } from '../lib/confessLedger'
 import { memberStyle } from '../lib/memberColors'
@@ -187,9 +194,12 @@ export default function Monthly() {
               <span className="flex-1">
                 <span className="block text-[14.5px] font-bold text-ink">오늘의 소비 기록</span>
                 <span className="mt-0.5 block text-[12.5px] text-sub">
-                  {confessedToday
-                    ? '오늘 기록 끝 ✅ · 더 적을 게 있으면 눌러요'
-                    : '오늘 쓴 돈을 말해주세요'}
+                  {/* 다른 달을 보는 중엔 '오늘 기록 끝'이 맞지 않는다 (2026-11-19 점검) */}
+                  {ym !== currentYm()
+                    ? '오늘 쓴 돈은 여기서 적어요'
+                    : confessedToday
+                      ? '오늘 기록 끝 ✅ · 더 적을 게 있으면 눌러요'
+                      : '오늘 쓴 돈을 말해주세요'}
                 </span>
               </span>
               <span className="flex shrink-0 items-center text-[13px] font-bold text-brand">

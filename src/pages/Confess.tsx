@@ -212,13 +212,18 @@ export default function Confess() {
   // 2026-11-17 의견: "과거 기록을 일주일 단위로만 볼 수 있어 불편해요", "이전에 입력해둔 소비기록이 사라져요".
   // 처음엔 14일만, '지난 기록 더 보기'로 30일씩 더 — 앱에 없는 앞선 기록은 서버에서 더 읽어 온다.
   const [days, setDays] = useState(14)
+  // 서버에서 30일씩 두 번 연달아 읽은 게 없으면 더 앞선 기록은 없다고 보고 버튼을 거둔다 (2026-11-19 점검:
+  // 로그인한 집은 더 볼 게 없어도 버튼이 끝없이 떴다)
+  const [emptyLoads, setEmptyLoads] = useState(0)
   const showMore = () => {
     const next = days + 30
     setDays(next)
     const until = new Date()
     until.setHours(0, 0, 0, 0)
     until.setDate(until.getDate() - next)
-    void loadOlderConfessions(until)
+    void loadOlderConfessions(until).then((n) => {
+      if (n !== null) setEmptyLoads((e) => (n === 0 ? e + 1 : 0))
+    })
   }
   const recent = useMemo(() => {
     const since = new Date()
@@ -239,7 +244,7 @@ export default function Confess() {
     return `${d.getMonth() + 1}월 ${d.getDate()}일`
   })()
   const hasOlder =
-    !!householdId ||
+    (!!householdId && emptyLoads < 2) ||
     confessions.some((c) => new Date(c.createdAt).getTime() < Date.now() - days * 86_400_000)
 
   // 고치는 중인 기록 — 한 번에 하나만
@@ -892,11 +897,15 @@ export default function Confess() {
         )}
 
         {/* 우리집 기록 (처음엔 최근 14일, 더 보기로 30일씩) — 잘못 쓴 건 여기서 바로 고치거나 지운다 */}
-        {recentByDate.length > 0 && (
+        {/* 최근 14일에 기록이 없어도 '지난 기록 더 보기'는 보여야 한다 (2026-11-19 점검) */}
+        {(recentByDate.length > 0 || hasOlder) && (
           <div className="rounded-card bg-card px-4 py-3.5 shadow-card">
             <p className="mb-2 text-[13px] font-bold text-cap">
               우리집 기록 · 눌러서 고치거나 지울 수 있어요
             </p>
+            {recentByDate.length === 0 && (
+              <p className="py-2 text-[13px] text-sub">{sinceLabel}부터는 기록이 없어요</p>
+            )}
             <div className="space-y-3">
               {recentByDate.map(([date, list]) => (
                 <div key={date}>

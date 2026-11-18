@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import Checkup from './Checkup'
 import { renderScreen, savedItems, seedStore, TEST_YM } from '../test/renderScreen'
 import type { BudgetItem, MonthlyLedger } from '../types'
+
+// 금액이 든 항목은 지우기 전에 묻는다 (2026-11-19) — 여기선 '예'로 답한다
+beforeEach(() => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+})
 
 const item = (
   id: string,
@@ -35,6 +40,16 @@ function visibleRows() {
 }
 
 describe('정산 화면 — 항목 삭제', () => {
+  it('금액이 든 항목은 지우기 전에 묻고, 아니요면 그대로 둔다 (2026-11-19)', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    seedStore({ ledgers: [ledger([item('a', 'income', '부수입', 2, 300_000)])] })
+    const { user } = renderScreen(<Checkup />)
+    await user.click(screen.getByRole('button', { name: /아내/ }))
+    await user.click(screen.getByLabelText('삭제'))
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('부수입 300,000원'))
+    expect(screen.getAllByLabelText('삭제')).toHaveLength(1)
+  })
+
   // 제보 재현: "'부수입' 항목이 X표 눌러도 안 없어져요"
   // 예전에는 마지막 스텝까지 가서 '정산 완료하기'를 눌러야만 저장돼서,
   // 수입 스텝에서 지우고 나가면 지운 게 없던 일이 됐다.

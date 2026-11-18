@@ -140,7 +140,10 @@ describe('자산 탭 — 2026-11-17 의견', () => {
     const { user } = renderScreen(<Assets />)
     expect(screen.getByText('점을 누르면 그 달 자산을 볼 수 있어요')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '2026년 9월 자산 보기' }))
-    expect(screen.getByText('2026년 9월 전체 자산')).toBeInTheDocument()
+    expect(screen.getByText(/2026년 9월 전체 자산/)).toBeInTheDocument()
+    // 홈 맨 위 순자산과 헷갈리지 않게 — 빚 빼기 전이라고 밝히고 순자산도 같이 (2026-11-19)
+    expect(screen.getByText(/빚 빼기 전/)).toBeInTheDocument()
+    expect(screen.getByText(/빚 빼면 순자산/)).toBeInTheDocument()
     // 3억 2,485만 → 4억 2,485만
     expect(screen.getByText('지난달보다 +1억')).toBeInTheDocument()
     // 표 — 종류별 금액과 지난달보다 (만원)
@@ -154,6 +157,24 @@ describe('자산 탭 — 2026-11-17 의견', () => {
     expect(screen.getByText('+1억')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /9월 자산 고치기/ }))
     expect(navigate).toHaveBeenCalledWith('/asset-setup', { state: { ym: '2026-09' } })
+  })
+
+  it("빚이 줄면 −가 아니라 '갚음'으로 보여 준다 (2026-11-19)", async () => {
+    seed()
+    const items = useLedgerStore.getState().snapshots[0].items
+    useLedgerStore.setState({
+      snapshots: [
+        { ym: TEST_YM, items },
+        {
+          ym: shiftYm(TEST_YM, 1),
+          items: items.map((it) => (it.id === 'd1' ? { ...it, amount: 21_600_000 } : it)),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Assets />)
+    await user.click(screen.getByRole('button', { name: '2026년 9월 자산 보기' }))
+    expect(screen.getByRole('row', { name: /^부채/ })).toHaveTextContent('40 갚음')
+    expect(screen.getByText('40만 갚음')).toBeInTheDocument()
   })
 
   it('어디를 눌러도 고치러 간다 — 전체 자산 카드, 이름, 표의 줄', async () => {

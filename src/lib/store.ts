@@ -161,8 +161,8 @@ interface LedgerState extends AppData {
   confessions: Confession[] // 일일 고백 로그 (최근 62일, 정산과 독립)
   /** 서버에서 읽어 온 소비 기록이 언제부터인지 (ISO) — 그 앞은 loadOlderConfessions로 */
   confessionsFrom: string | null
-  /** until까지 앞선 소비 기록을 더 읽어 온다 (지난달 보기·지난 기록 더 보기) */
-  loadOlderConfessions: (until: Date) => Promise<void>
+  /** until까지 앞선 소비 기록을 더 읽어 온다 (지난달 보기·지난 기록 더 보기). 새로 읽은 건수, 못 읽었으면 null */
+  loadOlderConfessions: (until: Date) => Promise<number | null>
   pendingSync: number // 아직 서버에 못 보낸 저장 건수 (연결되면 자동 재전송)
   syncFailed: boolean // 재시도할 수 없는 저장 실패 (전체 초기화·가져오기)
   init: (membership: db.Membership) => Promise<void>
@@ -312,20 +312,25 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
 
   loadOlderConfessions: async (until) => {
     const { householdId, confessionsFrom } = get()
-    if (!householdId || !confessionsFrom) return
+    if (!householdId || !confessionsFrom) return null
     const from = new Date(confessionsFrom)
-    if (until >= from) return
+    if (until >= from) return 0
     // 같은 기간을 두 번 읽지 않게 먼저 경계를 옮긴다 (실패하면 되돌린다)
     set({ confessionsFrom: until.toISOString() })
     try {
       const older = await db.fetchConfessionsBetween(householdId, until, from)
+      let added = 0
       set((s) => {
         const have = new Set(s.confessions.map((c) => c.id))
-        return { confessions: [...s.confessions, ...older.filter((c) => !have.has(c.id))] }
+        const fresh = older.filter((c) => !have.has(c.id))
+        added = fresh.length
+        return { confessions: [...s.confessions, ...fresh] }
       })
+      return added
     } catch (err) {
       console.error('[sync] 지난 소비 기록 읽기 실패:', err)
       set({ confessionsFrom: from.toISOString() })
+      return null
     }
   },
 

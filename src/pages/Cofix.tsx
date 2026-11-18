@@ -161,7 +161,7 @@ export default function Cofix() {
           </ul>
           <p className="mt-3">
             {Number(COFIX.updated.slice(5, 7))}월 {Number(COFIX.updated.slice(8, 10))}일 기준,
-            가산·우대 금리는 그대로라고 보고 센 참고용 계산이에요. 실제 금리는 은행·상품·내 조건마다
+            가산·우대 금리는 그대로라고 보고 계산한 참고용이에요. 실제 금리는 은행·상품·내 조건마다
             달라서 꼭 은행 앱에서 확인해 주세요.
           </p>
         </>

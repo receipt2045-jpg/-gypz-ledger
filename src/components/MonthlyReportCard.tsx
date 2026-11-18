@@ -43,7 +43,7 @@ export default function MonthlyReportCard({ data }: { data: MonthlyCardData }) {
             accent={up}
             danger={!up}
           />
-          <Row label="잉여현금" value={formatWon(data.surplus)} danger={data.surplus < 0} />
+          <Row label="남는 돈" value={formatWon(data.surplus)} danger={data.surplus < 0} />
           <Row label={data.memberNames[0]} value={formatWon(data.memberSaving[0])} />
           <Row label={data.memberNames[1]} value={formatWon(data.memberSaving[1])} />
         </div>

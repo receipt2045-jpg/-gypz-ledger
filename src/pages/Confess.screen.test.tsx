@@ -93,7 +93,29 @@ describe('고백 페이지 — 우리집 기록 보기·삭제', () => {
       ],
     })
     renderScreen(<Confess />)
-    expect(screen.queryByText(/우리집 기록/)).not.toBeInTheDocument()
+    expect(screen.queryByText('9,000원')).not.toBeInTheDocument()
+    // 최근 14일이 비어도 '지난 기록 더 보기'는 보인다 (2026-11-19 점검)
+    expect(screen.getByText(/부터는 기록이 없어요/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /지난 기록 더 보기/ })).toBeInTheDocument()
+  })
+
+  it('더 보기를 누르면 그 앞 기록이 나온다', async () => {
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        {
+          id: 'old',
+          memberNo: 2,
+          category: '식비',
+          kind: 'variable',
+          amount: 9_000,
+          createdAt: daysAgo(20).toISOString(),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByRole('button', { name: /지난 기록 더 보기/ }))
+    expect(screen.getAllByText('9,000원').length).toBeGreaterThan(0)
   })
 })
 

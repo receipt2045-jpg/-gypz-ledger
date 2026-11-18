@@ -242,7 +242,7 @@ export default function Home() {
               {ledger.closed ? (
                 <>
                   <p className="text-[13px] font-medium text-cap">
-                    {formatMonthKorean(ym)} 잉여현금
+                    {formatMonthKorean(ym)} 남는 돈
                     <InfoTip text={TERM_TIP.surplus} />
                   </p>
                   <p

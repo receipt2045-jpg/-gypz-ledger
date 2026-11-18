@@ -143,8 +143,8 @@ export default function ChildBenefit() {
           </ul>
           <p className="mt-3">
             {BENEFIT_RULES.updated.slice(0, 4)}년 {Number(BENEFIT_RULES.updated.slice(5, 7))}월{' '}
-            {Number(BENEFIT_RULES.updated.slice(8, 10))}일 기준 금액이 앞으로도 그대로라고 보고 센
-            참고용 계산이에요. 소득·재산과 상관없이 받는 돈이지만, 해외에 오래 머물면 멈출 수
+            {Number(BENEFIT_RULES.updated.slice(8, 10))}일 기준 금액이 앞으로도 그대로라고 보고 계산한
+            참고용이에요. 소득·재산과 상관없이 받는 돈이지만, 해외에 오래 머물면 멈출 수
             있어요. 정확한 건 복지로나 주민센터에서 확인해 주세요.
           </p>
         </>

@@ -380,6 +380,12 @@ export function AssetTrend({
 
 /** +1,200 / −300 / – (만원) */
 const signed = (n: number) => (n === 0 ? '–' : `${n > 0 ? '+' : '−'}${man(Math.abs(n))}`)
+/**
+ * 빚이 바뀐 만큼 — '−40'은 손해처럼 읽혀서 말로 쓴다 (2026-11-19 점검)
+ * fmt: 표는 만원 숫자(man), 바뀐 항목은 '40만'(short)
+ */
+const debtDiff = (n: number, fmt: (v: number) => string) =>
+  n === 0 ? '–' : `${fmt(Math.abs(n))} ${n < 0 ? '갚음' : '늘어남'}`
 /** 늘면 좋은 돈(자산)은 파랑, 빚은 반대로 */
 const diffColor = (n: number | null, debt = false) =>
   !n ? 'text-cap' : n > 0 !== debt ? 'text-brand' : 'text-danger'
@@ -412,14 +418,17 @@ function MonthBrief({
         {man(r.amount)}
       </td>
       <td className={`${num} ${diffColor(r.diff, debt)}`}>
-        {r.diff === null ? '' : signed(r.diff)}
+        {r.diff === null ? '' : debt ? debtDiff(r.diff, man) : signed(r.diff)}
       </td>
     </tr>
   )
   return (
     <div className="mt-2 rounded-btn bg-bg px-3 py-3">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[13px] font-bold text-ink">{formatYmKorean(p.ym)} 전체 자산</p>
+        {/* 홈 맨 위는 순자산이라, 빚 빼기 전 금액인 걸 밝히고 순자산도 같이 (2026-11-19 점검) */}
+        <p className="text-[13px] font-bold text-ink">
+          {formatYmKorean(p.ym)} 전체 자산 <span className="font-medium text-cap">· 빚 빼기 전</span>
+        </p>
         <p className="text-[11.5px] text-cap">단위 만원</p>
       </div>
       <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
@@ -431,6 +440,11 @@ function MonthBrief({
           </p>
         )}
       </div>
+      {c.debt.amount > 0 && (
+        <p className="tnum mt-0.5 text-[12px] text-sub">
+          빚 빼면 순자산 <b className="font-bold text-ink">{abbreviateKRW(c.net.amount)}</b>
+        </p>
+      )}
       <table className="mt-2 w-full table-fixed border-collapse bg-white text-[12.5px]">
         <colgroup>
           <col className="w-[34%]" />
@@ -469,8 +483,9 @@ function MonthBrief({
                 <span
                   className={`tnum shrink-0 font-bold ${diffColor(it.diff, it.kind === 'debt')}`}
                 >
-                  {it.diff > 0 ? '+' : '−'}
-                  {short(Math.abs(it.diff))}
+                  {it.kind === 'debt'
+                    ? debtDiff(it.diff, short)
+                    : `${it.diff > 0 ? '+' : '−'}${short(Math.abs(it.diff))}`}
                 </span>
               </li>
             ))}
