@@ -142,8 +142,8 @@ describe('missingConfessedItems — 정산에 빠진 고백 항목', () => {
   it('목록에 없는 항목만, 금액 큰 순으로 돌려준다', () => {
     const got = missingConfessedItems(sums, 1, ['variable'], [])
     expect(got).toEqual([
-      { group: 'variable', category: '식비', amount: 150000 },
-      { group: 'variable', category: '카페', amount: 42000 },
+      { group: 'variable', category: '식비', amount: 150000, member: 1 },
+      { group: 'variable', category: '카페', amount: 42000, member: 1 },
     ])
   })
 
@@ -154,12 +154,12 @@ describe('missingConfessedItems — 정산에 빠진 고백 항목', () => {
 
   it('다른 구성원의 고백은 넘어오지 않는다', () => {
     const got = missingConfessedItems(sums, 2, ['variable'], [])
-    expect(got).toEqual([{ group: 'variable', category: '식비', amount: 30000 }])
+    expect(got).toEqual([{ group: 'variable', category: '식비', amount: 30000, member: 2 }])
   })
 
   it('현재 스텝의 그룹만 본다', () => {
     const got = missingConfessedItems(sums, 1, ['fixed'], [])
-    expect(got).toEqual([{ group: 'fixed', category: '구독', amount: 17000 }])
+    expect(got).toEqual([{ group: 'fixed', category: '구독', amount: 17000, member: 1 }])
   })
 
   it('배우자가 같은 카테고리를 가지고 있어도 내 것은 여전히 빠진 항목', () => {
@@ -174,7 +174,7 @@ describe('missingConfessedItems — 정산에 빠진 고백 항목', () => {
   it("카테고리명에 ':'가 있어도 온전히 복원한다", () => {
     const odd = new Map([['1:variable:커피:테이크아웃', 5000]])
     expect(missingConfessedItems(odd, 1, ['variable'], [])).toEqual([
-      { group: 'variable', category: '커피:테이크아웃', amount: 5000 },
+      { group: 'variable', category: '커피:테이크아웃', amount: 5000, member: 1 },
     ])
   })
 })

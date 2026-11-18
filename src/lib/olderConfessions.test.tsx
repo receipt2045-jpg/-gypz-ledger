@@ -60,3 +60,16 @@ describe('62일보다 앞선 소비 기록 (2026-11-17 의견: "이전에 입력
     expect(between).toHaveBeenCalled()
   })
 })
+
+describe('새로고침 직후 (2026-11-19 점검)', () => {
+  it('최근 기록이 아직 안 들어왔을 때 연 오래된 달도, 들어오면 그 달 기록을 읽는다', async () => {
+    seedStore({ ledgers: [{ ym: '2026-08', items: [], closed: false, settledMembers: [] }] })
+    useLedgerStore.setState({ householdId: 'h1', confessionsFrom: null })
+    between.mockResolvedValue([rec('aug', '2026-08-20T03:00:00', 23_000)])
+    renderScreen(<Monthly />)
+    expect(between).not.toHaveBeenCalled()
+    // init이 최근 62일 기록을 다 읽었다
+    useLedgerStore.setState({ confessionsFrom: '2026-09-16T00:00:00.000Z' })
+    await vi.waitFor(() => expect(between).toHaveBeenCalled())
+  })
+})

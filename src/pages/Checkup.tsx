@@ -213,8 +213,16 @@ export default function Checkup() {
   const stepDef = STEPS[step - 1] // 금액 스텝이 아닐 땐 undefined
   const missingConfessed = useMemo(
     () =>
-      member && stepDef ? missingConfessedItems(confessHints, member, stepDef.groups, items) : [],
-    [confessHints, member, stepDef, items],
+      !member || !stepDef
+        ? []
+        : bothMode
+          ? // 한 사람이 두 사람 몫을 넣을 땐 배우자 기록도 같이 (2026-11-19 점검: 아내 기록이 빠졌다)
+            [
+              ...missingConfessedItems(confessHints, 1, stepDef.groups, items),
+              ...missingConfessedItems(confessHints, 2, stepDef.groups, items),
+            ].sort((a, b) => b.amount - a.amount)
+          : missingConfessedItems(confessHints, member, stepDef.groups, items),
+    [confessHints, member, bothMode, stepDef, items],
   )
 
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
@@ -288,15 +296,19 @@ export default function Checkup() {
     ])
   }
   /** 고백 합계를 금액까지 채워서 항목으로 추가 (정산 모드 전용) */
-  const addFromConfession = (group: CategoryGroup, category: string, amount: number) => {
-    if (!member) return
+  const addFromConfession = (
+    group: CategoryGroup,
+    category: string,
+    amount: number,
+    forMember?: 1 | 2,
+  ) => {
+    const who = forMember ?? member
+    if (!who) return
     setItems((prev) => {
-      if (
-        prev.some((it) => it.member === member && it.group === group && it.category === category)
-      ) {
+      if (prev.some((it) => it.member === who && it.group === group && it.category === category)) {
         return prev
       }
-      const base = emptyItem(group, category, member)
+      const base = emptyItem(group, category, who)
       return [...prev, { ...base, planned: 0, actual: amount }]
     })
   }
@@ -922,8 +934,8 @@ function MoneyStep({
   examples: string[]
   hints?: Map<string, number> | null // (구성원:그룹:카테고리) → 이번 달 고백 합계
   logs?: Map<string, Confession[]> | null // 같은 키 → 그 합계를 이루는 고백 내역
-  missingConfessed?: { group: CategoryGroup; category: string; amount: number }[]
-  onAddConfessed?: (g: CategoryGroup, category: string, amount: number) => void
+  missingConfessed?: { group: CategoryGroup; category: string; amount: number; member: 1 | 2 }[]
+  onAddConfessed?: (g: CategoryGroup, category: string, amount: number, member: 1 | 2) => void
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
   onAdd: (g: CategoryGroup, c: string, member: 1 | 2) => void
@@ -987,11 +999,18 @@ function MoneyStep({
           <div className="space-y-1.5">
             {missingConfessed.map((m) => (
               <button
-                key={`${m.group}:${m.category}`}
-                onClick={() => onAddConfessed(m.group, m.category, m.amount)}
+                key={`${m.member}:${m.group}:${m.category}`}
+                onClick={() => onAddConfessed(m.group, m.category, m.amount, m.member)}
                 className="flex w-full items-center justify-between rounded-btn bg-white px-3 py-2.5 text-left shadow-card active:bg-line"
               >
-                <span className="text-[14px] font-semibold text-ink">{m.category}</span>
+                <span className="text-[14px] font-semibold text-ink">
+                  {m.category}
+                  {showMember && (
+                    <span className="ml-1.5 text-[12px] font-medium text-sub">
+                      {memberNames[m.member - 1]}
+                    </span>
+                  )}
+                </span>
                 <span className="flex items-center gap-2">
                   <span className="tnum text-[14px] font-bold text-ink">{formatWon(m.amount)}</span>
                   <Plus size={16} className="text-brand" />
@@ -1001,7 +1020,9 @@ function MoneyStep({
           </div>
           <button
             onClick={() =>
-              missingConfessed.forEach((m) => onAddConfessed(m.group, m.category, m.amount))
+              missingConfessed.forEach((m) =>
+                onAddConfessed(m.group, m.category, m.amount, m.member),
+              )
             }
             className="mt-2 h-11 w-full rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark"
           >

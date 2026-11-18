@@ -167,3 +167,49 @@ describe('정산 — 지운 항목이 되살아나지 않게 (2026-11-17 제보)
     expect(savedItems().filter((it) => it.group === 'income')).toHaveLength(2)
   })
 })
+
+describe('정산 — 둘 다 입력할 때 배우자 소비 기록도 제안 (2026-11-19 점검)', () => {
+  const conf = (id: string, memberNo: 1 | 2, category: string, amount: number) => ({
+    id,
+    memberNo,
+    kind: 'income' as const,
+    category,
+    amount,
+    createdAt: `${TEST_YM}-05T12:00:00.000Z`,
+  })
+
+  it('나(아내)와 배우자(남편)의 빠진 기록이 둘 다 나오고, 각자 이름으로 들어간다', async () => {
+    seedStore({
+      ledgers: [ledger(bothItems)],
+      confessions: [conf('c1', 1, '부수입', 50_000), conf('c2', 2, '부수입', 30_000)],
+    })
+    const { user } = renderScreen(<Checkup />)
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+
+    expect(screen.getByText(/기록한 항목 2개가 아직 없어요/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /2개 모두 넣기/ }))
+    expect(screen.getAllByLabelText('삭제')).toHaveLength(4)
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: /정산 완료하기/ }))
+    const side = savedItems()
+      .filter((it) => it.category === '부수입')
+      .map((it) => [it.member, it.actual])
+      .sort()
+    expect(side).toEqual([
+      [1, 50_000],
+      [2, 30_000],
+    ])
+  })
+
+  it('한 사람만 고르면 내 기록만 제안한다 (기존 동작)', async () => {
+    seedStore({
+      ledgers: [ledger(bothItems)],
+      confessions: [conf('c1', 1, '부수입', 50_000), conf('c2', 2, '부수입', 30_000)],
+    })
+    const { user } = renderScreen(<Checkup />)
+    await user.click(screen.getByRole('button', { name: /아내/ }))
+    expect(screen.getByText(/기록한 항목 1개가 아직 없어요/)).toBeInTheDocument()
+  })
+})

@@ -302,17 +302,25 @@ function NumberBox({
   suffix: string
   onChange: (n: number) => void
 }) {
+  // 입력 중인 글자는 따로 들고 있는다 — 칸을 비우거나 "3." 처럼 치는 중에도 지워지게 (2026-11-19 점검:
+  // 숫자만 받으면 빈 칸이 바로 원래 숫자로 돌아와 "4"를 지우고 3.85를 치면 "43.85"가 됐다)
+  const [text, setText] = useState(String(value))
+  if (text !== '' && Number(text) !== value && !text.endsWith('.')) setText(String(value))
   return (
     <div className="flex items-center rounded-xl border border-line bg-white px-4 focus-within:border-brand">
       <input
         type="number"
         inputMode="decimal"
-        value={value}
+        value={text}
         step={step}
         min={0}
         onChange={(e) => {
+          setText(e.target.value)
           const n = Number(e.target.value)
           if (e.target.value !== '' && Number.isFinite(n) && n >= 0) onChange(n)
+        }}
+        onBlur={() => {
+          if (text === '' || !Number.isFinite(Number(text))) setText(String(value))
         }}
         className="tnum w-full bg-transparent py-3 text-[16px] font-bold text-ink outline-none"
       />

@@ -465,6 +465,12 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       snapshots: s.snapshots.filter((sn) => sn.ym !== ym),
     }))
     const hid = get().householdId
+    // 못 보낸 이 달 저장분이 나중에 다시 나가 지운 달을 되살리지 않게 (2026-11-19 점검)
+    for (const key of [`ledger:${ym}`, `snapshot:${ym}`]) {
+      dropQueued(key)
+      lastPush.set(key, ++pushSeq) // 보내는 중이던 옛 저장이 실패해도 큐에 다시 안 넣는다
+    }
+    set({ pendingSync: pendingCount() })
     if (hid) db.deleteMonth(hid, ym).catch(reportSyncError)
   },
 

@@ -115,21 +115,28 @@ export function subscribeSync(l: Listener): () => void {
 /**
  * 큐를 순서대로 다시 보낸다. 하나라도 실패하면(=아직 연결 안 됨) 거기서 멈추고
  * 나머지는 남겨둔다. 반환값은 남은 건수.
+ *
+ * 2026-11-19 점검: 보내는 동안에도 앱은 쓸 수 있다. 처음 읽은 목록 복사본으로 큐를 덮어쓰면
+ * - 그사이 바로 저장에 성공해 지운 옛 실패분(dropQueued)이 되살아나 최신을 되돌리고
+ * - 그사이 새로 실패해 넣은 저장은 사라졌다.
+ * 그래서 매번 큐를 다시 읽고, 방금 보낸 것과 내용이 같은 한 건만 지운다.
  */
 export async function flushQueue(
   householdId: string,
   send: (op: PendingOp, hid: string) => Promise<void>,
 ): Promise<number> {
-  let list = read()
-  while (list.length) {
-    const op = list[0]
+  for (;;) {
+    const op = read()[0]
+    if (!op) return 0
+    const sent = JSON.stringify(op)
     try {
       await send(op, householdId)
     } catch {
-      break // 연결이 아직 안 돌아옴 — 다음 기회에
+      return read().length // 연결이 아직 안 돌아옴 — 다음 기회에
     }
-    list = list.slice(1)
-    write(list)
+    const now = read()
+    const i = now.findIndex((o) => JSON.stringify(o) === sent)
+    // 보내는 사이 같은 key가 더 새 내용으로 바뀌었으면 그건 남겨 두고 다음 차례에 보낸다
+    if (i !== -1) write([...now.slice(0, i), ...now.slice(i + 1)])
   }
-  return list.length
 }

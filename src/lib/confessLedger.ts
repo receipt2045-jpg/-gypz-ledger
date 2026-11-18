@@ -54,6 +54,8 @@ export interface MissingConfessed {
   group: CategoryGroup
   category: string
   amount: number
+  /** 누구 기록인지 — '둘 다 제가 입력할게요'에서 두 사람 몫을 같이 보여줄 때 */
+  member: 1 | 2
 }
 
 /**
@@ -76,7 +78,7 @@ export function missingConfessedItems(
     const exists = items.some(
       (it) => it.member === member && it.group === group && it.category === category,
     )
-    if (!exists) out.push({ group, category, amount })
+    if (!exists) out.push({ group, category, amount, member })
   }
   return out.sort((a, b) => b.amount - a.amount)
 }
