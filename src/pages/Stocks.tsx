@@ -6,6 +6,7 @@ import { useFxRates } from '../lib/fx'
 import { abbreviateKRW } from '../lib/format'
 import { CaptureError, readCapture, type CaptureItem } from '../lib/stockDb'
 import { unseenBySpouse, useStocks } from '../lib/useStocks'
+import { useNumberText } from '../lib/useNumberText'
 import {
   loadStockList,
   money,
@@ -680,14 +681,16 @@ function NumField({
   suffix?: string
   label: string
 }) {
+  // 단가 123.45처럼 소수를 칠 수 있게 — 친 글자를 들고 있는다 (2026-11-19 점검)
+  const { text, change } = useNumberText(value, onChange, { blankZero: true })
   return (
     <label className="flex items-center gap-1">
       {prefix && <span>{prefix}</span>}
       <input
         inputMode="decimal"
         aria-label={label}
-        value={value ? String(value) : ''}
-        onChange={(e) => onChange(Number(e.target.value.replace(/[^\d.]/g, '')) || 0)}
+        value={text}
+        onChange={(e) => change(e.target.value)}
         className="tnum w-20 rounded border border-line bg-white px-1.5 py-0.5 text-right text-[13px] font-bold text-ink outline-none focus:border-brand"
       />
       {suffix && <span>{suffix}</span>}

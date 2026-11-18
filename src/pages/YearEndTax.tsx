@@ -12,6 +12,7 @@ import {
   RULES,
   YEAREND_SAVE_KEY,
   cardSpentFromConfessions,
+  cardSpentTotal,
   readYearEndInput,
   recommendCard,
   type MemberStatus,
@@ -31,15 +32,15 @@ export default function YearEndTax() {
 
   const names: [string, string] = [profile.member1Name, profile.member2Name]
   const set = (patch: Partial<Saved>) => {
-    const next = { ...v, ...patch }
+    const next = { ...v, ...patch, year: String(new Date().getFullYear()) }
     setV(next)
     localStorage.setItem(YEAREND_SAVE_KEY, JSON.stringify(next))
   }
 
   // 고백에 카드 주인을 남긴 만큼은 자동으로 더해진다 (직접 입력분과 합산)
   const [fromApp1, fromApp2] = useMemo(() => cardSpentFromConfessions(confessions), [confessions])
-  const spent1 = v.spent1 + fromApp1
-  const spent2 = v.spent2 + fromApp2
+  const spent1 = cardSpentTotal(v.spent1, fromApp1)
+  const spent2 = cardSpentTotal(v.spent2, fromApp2)
 
   const ready = v.gross1 > 0 && v.gross2 > 0
   const advice = useMemo(
@@ -129,7 +130,7 @@ export default function YearEndTax() {
                         ))}
                         {fromApp1 + fromApp2 > 0 && (
                           <p className="px-1 text-[12px] leading-relaxed text-cap">
-                            여기에 소비 기록으로 쌓인 카드값을 더해서 계산해요 ·{' '}
+                            비워 두면 소비 기록으로 쌓인 카드값으로 계산해요 ·{' '}
                             <span className="tnum font-semibold text-sub">
                               {names[0]} {formatComma(fromApp1)}원 · {names[1]}{' '}
                               {formatComma(fromApp2)}원

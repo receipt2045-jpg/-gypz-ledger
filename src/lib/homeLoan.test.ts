@@ -241,3 +241,28 @@ describe('결과', () => {
     expect(loan({ ...base, worker: false }, 'bogeum').deduction).toBe(0)
   })
 })
+
+describe('2026-11-19 점검', () => {
+  it('외벌이 신혼 연소득 1.5억은 보금자리론 소득 기준에 걸린다', () => {
+    const l = loan({ ...base, income1: 1.5 * EOK, income2: 0 }, 'bogeum')
+    expect(l.blockers.some((b) => b.includes('8,500만'))).toBe(true)
+  })
+
+  it('외벌이라도 합산 8,500만 이하면 통과한다', () => {
+    const l = loan({ ...base, income1: 8_000 * MAN, income2: 0 }, 'bogeum')
+    expect(l.blockers.some((b) => b.includes('8,500만'))).toBe(false)
+  })
+
+  it('KB시세를 비우면 매매가로 대신해 한도가 0원이 되지 않는다', () => {
+    const empty = loan({ ...base, kb: 0 }, 'general')
+    const same = loan({ ...base, kb: base.deal }, 'general')
+    expect(empty.limit).toBeGreaterThan(0)
+    expect(empty.limit).toBe(same.limit)
+  })
+
+  it('우리 돈에 0을 잔뜩 붙여도 바로 끝난다', () => {
+    const t = Date.now()
+    findLoans({ ...base, own: 1e15 })
+    expect(Date.now() - t).toBeLessThan(3000)
+  })
+})

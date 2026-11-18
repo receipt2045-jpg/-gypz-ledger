@@ -120,12 +120,16 @@ export default function ChildBenefit() {
             )}
             <Chips
               label="어린이집"
-              value={v.daycare}
+              value={v.daycare ? (v.daycareFrom ?? 0) : -1}
               options={[
-                [false, '집에서 봐요'],
-                [true, '다녀요(다닐 거예요)'],
+                [-1, '집에서 봐요'],
+                [0, '돌 전부터'],
+                [12, '돌부터'],
+                [24, '두 돌부터'],
               ]}
-              onChange={(daycare) => set({ daycare })}
+              onChange={(from) =>
+                set(from < 0 ? { daycare: false } : { daycare: true, daycareFrom: from })
+              }
             />
           </div>
         </ShareSection>
@@ -171,7 +175,11 @@ export default function ChildBenefit() {
           />
           <Line
             name="아동수당"
-            sub={`월 ${man(r.allowance.total / Math.max(1, r.allowance.months))}만 · 13세 생일 전달까지`}
+            sub={
+              r.allowance.months > 0
+                ? `월 ${man(r.allowance.total / r.allowance.months)}만 · 13세 생일 전달까지`
+                : '받을 달이 끝났어요'
+            }
             line={r.allowance}
           />
           {!v.daycare && (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cardSpentFromConfessions } from './yearEndTax'
+import { YEAREND_SAVE_KEY, cardSpentFromConfessions, cardSpentTotal, readYearEndInput } from './yearEndTax'
 
 const c = (
   cardOwner: 1 | 2 | undefined,
@@ -34,5 +34,29 @@ describe('고백에 쌓인 카드 사용액', () => {
   it('다른 해 기록은 빠진다', () => {
     const items = [c(1, 50_000, 'variable', '2025-12-31T12:00:00.000Z'), c(1, 1_000)]
     expect(cardSpentFromConfessions(items, '2026')).toEqual([1_000, 0])
+  })
+})
+
+describe('연말정산 사용액 (2026-11-19 점검)', () => {
+  it('보험료·주거비·세금은 카드 공제 대상이 아니라 빠진다', () => {
+    const items = [
+      { ...c(1, 50_000, 'fixed'), category: '보험' },
+      { ...c(1, 30_000, 'fixed'), category: '통신' },
+    ]
+    expect(cardSpentFromConfessions(items, '2026')).toEqual([30_000, 0])
+  })
+
+  it('직접 넣은 총액이 있으면 소비 기록을 또 더하지 않는다', () => {
+    expect(cardSpentTotal(10_000_000, 300_000)).toBe(10_000_000)
+    expect(cardSpentTotal(0, 300_000)).toBe(300_000)
+  })
+
+  it('지난해에 넣은 카드 사용액은 해가 바뀌면 비운다 (연봉은 둔다)', () => {
+    localStorage.setItem(
+      YEAREND_SAVE_KEY,
+      JSON.stringify({ gross1: 5e7, gross2: 4e7, spent1: 9e6, spent2: 8e6, year: '1999' }),
+    )
+    expect(readYearEndInput()).toMatchObject({ gross1: 5e7, spent1: 0, spent2: 0 })
+    localStorage.removeItem(YEAREND_SAVE_KEY)
   })
 })

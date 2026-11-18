@@ -228,12 +228,19 @@ export default function LoanFinderCalc() {
           </Step>
 
           <Step no={2} title="우리 조건">
-            <CalcRow label={`${names[0]} 연소득`} auto={prefill.income1 ? '가계부' : undefined}>
+            <CalcRow label={`${names[0]} 연소득 (세전)`} auto={prefill.income1 ? '가계부' : undefined}>
               <AmountInput man value={input.income1} onChange={(n) => set({ income1: n })} />
             </CalcRow>
-            <CalcRow label={`${names[1]} 연소득`} auto={prefill.income2 ? '가계부' : undefined}>
+            <CalcRow label={`${names[1]} 연소득 (세전)`} auto={prefill.income2 ? '가계부' : undefined}>
               <AmountInput man value={input.income2} onChange={(n) => set({ income2: n })} />
             </CalcRow>
+            {/* 가계부 수입은 실수령이라 세전보다 적다 — 대출 소득 기준·한도는 세전 기준 (2026-11-19 점검) */}
+            {(prefill.income1 > 0 || prefill.income2 > 0) && (
+              <p className="mt-1 text-[12px] leading-relaxed text-cap">
+                가계부 숫자는 통장에 들어온 돈(실수령)이라 실제 연봉보다 적어요. 대출은 세금 떼기 전
+                연봉으로 봐요 — 원천징수영수증의 '총급여'로 고쳐 주세요.
+              </p>
+            )}
             {/* 이름이 길면 숫자 칸이 좁아져 '25,31'처럼 잘렸다 — 이름은 짧게, 설명은 아래로 */}
             <CalcRow label="우리 돈" auto={prefill.own ? '순자산' : undefined}>
               <AmountInput man value={input.own} onChange={(n) => set({ own: n })} />
@@ -296,7 +303,7 @@ export default function LoanFinderCalc() {
             <CalcRow label="매매가" auto={prefill.price ? '로드맵' : undefined}>
               <AmountInput man value={input.deal} onChange={(n) => set({ deal: n })} />
             </CalcRow>
-            <CalcRow label="KB시세">
+            <CalcRow label="KB시세 (모르면 비워 두기)">
               <AmountInput man value={input.kb} onChange={(n) => set({ kb: n })} />
             </CalcRow>
             <Go to="kb" />
@@ -309,7 +316,14 @@ export default function LoanFinderCalc() {
             <Chips
               label="지역"
               value={input.region}
-              onChange={(v) => set({ region: v })}
+              // 서울은 전부 규제지역이라 바로 켠다(10.15 대책) · 읍·면은 '그 밖 지방'에서만 (2026-11-19 점검)
+              onChange={(v) =>
+                set({
+                  region: v,
+                  ...(v === 'seoul' ? { regulated: true } : {}),
+                  ...(v !== 'other' ? { eup: false } : {}),
+                })
+              }
               options={Object.entries(REGION).map(([k, v]) => [
                 k as LoanFinderInput['region'],
                 v.label,

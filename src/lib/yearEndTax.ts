@@ -18,6 +18,19 @@ export interface YearEndInput {
   gross2: number
   spent1: number
   spent2: number
+  /** 사용액을 넣은 해 — 해가 바뀌면 지난해 사용액은 버린다 (2026-11-19 점검) */
+  year?: string
+}
+
+/** 카드 공제가 안 되는 지출 — 보험료·관리비·월세 같은 주거비·세금 (2026-11-19 점검) */
+const NOT_DEDUCTIBLE = new Set(['보험', '주거', '세금'])
+
+/**
+ * 계산에 쓸 사용액 — 직접 넣었으면 그 값(카드사 앱에서 본 올해 총액), 비웠으면 소비 기록에 쌓인 카드값.
+ * 2026-11-19 점검: 예전엔 둘을 더해서 카드사 총액을 넣은 사람은 두 번 셌다.
+ */
+export function cardSpentTotal(manual: number, fromApp: number): number {
+  return manual > 0 ? manual : fromApp
 }
 
 /**
@@ -27,7 +40,13 @@ export interface YearEndInput {
  * 카드 주인을 안 고른 기록은 누구 것인지 모르므로 세지 않는다.
  */
 export function cardSpentFromConfessions(
-  confessions: { kind: string; amount: number; cardOwner?: 1 | 2; createdAt: string }[],
+  confessions: {
+    kind: string
+    category?: string
+    amount: number
+    cardOwner?: 1 | 2
+    createdAt: string
+  }[],
   year = String(new Date().getFullYear()),
 ): [number, number] {
   let a = 0
@@ -35,6 +54,7 @@ export function cardSpentFromConfessions(
   for (const c of confessions) {
     if (c.cardOwner !== 1 && c.cardOwner !== 2) continue
     if (c.kind !== 'variable' && c.kind !== 'fixed') continue
+    if (c.category && NOT_DEDUCTIBLE.has(c.category)) continue
     if (!c.createdAt.startsWith(year)) continue
     if (c.cardOwner === 1) a += c.amount
     else b += c.amount
@@ -44,13 +64,16 @@ export function cardSpentFromConfessions(
 
 export function readYearEndInput(): YearEndInput {
   try {
-    return {
+    const v: YearEndInput = {
       gross1: 0,
       gross2: 0,
       spent1: 0,
       spent2: 0,
       ...JSON.parse(localStorage.getItem(YEAREND_SAVE_KEY) ?? '{}'),
     }
+    // 연봉은 그대로 두고, 지난해에 넣은 카드 사용액만 비운다
+    if (v.year && v.year !== String(new Date().getFullYear())) return { ...v, spent1: 0, spent2: 0 }
+    return v
   } catch {
     return { gross1: 0, gross2: 0, spent1: 0, spent2: 0 }
   }
