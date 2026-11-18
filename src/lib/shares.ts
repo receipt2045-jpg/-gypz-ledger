@@ -20,6 +20,8 @@ export interface ShareItem {
   tint: string
 }
 
+import { MONEYTOON_SHARES } from './moneytoon'
+
 export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집마련']
 
 export const SHARES: ShareItem[] = [
@@ -122,6 +124,8 @@ export const SHARES: ShareItem[] = [
     emoji: '🍼',
     tint: 'bg-pink-50',
   },
+  // 머니툰 자료(src/lib/moneytoon/*.json)는 파일만 더하면 저절로 들어온다
+  ...MONEYTOON_SHARES,
 ]
 
 /** 최신순 */
