@@ -1,5 +1,5 @@
 // 테스트 설정은 vitest.config.ts에 따로 있다 (여기 두면 rollup 타입과 충돌한다)
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -54,7 +54,7 @@ const OG_PAGES: OgPage[] = [
 
 // 머니툰 자료(src/lib/moneytoon/*.json, 2026-11-19) — 파일마다 moabuli.com/money/<slug> 미리보기를 저절로
 const MT_DIR = join(process.cwd(), 'src/lib/moneytoon')
-for (const f of readdirSync(MT_DIR).filter((x) => x.endsWith('.json'))) {
+for (const f of existsSync(MT_DIR) ? readdirSync(MT_DIR).filter((x) => x.endsWith('.json')) : []) {
   const m = JSON.parse(readFileSync(join(MT_DIR, f), 'utf-8'))
   OG_PAGES.push({
     dir: `money/${m.slug}`,
