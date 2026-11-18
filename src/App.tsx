@@ -50,6 +50,7 @@ import GiftGuide from './pages/GiftGuide'
 import ChildBenefit from './pages/ChildBenefit'
 import Coupang from './pages/Coupang'
 import Cofix from './pages/Cofix'
+import Survey from './pages/Survey'
 import Share from './pages/Share'
 import PublicNews from './pages/PublicNews'
 import Roadmap from './pages/Roadmap'
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/coupang" element={<Coupang />} />
         {/* 코픽스 오르면 이자 얼마 더 (2026-11-17) — 머니그랩 코픽스 툰 댓글로 받은 링크가 오는 자리 */}
         <Route path="/cofix" element={<Cofix />} />
+        <Route path="/survey" element={<Survey />} />
         {/* 결영이네 자료 나눔 목록 (2026-10-24) — 단톡방 공지에 거는 링크 하나 */}
         <Route path="/share" element={<Share />} />
         {/* 오늘의 경제 — 카톡 톡방 링크로 들어오는 자리라 로그인 밖에 둔다 */}

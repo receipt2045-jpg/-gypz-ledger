@@ -24,6 +24,17 @@ export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집
 
 export const SHARES: ShareItem[] = [
   {
+    slug: 'survey',
+    path: '/survey',
+    title: '커피값, AI 비서가 벌어와요',
+    sub: '기프티콘 주는 설문을 하루 2번 AI가 찾아서 대신 응모해요 — 명령어 복사해서 그대로 쓰기',
+    category: '재테크',
+    date: '2026-11-19',
+    minutes: 3,
+    emoji: '☕',
+    tint: 'bg-amber-50',
+  },
+  {
     slug: 'cofix',
     path: '/cofix',
     title: '코픽스 오르면, 우리집 이자는 얼마 더?',

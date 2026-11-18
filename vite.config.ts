@@ -39,6 +39,12 @@ const OG_PAGES: OgPage[] = [
     image: 'https://moabuli.com/og-coupang.png?v=1',
   },
   {
+    dir: 'survey',
+    title: '결영이네 앱테크 · 커피값, AI 비서가 벌어와요',
+    description: '기프티콘 주는 설문을 하루 2번 AI가 찾아서 대신 응모해요. 결영이네가 실제로 쓰는 명령어를 그대로 복사해 가세요.',
+    image: 'https://moabuli.com/og-survey.png?v=1',
+  },
+  {
     dir: 'cofix',
     title: '코픽스 오르면, 우리집 이자는 얼마 더?',
     description: '남은 대출금과 금리만 넣으면 다음 금리변경일부터 한 달에 더 내는 이자를 바로 계산해요.',

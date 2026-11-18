@@ -75,6 +75,10 @@ def cofix_card() -> Image.Image:
     return titled_card("이자 계산표", "코픽스 오르면 얼마 더?")
 
 
+def survey_card() -> Image.Image:
+    return titled_card("커피값 앱테크", "AI 비서가 설문 대신 응모")
+
+
 def titled_card(title: str, sub: str) -> Image.Image:
     """동전 아이콘 왼쪽 + 결영이네 / 큰 제목 / 회색 한 줄"""
     img = Image.new("RGB", (W, H), WHITE)
@@ -100,6 +104,7 @@ def main():
     gold_card().save(PUBLIC / "og-gold.png", optimize=True)
     coupang_card().save(PUBLIC / "og-coupang.png", optimize=True)
     cofix_card().save(PUBLIC / "og-cofix.png", optimize=True)
+    survey_card().save(PUBLIC / "og-survey.png", optimize=True)
     print("og images written")
 
 
