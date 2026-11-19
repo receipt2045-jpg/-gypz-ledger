@@ -290,7 +290,8 @@ export default function Monthly() {
               <MonthlyGlance ledger={ledger} />
             </div>
 
-            <p className="px-1 pt-2 text-[13px] font-bold text-sub">자세히 보기</p>
+            {/* 눌리는 버튼처럼 읽혀서 제목답게 (2026-11-19 점검) */}
+            <h3 className="px-1 pt-2 text-[13px] font-bold text-sub">항목별 내역</h3>
             {/* 부부 토글 */}
             <div className="flex gap-1 rounded-btn bg-line/60 p-1">
               {tabs.map((t) => (
@@ -305,6 +306,12 @@ export default function Monthly() {
                 </button>
               ))}
             </div>
+            {/* 사람별로 걸러도 위 합계는 집 전체 그대로라 헷갈렸다 (2026-11-19 점검) */}
+            {member !== 0 && (
+              <p className="-mt-1 px-1 text-[12px] text-cap">
+                아래 목록만 {tabs[member].label} 것이에요 · 위 합계는 우리집 전체예요
+              </p>
+            )}
 
             {/* 이번 달 고백 내역 — 매일 기록한 것이 여기 쌓인다 */}
             {monthLog.length > 0 && (
@@ -366,9 +373,13 @@ export default function Monthly() {
                             {formatWon(c.amount)}
                           </span>
                           {/* 잘못 쓴 고백은 지우고 다시 — 배우자 몫을 대신 적을 수 있으니 대신 지울 수도 있다 */}
+                          {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
                           <button
-                            onClick={() => removeConfession(c.id)}
-                            className="shrink-0 text-cap active:text-danger"
+                            onClick={() => {
+                              if (window.confirm(`${c.category} ${formatWon(c.amount)} 기록을 지울까요?`))
+                                removeConfession(c.id)
+                            }}
+                            className="-m-2 shrink-0 p-2 text-cap active:text-danger"
                             aria-label="기록 삭제"
                           >
                             <Trash2 size={14} />

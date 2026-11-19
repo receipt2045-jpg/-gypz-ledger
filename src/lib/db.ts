@@ -390,6 +390,23 @@ export async function fetchConfessionsBetween(
   return (data ?? []).map(rowToConfession)
 }
 
+/** 소비 기록 전부 — 백업용. 서버는 한 번에 1,000건까지라 나눠 읽는다 (2026-11-19) */
+export async function fetchAllConfessions(householdId: string): Promise<Confession[]> {
+  const out: Confession[] = []
+  const page = 1000
+  for (let from = 0; ; from += page) {
+    const { data, error } = await supabase
+      .from('confessions')
+      .select('*')
+      .eq('household_id', householdId)
+      .order('created_at', { ascending: true })
+      .range(from, from + page - 1)
+    if (error) throw error
+    out.push(...(data ?? []).map(rowToConfession))
+    if (!data || data.length < page) return out
+  }
+}
+
 function rowToConfession(r: any): Confession {
   return {
     id: r.id,
@@ -584,7 +601,14 @@ export async function clearHouseholdRecords(householdId: string) {
 
 /** JSON 가져오기: 기존 기록을 지우고 통째로 교체 */
 export async function replaceAllData(householdId: string, data: AppData) {
+  // 옛 백업(소비 기록 없음)이면 서버의 소비 기록을 남겨 둔다 — 지우면 되살릴 길이 없다 (2026-11-19 점검)
+  const keepConfessions = data.confessions
+    ? null
+    : await fetchAllConfessions(householdId)
   await clearHouseholdRecords(householdId)
+  const confessions = data.confessions ?? keepConfessions ?? []
+  for (let i = 0; i < confessions.length; i += 200)
+    await Promise.all(confessions.slice(i, i + 200).map((c) => insertConfession(householdId, c)))
   await Promise.all([
     pushProfile(householdId, data.profile),
     pushCategories(householdId, data.categories),

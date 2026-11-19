@@ -55,6 +55,24 @@ export default function Login({ onPreview }: { onPreview?: () => void } = {}) {
     // 성공하면 App의 onAuthStateChange가 화면을 전환함
   }
 
+  const resetPassword = async () => {
+    const to = email.trim()
+    setError('')
+    setNotice('')
+    if (!to.includes('@')) {
+      setError('위 칸에 가입한 이메일을 먼저 적어 주세요.')
+      return
+    }
+    setBusy(true)
+    const { error: err } = await supabase.auth.resetPasswordForEmail(to, { redirectTo })
+    setBusy(false)
+    if (err) setError(koError(err.message))
+    else
+      setNotice(
+        '비밀번호를 다시 정하는 메일을 보냈어요. 메일의 링크를 누르면 새 비밀번호를 정할 수 있어요. (구글로 가입했다면 구글로 계속하기를 눌러 주세요)',
+      )
+  }
+
   const signUp = async () => {
     if (!canSubmit) return
     if (!agreed) {
@@ -188,6 +206,15 @@ export default function Login({ onPreview }: { onPreview?: () => void } = {}) {
               className="h-12 w-full rounded-btn bg-white text-[14px] font-semibold text-ink shadow-card active:bg-line disabled:opacity-40"
             >
               회원가입
+            </button>
+            {/* 비밀번호를 잊으면 되찾을 길이 없었다 (2026-11-19 점검) — 메일 링크 → 설정에서 새 비밀번호 */}
+            <button
+              type="button"
+              onClick={resetPassword}
+              disabled={busy}
+              className="w-full py-1 text-center text-[13px] font-medium text-sub underline-offset-2 active:underline"
+            >
+              비밀번호를 잊었어요
             </button>
             {password.length > 0 && password.length < 6 && (
               <p className="text-[13px] text-cap">비밀번호를 6자 이상 입력하면 버튼이 활성화돼요</p>

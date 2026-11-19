@@ -10,7 +10,7 @@ import {
   readYearEndInput,
   recommendCard,
 } from '../lib/yearEndTax'
-import { abbreviateKRW, currentYm, formatWon } from '../lib/format'
+import { abbreviateKRW, currentYm, formatWon, formatYmKorean } from '../lib/format'
 
 const dayKey = (d: Date) => d.toLocaleDateString('sv-SE')
 
@@ -20,12 +20,15 @@ const dayKey = (d: Date) => d.toLocaleDateString('sv-SE')
  *
  * 세 줄: ① 고백 스트릭 ② 변동지출 게이지(고백 누적 ÷ 예산) ③ 오늘 쓸 카드
  */
-export default function TodayCard() {
+export default function TodayCard({ ym }: { ym?: string } = {}) {
   const navigate = useNavigate()
   const { confessions, memberNo, ledgers, profile } = useLedgerStore()
 
   const me = memberNo ?? 1
-  const thisYm = currentYm()
+  // 홈에서 다른 달을 고르면 그 달 변동지출로 (2026-11-19 점검: 어느 달을 봐도 이번 달 숫자였다)
+  const nowYm = currentYm()
+  const thisYm = ym ?? nowYm
+  const isNow = thisYm === nowYm
   const today = dayKey(new Date())
 
   // ① 고백 줄
@@ -35,12 +38,19 @@ export default function TodayCard() {
   )
 
   // ② 게이지 줄 — 부부가 이번 달 고백한 변동지출 합 ÷ 변동지출 예산 합
-  const budget = resolveLedger(ledgers, thisYm)
-    .items.filter((it) => it.group === 'variable')
+  const monthLedger = resolveLedger(ledgers, thisYm)
+  const budget = monthLedger.items
+    .filter((it) => it.group === 'variable')
     .reduce((sum, it) => sum + it.planned, 0)
-  const confessed = monthConfessions(confessions, thisYm)
-    .filter((c) => c.kind === 'variable')
-    .reduce((sum, c) => sum + c.amount, 0)
+  // 정산을 끝낸 지난달은 정산한 실제 금액으로 — 기록이 없으면 '0원'으로 보였다
+  const settledPast = !isNow && monthLedger.closed
+  const confessed = settledPast
+    ? monthLedger.items
+        .filter((it) => it.group === 'variable')
+        .reduce((sum, it) => sum + it.actual, 0)
+    : monthConfessions(confessions, thisYm)
+        .filter((c) => c.kind === 'variable')
+        .reduce((sum, c) => sum + c.amount, 0)
   const ratio = budget > 0 ? confessed / budget : 0
   const over = budget > 0 && confessed > budget
 
@@ -92,7 +102,10 @@ export default function TodayCard() {
         {budget > 0 ? (
           <>
             <div className="mb-1.5 flex items-baseline justify-between">
-              <span className="text-[12.5px] font-medium text-sub">이번 달 변동지출</span>
+              <span className="text-[12.5px] font-medium text-sub">
+                {isNow ? '이번 달' : formatYmKorean(thisYm)} 변동지출 ·{' '}
+                {settledPast ? '정산' : '기록 합계'}
+              </span>
               <span className="tnum text-[12.5px] font-bold text-ink">
                 {/* 14,000원이 '1만원'으로 잘리면 기록한 사람이 갸웃한다 — 10만 밑은 원 단위 그대로 */}
                 {confessed < 100_000 ? formatWon(confessed) : abbreviateKRW(confessed)}{' '}
@@ -108,7 +121,11 @@ export default function TodayCard() {
             <p className="mt-1.5 text-[11.5px] text-cap">
               {over
                 ? `예산보다 ${abbreviateKRW(confessed - budget)} 넘었어요 · 모아가 할 말이 있대요`
-                : `기록한 만큼 채워져요 · ${abbreviateKRW(budget - confessed)} 남음`}
+                : isNow
+                  ? `기록한 만큼 채워져요 · ${abbreviateKRW(budget - confessed)} 남음`
+                  : thisYm > nowYm
+                    ? '아직 오지 않은 달이에요 · 예산만 보여요'
+                    : `예산 안에서 ${abbreviateKRW(budget - confessed)} 덜 썼어요`}
             </p>
           </>
         ) : (

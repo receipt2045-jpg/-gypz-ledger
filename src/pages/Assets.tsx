@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, Pencil } from 'lucide-react'
 import AssetGlance, { type EditTarget } from '../components/AssetGlance'
 import Card from '../components/Card'
@@ -27,6 +27,16 @@ import { assetTrend } from '../lib/assetTrend'
  */
 export default function Assets() {
   const navigate = useNavigate()
+  // 자산 등록에서 '저장하기'로 왔으면 저장됐다고 잠깐 알려 준다 (2026-11-19 점검: 아무 말 없이 돌아왔다)
+  const location = useLocation()
+  const [savedMsg, setSavedMsg] = useState(
+    () => !!(location.state as { saved?: boolean } | null)?.saved,
+  )
+  useEffect(() => {
+    if (!savedMsg) return
+    const t = setTimeout(() => setSavedMsg(false), 3000)
+    return () => clearTimeout(t)
+  }, [savedMsg])
   const { snapshots, profile } = useLedgerStore()
   const rates = useFxRates()
   // 외화 항목은 실시간 환율로 원화 환산 (현재 화면 기준).
@@ -65,7 +75,14 @@ export default function Assets() {
   return (
     <div className="animate-fade-up space-y-4">
       <header className="flex items-center justify-between gap-2 px-1 pt-2">
-        <h1 className="text-[18px] font-bold text-ink">우리집 자산</h1>
+        <h1 className="text-[18px] font-bold text-ink">
+          우리집 자산
+          {savedMsg && (
+            <span role="status" className="ml-2 text-[12.5px] font-semibold text-brand">
+              ✓ 저장했어요
+            </span>
+          )}
+        </h1>
         <button
           onClick={() => navigate('/asset-setup')}
           className="flex items-center gap-1 rounded-full bg-brand/10 px-3 py-1.5 text-[12px] font-bold text-brand active:bg-brand/20"

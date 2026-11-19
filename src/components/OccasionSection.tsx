@@ -138,9 +138,12 @@ export default function OccasionSection({
                 <span className="tnum text-[15px] font-semibold text-ink">
                   {formatWon(o.amount)}
                 </span>
+                {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
                 <button
-                  onClick={() => onRemove(o.id)}
-                  className="text-cap active:text-danger"
+                  onClick={() => {
+                    if (window.confirm(`${o.title} ${formatWon(o.amount)}을 지울까요?`)) onRemove(o.id)
+                  }}
+                  className="-m-2 p-2 text-cap active:text-danger"
                   aria-label="삭제"
                 >
                   <Trash2 size={16} />

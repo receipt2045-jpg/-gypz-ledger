@@ -2,7 +2,7 @@ import MonthStartPicker from '../components/MonthStartPicker'
 import SiteFooter from '../components/SiteFooter'
 import PcColumns from '../components/PcColumns'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Copy,
   Check,
@@ -165,12 +165,28 @@ export default function Settings() {
     void refreshCategories()
   }, [refreshCategories])
 
-  const handleExport = () => {
+  // 백업 파일 — 소비 기록 전부를 같이 담고, 끝나면 알려 준다 (2026-11-19 점검: 기록이 빠지고 아무 말이 없었다)
+  const [exportMsg, setExportMsg] = useState('')
+  const handleExport = async () => {
     const data = exportData()
-    const name = `gypz-ledger-${new Date().toISOString().slice(0, 10)}.json`
-    void saveFile(new File([JSON.stringify(data, null, 2)], name, { type: 'application/json' })).then((r) => {
-      if (r === 'failed') alert('파일을 저장하지 못했어요. 다시 시도해 주세요.')
-    })
+    const hid = useLedgerStore.getState().householdId
+    if (hid) {
+      try {
+        data.confessions = await db.fetchAllConfessions(hid)
+      } catch {
+        alert('소비 기록을 다 읽지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.')
+        return
+      }
+    }
+    const name = `moabuli-backup-${new Date().toLocaleDateString('sv-SE')}.json`
+    const r = await saveFile(
+      new File([JSON.stringify(data, null, 2)], name, { type: 'application/json' }),
+    )
+    if (r === 'failed') alert('파일을 저장하지 못했어요. 다시 시도해 주세요.')
+    else {
+      setExportMsg(`${name} 파일로 저장했어요 · 소비 기록 ${(data.confessions ?? []).length}건 포함`)
+      setTimeout(() => setExportMsg(''), 4000)
+    }
   }
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,6 +197,15 @@ export default function Settings() {
       try {
         const data = JSON.parse(String(reader.result)) as AppData
         if (!data.profile || !Array.isArray(data.ledgers)) throw new Error('형식 오류')
+        // 지금 가계부를 통째로 바꾸는 일이라 한 번 묻는다 (2026-11-19 점검)
+        if (
+          !window.confirm(
+            data.confessions
+              ? '지금 가계부가 이 파일 내용으로 통째로 바뀌어요. 계속할까요?'
+              : '정산·자산·비정기 지출이 이 파일 내용으로 바뀌어요. 소비 기록은 지금 것을 그대로 둬요. 계속할까요?',
+          )
+        )
+          return
         importData(data)
         alert('가져오기 완료!')
       } catch {
@@ -212,10 +237,14 @@ export default function Settings() {
             <Card>
               <h2 className="mb-1 text-[15px] font-bold text-ink">부부 연결</h2>
               <p className="text-[13px] text-sub">
-                {memberNo
-                  ? `내 계정은 구성원 ${memberNo}(${memberNo === 1 ? profile.member1Name : profile.member2Name})이에요. `
-                  : ''}
-                배우자에게 아래 초대 코드를 알려주면 함께 쓸 수 있어요.
+                {/* 예시에선 계정도 초대 코드도 없다 — 눌러도 아무 일 없던 버튼 대신 안내 (2026-11-19 점검) */}
+                {!inviteCode
+                  ? '가입하면 초대 코드가 생겨요. 배우자에게 보내면 같은 가계부를 함께 써요.'
+                  : `${
+                      memberNo
+                        ? `내 계정은 구성원 ${memberNo}(${memberNo === 1 ? profile.member1Name : profile.member2Name})이에요. `
+                        : ''
+                    }배우자에게 아래 초대 코드를 알려주면 함께 쓸 수 있어요.`}
               </p>
               <div className="mt-3 flex items-center gap-2">
                 <span className="tnum flex-1 rounded-btn bg-bg px-4 py-3 text-center text-[18px] font-extrabold tracking-[0.25em] text-ink">
@@ -223,7 +252,8 @@ export default function Settings() {
                 </span>
                 <button
                   onClick={copyInvite}
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-btn bg-bg text-sub active:bg-line"
+                  disabled={!inviteCode}
+                  className="flex h-12 w-12 disabled:opacity-40 shrink-0 items-center justify-center rounded-btn bg-bg text-sub active:bg-line"
                   aria-label="초대 코드 복사"
                 >
                   {copied ? <Check size={19} /> : <Copy size={19} />}
@@ -231,7 +261,8 @@ export default function Settings() {
               </div>
               <button
                 onClick={sendInvite}
-                className="mt-2 flex h-12 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
+                disabled={!inviteCode}
+                className="mt-2 flex h-12 disabled:opacity-40 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
               >
                 <Share2 size={17} />
                 {invited ? '보냈어요' : '배우자에게 초대 보내기'}
@@ -406,7 +437,19 @@ export default function Settings() {
                           className="inline-flex items-center gap-1 rounded-full bg-bg px-3 py-1.5 text-[13px] font-medium text-ink"
                         >
                           {c}
-                          <button onClick={() => removeCategory(g, c)} aria-label={`${c} 삭제`}>
+                          {/* 지우기 전에 묻는다 — 목록에서만 빠지고 적어 둔 기록은 남는다 (2026-11-19 점검) */}
+                          <button
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `'${c}' 항목을 목록에서 뺄까요? 이미 적은 기록은 그대로 남아요.`,
+                                )
+                              )
+                                removeCategory(g, c)
+                            }}
+                            aria-label={`${c} 삭제`}
+                            className="-m-1.5 p-1.5"
+                          >
                             <X size={13} className="text-cap" />
                           </button>
                         </span>
@@ -456,6 +499,11 @@ export default function Settings() {
                 >
                   <Download size={18} /> JSON 내보내기
                 </button>
+                {exportMsg && (
+                  <p className="px-1 text-[12px] font-semibold text-brand" role="status">
+                    {exportMsg}
+                  </p>
+                )}
                 <button
                   onClick={() => fileRef.current?.click()}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
@@ -632,7 +680,11 @@ function MarketingToggle() {
 }
 
 function PasswordForm() {
-  const [open, setOpen] = useState(false)
+  // 비밀번호 재설정 메일 링크로 왔으면 바로 새 비밀번호 칸을 연다 (2026-11-19)
+  const location = useLocation()
+  const [open, setOpen] = useState(
+    () => !!(location.state as { resetPassword?: boolean } | null)?.resetPassword,
+  )
   const [pw, setPw] = useState('')
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [busy, setBusy] = useState(false)

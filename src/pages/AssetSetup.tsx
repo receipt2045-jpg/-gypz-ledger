@@ -87,7 +87,7 @@ export default function AssetSetup() {
 
   const save = () => {
     void persist()
-    navigate('/assets')
+    navigate('/assets', { state: { saved: true } })
   }
 
   // ── 구성원 선택 (부부 + 자녀) ─────────────

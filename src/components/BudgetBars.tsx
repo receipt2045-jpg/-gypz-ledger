@@ -94,8 +94,10 @@ export default function BudgetBars({
     <div className="space-y-3">
       {/* 전체 사용률 */}
       <div className="flex items-center justify-between text-[13px]">
+        {/* 홈 카드는 변동지출만이라 숫자가 달라 보인다 — 고정비가 들어간다고 밝힌다 (2026-11-19 점검) */}
         <span className="text-sub">
-          지출 <span className="tnum font-bold text-ink">{abbreviateKRW(totalActual)}</span>
+          고정비+변동지출{' '}
+          <span className="tnum font-bold text-ink">{abbreviateKRW(totalActual)}</span>
           <span className="text-cap"> / 예산 {abbreviateKRW(totalPlanned)}</span>
         </span>
         <span

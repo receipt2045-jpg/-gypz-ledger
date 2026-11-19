@@ -45,6 +45,10 @@ export default function AssetEditor({
 }) {
   const rates = useFxRates()
   const [adding, setAdding] = useState(false)
+  const addRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (adding) addRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+  }, [adding])
   const [kind, setKind] = useState<'asset' | 'debt'>('asset')
   const [group, setGroup] = useState<AssetGroup>('cash')
   const [name, setName] = useState('')
@@ -135,7 +139,11 @@ export default function AssetEditor({
       ))}
 
       {adding ? (
-        <div className="space-y-2 rounded-card bg-card p-4 shadow-card">
+        <div
+          // 열리면 하단 저장 바 밑에 숨지 않게 화면 가운데로 올린다 (2026-11-19 점검)
+          ref={addRef}
+          className="scroll-mb-32 space-y-2 rounded-card bg-card p-4 shadow-card"
+        >
           <div className="flex gap-2">
             {(['asset', 'debt'] as const).map((k) => (
               <button
@@ -411,8 +419,11 @@ function AssetRow({
           <StickyNote size={16} />
         </button>
         <button
-          onClick={() => onRemove(item.id)}
-          className="shrink-0 p-1 text-cap active:text-danger"
+          onClick={() => {
+            // 지우기 전에 묻는다 (2026-11-19 점검: 큰 금액 통장이 한 번에 사라졌다)
+            if (window.confirm(`${item.name || '이 항목'}을 지울까요?`)) onRemove(item.id)
+          }}
+          className="shrink-0 p-1.5 text-cap active:text-danger"
           aria-label="삭제"
         >
           <X size={18} />

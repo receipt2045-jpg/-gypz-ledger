@@ -622,6 +622,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       snapshots: data.snapshots,
       occasions: data.occasions,
       categories: data.categories,
+      ...(data.confessions ? { confessions: data.confessions } : {}),
+      ...(data.aliases ? { aliases: data.aliases } : {}),
     })
     const hid = get().householdId
     if (hid) db.replaceAllData(hid, data).catch(reportSyncError)
@@ -635,6 +637,9 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       snapshots: s.snapshots,
       occasions: s.occasions,
       categories: s.categories,
+      // 화면에 있는 건 최근 것뿐이라, 로그인한 집은 설정의 내보내기가 서버에서 전부 읽어 바꿔 넣는다
+      confessions: s.confessions,
+      aliases: s.aliases,
     }
   },
 }))

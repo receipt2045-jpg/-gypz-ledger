@@ -961,10 +961,14 @@ export default function Confess() {
                               {formatWon(c.amount)}
                             </span>
                           </button>
+                          {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
                           <button
-                            onClick={() => removeConfession(c.id)}
+                            onClick={() => {
+                              if (window.confirm(`${c.category} ${formatWon(c.amount)} 기록을 지울까요?`))
+                                removeConfession(c.id)
+                            }}
                             aria-label="기록 삭제"
-                            className="shrink-0 text-cap active:text-danger"
+                            className="-m-2 shrink-0 p-2 text-cap active:text-danger"
                           >
                             <Trash2 size={15} />
                           </button>

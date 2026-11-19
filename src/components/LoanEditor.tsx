@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { abbreviateKRW, formatComma, formatYmKorean } from '../lib/format'
+import { abbreviateKRW, currentYm, formatComma, formatYmKorean } from '../lib/format'
 import {
   LOAN_METHOD_LABEL,
   dayString,
@@ -13,6 +13,8 @@ import {
   type LoanMethod,
 } from '../lib/loan'
 import type { AssetItem } from '../types'
+import { useLedgerStore } from '../lib/store'
+import { resolveLedger } from '../lib/carryover'
 
 const short = (n: number) => abbreviateKRW(n).replace(/원$/, '')
 
@@ -38,7 +40,13 @@ export function LoanForm({
   const [months, setMonths] = useState(initial ? String(initial.months % 12) : '')
   const [payDay, setPayDay] = useState(initial?.payDay ?? 25)
   const [method, setMethod] = useState<LoanMethod>(initial?.method ?? 'annuity')
-  const [toLedger, setToLedger] = useState(initial?.toLedger ?? true)
+  // 고정지출에 이미 대출 항목이 있으면 처음엔 끈다 — 켜 두면 두 번 셌다 (2026-11-19 점검)
+  const existingLoan = useLedgerStore((s) =>
+    resolveLedger(s.ledgers, currentYm()).items.find(
+      (it) => it.group === 'fixed' && /대출|상환|이자/.test(it.category),
+    ),
+  )
+  const [toLedger, setToLedger] = useState(initial?.toLedger ?? !existingLoan)
 
   const totalMonths = (Number(years) || 0) * 12 + (Number(months) || 0)
   const draft: LoanInfo | null =
@@ -120,7 +128,7 @@ export function LoanForm({
           </span>
         </label>
         <label className="text-[11.5px] text-cap">
-          더 남은 개월 (없으면 비워 두기)
+          그리고 몇 개월 더 (2년 6개월이면 6)
           <span className={box}>
             <input
               inputMode="numeric"
@@ -162,6 +170,11 @@ export function LoanForm({
           />
           가계부 고정지출에도 '대출 상환'으로 매달 넣기
         </label>
+      )}
+      {!hideLedger && existingLoan && !initial && (
+        <p className="-mt-1 text-[11.5px] leading-relaxed text-cap">
+          고정지출에 '{existingLoan.category}'이 이미 있어서 꺼 뒀어요 · 켜면 두 번 셀 수 있어요
+        </p>
       )}
       {preview && (
         <p className="rounded-btn bg-white px-3 py-2 text-[12.5px] leading-relaxed text-sub">

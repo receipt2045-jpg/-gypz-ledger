@@ -1,5 +1,6 @@
 /**
- * 로그인 전 둘러보기 안내 바 — 화면 맨 위에 붙어 있다.
+ * 로그인 전 둘러보기 안내 바 — 화면 맨 위에 있고 스크롤하면 같이 올라간다.
+ * (예전엔 떠 있어서 위에 붙는 머리말·뒤로가기·진행 막대를 가렸다, 2026-11-19 점검)
  * 예시라는 걸 분명히 하고, 우리 부부 것으로 쓰려면 가입하라고 한 줄로 부른다.
  */
 export default function PreviewBar({
@@ -10,7 +11,7 @@ export default function PreviewBar({
   onLogin: () => void
 }) {
   return (
-    <div className="fixed left-1/2 top-0 z-50 w-full max-w-app -translate-x-1/2 px-3 pt-2 lg:max-w-[720px]">
+    <div className="relative z-50 mx-auto w-full max-w-app px-3 pt-2 lg:max-w-[720px]">
       <div className="flex items-center justify-between gap-2 rounded-card bg-ink py-2 pl-4 pr-2 text-white shadow-lg">
         <div className="min-w-0">
           <p className="truncate text-[13px] font-bold">예시 가계부예요</p>

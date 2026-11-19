@@ -43,6 +43,7 @@ import {
   currentYm,
   formatMonthKorean,
   formatPercent,
+  formatComma,
   formatWon,
   formatYmKorean,
   shiftYm,
@@ -57,6 +58,10 @@ interface StepDef {
   groups: CategoryGroup[]
   sameAsLast: boolean // "지난달과 같아요" 노출 여부
 }
+
+/** 정산(실제값)의 변동지출은 0원이어도 된다 — 그 달에 안 쓴 것 */
+const zeroOk = (it: BudgetItem, field: 'planned' | 'actual') =>
+  field === 'actual' && it.group === 'variable'
 
 const STEPS: StepDef[] = [
   { title: '수입', subtitle: '이번 달 벌어들인 돈이에요', groups: ['income'], sameAsLast: true },
@@ -249,12 +254,20 @@ export default function Checkup() {
   const selectMember = (m: 1 | 2, both = false) => {
     setMember(m)
     setBothMode(both)
-    // 정산(결산) 모드는 실제값 시작점을 계획값으로 채움. 예산 모드는 계획값 그대로 편집.
+    // 정산(결산) 모드 실제값 시작점 — 수입·저축·고정비는 대개 계획대로라 계획값으로 채운다.
+    // 변동지출은 예산을 채워 두면 그대로 끝냈을 때 예산이 '실제 쓴 돈'으로 남았다 (2026-11-19 점검) —
+    // 이번 달 소비 기록 합계로 채우고, 기록이 없으면 비워 둔다(예산은 칸 안 흐린 글씨로).
     if (!isBudget) {
       setItems((prev) =>
-        prev.map((it) =>
-          both || it.member === m ? { ...it, actual: it.actual || it.planned } : it,
-        ),
+        prev.map((it) => {
+          if (!(both || it.member === m) || it.actual) return it
+          if (it.group === 'variable')
+            return {
+              ...it,
+              actual: confessHints?.get(`${it.member}:variable:${it.category}`) ?? 0,
+            }
+          return { ...it, actual: it.planned }
+        }),
       )
     }
     setStep(1)
@@ -660,7 +673,8 @@ export default function Checkup() {
   const liveSurplus = summarize({ ym, items: myItems, closed: !isBudget }).surplus
 
   // 빈값·0원 항목이 있으면 다음 단계로 못 넘어감 (삭제하거나 금액 입력)
-  const stepInvalid = stepItems.some((it) => !it[field] || it[field] <= 0)
+  // 단, 정산의 변동지출은 0원도 답이다 — 그 달에 안 쓴 것 (2026-11-19)
+  const stepInvalid = stepItems.some((it) => !zeroOk(it, field) && (!it[field] || it[field] <= 0))
   const proceed = () => {
     if (stepInvalid) {
       setShowErrors(true)
@@ -733,6 +747,13 @@ export default function Checkup() {
             {formatWon(liveSurplus)}
           </span>
         </div>
+        {/* 빨간 숫자만 보면 앱이 틀린 줄 안다 — 왜 모자란지 한 줄 (2026-11-19 점검) */}
+        {liveSurplus < 0 && (
+          <p className="-mt-1 mb-2 px-1 text-[12px] leading-snug text-sub">
+            {isBudget ? '계획한' : '적은'} 저축·지출이 수입보다 {formatWon(-liveSurplus)} 많아요
+            {bothMode ? '' : ' · 배우자 몫이나 공동통장으로 메우는 돈은 빠져 있어요'}
+          </p>
+        )}
         <div className="space-y-2">
           <button
             onClick={proceed}
@@ -1176,7 +1197,8 @@ function MoneyStep({
         </div>
       )}
       {items.map((it, idx) => {
-        const invalid = showErrors && (!it[valueField] || it[valueField] <= 0)
+        const invalid =
+          showErrors && !zeroOk(it, valueField) && (!it[valueField] || it[valueField] <= 0)
         const memoVisible = memoOpen === it.id || !!it.note
         return (
           <div key={it.id} className="rounded-card bg-card px-4 py-3 shadow-card">
@@ -1244,6 +1266,9 @@ function MoneyStep({
             <AmountInput
               className="mt-2"
               value={it[valueField]}
+              placeholder={
+                valueField === 'actual' && it.planned > 0 ? `예산 ${formatComma(it.planned)}` : '0'
+              }
               error={invalid}
               onChange={(v) => onChange(it.id, v)}
             />
@@ -1258,7 +1283,7 @@ function MoneyStep({
             )}
             {invalid && (
               <p className="mt-1.5 text-right text-[12px] font-medium text-danger">
-                금액을 입력해 주세요 ❗️
+                금액을 입력해 주세요 ❗️ 없는 항목이면 X로 지워요
               </p>
             )}
             {(() => {

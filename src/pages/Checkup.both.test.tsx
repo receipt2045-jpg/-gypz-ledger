@@ -218,3 +218,43 @@ describe('정산 — 둘 다 입력할 때 배우자 소비 기록도 제안 (20
     expect(screen.getByText(/기록한 항목 1개가 아직 없어요/)).toBeInTheDocument()
   })
 })
+
+describe('정산 — 변동지출은 예산이 아니라 기록으로 채운다 (2026-11-19 점검)', () => {
+  // 정산 전 달 — 변동지출은 아직 실제값이 없다
+  const unsettled = bothItems.map((it) => (it.id === 'w-var' ? { ...it, actual: 0 } : it))
+
+  it('기록이 없으면 0원으로 두고 그대로 끝내도 예산이 실제로 남지 않는다', async () => {
+    const { user } = openCheckup(unsettled)
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    // 식비 예산 50만원은 흐린 글씨로만
+    expect(screen.getByPlaceholderText('예산 500,000')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /정산 완료하기/ }))
+    expect(savedItems().find((it) => it.id === 'w-var')?.actual).toBe(0)
+    // 수입·고정비는 계획값 그대로
+    expect(savedItems().find((it) => it.id === 'h-inc')?.actual).toBe(4_000_000)
+  })
+
+  it('소비 기록이 있으면 그 합계로 채운다', async () => {
+    seedStore({
+      ledgers: [ledger(unsettled)],
+      confessions: [
+        {
+          id: 'c1',
+          memberNo: 2,
+          kind: 'variable',
+          category: '식비',
+          amount: 123_000,
+          createdAt: `${TEST_YM}-05T12:00:00.000Z`,
+        },
+      ],
+    })
+    const { user } = renderScreen(<Checkup />)
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: /정산 완료하기/ }))
+    expect(savedItems().find((it) => it.id === 'w-var')?.actual).toBe(123_000)
+  })
+})

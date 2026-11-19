@@ -140,10 +140,9 @@ function Preview({ onLogin }: { onLogin: () => void }) {
   if (status !== 'ready') return <Splash message="예시 가계부 불러오는 중…" />
   return (
     <>
-      {/* 안내 바가 화면 맨 위를 가리지 않게 그만큼 내린다 */}
-      <div className="h-[58px]" aria-hidden />
-      <AppRoutes />
+      {/* 안내 바는 화면 흐름 맨 위에 둔다 — 떠 있으면 정산·자산 등록의 뒤로가기·진행 막대를 덮었다 (2026-11-19 점검) */}
       <PreviewBar onStart={onLogin} onLogin={onLogin} />
+      <AppRoutes />
     </>
   )
 }

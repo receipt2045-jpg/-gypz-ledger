@@ -25,7 +25,12 @@ export default function AuthConfirm() {
         if (error) {
           console.error('메일 링크 확인 실패', error)
           setFailed(true)
-        } else navigate(type === 'recovery' ? '/settings' : '/', { replace: true })
+        } else
+          navigate(type === 'recovery' ? '/settings' : '/', {
+            replace: true,
+            // 재설정 링크면 설정의 새 비밀번호 칸을 바로 연다
+            state: type === 'recovery' ? { resetPassword: true } : undefined,
+          })
       })
       .catch((e: unknown) => {
         console.error('메일 링크 확인 실패', e)

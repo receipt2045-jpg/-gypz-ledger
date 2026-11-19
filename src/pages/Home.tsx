@@ -194,7 +194,7 @@ export default function Home() {
         left={
           <>
             {/* 오늘 카드 — 매일의 기록이 예산·연말정산으로 이어지는 허브 */}
-            <TodayCard />
+            <TodayCard ym={ym} />
 
             {/* 이번 달 할 일 — 월초 예산 / 월말 정산 */}
             {todo && (
