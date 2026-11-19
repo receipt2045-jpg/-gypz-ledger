@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import App from './App'
+import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 import { hashFromPath } from './lib/pathToHash'
 import { isNative } from './lib/native'
@@ -26,11 +27,27 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && !isNative()) {
   })
 }
 
+// 새로 배포된 직후 옛 화면을 열어 둔 채로 다른 화면으로 가면 지워진 옛 파일을 찾다가 흰 화면이 된다
+// (2026-11-19 제보). 그럴 땐 새 파일로 한 번만 다시 연다 — 1분 안에 또 나면 무한 새로고침을 막으려 멈춘다.
+window.addEventListener('vite:preloadError', (event) => {
+  try {
+    const last = Number(sessionStorage.getItem('moabuli.reloadedAt') ?? 0)
+    if (Date.now() - last < 60_000) return
+    sessionStorage.setItem('moabuli.reloadedAt', String(Date.now()))
+  } catch {
+    /* 기록 못 해도 다시 연다 */
+  }
+  event.preventDefault()
+  window.location.reload()
+})
+
 // GitHub Pages는 SPA 경로 새로고침 시 404를 반환하므로 해시 라우팅 사용
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <HashRouter>
-      <App />
-    </HashRouter>
+    <ErrorBoundary>
+      <HashRouter>
+        <App />
+      </HashRouter>
+    </ErrorBoundary>
   </React.StrictMode>,
 )
