@@ -26,6 +26,17 @@ export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집
 
 export const SHARES: ShareItem[] = [
   {
+    slug: 'values',
+    path: '/values',
+    title: '부부 재테크 가치관 체크리스트 50',
+    sub: '아내·남편이 각자 ○✕ 하면 생각이 다른 것만 모아 보여 줘요 — 폰이 따로면 링크로 보내서',
+    category: '재테크',
+    date: '2026-11-19',
+    minutes: 10,
+    emoji: '💑',
+    tint: 'bg-pink-50',
+  },
+  {
     slug: 'survey',
     path: '/survey',
     title: '커피값, AI 비서가 벌어와요',

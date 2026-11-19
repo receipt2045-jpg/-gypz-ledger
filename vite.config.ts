@@ -39,6 +39,12 @@ const OG_PAGES: OgPage[] = [
     image: 'https://moabuli.com/og-coupang.png?v=1',
   },
   {
+    dir: 'values',
+    title: '결영이네 · 부부 재테크 가치관 체크리스트 50',
+    description: '아내·남편이 각자 ○✕ 하고, 생각이 다른 것부터 이야기해 보세요. 소비·저축·통장·부수입·투자·대출까지 50가지.',
+    image: 'https://moabuli.com/og-values.png?v=1',
+  },
+  {
     dir: 'survey',
     title: '결영이네 앱테크 · 커피값, AI 비서가 벌어와요',
     description: '기프티콘 주는 설문을 하루 2번 AI가 찾아서 대신 응모해요. 결영이네가 실제로 쓰는 명령어를 그대로 복사해 가세요.',

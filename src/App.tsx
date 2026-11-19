@@ -52,6 +52,7 @@ import ChildBenefit from './pages/ChildBenefit'
 import Coupang from './pages/Coupang'
 import Cofix from './pages/Cofix'
 import Survey from './pages/Survey'
+import Values from './pages/Values'
 import MoneyToon from './pages/MoneyToon'
 import Share from './pages/Share'
 import PublicNews from './pages/PublicNews'
@@ -80,6 +81,7 @@ export default function App() {
         {/* 코픽스 오르면 이자 얼마 더 (2026-11-17) — 머니그랩 코픽스 툰 댓글로 받은 링크가 오는 자리 */}
         <Route path="/cofix" element={<Cofix />} />
         <Route path="/survey" element={<Survey />} />
+        <Route path="/values" element={<Values />} />
         <Route path="/money" element={<MoneyToon />} />
         <Route path="/money/:slug" element={<MoneyToon />} />
         {/* 결영이네 자료 나눔 목록 (2026-10-24) — 단톡방 공지에 거는 링크 하나 */}
@@ -108,6 +110,16 @@ async function onSignedIn(user: User) {
   await attachSourceToUser(user)
   await applyMarketingChoice(user)
   void syncPushToken(user.id) // 앱에서 알림을 켠 사람만 토큰을 다시 등록 (웹은 아무것도 안 함)
+  // 공개 페이지(#/values 등)에서 '로그인'을 눌러 왔으면 그 페이지로 돌려보낸다
+  try {
+    const back = localStorage.getItem('moabuli.returnTo')
+    if (back) {
+      localStorage.removeItem('moabuli.returnTo')
+      if (/^\/[a-z-]+$/.test(back)) window.location.hash = '#' + back
+    }
+  } catch {
+    /* 못 읽으면 홈 그대로 */
+  }
 }
 
 /**

@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import Share from './Share'
 import ShareMore from '../components/ShareMore'
+import { SHARES } from '../lib/shares'
+
+// 금테크 말고 가장 최근 자료 — 새 자료가 올라와도 테스트가 안 깨지게 (11-19)
+const NEWEST = [...SHARES].filter((s) => s.slug !== 'gold').sort((a, b) => b.date.localeCompare(a.date))[0]
 
 function open(path: string) {
   const user = userEvent.setup()
@@ -14,6 +18,7 @@ function open(path: string) {
         <Route path="/gold" element={<ShareMore />} />
         <Route path="/leave" element={<p>육아휴직 화면</p>} />
         <Route path="/gift-guide" element={<p>증여 신고 화면</p>} />
+        <Route path={NEWEST.path} element={<p>최근 자료 화면</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -33,7 +38,7 @@ describe('자료 나눔 목록 · 다른 자료 (2026-10-24)', () => {
     const { user } = open('/gold')
     expect(screen.getByText('이런 자료도 있어요')).toBeInTheDocument()
     expect(screen.queryByText('금 처음 산다면, 수수료부터 보세요')).not.toBeInTheDocument()
-    await user.click(screen.getByText('아이 통장에 넣은 돈, 증여 신고 해야 할까?'))
-    expect(screen.getByText('증여 신고 화면')).toBeInTheDocument()
+    await user.click(screen.getAllByText(NEWEST.title)[0])
+    expect(screen.getByText('최근 자료 화면')).toBeInTheDocument()
   })
 })
