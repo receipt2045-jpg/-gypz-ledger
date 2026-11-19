@@ -560,33 +560,40 @@ export default function Values() {
 
 /** 캡처용 궁합 카드 — 한 화면(폰 세로)에 다 들어가게 */
 function MatchCard({ m }: { m: ValuesMatch }) {
+  // 흰 배경 · 네이비 글자 · 핑크 포인트 (11-19 결영 — 공유 이미지와 같은 색)
   return (
-    <div className="overflow-hidden rounded-3xl bg-[#1B2433] px-5 pb-5 pt-6 text-white">
-      <p className="text-center text-[13px] font-bold tracking-wide text-[#AEB8C7]">우리 부부 재테크 궁합</p>
-      <p className="mt-1 text-center text-[64px] font-black leading-none">
+    <div className="overflow-hidden rounded-3xl border border-[#ECEFF4] bg-white px-5 pb-5 pt-6 text-[#1B2433] shadow-[0_4px_24px_rgba(27,36,51,0.08)]">
+      <p className="text-center text-[12px] font-bold text-[#E8457B]">결영이네 부부 체크리스트</p>
+      <p className="mt-0.5 text-center text-[18px] font-extrabold">우리 부부 재테크 궁합</p>
+      <p className="mt-3 text-center text-[68px] font-black leading-none">
         {m.percent}
-        <span className="text-[30px]">%</span>
+        <span className="text-[32px] text-[#E8457B]">%</span>
       </p>
-      <p className="mt-2 text-center text-[20px] font-extrabold text-[#FFD66B]">{m.label}</p>
-      <p className="mt-1 text-center text-[14px] text-[#D5DBE4]">{m.line}</p>
-      <p className="mt-1 text-center text-[12px] text-[#8E99A9]">
+      <p className="mt-3 text-center">
+        <span className="inline-block rounded-full bg-[#E8457B] px-4 py-1.5 text-[17px] font-extrabold text-white">
+          {m.label}
+        </span>
+      </p>
+      <p className="mt-2 text-center text-[14px]">{m.line}</p>
+      <p className="mt-0.5 text-center text-[12px] text-[#606A7A]">
         둘 다 답한 {m.both}개 중 {m.same}개가 같아요
       </p>
       <ul className="mt-5 space-y-2">
         {m.groups.map((g) => {
           const r = g.both ? g.same / g.both : 0;
+          const worst = m.worst === g && m.best !== m.worst;
           return (
             <li key={g.title} className="flex items-center gap-2 text-[13px]">
-              <span className="w-[92px] shrink-0 truncate">
+              <span className="w-[92px] shrink-0 truncate font-bold">
                 {g.emoji} {g.title}
               </span>
-              <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/10">
+              <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#ECEFF4]">
                 <span
-                  className={`block h-full rounded-full ${r >= 0.75 ? "bg-[#7FD8A6]" : r >= 0.5 ? "bg-[#FFD66B]" : "bg-[#FF8FB1]"}`}
+                  className={`block h-full rounded-full ${worst ? "bg-[#E8457B]" : "bg-[#1B2433]"}`}
                   style={{ width: `${g.both ? Math.max(6, r * 100) : 0}%` }}
                 />
               </span>
-              <span className="w-9 shrink-0 text-right text-[12px] text-[#AEB8C7]">
+              <span className={`w-9 shrink-0 text-right text-[12px] font-bold ${worst ? "text-[#E8457B]" : "text-[#606A7A]"}`}>
                 {g.both ? `${g.same}/${g.both}` : "—"}
               </span>
             </li>
@@ -595,21 +602,23 @@ function MatchCard({ m }: { m: ValuesMatch }) {
       </ul>
       {m.best && m.worst && m.best !== m.worst && (
         <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-          <div className="rounded-2xl bg-white/10 px-2 py-2.5">
-            <p className="text-[11px] text-[#AEB8C7]">제일 잘 맞는 주제</p>
+          <div className="rounded-2xl bg-[#ECEFF4] px-2 py-2.5">
+            <p className="text-[11px] text-[#606A7A]">제일 잘 맞는 주제</p>
             <p className="mt-0.5 text-[15px] font-extrabold">
               {m.best.emoji} {m.best.title}
             </p>
           </div>
-          <div className="rounded-2xl bg-white/10 px-2 py-2.5">
-            <p className="text-[11px] text-[#AEB8C7]">제일 다른 주제</p>
-            <p className="mt-0.5 text-[15px] font-extrabold text-[#FF8FB1]">
+          <div className="rounded-2xl bg-[#FFEEF4] px-2 py-2.5">
+            <p className="text-[11px] text-[#606A7A]">제일 다른 주제</p>
+            <p className="mt-0.5 text-[15px] font-extrabold text-[#E8457B]">
               {m.worst.emoji} {m.worst.title}
             </p>
           </div>
         </div>
       )}
-      <p className="mt-5 text-center text-[11px] text-[#8E99A9]">moabuli.com/values · 결영이네 부부 체크리스트</p>
+      <p className="mt-5 text-center text-[12px] font-bold">
+        <span className="text-[#E8457B]">moabuli.com/values</span> 에서 둘이 해 보세요
+      </p>
     </div>
   );
 }
