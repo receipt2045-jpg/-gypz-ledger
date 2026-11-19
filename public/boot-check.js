@@ -88,9 +88,10 @@
     }, 500)
   }
 
-  // 오류가 났으면 4초, 아니면 12초(앱 안 브라우저는 6초) 기다려도 화면이 비어 있을 때만
+  // 카톡 같은 앱 안 브라우저는 3초(2026-11-19 요청), 그 밖은 오류가 나면 3초·아니면 12초 지나도 화면이 비어 있을 때만.
+  // 느린 인터넷에서 앱이 3초 넘게 걸리면 안내가 잠깐 떴다가 앱이 뜨는 순간 걷힌다.
   setTimeout(function () {
     if (errors.length) show()
-  }, 4000)
-  setTimeout(show, IN_APP.test(navigator.userAgent || '') ? 6000 : 12000)
+  }, 3000)
+  setTimeout(show, IN_APP.test(navigator.userAgent || '') ? 3000 : 12000)
 })()
