@@ -6,7 +6,7 @@ import ShareArticle, {
 } from "../components/ShareArticle";
 import { supabase } from "../lib/supabase";
 import { rememberLogin } from "../lib/preview";
-import { computeMatch, type ValuesMatch } from "../lib/valuesMatch";
+import { computeMatch, gap, SCALE, type ValuesMatch } from "../lib/valuesMatch";
 import {
   deleteMyValues,
   fetchValuesRows,
@@ -18,12 +18,13 @@ import {
 /**
  * 부부 재테크 가치관 체크리스트 50 (2026-11-19) — 로그인 없이 열리는 공개 페이지.
  * 인스타툰 「결혼자금 3천만원, 적은 걸까?」 댓글로 받은 사람이 들어온다.
- * 각자 자기 폰에서 자기 칸(아내/남편)만 ○✕ → 두 답을 합쳐 궁합 카드(같은 답 비율)와 다른 것 목록을 보여 준다. 정답 없음.
+ * 각자 자기 폰에서 자기 칸(아내/남편)만 1~5점(매우 아니다~매우 그렇다) → 두 답을 합쳐 궁합 카드와 생각이 먼 것 목록을 보여 준다. 정답 없음.
+ * 11-20 결영 "ox 말고 1~5점, 매우 그렇다·매우 아니다도" — 답 한 글자 = 0 빈칸·1~5 점수.
  * 합치는 길 두 가지 (11-19 결영 "내 폰에서는 나만, 배우자는 배우자 것 / 로그인하면 합쳐지게"):
  *  - 로그인한 부부: household_values 표(supabase/household-values.sql)에 한 사람 한 행 → 저절로 합침.
  *  - 로그인 안 함: '배우자에게 보내기' 링크(#/values?w=.. 또는 ?h=..)에 내 답만 실어 보냄 — 서버에 안 보냄.
  */
-type Mark = 0 | 1 | 2; // 0 빈칸 · 1 ○ · 2 ✕
+type Mark = 0 | 1 | 2 | 3 | 4 | 5; // 0 빈칸 · 1 매우 아니다 … 5 매우 그렇다
 
 const GROUPS: { title: string; emoji: string; items: string[] }[] = [
   {
@@ -139,10 +140,10 @@ const GROUPS: { title: string; emoji: string; items: string[] }[] = [
 ];
 const ITEMS = GROUPS.flatMap((g) => g.items);
 const N = ITEMS.length; // 50
-const KEY = "moabuli.values.v1";
+const KEY = "moabuli.values.v2"; // v1 = ○✕ 시절(11-19), 섞이지 않게 새 칸
 
 function decode(s: string | null): Mark[] | null {
-  if (!s || !/^[012]+$/.test(s)) return null;
+  if (!s || !/^[0-5]+$/.test(s)) return null;
   const a = s.slice(0, N).split("").map((c) => Number(c) as Mark);
   while (a.length < N) a.push(0);
   return a;
@@ -269,7 +270,7 @@ export default function Values() {
     }
   }, [ans, me, ready]);
 
-  const pick = (i: number, v: 1 | 2) => {
+  const pick = (i: number, v: Mark) => {
     if (!me) return;
     setAns((prev) => {
       const a = [...prev[me]] as Mark[];
@@ -282,7 +283,10 @@ export default function Values() {
   const husband = ans.h;
   const match = useMemo(() => computeMatch(GROUPS, wife, husband), [wife, husband]);
   const diffList = useMemo(
-    () => ITEMS.map((_, i) => i).filter((i) => wife[i] && husband[i] && wife[i] !== husband[i]),
+    () =>
+      ITEMS.map((_, i) => i)
+        .filter((i) => wife[i] && husband[i] && gap(wife[i], husband[i]) >= 2)
+        .sort((a, b) => gap(wife[b], husband[b]) - gap(wife[a], husband[a])),
     [wife, husband],
   );
 
@@ -367,7 +371,7 @@ export default function Values() {
               얼마 모았는지보다 <b className="font-bold text-[#FFD66B]">생각이 같은지</b>
               가 먼저예요.
               <br />
-              각자 폰으로 ○✕ 하면 두 답을 합쳐서 우리 부부 궁합을 보여 드려요.
+              각자 폰으로 1~5점 매기면 두 답을 합쳐서 우리 부부 궁합을 보여 드려요.
             </>
           }
         />
@@ -376,7 +380,7 @@ export default function Values() {
         <>
           <p className="font-semibold text-sub">알려 드려요</p>
           <p className="mt-1.5">
-            결영이네 「결혼 가치관 질문 50」(2023) 중 경제 생활·부모님·아이 질문을 ○✕ 로 바꾸고, 소비·저축·통장·부수입·투자·대출 질문을 더했어요.
+            결영이네 「결혼 가치관 질문 50」(2023) 중 경제 생활·부모님·아이 질문을 1~5점 문항으로 바꾸고, 소비·저축·통장·부수입·투자·대출 질문을 더했어요.
           </p>
           <p className="mt-1.5">
             정답이 있는 체크리스트가 아니에요. 로그인 안 하면 답은 이 폰에만 저장되고, 보내기를
@@ -389,7 +393,7 @@ export default function Values() {
       <ShareSection no={1} title="이렇게 해요">
         <ol className="space-y-2.5 text-[15px] leading-relaxed text-sub">
           <li>
-            <b className="text-ink">① 내 폰에서 내 답만</b> — 아내인지 남편인지 고르고 50개에 ○✕.
+            <b className="text-ink">① 내 폰에서 내 답만</b> — 아내인지 남편인지 고르고 50개에 1~5점(매우 아니다 ~ 매우 그렇다).
             배우자 답은 안 보여요.
           </li>
           <li>
@@ -477,15 +481,12 @@ export default function Values() {
                       const i = idx++;
                       const v = ans[me][i];
                       return (
-                        <li key={i} className="flex items-center gap-2 px-3 py-2.5">
-                          <span className="w-6 shrink-0 text-[12px] font-bold text-cap">{i + 1}</span>
-                          <span className="min-w-0 flex-1 text-[15px] leading-snug text-ink">{t}</span>
-                          <Choice on={v === 1} tone={me} onClick={() => pick(i, 1)} label={`${i + 1}번 그렇다`}>
-                            ○
-                          </Choice>
-                          <Choice on={v === 2} tone={me} onClick={() => pick(i, 2)} label={`${i + 1}번 아니다`}>
-                            ✕
-                          </Choice>
+                        <li key={i} className="px-3 pb-2.5 pt-3">
+                          <div className="flex gap-2">
+                            <span className="w-6 shrink-0 text-[12px] font-bold leading-[22px] text-cap">{i + 1}</span>
+                            <span className="min-w-0 flex-1 text-[15px] leading-snug text-ink">{t}</span>
+                          </div>
+                          <Scale5 v={v} tone={me} n={i + 1} onPick={(x) => pick(i, x)} />
                         </li>
                       );
                     })}
@@ -534,9 +535,12 @@ export default function Values() {
                   {diffList.map((i) => (
                     <li key={i} className="flex gap-2 text-[14px] leading-snug text-ink">
                       <span className="shrink-0 font-bold text-[#E0457B]">{i + 1}</span>
-                      <span className="flex-1">{ITEMS[i]}</span>
-                      <span className="shrink-0 text-sub">
-                        아내 {wife[i] === 1 ? "○" : "✕"} · 남편 {husband[i] === 1 ? "○" : "✕"}
+                      <span className="flex-1">
+                        {ITEMS[i]}
+                        <span className="mt-0.5 block text-[12px] text-sub">
+                          아내 <b className="text-[#E0457B]">{SCALE[wife[i]]}</b> · 남편{" "}
+                          <b className="text-[#2F4AA8]">{SCALE[husband[i]]}</b>
+                        </span>
                       </span>
                     </li>
                   ))}
@@ -544,7 +548,7 @@ export default function Values() {
               </div>
             ) : (
               <p className="mt-4 rounded-2xl bg-bg px-4 py-3 text-[14px] text-sub">
-                둘 다 답한 건 생각이 다 같아요 🙌
+                둘 다 답한 건 생각이 다 비슷해요 🙌
               </p>
             )}
             <ShareButton copied={copied} onClick={share} label={`${NAME[partner!]}에게 결과 보내기`} />
@@ -576,7 +580,7 @@ function MatchCard({ m }: { m: ValuesMatch }) {
       </p>
       <p className="mt-2 text-center text-[14px]">{m.line}</p>
       <p className="mt-0.5 text-center text-[12px] text-[#606A7A]">
-        둘 다 답한 {m.both}개 중 {m.same}개가 같아요
+        둘 다 답한 {m.both}개 중 {m.same}개가 비슷해요
       </p>
       <ul className="mt-5 space-y-2">
         {m.groups.map((g) => {
@@ -635,29 +639,29 @@ function ShareButton({ copied, onClick, label }: { copied: boolean; onClick: () 
   );
 }
 
-function Choice({
-  on,
-  tone,
-  onClick,
-  label,
-  children,
-}: {
-  on: boolean;
-  tone: Who;
-  onClick: () => void;
-  label: string;
-  children: string;
-}) {
-  const color = tone === "w" ? "bg-[#FFE3EC] text-[#E0457B] border-[#FFB3C9]" : "bg-[#E3EAFF] text-[#2F4AA8] border-[#B3C3F5]";
+/** 1~5점 — 양 끝이 크고 가운데가 작은 동그라미, 아래에 매우 아니다 · 보통 · 매우 그렇다 */
+function Scale5({ v, tone, n, onPick }: { v: Mark; tone: Who; n: number; onPick: (x: Mark) => void }) {
+  const fill = tone === "w" ? "bg-[#E0457B] border-[#E0457B]" : "bg-[#2F4AA8] border-[#2F4AA8]";
+  const size = ["", "h-9 w-9", "h-7 w-7", "h-6 w-6", "h-7 w-7", "h-9 w-9"];
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      aria-pressed={on}
-      className={`flex h-10 w-11 shrink-0 items-center justify-center rounded-xl border text-[20px] font-extrabold ${on ? color : "border-line bg-white text-[#C9CDD4]"}`}
-    >
-      {children}
-    </button>
+    <div className="mt-2 pl-8">
+      <div className="flex items-center justify-between px-1">
+        {([1, 2, 3, 4, 5] as Mark[]).map((x) => (
+          <button
+            key={x}
+            type="button"
+            onClick={() => onPick(x)}
+            aria-label={`${n}번 ${SCALE[x]}`}
+            aria-pressed={v === x}
+            className={`${size[x]} shrink-0 rounded-full border-2 ${v === x ? fill : "border-[#C9CDD4] bg-white"}`}
+          />
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between text-[11px] font-bold text-cap">
+        <span>매우 아니다</span>
+        <span>보통</span>
+        <span>매우 그렇다</span>
+      </div>
+    </div>
   );
 }

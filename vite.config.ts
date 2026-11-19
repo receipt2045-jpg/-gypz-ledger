@@ -41,8 +41,8 @@ const OG_PAGES: OgPage[] = [
   {
     dir: 'values',
     title: '결영이네 · 부부 재테크 가치관 체크리스트 50',
-    description: '아내·남편이 각자 ○✕ 하고, 생각이 다른 것부터 이야기해 보세요. 소비·저축·통장·부수입·투자·대출까지 50가지.',
-    image: 'https://moabuli.com/og-values.png?v=1',
+    description: '아내·남편이 각자 1~5점 매기고, 우리 부부 궁합과 생각이 먼 것부터 확인해 보세요. 소비·저축·통장·부수입·투자·대출까지 50가지.',
+    image: 'https://moabuli.com/og-values.png?v=2',
   },
   {
     dir: 'survey',

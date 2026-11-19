@@ -29,7 +29,7 @@ export const SHARES: ShareItem[] = [
     slug: 'values',
     path: '/values',
     title: '부부 재테크 가치관 체크리스트 50',
-    sub: '아내·남편이 각자 ○✕ 하면 생각이 다른 것만 모아 보여 줘요 — 폰이 따로면 링크로 보내서',
+    sub: '아내·남편이 각자 1~5점 매기면 궁합 점수와 생각이 먼 것을 보여 줘요 — 폰이 따로면 링크로 합쳐서',
     category: '재테크',
     date: '2026-11-19',
     minutes: 10,

@@ -3,7 +3,7 @@
 -- Supabase 대시보드 > SQL Editor 에 붙여넣고 Run. 여러 번 실행해도 안전합니다.
 --
 -- moabuli.com/#/values 에서 로그인한 부부는 각자 폰으로 답하면 여기서 합쳐진다.
--- 한 사람 = 한 행. role 은 그 사람이 고른 칸(w 아내 · h 남편), answers 는 50글자(0 빈칸·1 ○·2 ✕).
+-- 한 사람 = 한 행. role 은 그 사람이 고른 칸(w 아내 · h 남편), answers 는 50글자(0 빈칸·1~5점 — 1 매우 아니다 … 5 매우 그렇다, 11-20).
 -- 같은 가구 멤버만 읽고, 자기 행만 쓴다.
 -- ============================================================
 
@@ -13,7 +13,7 @@ create table if not exists public.household_values (
   household_id uuid not null references public.households(id) on delete cascade,
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   role text not null check (role in ('w', 'h')),
-  answers text not null check (answers ~ '^[012]{50}$'),
+  answers text not null check (answers ~ '^[0-5]{50}$'),
   updated_at timestamptz not null default now(),
   primary key (household_id, user_id)
 );

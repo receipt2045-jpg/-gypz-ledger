@@ -80,7 +80,7 @@ def survey_card() -> Image.Image:
 
 
 def values_card() -> Image.Image:
-    return titled_card("가치관 체크리스트", "부부가 함께 ○✕ 50가지")
+    return titled_card("가치관 체크리스트", "부부가 각자 1~5점, 50가지")
 
 
 def titled_card(title: str, sub: str) -> Image.Image:
