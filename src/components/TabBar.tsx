@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { BookOpen, Home, Landmark, Newspaper, Settings } from 'lucide-react'
+import { BookOpen, Coins, Home, Landmark, Newspaper, Settings } from 'lucide-react'
 import { useLedgerStore } from '../lib/store'
 
 /**
@@ -8,15 +8,18 @@ import { useLedgerStore } from '../lib/store'
  * 자산 로드맵을 뺐다 — 카드가 많고 같은 말을 반복해서 무엇을 하라는 건지 흐렸다.
  * 소비 기록은 가계부 안으로 들어갔다(가계부 맨 위 '오늘의 소비 기록'). 오늘 기록 전이면
  * 가계부 탭에 빨간 점. 게시판은 공지·계산기·정보를 모은 '정보' 탭이 됐다 → 2026-10-06 이름을 '돈 공부'로.
+ *
+ * 2026-11-19 부수입 탭을 넣었다 — 가계부 · 부수입 · 홈 · 자산 · 돈 공부.
+ * 설정은 홈 오른쪽 위 톱니바퀴로 (PC 왼쪽 메뉴엔 그대로).
  */
 const LEFT = [
   { to: '/monthly', label: '가계부', Icon: BookOpen },
-  { to: '/assets', label: '자산', Icon: Landmark },
+  { to: '/side', label: '부수입', Icon: Coins },
 ] as const
 
 const RIGHT = [
+  { to: '/assets', label: '자산', Icon: Landmark },
   { to: '/info', label: '돈 공부', Icon: Newspaper },
-  { to: '/settings', label: '설정', Icon: Settings },
 ] as const
 
 /** 오늘 날짜 키 (로컬 기준) — reactions.streakOf와 같은 방식 */
@@ -108,12 +111,13 @@ export default function TabBar() {
 const SIDE = [
   { to: '/', label: '홈', Icon: Home, end: true },
   { to: '/monthly', label: '가계부', Icon: BookOpen, end: false },
+  { to: '/side', label: '부수입', Icon: Coins, end: false },
   { to: '/assets', label: '자산', Icon: Landmark, end: false },
   { to: '/info', label: '돈 공부', Icon: Newspaper, end: false },
   { to: '/settings', label: '설정', Icon: Settings, end: false },
 ] as const
 
-/** PC(가로 1024px 이상) 왼쪽 메뉴 — 아래 탭과 같은 다섯 칸 (2026-10-06) */
+/** PC(가로 1024px 이상) 왼쪽 메뉴 — 아래 탭 다섯 칸 + 설정 (2026-10-06, 11-19 부수입) */
 export function SideNav({ active }: { active?: string } = {}) {
   const confessedToday = useConfessedToday()
   return (

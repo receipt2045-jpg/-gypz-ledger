@@ -18,6 +18,7 @@ import UpdateBanner from './components/UpdateBanner'
 import PreviewBar from './components/PreviewBar'
 import Home from './pages/Home'
 import Monthly from './pages/Monthly'
+import SideIncome from './pages/SideIncome'
 import Assets from './pages/Assets'
 import Stocks from './pages/Stocks'
 import StockJournal from './pages/StockJournal'
@@ -261,6 +262,7 @@ function AppRoutes() {
           {/* 옛 탭 주소(2026-09-30 개편 전) — 홈 화면 바로가기·링크가 깨지지 않게 */}
           <Route path="/board" element={<Navigate to="/info" replace />} />
           <Route path="/monthly" element={<Monthly />} />
+          <Route path="/side" element={<SideIncome />} />
           <Route path="/assets" element={<Assets />} />
           {/* 주식 일지 (2026-10-25) — 자산 탭 주식 칸에서 들어온다 */}
           <Route path="/stocks" element={<Stocks />} />
