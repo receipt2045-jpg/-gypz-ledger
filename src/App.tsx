@@ -53,6 +53,7 @@ import Coupang from './pages/Coupang'
 import Cofix from './pages/Cofix'
 import Survey from './pages/Survey'
 import Values from './pages/Values'
+import ShareDock from './components/ShareDock'
 import MoneyToon from './pages/MoneyToon'
 import Share from './pages/Share'
 import PublicNews from './pages/PublicNews'
@@ -97,6 +98,8 @@ export default function App() {
         <Route path="/consult" element={<Consult />} />
         <Route path="*" element={<AuthGate />} />
       </Routes>
+      {/* 자료 화면이면 맨 아래에 '몇 명이 봤어요 · 공유하기' (2026-11-21) */}
+      <ShareDock />
     </>
   )
 }

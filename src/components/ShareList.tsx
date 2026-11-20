@@ -2,10 +2,12 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { openShare } from './ShareMore'
 import { isNewShare, shareDate, sharesByDate } from '../lib/shares'
+import { useShareViews, viewsLabel } from '../lib/shareViews'
 
 /** 돈 공부 탭 '자료 나눔' — 새로 올라온 3개 (토스피드 번호 목록) + 전체 보기 */
 export default function ShareList() {
   const navigate = useNavigate()
+  const views = useShareViews()
   return (
     <section aria-label="자료 나눔" className="space-y-2">
       <div className="flex items-center justify-between px-1">
@@ -38,6 +40,7 @@ export default function ShareList() {
                   </span>
                   <span className="mt-0.5 block text-[12px] text-cap">
                     {s.category} · {shareDate(s.date)}
+                    {viewsLabel(views[s.slug]) && ` · ${viewsLabel(views[s.slug])}이 봤어요`}
                   </span>
                 </span>
               </button>
