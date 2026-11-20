@@ -88,12 +88,14 @@ describe('고백 페이지 — 우리집 기록 보기·삭제', () => {
           category: '식비',
           kind: 'variable',
           amount: 9_000,
+          note: '예전 장보기',
           createdAt: daysAgo(20).toISOString(),
         },
       ],
     })
     renderScreen(<Confess />)
-    expect(screen.queryByText('9,000원')).not.toBeInTheDocument()
+    // 금액으로 찾으면 20일 전이 이번 달일 때 '이번 달 쓴 돈' 카드에 걸린다(11/21에 실패) — 메모로 목록만 본다
+    expect(screen.queryByText(/예전 장보기/)).not.toBeInTheDocument()
     // 최근 14일이 비어도 '지난 기록 더 보기'는 보인다 (2026-11-19 점검)
     expect(screen.getByText(/부터는 기록이 없어요/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /지난 기록 더 보기/ })).toBeInTheDocument()
