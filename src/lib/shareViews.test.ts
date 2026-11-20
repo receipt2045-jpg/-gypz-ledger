@@ -14,9 +14,11 @@ describe('자료 나눔 — 몇 명이 봤는지·공유 (2026-11-21)', () => {
     expect(shareOfPath('/monthly')).toBeUndefined()
   })
 
-  it('10명 전까지는 숫자를 안 보여 준다', () => {
+  it('100명 전까지는 숫자를 안 보여 준다', () => {
     expect(viewsLabel(undefined)).toBeNull()
-    expect(viewsLabel(VIEW_MIN - 1)).toBeNull()
+    expect(VIEW_MIN).toBe(100)
+    expect(viewsLabel(99)).toBeNull()
+    expect(viewsLabel(100)).toBe('100명')
     expect(viewsLabel(1203)).toBe('1,203명')
   })
 

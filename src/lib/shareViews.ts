@@ -6,8 +6,8 @@ import { supabase } from './supabase'
 import { sharesByDate, type ShareItem } from './shares'
 import { shareText } from './native'
 
-/** 이 수보다 적으면 숫자 대신 아무것도 안 보여 준다 — '3명이 봤어요'는 오히려 안 읽고 싶어진다 */
-export const VIEW_MIN = 10
+/** 이 수보다 적으면 숫자를 안 보여 준다 — 100명부터 (2026-11-21 결영 요청, 처음엔 10명이었다) */
+export const VIEW_MIN = 100
 
 const VIEWER_KEY = 'moabuli.viewer'
 
