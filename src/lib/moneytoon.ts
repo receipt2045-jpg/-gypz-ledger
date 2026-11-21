@@ -57,12 +57,20 @@ export const MONEYTOONS: MoneyToon[] = Object.values(files)
 
 export const moneyToon = (slug: string | undefined) => MONEYTOONS.find((m) => m.slug === slug)
 
+/**
+ * 머니툰 자료 분류 — json에 category가 없을 때 (2026-11-21).
+ * 머니툰 파일은 자동으로 다시 만들어지며 category 칸이 빠질 수 있어서, 분류는 여기에도 적어 둔다.
+ */
+const CATEGORY_BY_SLUG: Record<string, ShareCategory> = {
+  jaechohwan: '내집마련',
+}
+
 export const MONEYTOON_SHARES: ShareItem[] = MONEYTOONS.map((m) => ({
   slug: `money-${m.slug}`,
   path: `/money/${m.slug}`,
   title: m.title,
   sub: `머니툰 「${m.episode}」 정리본`,
-  category: m.category ?? '재테크',
+  category: m.category ?? CATEGORY_BY_SLUG[m.slug] ?? '재테크',
   date: m.date,
   minutes: 2,
   emoji: m.emoji,
