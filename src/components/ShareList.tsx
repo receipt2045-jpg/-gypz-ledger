@@ -15,7 +15,7 @@ import { useShareViews, viewsLabel } from '../lib/shareViews'
  * 돈 공부 탭 '자료 나눔' — 새로 올라온 3개 (토스피드 번호 목록) + 전체 보기.
  * 2026-11-21 분류 칩: 고르면 그 분류 새 자료 3개, 전체 보기도 그 분류로(#/share?c=육아).
  */
-export default function ShareList() {
+export default function ShareList({ count = 3 }: { count?: number } = {}) {
   const navigate = useNavigate()
   const views = useShareViews()
   const [cat, setCat] = useState<ShareCategory | null>(null)
@@ -47,7 +47,7 @@ export default function ShareList() {
         ))}
       </div>
       <ol className="rounded-card bg-white px-4 shadow-card">
-        {list.slice(0, 3).map((s, i) => (
+        {list.slice(0, count).map((s, i) => (
           <li key={s.slug} className="border-b border-line last:border-b-0">
             <button
               onClick={() => openShare(navigate, s.path)}
