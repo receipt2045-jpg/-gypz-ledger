@@ -58,4 +58,11 @@
   .thin-scroll::-webkit-scrollbar-track {
     background: transparent;
   }
+  /* 가로로 넘기는 칩 줄 — 막대는 숨긴다 (손가락으로 넘긴다, 2026-11-21 자료 나눔 분류) */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

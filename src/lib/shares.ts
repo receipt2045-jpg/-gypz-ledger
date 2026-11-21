@@ -2,7 +2,8 @@
 // 단톡·인스타로 나눈 자료를 한곳에 모은다. 새 자료 = 페이지 하나 + 여기 한 줄.
 // 이 목록 하나로 공개 목록(/share), 돈 공부 탭, 각 자료 맨 끝 '다른 자료'가 같이 바뀐다.
 
-export type ShareCategory = '재테크' | '육아' | '내집마련'
+// 2026-11-21 자료가 늘어 '짠테크'를 나눴다 — 쿠팡 돌려받기·AI 설문처럼 아끼고 버는 자료
+export type ShareCategory = '내집마련' | '육아' | '짠테크' | '재테크'
 
 export interface ShareItem {
   slug: string
@@ -22,7 +23,11 @@ export interface ShareItem {
 
 import { MONEYTOON_SHARES } from './moneytoon'
 
-export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집마련']
+export const SHARE_CATEGORIES: ShareCategory[] = ['내집마련', '육아', '짠테크', '재테크']
+
+/** 주소의 ?c= 값 → 분류 (모르는 값이면 전체) */
+export const parseShareCategory = (v: string | null): ShareCategory | null =>
+  SHARE_CATEGORIES.find((c) => c === v) ?? null
 
 export const SHARES: ShareItem[] = [
   {
@@ -52,7 +57,7 @@ export const SHARES: ShareItem[] = [
     path: '/survey',
     title: '커피값, AI 비서가 벌어와요',
     sub: '기프티콘 주는 설문을 하루 2번 AI가 찾아서 대신 응모해요 — 명령어 복사해서 그대로 쓰기',
-    category: '재테크',
+    category: '짠테크',
     date: '2026-11-19',
     minutes: 3,
     emoji: '☕',
@@ -74,7 +79,7 @@ export const SHARES: ShareItem[] = [
     path: '/coupang',
     title: '쿠팡에서 쓴 돈, 돌려받는 3가지',
     sub: '최저가 알림 → 기프티콘 → 결제금액 2% 현금까지, 순서대로 정리했어요',
-    category: '재테크',
+    category: '짠테크',
     date: '2026-11-09',
     minutes: 3,
     emoji: '🛒',
