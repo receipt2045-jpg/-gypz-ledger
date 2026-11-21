@@ -56,6 +56,12 @@ const OG_PAGES: OgPage[] = [
     description: '남은 대출금과 금리만 넣으면 다음 금리변경일부터 한 달에 더 내는 이자를 바로 계산해요.',
     image: 'https://moabuli.com/og-cofix.png?v=1',
   },
+  {
+    dir: 'toothpaste',
+    title: '결영이네 · 무불소 아기치약 10종 비교',
+    description: '어린이집에 보낼 치약 10종을 성분·뚜껑·10g당 가격으로 비교했어요. 어린이집 양치 파우치 3종과 비교표 PDF까지.',
+    image: 'https://moabuli.com/og-toothpaste.png?v=1',
+  },
 ]
 
 // 머니툰 자료(src/lib/moneytoon/*.json, 2026-11-19) — 파일마다 moabuli.com/money/<slug> 미리보기를 저절로

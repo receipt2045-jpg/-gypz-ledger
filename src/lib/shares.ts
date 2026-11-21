@@ -26,6 +26,17 @@ export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집
 
 export const SHARES: ShareItem[] = [
   {
+    slug: 'toothpaste',
+    path: '/toothpaste',
+    title: '무불소 아기치약 10종, 성분·뚜껑·가격 비교',
+    sub: '어린이집에 보낼 치약 10종을 10g당 가격으로 비교하고, 양치 파우치 3종까지 정리했어요',
+    category: '육아',
+    date: '2026-11-21',
+    minutes: 5,
+    emoji: '🪥',
+    tint: 'bg-cyan-50',
+  },
+  {
     slug: 'values',
     path: '/values',
     title: '부부 재테크 가치관 체크리스트 50',

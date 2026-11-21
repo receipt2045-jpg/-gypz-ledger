@@ -4,10 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import Share from './Share'
 import ShareMore from '../components/ShareMore'
-import { SHARES } from '../lib/shares'
+import { otherShares } from '../lib/shares'
 
-// 금테크 말고 가장 최근 자료 — 새 자료가 올라와도 테스트가 안 깨지게 (11-19)
-const NEWEST = [...SHARES].filter((s) => s.slug !== 'gold').sort((a, b) => b.date.localeCompare(a.date))[0]
+// 금테크 맨 끝 '다른 자료' 첫 칸 — 새 자료가 올라와도 테스트가 안 깨지게 (11-19)
+// 같은 분류(재테크)가 먼저라, 다른 분류 새 자료(11-21 육아 치약)가 올라와도 여기 안 걸린다
+const NEWEST = otherShares('/gold')[0]
 
 function open(path: string) {
   const user = userEvent.setup()

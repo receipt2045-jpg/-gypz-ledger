@@ -83,6 +83,10 @@ def values_card() -> Image.Image:
     return titled_card("가치관 체크리스트", "부부가 각자 1~5점, 50가지")
 
 
+def toothpaste_card() -> Image.Image:
+    return titled_card("아기치약 10종 비교", "무불소 · 어린이집 양치 파우치")
+
+
 def titled_card(title: str, sub: str) -> Image.Image:
     """동전 아이콘 왼쪽 + 결영이네 / 큰 제목 / 회색 한 줄"""
     img = Image.new("RGB", (W, H), WHITE)
@@ -110,6 +114,7 @@ def main():
     cofix_card().save(PUBLIC / "og-cofix.png", optimize=True)
     survey_card().save(PUBLIC / "og-survey.png", optimize=True)
     values_card().save(PUBLIC / "og-values.png", optimize=True)
+    toothpaste_card().save(PUBLIC / "og-toothpaste.png", optimize=True)
     print("og images written")
 
 
