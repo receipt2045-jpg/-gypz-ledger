@@ -38,6 +38,7 @@ import WeeklyCostCard from '../components/WeeklyCostCard'
 import MonthSpendCard from '../components/MonthSpendCard'
 import RecoCard from '../components/RecoCard'
 import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
+import { noSpendDays } from '../lib/noSpend'
 import { pickConfessReco, type RecoCard as Reco } from '../lib/reco'
 import { resolveLedger } from '../lib/carryover'
 import { useLedgerStore } from '../lib/store'
@@ -395,17 +396,14 @@ export default function Confess() {
   const calMarks = useMemo(() => {
     const m: Record<string, DayMark> = {}
     for (const c of calMonth) {
-      if (c.category === NO_SPEND) {
-        ;(m[dayOf(c)] ??= {}).heart = true
-        continue
-      }
       if (c.kind !== 'income' && c.kind !== 'variable' && c.kind !== 'fixed') continue
       const d = (m[dayOf(c)] ??= {})
       if (c.kind === 'income') d.plus = (d.plus ?? 0) + c.amount
       else d.minus = (d.minus ?? 0) + c.amount
     }
+    for (const day of noSpendDays(calYm, calMonth, confessions, today)) (m[day] ??= {}).heart = true
     return m
-  }, [calMonth])
+  }, [calMonth, calYm, confessions, today])
   const calOut = Object.values(calMarks).reduce((t, d) => t + (d.minus ?? 0), 0)
   const calIn = Object.values(calMarks).reduce((t, d) => t + (d.plus ?? 0), 0)
   const calDayIn = calDay && calDay.startsWith(calYm) ? calDay : null

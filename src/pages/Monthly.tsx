@@ -16,6 +16,7 @@ import { openingYm, resolveLedger } from '../lib/carryover'
 import { currentYm, formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER, NO_SPEND } from '../lib/constants'
 import { confessSums, monthConfessions } from '../lib/confessLedger'
+import { noSpendDays } from '../lib/noSpend'
 import { memberStyle } from '../lib/memberColors'
 import type { CategoryGroup } from '../types'
 
@@ -99,11 +100,13 @@ export default function Monthly() {
   // 위 합계와 같은 기준 — 수입이 아닌 건 쓴 돈(−), 수입은 들어온 돈(+)
   const logMarks: Record<string, DayMark> = {}
   for (const c of monthLog) {
+    if (c.category === NO_SPEND) continue
     const d = (logMarks[dayKey(c)] ??= {})
-    if (c.category === NO_SPEND) d.heart = true
-    else if (c.kind === 'income') d.plus = (d.plus ?? 0) + c.amount
+    if (c.kind === 'income') d.plus = (d.plus ?? 0) + c.amount
     else d.minus = (d.minus ?? 0) + c.amount
   }
+  for (const day of noSpendDays(ym, monthLog, confessions, todayKey))
+    (logMarks[day] ??= {}).heart = true
   const logDayIn = logDay && logDay.startsWith(ym) ? logDay : null
   const shownLog =
     logView === 'calendar'

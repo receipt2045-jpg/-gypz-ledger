@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 export type DayMark = {
   plus?: number
   minus?: number
-  /** 무지출이라고 적은 날 — 그날 쓴 돈이 없으면 하트 (2026-11-24 결영 요청) */
+  /** 무지출 날 — 하트 (2026-11-24 결영 요청). 어느 날이 무지출인지는 lib/noSpend */
   heart?: boolean
 }
 
@@ -112,7 +112,7 @@ export default function MonthCalendar({
               aria-pressed={isSel}
               aria-label={`${m}월 ${d}일${mk?.minus ? ` 나간 돈 ${mk.minus.toLocaleString()}원` : ''}${
                 mk?.plus ? ` 들어온 돈 ${mk.plus.toLocaleString()}원` : ''
-              }${mk?.heart && !mk.minus ? ' 무지출' : ''}`}
+              }${mk?.heart ? ' 무지출' : ''}`}
               className={`flex min-h-[50px] flex-col items-center rounded-lg px-0.5 pt-1 ${
                 isSel ? 'bg-ink/[0.06] ring-1 ring-ink/30' : 'active:bg-bg'
               }`}
@@ -131,7 +131,7 @@ export default function MonthCalendar({
                 {d}
               </span>
               <span className={`mt-0.5 flex w-full ${plusFirst ? 'flex-col-reverse' : 'flex-col'}`}>
-                {mk?.heart && !mk.minus ? (
+                {mk?.heart ? (
                   <span aria-hidden className="text-[12px] leading-tight text-rose-500">
                     ♥
                   </span>
