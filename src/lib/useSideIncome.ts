@@ -5,6 +5,7 @@ import { displayYm, resolveLedger, resolveSnapshot } from './carryover'
 import {
   applyToAssets,
   applyToLedger,
+  dueRepeats,
   type SideAllocation,
   type SideIncome,
   type SideSettlement,
@@ -27,7 +28,17 @@ export function useSideIncome() {
 
   const reload = useCallback(async () => {
     try {
-      const d = await api.load()
+      let d = await api.load()
+      // 매달로 표시한 것 중 아직 안 적힌 달을 채운다 (2026-11-23)
+      const due = dueRepeats(d.entries, new Date().toLocaleDateString('sv-SE'))
+      if (due.length) {
+        try {
+          await api.addMany(due)
+          d = await api.load()
+        } catch {
+          /* 못 채워도 화면은 그대로 — 다음에 열 때 다시 */
+        }
+      }
       setEntries(d.entries)
       setSettles(d.settles)
       setStatus('ready')
@@ -48,8 +59,21 @@ export function useSideIncome() {
     await api.update(id, patch)
     await reload()
   }
+  /**
+   * 지우기 — 매달 기록을 지우면 다음에 열 때 같은 달이 또 생긴다.
+   * 그래서 묶음의 가장 최근 기록이면 남은 것 중 가장 최근 기록의 '매달'을 끈다(멈춤).
+   */
   const remove = async (id: string) => {
+    const target = entries.find((e) => e.id === id)
     await api.remove(id)
+    if (target?.repeat) {
+      const series = target.series ?? target.id
+      const rest = entries
+        .filter((e) => e.id !== id && (e.series ?? e.id) === series)
+        .sort((a, b) => (a.earnedOn < b.earnedOn ? 1 : -1))
+      if (rest[0]?.repeat && rest[0].earnedOn <= target.earnedOn)
+        await api.update(rest[0].id, { repeat: false })
+    }
     await reload()
   }
 

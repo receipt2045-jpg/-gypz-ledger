@@ -5,6 +5,7 @@ import {
   parseDateCell,
   parsePastedRows,
   SIDE_CATEGORIES,
+  SIDE_KINDS,
   type SideIncome,
   type SideKind,
 } from '../lib/sideIncome'
@@ -29,6 +30,8 @@ interface Draft {
   amount: string
   who: Who
   note: string
+  /** 매달 */
+  repeat: boolean
 }
 
 const digits = (s: string) => s.replace(/[^\d]/g, '')
@@ -47,6 +50,7 @@ function fromEntry(e: SideIncome): Draft {
     amount: String(e.amount),
     who: e.shared ? 'shared' : e.memberNo,
     note: e.note ?? '',
+    repeat: e.repeat === true,
   }
 }
 
@@ -61,6 +65,7 @@ function blank(date: string, me: 1 | 2, kind: SideKind = 'cash'): Draft {
     amount: '',
     who: me,
     note: '',
+    repeat: false,
   }
 }
 
@@ -72,7 +77,8 @@ const same = (a: Draft, e: SideIncome) => {
     a.category.trim() === b.category &&
     digits(a.amount) === b.amount &&
     a.who === b.who &&
-    a.note.trim() === b.note
+    a.note.trim() === b.note &&
+    a.repeat === b.repeat
   )
 }
 
@@ -143,6 +149,7 @@ export default function SideGrid({
       memberNo: r.who === 'shared' ? me : r.who,
       shared: r.who === 'shared' ? true : undefined,
       note: r.note.trim() || undefined,
+      repeat: r.repeat,
     }
     saving.current.add(key)
     try {
@@ -223,19 +230,20 @@ export default function SideGrid({
   return (
     <div onPaste={(e) => void onPaste(e)}>
       <div className="no-scrollbar -mx-5 overflow-x-auto px-5">
-        <table ref={tableRef} className="w-full min-w-[500px] table-fixed border-collapse">
+        <table ref={tableRef} className="w-full min-w-[560px] table-fixed border-collapse">
           <colgroup>
             <col className="w-[60px]" />
             <col className="w-[64px]" />
             <col className="w-[108px]" />
             <col className="w-[92px]" />
             <col className="w-[56px]" />
+            <col className="w-[44px]" />
             <col />
             <col className="w-[32px]" />
           </colgroup>
           <thead>
             <tr className="bg-bg text-left text-[11.5px] font-bold text-sub">
-              {['날짜', '구분', '종류', '금액', '누가', '메모', ''].map((h, i) => (
+              {['날짜', '구분', '종류', '금액', '누가', '매달', '메모', ''].map((h, i) => (
                 <th
                   key={i}
                   className="border-b border-r border-line/80 px-2 py-1.5 last:border-r-0"
@@ -253,7 +261,15 @@ export default function SideGrid({
                 <tr
                   key={r.key}
                   onBlur={onRowBlur(r.key)}
-                  className={empty ? 'bg-bg/40' : r.kind === 'saved' ? 'bg-brand/[0.03]' : ''}
+                  className={
+                    empty
+                      ? 'bg-bg/40'
+                      : r.kind === 'saved'
+                        ? 'bg-brand/[0.03]'
+                        : r.kind === 'spent'
+                          ? 'bg-rose-50/40'
+                          : ''
+                  }
                 >
                   <td className={cell}>
                     <input
@@ -279,10 +295,11 @@ export default function SideGrid({
                       aria-label={`${i + 1}번째 줄 구분`}
                       value={r.kind}
                       onChange={(e) => patch(r.key, { kind: e.target.value as SideKind })}
-                      className={`${input} appearance-none px-0 text-center font-semibold ${r.kind === 'cash' ? 'text-emerald-700' : 'text-brand'}`}
+                      className={`${input} appearance-none px-0 text-center font-semibold ${r.kind === 'cash' ? 'text-emerald-700' : r.kind === 'saved' ? 'text-brand' : 'text-rose-600'}`}
                     >
                       <option value="cash">번 돈</option>
                       <option value="saved">아낀 돈</option>
+                      <option value="spent">쓴 돈</option>
                     </select>
                   </td>
                   <td className={cell}>
@@ -294,9 +311,7 @@ export default function SideGrid({
                       onChange={(e) => {
                         const v = e.target.value
                         // 목록에서 고른 종류가 다른 쪽이면 구분도 따라간다
-                        const known = [...SIDE_CATEGORIES.cash, ...SIDE_CATEGORIES.saved].includes(
-                          v,
-                        )
+                        const known = SIDE_KINDS.some((k) => SIDE_CATEGORIES[k].includes(v))
                         patch(
                           r.key,
                           known && v !== '기타'
@@ -345,6 +360,15 @@ export default function SideGrid({
                       <option value="shared">공동</option>
                     </select>
                   </td>
+                  <td className={`${cell} text-center`}>
+                    <input
+                      type="checkbox"
+                      aria-label={`${i + 1}번째 줄 매달`}
+                      checked={r.repeat}
+                      onChange={(e) => patch(r.key, { repeat: e.target.checked })}
+                      className="h-4 w-4 align-middle accent-[#3182F6]"
+                    />
+                  </td>
                   <td className={cell}>
                     <input
                       aria-label={`${i + 1}번째 줄 메모`}
@@ -377,7 +401,7 @@ export default function SideGrid({
           </tbody>
         </table>
       </div>
-      {(['cash', 'saved'] as const).map((k) => (
+      {SIDE_KINDS.map((k) => (
         <datalist key={k} id={`side-cats-${k}`}>
           {SIDE_CATEGORIES[k].map((c) => (
             <option key={c} value={c} />

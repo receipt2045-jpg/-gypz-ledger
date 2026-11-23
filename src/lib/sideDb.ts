@@ -9,6 +9,8 @@ export type NewSideIncome = Omit<SideIncome, 'id' | 'createdAt'>
 export interface SideApi {
   load(): Promise<{ entries: SideIncome[]; settles: SideSettlement[] }>
   add(n: NewSideIncome): Promise<SideIncome>
+  /** 매달 기록을 정해진 id로 넣는다 — 이미 있으면 건너뛴다 */
+  addMany(rows: SideIncome[]): Promise<void>
   update(id: string, patch: Partial<NewSideIncome>): Promise<void>
   remove(id: string): Promise<void>
   settle(ym: string, allocations: SideAllocation[]): Promise<void>
@@ -30,6 +32,8 @@ function toEntry(r: any): SideIncome {
     note: r.note ?? undefined,
     earnedOn: r.earned_on,
     createdAt: r.created_at,
+    repeat: r.repeat === true ? true : undefined,
+    series: r.series ?? undefined,
   }
 }
 
@@ -44,6 +48,8 @@ function toRow(n: Partial<NewSideIncome>) {
   if ('paid' in n) row.paid = n.paid ?? null
   if ('note' in n) row.note = nz(n.note)
   if (n.earnedOn !== undefined) row.earned_on = n.earnedOn
+  if ('repeat' in n) row.repeat = n.repeat === true
+  if ('series' in n) row.series = n.series ?? null
   return row
 }
 
@@ -78,6 +84,14 @@ export function remoteSide(householdId: string): SideApi {
         .single()
       if (error) throw error
       return toEntry(data)
+    },
+    async addMany(rows) {
+      if (rows.length === 0) return
+      const { error } = await supabase.from('side_incomes').upsert(
+        rows.map((r) => ({ id: r.id, household_id: householdId, ...toRow(r) })),
+        { onConflict: 'id', ignoreDuplicates: true },
+      )
+      if (error) throw error
     },
     async update(id, patch) {
       const { error } = await supabase.from('side_incomes').update(toRow(patch)).eq('id', id)
@@ -118,6 +132,10 @@ export function localSide(seed: { entries: SideIncome[]; settles: SideSettlement
       const e: SideIncome = { ...n, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
       entries = [e, ...entries]
       return e
+    },
+    async addMany(rows) {
+      const have = new Set(entries.map((e) => e.id))
+      entries = [...rows.filter((r) => !have.has(r.id)), ...entries]
     },
     async update(id, patch) {
       entries = entries.map((e) => (e.id === id ? { ...e, ...patch } : e))

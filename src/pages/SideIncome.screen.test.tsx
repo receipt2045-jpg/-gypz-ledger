@@ -164,3 +164,32 @@ describe('부수입 표로 적기 — 엑셀처럼 (2026-11-23)', () => {
     expect(await screen.findByText('513,000원')).toBeInTheDocument()
   })
 })
+
+describe('부수입 쓴 돈 (2026-11-23)', () => {
+  it('표에서 쓴 돈을 적으면 남은 돈(번 돈 − 쓴 돈)이 나온다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    const n = screen.getAllByLabelText(/번째 줄 금액/).length
+    await user.selectOptions(screen.getByLabelText(`${n}번째 줄 구분`), 'spent')
+    await user.type(screen.getByLabelText(`${n}번째 줄 종류`), '수수료')
+    await user.click(screen.getByLabelText(`${n}번째 줄 매달`))
+    await user.type(screen.getByLabelText(`${n}번째 줄 금액`), '3000{Enter}')
+    // 210,000 − 3,000
+    expect(await screen.findByText('207,000원')).toBeInTheDocument()
+    expect(screen.getByText(/번 돈 − 쓴 돈 = 남은 돈/)).toBeInTheDocument()
+    // 이번 달 부수입 = 번 돈 + 아낀 돈 − 쓴 돈
+    expect(screen.getByText('470,000원')).toBeInTheDocument()
+  })
+
+  it('정산할 때 보낼 수 있는 돈은 쓴 돈을 뺀 만큼', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    const n = screen.getAllByLabelText(/번째 줄 금액/).length
+    await user.selectOptions(screen.getByLabelText(`${n}번째 줄 구분`), 'spent')
+    await user.type(screen.getByLabelText(`${n}번째 줄 종류`), '교통비')
+    await user.type(screen.getByLabelText(`${n}번째 줄 금액`), '10000{Enter}')
+    await screen.findByText('200,000원')
+    await user.click(screen.getByRole('button', { name: `${month} 부수입 정산하기` }))
+    expect(screen.getByText('안 보낸 돈 200,000원')).toBeInTheDocument()
+  })
+})

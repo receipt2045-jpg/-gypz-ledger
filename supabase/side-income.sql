@@ -8,7 +8,7 @@ create table if not exists public.side_incomes (
   household_id uuid not null references public.households(id) on delete cascade,
   member_no smallint not null check (member_no in (1, 2)), -- 번 사람 (공동이면 적은 사람)
   shared boolean not null default false,
-  kind text not null check (kind in ('cash', 'saved')),
+  kind text not null check (kind in ('cash', 'saved', 'spent')), -- 번 돈·아낀 돈·쓴 돈 (spent는 side-income-spent.sql)
   category text not null check (char_length(category) between 1 and 30),
   amount bigint not null check (amount >= 0), -- 들어온 돈 / 아낀 돈
   price bigint check (price >= 0), -- 아낀 돈: 원래 얼마짜리였나

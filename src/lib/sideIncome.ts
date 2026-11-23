@@ -4,19 +4,27 @@
 //   아낀 돈(saved)  — 안 나간 돈: 체험단·협찬 제품·포인트 결제·기프티콘 사용…
 // 월말 부수입 정산에서 들어온 돈만 어디로 보낼지 정한다 (자산 통장 / 살림에 보태기).
 // 아낀 돈은 실제로 들어온 돈이 아니라 기록으로만 남긴다 — 생활비 계획이 부풀지 않게.
+// 2026-11-23 쓴 돈(spent) — 부수입 때문에 나간 돈(체험단 교통비·프로그램 구독·수수료…). 번 돈에서 빼서
+//   '남은 돈'을 보여 주고, 정산 때 보낼 수 있는 돈도 남은 돈까지. 매달 나가는 건 repeat로 다음 달에 저절로.
 import { genId } from './carryover'
+import { recurringId } from './childRecurring'
+import { shiftYm } from './format'
 import type { AssetItem, BudgetItem, MonthlyLedger } from '../types'
 
-export type SideKind = 'cash' | 'saved'
+export type SideKind = 'cash' | 'saved' | 'spent'
+
+export const SIDE_KINDS: SideKind[] = ['cash', 'saved', 'spent']
 
 export const SIDE_KIND_LABEL: Record<SideKind, string> = {
   cash: '번 돈',
   saved: '아낀 돈',
+  spent: '쓴 돈',
 }
 
 export const SIDE_CATEGORIES: Record<SideKind, string[]> = {
   cash: ['앱테크', '원고료·협찬비', '중고 판매', '기프티콘 판매', '캐시백·포인트 출금', '기타'],
   saved: ['체험단', '협찬 제품', '포인트 결제', '기프티콘 사용', '기타'],
+  spent: ['교통비', '구독·프로그램', '수수료', '재료·소모품', '장비', '광고비', '기타'],
 }
 
 export interface SideIncome {
@@ -36,6 +44,10 @@ export interface SideIncome {
   /** 'YYYY-MM-DD' */
   earnedOn: string
   createdAt: string
+  /** 매달 (다음 달에 같은 날 저절로 적는다) */
+  repeat?: boolean
+  /** 매달 적은 것끼리 묶는 번호 — 처음 기록의 id */
+  series?: string
 }
 
 /** 부수입 정산에서 들어온 돈을 보낸 곳 */
@@ -57,6 +69,10 @@ export const ymOfDate = (d: string) => d.slice(0, 7)
 export interface SideSummary {
   cash: number
   saved: number
+  spent: number
+  /** 번 돈 − 쓴 돈 */
+  net: number
+  /** 번 돈 + 아낀 돈 − 쓴 돈 */
   total: number
   /** 누가 — 공동은 따로 */
   byWho: { 1: number; 2: number; shared: number }
@@ -67,20 +83,29 @@ export function summarizeSide(entries: SideIncome[], ym: string): SideSummary {
   const out: SideSummary = {
     cash: 0,
     saved: 0,
+    spent: 0,
+    net: 0,
     total: 0,
     byWho: { 1: 0, 2: 0, shared: 0 },
-    byCategory: { cash: [], saved: [] },
+    byCategory: { cash: [], saved: [], spent: [] },
   }
-  const cats: Record<SideKind, Map<string, number>> = { cash: new Map(), saved: new Map() }
+  const cats: Record<SideKind, Map<string, number>> = {
+    cash: new Map(),
+    saved: new Map(),
+    spent: new Map(),
+  }
   for (const e of entries) {
     if (ymOfDate(e.earnedOn) !== ym || e.amount <= 0) continue
     out[e.kind] += e.amount
-    if (e.shared) out.byWho.shared += e.amount
-    else out.byWho[e.memberNo] += e.amount
+    // 누가 — 쓴 돈은 뺀다
+    const v = e.kind === 'spent' ? -e.amount : e.amount
+    if (e.shared) out.byWho.shared += v
+    else out.byWho[e.memberNo] += v
     cats[e.kind].set(e.category, (cats[e.kind].get(e.category) ?? 0) + e.amount)
   }
-  out.total = out.cash + out.saved
-  for (const k of ['cash', 'saved'] as const)
+  out.net = out.cash - out.spent
+  out.total = out.cash + out.saved - out.spent
+  for (const k of SIDE_KINDS)
     out.byCategory[k] = [...cats[k]]
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount)
@@ -92,13 +117,15 @@ export function yearSide(entries: SideIncome[], ym: string) {
   const year = ym.slice(0, 4)
   let cash = 0
   let saved = 0
+  let spent = 0
   for (const e of entries) {
     const m = ymOfDate(e.earnedOn)
     if (m.slice(0, 4) !== year || m > ym) continue
     if (e.kind === 'cash') cash += e.amount
-    else saved += e.amount
+    else if (e.kind === 'saved') saved += e.amount
+    else spent += e.amount
   }
-  return { cash, saved }
+  return { cash, saved, spent }
 }
 
 /**
@@ -197,9 +224,10 @@ export function applyToLedger(
 
 /** 이 종류가 어느 쪽인지 — 아낀 돈 목록에만 있는 이름이면 아낀 돈, 아니면 들어온 돈 */
 export function kindOfCategory(category: string): SideKind {
-  return SIDE_CATEGORIES.saved.includes(category) && !SIDE_CATEGORIES.cash.includes(category)
-    ? 'saved'
-    : 'cash'
+  if (category === '기타') return 'cash'
+  if (SIDE_CATEGORIES.spent.includes(category)) return 'spent'
+  if (SIDE_CATEGORIES.saved.includes(category)) return 'saved'
+  return 'cash'
 }
 
 export interface PastedRow {
@@ -284,6 +312,10 @@ export function parsePastedRows(
         kind = 'saved'
         continue
       }
+      if (!kind && /^(쓴\s*돈|지출|비용)$/.test(c)) {
+        kind = 'spent'
+        continue
+      }
       if (!who) {
         if (c === opts.names[0] || c === '남편') {
           who = 1
@@ -298,7 +330,10 @@ export function parsePastedRows(
           continue
         }
       }
-      if (!category && [...SIDE_CATEGORIES.cash, ...SIDE_CATEGORIES.saved].includes(c)) {
+      if (
+        !category &&
+        [...SIDE_CATEGORIES.cash, ...SIDE_CATEGORIES.saved, ...SIDE_CATEGORIES.spent].includes(c)
+      ) {
         category = c
         continue
       }
@@ -320,4 +355,42 @@ export function parsePastedRows(
     })
   }
   return { rows, skipped }
+}
+
+// ── 매달 (2026-11-23) ──
+
+const daysIn = (ym: string) => new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0).getDate()
+
+/**
+ * 매달로 표시한 기록 중 아직 안 적힌 달 — 묶음(series)마다 가장 최근 기록이 '매달'이면
+ * 그다음 달부터 오늘까지 같은 날짜(그 달에 없는 날이면 말일)로 만든다.
+ * id는 (묶음, 달)로 정해서 두 사람이 동시에 열어도 한 번만 들어간다.
+ * 멈추려면 가장 최근 기록의 '매달'을 끄면 된다.
+ */
+export function dueRepeats(entries: SideIncome[], today: string): SideIncome[] {
+  const latest = new Map<string, SideIncome>()
+  for (const e of entries) {
+    const key = e.series ?? e.id
+    const cur = latest.get(key)
+    if (!cur || e.earnedOn > cur.earnedOn) latest.set(key, e)
+  }
+  const out: SideIncome[] = []
+  for (const [series, e] of latest) {
+    if (!e.repeat) continue
+    const day = Number(e.earnedOn.slice(8, 10))
+    let ym = ymOfDate(e.earnedOn)
+    for (let guard = 0; guard < 24; guard++) {
+      ym = shiftYm(ym, 1)
+      const date = `${ym}-${String(Math.min(day, daysIn(ym))).padStart(2, '0')}`
+      if (date > today) break
+      out.push({
+        ...e,
+        id: recurringId(series, ym),
+        series,
+        earnedOn: date,
+        createdAt: `${date}T09:00:00.000Z`,
+      })
+    }
+  }
+  return out
 }

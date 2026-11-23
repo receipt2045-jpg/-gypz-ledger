@@ -6,6 +6,7 @@ import {
   parseDateCell,
   parsePastedRows,
   applyToLedger,
+  dueRepeats,
   livingSplit,
   savedAmount,
   summarizeSide,
@@ -46,8 +47,8 @@ describe('부수입 합계 (2026-11-19)', () => {
   })
 
   it('올해 합계는 그 달까지', () => {
-    expect(yearSide(list, '2026-11')).toEqual({ cash: 279_000, saved: 70_000 })
-    expect(yearSide(list, '2026-10')).toEqual({ cash: 99_000, saved: 0 })
+    expect(yearSide(list, '2026-11')).toEqual({ cash: 279_000, saved: 70_000, spent: 0 })
+    expect(yearSide(list, '2026-10')).toEqual({ cash: 99_000, saved: 0, spent: 0 })
   })
 
   it('아낀 돈 = 원래 값 − 낸 돈 (음수면 0)', () => {
@@ -164,5 +165,55 @@ describe('엑셀에서 붙여넣기 (2026-11-23)', () => {
     expect(kindOfCategory('체험단')).toBe('saved')
     expect(kindOfCategory('기타')).toBe('cash')
     expect(kindOfCategory('당근 판매')).toBe('cash')
+  })
+})
+
+describe('쓴 돈 · 매달 (2026-11-23)', () => {
+  it('쓴 돈은 번 돈에서 빼서 남은 돈, 누가에서도 뺀다', () => {
+    const list = [
+      e({ amount: 100_000 }),
+      e({ kind: 'saved', category: '체험단', amount: 30_000 }),
+      e({ kind: 'spent', category: '구독·프로그램', amount: 12_000 }),
+    ]
+    const s = summarizeSide(list, '2026-11')
+    expect(s.spent).toBe(12_000)
+    expect(s.net).toBe(88_000)
+    expect(s.total).toBe(118_000)
+    expect(s.byWho[1]).toBe(118_000)
+    expect(s.byCategory.spent).toEqual([{ category: '구독·프로그램', amount: 12_000 }])
+  })
+
+  it('쓴 돈 종류·말을 알아본다', () => {
+    expect(kindOfCategory('수수료')).toBe('spent')
+    const { rows } = parsePastedRows('11/4\t지출\t교통비\t4,800', {
+      year: '2026',
+      names: ['a', 'b'],
+      me: 1,
+    })
+    expect(rows[0]).toMatchObject({ kind: 'spent', category: '교통비', amount: 4_800 })
+  })
+
+  it('매달 — 다음 달부터 오늘까지 같은 날(말일 넘으면 말일)로, 한 번만', () => {
+    const sub = e({
+      id: 's1',
+      kind: 'spent',
+      category: '구독·프로그램',
+      amount: 9_900,
+      earnedOn: '2026-08-31',
+      repeat: true,
+    })
+    const due = dueRepeats([sub], '2026-11-23')
+    expect(due.map((d) => d.earnedOn)).toEqual(['2026-09-30', '2026-10-31'])
+    expect(due.every((d) => d.series === 's1' && d.repeat)).toBe(true)
+    // 다시 돌려도 같은 id — 서버가 겹치면 건너뛴다
+    expect(dueRepeats([sub], '2026-11-23').map((d) => d.id)).toEqual(due.map((d) => d.id))
+    // 다 채웠으면 더 없다 (11/30은 아직)
+    expect(dueRepeats([sub, ...due], '2026-11-23')).toEqual([])
+  })
+
+  it('가장 최근 기록의 매달을 끄면 멈춘다', () => {
+    const first = e({ id: 's1', earnedOn: '2026-09-05', repeat: true })
+    const last = e({ id: 's2', series: 's1', earnedOn: '2026-10-05', repeat: false })
+    expect(dueRepeats([first, last], '2026-11-23')).toEqual([])
   })
 })

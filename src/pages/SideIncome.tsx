@@ -12,6 +12,7 @@ import {
   livingSplit,
   savedAmount,
   SIDE_CATEGORIES,
+  SIDE_KINDS,
   SIDE_KIND_LABEL,
   summarizeSide,
   yearSide,
@@ -28,6 +29,9 @@ const short = (n: number) => abbreviateKRW(n).replace(/원$/, '')
 
 const CASH = 'text-emerald-600'
 const SAVE = 'text-brand'
+const SPENT = 'text-rose-600'
+/** 구분마다 글자색 */
+const TONE = { cash: CASH, saved: SAVE, spent: SPENT } as const
 
 /**
  * 부수입 가계부 (2026-11-19) — 하단 '부수입' 탭.
@@ -82,17 +86,27 @@ export default function SideIncome() {
       <p className="tnum mt-0.5 text-[28px] font-extrabold tracking-tight text-ink">
         {formatWon(s.total)}
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="rounded-btn bg-emerald-50 px-3 py-2.5">
+      <div className="mt-3 grid grid-cols-3 gap-1.5">
+        <div className="rounded-btn bg-emerald-50 px-2.5 py-2.5">
           <p className="text-[12px] font-bold text-emerald-700">번 돈</p>
-          <p className="tnum text-[17px] font-extrabold text-emerald-700">{formatWon(s.cash)}</p>
+          <p className="tnum text-[15px] font-extrabold text-emerald-700">{formatWon(s.cash)}</p>
         </div>
-        <div className="rounded-btn bg-brand/10 px-3 py-2.5">
+        <div className="rounded-btn bg-brand/10 px-2.5 py-2.5">
           <p className="text-[12px] font-bold text-brand">아낀 돈</p>
-          <p className="tnum text-[17px] font-extrabold text-brand">{formatWon(s.saved)}</p>
+          <p className="tnum text-[15px] font-extrabold text-brand">{formatWon(s.saved)}</p>
+        </div>
+        <div className="rounded-btn bg-rose-50 px-2.5 py-2.5">
+          <p className="text-[12px] font-bold text-rose-600">쓴 돈</p>
+          <p className="tnum text-[15px] font-extrabold text-rose-600">{formatWon(s.spent)}</p>
         </div>
       </div>
-      {s.total > 0 && (
+      {s.spent > 0 && (
+        <p className="tnum mt-2 text-[12.5px] text-sub">
+          번 돈 − 쓴 돈 = 남은 돈{' '}
+          <b className={s.net < 0 ? 'text-danger' : 'text-ink'}>{formatWon(s.net)}</b>
+        </p>
+      )}
+      {s.total > 0 && s.byWho[1] >= 0 && s.byWho[2] >= 0 && s.byWho.shared >= 0 && (
         <div className="mt-3">
           <div className="flex h-2 overflow-hidden rounded-full bg-bg">
             {([1, 2, 'shared'] as const).map((k) => (
@@ -121,6 +135,12 @@ export default function SideIncome() {
       <p className="mt-3 border-t border-line pt-2.5 text-[12px] text-cap">
         올해 번 돈 <b className="tnum text-sub">{formatWon(year.cash)}</b> · 아낀 돈{' '}
         <b className="tnum text-sub">{formatWon(year.saved)}</b>
+        {year.spent > 0 && (
+          <>
+            {' '}
+            · 쓴 돈 <b className="tnum text-sub">{formatWon(year.spent)}</b>
+          </>
+        )}
       </p>
     </div>
   )
@@ -139,7 +159,7 @@ export default function SideIncome() {
     <SettleCard
       ym={ym}
       entries={side.entries}
-      cash={s.cash}
+      cash={Math.max(0, s.net)}
       me={side.me}
       onCancel={() => setSettling(false)}
       onDone={async (allocs) => {
@@ -158,16 +178,12 @@ export default function SideIncome() {
 
   const list = (
     <div className="space-y-3">
-      {(['cash', 'saved'] as const).map((k) =>
+      {SIDE_KINDS.map((k) =>
         s.byCategory[k].length === 0 ? null : (
           <div key={k} className="rounded-card bg-card px-5 py-4 shadow-card">
             <div className="mb-1 flex items-baseline justify-between">
-              <p className={`text-[14px] font-bold ${k === 'cash' ? CASH : SAVE}`}>
-                {SIDE_KIND_LABEL[k]}
-              </p>
-              <p className={`tnum text-[14px] font-bold ${k === 'cash' ? CASH : SAVE}`}>
-                {formatWon(s[k])}
-              </p>
+              <p className={`text-[14px] font-bold ${TONE[k]}`}>{SIDE_KIND_LABEL[k]}</p>
+              <p className={`tnum text-[14px] font-bold ${TONE[k]}`}>{formatWon(s[k])}</p>
             </div>
             <div className="divide-y divide-line/70">
               {s.byCategory[k].map((c) => (
@@ -256,10 +272,8 @@ export default function SideIncome() {
                     {e.note ? ` · ${e.note}` : ''}
                   </span>
                 </span>
-                <span
-                  className={`tnum shrink-0 text-[13.5px] font-bold ${e.kind === 'cash' ? CASH : SAVE}`}
-                >
-                  {e.kind === 'cash' ? '+' : ''}
+                <span className={`tnum shrink-0 text-[13.5px] font-bold ${TONE[e.kind]}`}>
+                  {e.kind === 'cash' ? '+' : e.kind === 'spent' ? '−' : ''}
                   {formatWon(e.amount)}
                 </span>
                 <button
@@ -383,7 +397,8 @@ function SideForm({
     initCustom ? '직접' : (initial?.category ?? SIDE_CATEGORIES.cash[0]),
   )
   const [custom, setCustom] = useState(initCustom)
-  const [amount, setAmount] = useState(initial?.kind === 'cash' ? initial.amount : 0)
+  const [amount, setAmount] = useState(initial && initial.kind !== 'saved' ? initial.amount : 0)
+  const [repeat, setRepeat] = useState(initial?.repeat ?? false)
   const [price, setPrice] = useState(
     initial?.kind === 'saved' ? (initial.price ?? initial.amount) : 0,
   )
@@ -398,7 +413,7 @@ function SideForm({
 
   const cats = SIDE_CATEGORIES[kind]
   const isCustom = category === '직접'
-  const value = kind === 'cash' ? amount : savedAmount(price, paid)
+  const value = kind === 'saved' ? savedAmount(price, paid) : amount
 
   const pickKind = (k: SideKind) => {
     setKind(k)
@@ -408,9 +423,15 @@ function SideForm({
 
   const submit = async () => {
     const cat = isCustom ? custom.trim() : category
-    if (!cat) return setError('무엇으로 벌었는지 적어 주세요')
+    if (!cat) return setError('종류를 골라 주세요')
     if (value <= 0)
-      return setError(kind === 'cash' ? '번 금액을 넣어 주세요' : '얼마짜리였는지 넣어 주세요')
+      return setError(
+        kind === 'cash'
+          ? '번 금액을 넣어 주세요'
+          : kind === 'spent'
+            ? '쓴 금액을 넣어 주세요'
+            : '얼마짜리였는지 넣어 주세요',
+      )
     setSaving(true)
     try {
       await onSave({
@@ -423,6 +444,7 @@ function SideForm({
         shared: who === 'shared' ? true : undefined,
         earnedOn: date,
         note: note.trim() || undefined,
+        repeat: repeat || undefined,
       })
     } catch {
       setError('저장하지 못했어요. 잠시 뒤 다시 눌러 주세요')
@@ -436,7 +458,7 @@ function SideForm({
   return (
     <div className="space-y-3 py-1">
       <div className="flex gap-1 rounded-btn bg-line/60 p-1" role="tablist">
-        {(['cash', 'saved'] as const).map((k) => (
+        {SIDE_KINDS.map((k) => (
           <button
             key={k}
             role="tab"
@@ -453,12 +475,18 @@ function SideForm({
       <p className="text-[12px] text-cap">
         {kind === 'cash'
           ? '통장에 실제로 들어온 돈 — 정산 때 어디로 보낼지 정해요'
-          : '체험단·포인트처럼 안 나간 돈 — 기록으로 모아요'}
+          : kind === 'saved'
+            ? '체험단·포인트처럼 안 나간 돈 — 기록으로 모아요'
+            : '부수입 때문에 나간 돈 — 번 돈에서 빼서 남은 돈을 보여 줘요'}
       </p>
 
       <div>
         <p className="mb-1.5 text-[12.5px] font-bold text-sub">
-          {kind === 'cash' ? '무엇으로 벌었나요' : '무엇으로 아꼈나요'}
+          {kind === 'cash'
+            ? '무엇으로 벌었나요'
+            : kind === 'saved'
+              ? '무엇으로 아꼈나요'
+              : '어디에 썼나요'}
         </p>
         <div className="flex flex-wrap gap-1.5">
           {[...cats, '직접'].map((c) => (
@@ -479,9 +507,11 @@ function SideForm({
         )}
       </div>
 
-      {kind === 'cash' ? (
+      {kind !== 'saved' ? (
         <label className="block">
-          <span className="mb-1.5 block text-[12.5px] font-bold text-sub">번 금액</span>
+          <span className="mb-1.5 block text-[12.5px] font-bold text-sub">
+            {kind === 'cash' ? '번 금액' : '쓴 금액'}
+          </span>
           <AmountInput value={amount} onChange={setAmount} />
         </label>
       ) : (
@@ -505,6 +535,25 @@ function SideForm({
           )}
         </>
       )}
+
+      {/* 매달 — 구독처럼 다달이 나가거나 들어오는 건 다음 달부터 저절로 적는다 (2026-11-23) */}
+      <label className="flex items-center justify-between rounded-btn bg-bg px-3 py-2.5">
+        <span>
+          <span className="block text-[13px] font-bold text-ink">
+            매달 {kind === 'spent' ? '나가요' : '들어와요'}
+          </span>
+          <span className="block text-[11.5px] text-cap">
+            켜 두면 다음 달 같은 날에 저절로 적어요 · 끄면 멈춰요
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          checked={repeat}
+          onChange={(e) => setRepeat(e.target.checked)}
+          aria-label="매달"
+          className="h-5 w-5 accent-[#3182F6]"
+        />
+      </label>
 
       <div>
         <p className="mb-1.5 text-[12.5px] font-bold text-sub">누가</p>
@@ -628,7 +677,8 @@ function SettleCard({
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
       <p className="text-[15px] font-bold text-ink">{label} 부수입 정산</p>
       <p className="mt-0.5 text-[13px] text-sub">
-        {label}에 번 돈 <b className="tnum text-emerald-600">{formatWon(cash)}</b>, 어디로 보낼까요
+        {label}에 번 돈(쓴 돈 빼고) <b className="tnum text-emerald-600">{formatWon(cash)}</b>,
+        어디로 보낼까요
       </p>
       <div className="mt-2 divide-y divide-line/70">
         {accounts.map((a) =>
