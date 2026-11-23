@@ -193,3 +193,26 @@ describe('부수입 쓴 돈 (2026-11-23)', () => {
     expect(screen.getByText('안 보낸 돈 200,000원')).toBeInTheDocument()
   })
 })
+
+describe('종류 하나만 보기 — 그 종류 합계 (2026-11-23)', () => {
+  it('종류를 고르면 그 종류 이번 달 합계·건수·올해 합계, 표에도 그 기록만', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    // 예시: 이번 달 앱테크 32,000 (1건), 지난달 41,000
+    await user.click(screen.getByRole('button', { name: '앱테크', pressed: false }))
+    expect(screen.getByText(/1건 · 올해 73,000원/)).toBeInTheDocument()
+    expect(screen.getAllByText('32,000원').length).toBeGreaterThan(0)
+    // 표엔 앱테크 한 줄 + 새 줄(앱테크로 미리 채움)
+    expect(screen.getAllByLabelText(/번째 줄 금액/)).toHaveLength(2)
+    expect(screen.getByLabelText('2번째 줄 종류')).toHaveValue('앱테크')
+    await user.click(screen.getByRole('button', { name: '전체 보기' }))
+    expect(screen.getAllByLabelText(/번째 줄 금액/).length).toBeGreaterThan(2)
+  })
+
+  it('종류별 칸의 줄을 눌러도 그 종류만 본다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    await user.click(screen.getByRole('button', { name: '체험단만 보기' }))
+    expect(screen.getByText(/1건 · 올해 140,000원/)).toBeInTheDocument()
+  })
+})

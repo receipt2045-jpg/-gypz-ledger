@@ -65,7 +65,7 @@ export default function SideIncome() {
 
   const s = useMemo(() => summarizeSide(side.entries, ym), [side.entries, ym])
   const year = useMemo(() => yearSide(side.entries, ym), [side.entries, ym])
-  const month = side.entries
+  const monthAll = side.entries
     .filter((e) => ymOfDate(e.earnedOn) === ym)
     .sort((a, b) =>
       a.earnedOn === b.earnedOn
@@ -76,6 +76,34 @@ export default function SideIncome() {
           ? 1
           : -1,
     )
+  // 종류 하나만 보기 (2026-11-23 결영 요청: "카테고리 선택하면 그것만 총액") — '구분|종류'
+  const [cat, setCat] = useState<string | null>(null)
+  const catKey = (e: { kind: SideKind; category: string }) => `${e.kind}|${e.category}`
+  const month = cat ? monthAll.filter((e) => catKey(e) === cat) : monthAll
+  // 이 달에 있는 종류 — 금액 큰 순
+  const monthCats = SIDE_KINDS.flatMap((k) =>
+    s.byCategory[k].map((c) => ({ key: `${k}|${c.category}`, kind: k, ...c })),
+  ).sort((a, b) => b.amount - a.amount)
+  const picked = cat
+    ? (() => {
+        const [kind, category] = cat.split('|') as [SideKind, string]
+        const sum = (list: SideEntry[]) => list.reduce((a, e) => a + e.amount, 0)
+        const inYear = side.entries.filter(
+          (e) =>
+            catKey(e) === cat &&
+            ymOfDate(e.earnedOn).slice(0, 4) === ym.slice(0, 4) &&
+            ymOfDate(e.earnedOn) <= ym,
+        )
+        return { kind, category, month: sum(month), count: month.length, year: sum(inYear) }
+      })()
+    : null
+  const pickCat = (key: string | null) => {
+    setCat(key)
+    if (key)
+      document
+        .getElementById('side-records')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
   const settled = side.settles.find((x) => x.ym === ym)
   const label = formatYmKorean(ym).split(' ')[1]
   const whoLabel = (e: SideEntry) => (e.shared ? '공동' : names[e.memberNo - 1])
@@ -89,15 +117,15 @@ export default function SideIncome() {
       <div className="mt-3 grid grid-cols-3 gap-1.5">
         <div className="rounded-btn bg-emerald-50 px-2.5 py-2.5">
           <p className="text-[12px] font-bold text-emerald-700">번 돈</p>
-          <p className="tnum text-[15px] font-extrabold text-emerald-700">{formatWon(s.cash)}</p>
+          <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-emerald-700">{formatWon(s.cash)}</p>
         </div>
         <div className="rounded-btn bg-brand/10 px-2.5 py-2.5">
           <p className="text-[12px] font-bold text-brand">아낀 돈</p>
-          <p className="tnum text-[15px] font-extrabold text-brand">{formatWon(s.saved)}</p>
+          <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-brand">{formatWon(s.saved)}</p>
         </div>
         <div className="rounded-btn bg-rose-50 px-2.5 py-2.5">
           <p className="text-[12px] font-bold text-rose-600">쓴 돈</p>
-          <p className="tnum text-[15px] font-extrabold text-rose-600">{formatWon(s.spent)}</p>
+          <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-rose-600">{formatWon(s.spent)}</p>
         </div>
       </div>
       {s.spent > 0 && (
@@ -187,10 +215,15 @@ export default function SideIncome() {
             </div>
             <div className="divide-y divide-line/70">
               {s.byCategory[k].map((c) => (
-                <div key={c.category} className="flex justify-between py-2 text-[13.5px]">
+                <button
+                  key={c.category}
+                  onClick={() => pickCat(`${k}|${c.category}`)}
+                  aria-label={`${c.category}만 보기`}
+                  className="-mx-1 flex w-[calc(100%+0.5rem)] justify-between rounded px-1 py-2 text-left text-[13.5px] active:bg-bg"
+                >
                   <span className="text-ink">{c.category}</span>
                   <span className="tnum font-semibold text-ink">{formatWon(c.amount)}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -201,7 +234,7 @@ export default function SideIncome() {
 
   // 이 달 기록 — 표가 넓어서 두 칸으로 나누지 않고 한 줄 전체를 쓴다
   const records = (
-    <div className="rounded-card bg-card px-5 py-4 shadow-card">
+    <div id="side-records" className="scroll-mt-4 rounded-card bg-card px-5 py-4 shadow-card">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-[14px] font-bold text-ink">
           {label} 기록{' '}
@@ -225,9 +258,53 @@ export default function SideIncome() {
           ))}
         </div>
       </div>
+      {/* 종류 하나만 보기 — 고르면 그 종류 합계와 그 기록만 */}
+      {monthCats.length > 1 && (
+        <div className="no-scrollbar -mx-5 mb-2 flex gap-1.5 overflow-x-auto px-5 pb-0.5">
+          {[null, ...monthCats].map((c) => (
+            <button
+              key={c?.key ?? 'all'}
+              onClick={() => pickCat(c && cat !== c.key ? c.key : null)}
+              aria-pressed={cat === (c?.key ?? null)}
+              className={`shrink-0 rounded-full px-3 py-1 text-[12.5px] font-bold ${
+                cat === (c?.key ?? null)
+                  ? 'bg-ink text-white'
+                  : `bg-bg active:bg-line ${c ? TONE[c.kind] : 'text-sub'}`
+              }`}
+            >
+              {c ? c.category : '전체'}
+            </button>
+          ))}
+        </div>
+      )}
+      {picked && (
+        <div className="mb-3 rounded-btn bg-bg px-3.5 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[13px] font-bold text-ink">
+              {picked.category}{' '}
+              <span className={`text-[12px] ${TONE[picked.kind]}`}>
+                {SIDE_KIND_LABEL[picked.kind]}
+              </span>
+            </p>
+            <button
+              onClick={() => pickCat(null)}
+              className="text-[12px] font-bold text-sub active:text-ink"
+            >
+              전체 보기
+            </button>
+          </div>
+          <p className={`tnum mt-0.5 text-[20px] font-extrabold ${TONE[picked.kind]}`}>
+            {formatWon(picked.month)}
+          </p>
+          <p className="tnum text-[12px] text-sub">
+            {label} {picked.count}건 · 올해 {formatWon(picked.year)}
+          </p>
+        </div>
+      )}
       {view === 'grid' ? (
         <SideGrid
           ym={ym}
+          preset={picked ? { kind: picked.kind, category: picked.category } : undefined}
           entries={[...month].reverse()}
           names={names}
           me={side.me}

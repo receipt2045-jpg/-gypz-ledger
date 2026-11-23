@@ -55,13 +55,13 @@ function fromEntry(e: SideIncome): Draft {
 }
 
 let blankSeq = 0
-function blank(date: string, me: 1 | 2, kind: SideKind = 'cash'): Draft {
+function blank(date: string, me: 1 | 2, kind: SideKind = 'cash', category = ''): Draft {
   return {
     key: `new-${++blankSeq}`,
     earnedOn: date,
     dateText: shortDate(date),
     kind,
-    category: '',
+    category,
     amount: '',
     who: me,
     note: '',
@@ -84,6 +84,7 @@ const same = (a: Draft, e: SideIncome) => {
 
 export default function SideGrid({
   ym,
+  preset,
   entries,
   names,
   me,
@@ -92,6 +93,8 @@ export default function SideGrid({
   onRemove,
 }: {
   ym: string
+  /** 종류 하나만 보는 중이면 새 줄에 그 종류를 미리 채운다 */
+  preset?: { kind: SideKind; category: string }
   /** 이 달 기록 (날짜순) */
   entries: SideIncome[]
   names: [string, string]
@@ -112,17 +115,26 @@ export default function SideGrid({
     setRows((prev) => {
       const pending = prev.filter((r) => !r.id && (r.category || r.amount || r.note))
       const blanks = pending.length ? pending : []
-      return [...entries.map(fromEntry), ...blanks, blank(defaultDate, me)]
+      return [
+        ...entries.map(fromEntry),
+        ...blanks,
+        blank(defaultDate, me, preset?.kind, preset?.category),
+      ]
     })
-  }, [entries, defaultDate, me])
+  }, [entries, defaultDate, me, preset?.kind, preset?.category])
 
   const patch = (key: string, p: Partial<Draft>) =>
     setRows((prev) => {
       const next = prev.map((r) => (r.key === key ? { ...r, ...p } : r))
       // 맨 아래 빈 줄에 쓰기 시작하면 그 아래 새 빈 줄
+      // (종류를 미리 채운 빈 줄은 금액·메모를 쓰기 시작할 때)
       const last = next[next.length - 1]
-      if (last && !last.id && (last.category || last.amount || last.note))
-        next.push(blank(last.earnedOn, me, last.kind))
+      if (
+        last &&
+        !last.id &&
+        (last.amount || last.note || (last.category && last.category !== preset?.category))
+      )
+        next.push(blank(last.earnedOn, me, last.kind, preset?.category))
       return next
     })
 
@@ -132,7 +144,7 @@ export default function SideGrid({
     if (!r || saving.current.has(key)) return
     const amount = Number(digits(r.amount))
     const category = r.category.trim()
-    if (!r.id && !amount && !category && !r.note.trim()) return // 빈 줄
+    if (!r.id && !amount && !r.note.trim() && (!category || category === preset?.category)) return // 빈 줄
     if (r.id) {
       const e = entries.find((x) => x.id === r.id)
       if (!e || same(r, e)) return
