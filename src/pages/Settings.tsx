@@ -18,6 +18,7 @@ import {
   Plus,
 } from 'lucide-react'
 import Card from '../components/Card'
+import PasswordInput, { hasHangul } from '../components/PasswordInput'
 import FeedbackCard from '../components/FeedbackCard'
 import { shareInvite } from '../lib/invite'
 import { saveFile } from '../lib/native'
@@ -184,7 +185,9 @@ export default function Settings() {
     )
     if (r === 'failed') alert('파일을 저장하지 못했어요. 다시 시도해 주세요.')
     else {
-      setExportMsg(`${name} 파일로 저장했어요 · 소비 기록 ${(data.confessions ?? []).length}건 포함`)
+      setExportMsg(
+        `${name} 파일로 저장했어요 · 소비 기록 ${(data.confessions ?? []).length}건 포함`,
+      )
       setTimeout(() => setExportMsg(''), 4000)
     }
   }
@@ -686,13 +689,28 @@ function PasswordForm() {
     () => !!(location.state as { resetPassword?: boolean } | null)?.resetPassword,
   )
   const [pw, setPw] = useState('')
+  // 한 번 더 (2026-11-23 제보: 정한 비밀번호로 이메일 로그인이 안 됨 — 오타를 못 보고 정했다)
+  const [pw2, setPw2] = useState('')
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
+  // 로그인할 때 쓸 이메일 — 구글로 가입했으면 그 Gmail 주소
+  const [email, setEmail] = useState('')
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''))
+  }, [])
 
   const save = async () => {
     if (busy) return
     if (pw.length < 6) {
       setMsg({ text: '비밀번호는 6자 이상이어야 해요.', ok: false })
+      return
+    }
+    if (hasHangul(pw)) {
+      setMsg({ text: '비밀번호에 한글이 섞였어요. 영문 자판으로 바꿔서 쳐 주세요.', ok: false })
+      return
+    }
+    if (pw !== pw2) {
+      setMsg({ text: '두 칸의 비밀번호가 달라요. 눈 버튼으로 확인해 보세요.', ok: false })
       return
     }
     setBusy(true)
@@ -705,10 +723,13 @@ function PasswordForm() {
       setMsg({ text, ok: false })
     } else {
       setMsg({
-        text: '✅ 비밀번호가 설정됐어요. 이제 어디서든 이메일+비밀번호로 로그인하세요!',
+        text: email
+          ? `✅ 비밀번호를 정했어요. 이제 ${email} + 이 비밀번호로도 로그인할 수 있어요.`
+          : '✅ 비밀번호를 정했어요. 이제 이메일 + 이 비밀번호로도 로그인할 수 있어요.',
         ok: true,
       })
       setPw('')
+      setPw2('')
       setOpen(false)
     }
   }
@@ -717,20 +738,32 @@ function PasswordForm() {
     <div className="space-y-2">
       {open ? (
         <div className="space-y-2 rounded-btn bg-bg p-3">
-          <input
-            type="password"
+          {email && (
+            <p className="px-1 text-[12.5px] text-sub">
+              로그인 이메일 <b className="text-ink">{email}</b>
+            </p>
+          )}
+          <PasswordInput
             value={pw}
-            onChange={(e) => setPw(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && save()}
+            onChange={setPw}
             placeholder="새 비밀번호 (6자 이상)"
+            label="새 비밀번호"
             autoComplete="new-password"
-            className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
+          />
+          <PasswordInput
+            value={pw2}
+            onChange={setPw2}
+            onEnter={save}
+            placeholder="한 번 더"
+            label="새 비밀번호 한 번 더"
+            autoComplete="new-password"
           />
           <div className="flex gap-2">
             <button
               onClick={() => {
                 setOpen(false)
                 setPw('')
+                setPw2('')
                 setMsg(null)
               }}
               className="h-11 flex-1 rounded-btn bg-white text-[14px] font-semibold text-sub active:bg-line"
@@ -739,7 +772,7 @@ function PasswordForm() {
             </button>
             <button
               onClick={save}
-              disabled={busy || pw.length < 6}
+              disabled={busy || pw.length < 6 || !pw2}
               className="h-11 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark disabled:opacity-40"
             >
               {busy ? '저장 중…' : '저장'}
