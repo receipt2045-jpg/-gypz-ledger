@@ -5,6 +5,7 @@ import {
   parseAmountCell,
   parseDateCell,
   parsePastedRows,
+  SIDE_CATEGORIES,
   applyToLedger,
   dueRepeats,
   livingSplit,
@@ -31,7 +32,7 @@ const e = (p: Partial<SideIncome>): SideIncome => ({
 describe('부수입 합계 (2026-11-19)', () => {
   const list = [
     e({ amount: 30_000 }),
-    e({ memberNo: 2, category: '원고료·협찬비', amount: 150_000 }),
+    e({ memberNo: 2, category: '원고료', amount: 150_000 }),
     e({ memberNo: 2, kind: 'saved', category: '체험단', amount: 50_000 }),
     e({ shared: true, kind: 'saved', category: '포인트 결제', amount: 20_000 }),
     e({ amount: 99_000, earnedOn: '2026-10-31' }), // 다른 달
@@ -43,7 +44,7 @@ describe('부수입 합계 (2026-11-19)', () => {
     expect(s.saved).toBe(70_000)
     expect(s.total).toBe(250_000)
     expect(s.byWho).toEqual({ 1: 30_000, 2: 200_000, shared: 20_000 })
-    expect(s.byCategory.cash.map((c) => c.category)).toEqual(['원고료·협찬비', '앱테크'])
+    expect(s.byCategory.cash.map((c) => c.category)).toEqual(['원고료', '앱테크'])
   })
 
   it('올해 합계는 그 달까지', () => {
@@ -215,5 +216,31 @@ describe('쓴 돈 · 매달 (2026-11-23)', () => {
     const first = e({ id: 's1', earnedOn: '2026-09-05', repeat: true })
     const last = e({ id: 's2', series: 's1', earnedOn: '2026-10-05', repeat: false })
     expect(dueRepeats([first, last], '2026-11-23')).toEqual([])
+  })
+})
+
+describe('번 돈 종류 세분화 (2026-11-23)', () => {
+  it('원고료·협찬비를 나누고 광고 수익·지식 판매·강의·상담이 있다', () => {
+    expect(SIDE_CATEGORIES.cash).toEqual(
+      expect.arrayContaining(['원고료', '협찬비', '광고 수익', '지식 판매', '강의·상담']),
+    )
+    expect(SIDE_CATEGORIES.cash).not.toContain('원고료·협찬비')
+  })
+
+  it('붙여넣기·엑셀의 다른 이름을 종류로 — 애드포스트는 광고 수익(메모 애드포스트), 예전 이름도', () => {
+    const opts = { year: '2026', names: ['a', 'b'] as [string, string], me: 1 as const }
+    const { rows } = parsePastedRows(
+      [
+        '11/3\t애드포스트\t47,800\t10월분',
+        '11/4\t원고료·협찬비\t150000',
+        '11/5\t전자책\t9,900',
+      ].join('\n'),
+      opts,
+    )
+    expect(rows.map((r) => [r.category, r.note])).toEqual([
+      ['광고 수익', '애드포스트 10월분'],
+      ['원고료', undefined],
+      ['지식 판매', '전자책'],
+    ])
   })
 })

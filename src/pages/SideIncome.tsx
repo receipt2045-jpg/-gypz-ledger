@@ -12,6 +12,7 @@ import {
   livingSplit,
   savedAmount,
   SIDE_CATEGORIES,
+  SIDE_CATEGORY_HINT,
   SIDE_KINDS,
   SIDE_KIND_LABEL,
   isSameSideRow,
@@ -700,6 +701,10 @@ function SideForm({
             </button>
           ))}
         </div>
+        {/* 고른 종류에 어떤 돈이 들어가는지 (2026-11-23) */}
+        {!isCustom && SIDE_CATEGORY_HINT[category] && (
+          <p className="mt-1.5 text-[12px] text-cap">{SIDE_CATEGORY_HINT[category]}</p>
+        )}
         {isCustom && (
           <input
             aria-label="직접 적기"

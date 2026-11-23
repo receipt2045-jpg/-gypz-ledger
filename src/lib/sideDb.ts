@@ -176,7 +176,7 @@ export function sampleSide(now: Date = new Date()): {
       e({
         memberNo: 2,
         kind: 'cash',
-        category: '원고료·협찬비',
+        category: '원고료',
         amount: 150_000,
         note: '블로그 원고',
         earnedOn: d(12),
