@@ -366,3 +366,45 @@ describe('가계부 탭 — 예산 세우기·정산하기가 먼저 (2026-11-17
     expect(screen.getByRole('button', { name: /정산하기/ })).toBeInTheDocument()
   })
 })
+
+describe('이번 달 소비 기록 달력 (2026-11-24)', () => {
+  it('날짜 칸에 쓴 돈, 무지출 날엔 하트 — 날짜를 누르면 그날 기록만', async () => {
+    const ym = currentYm()
+    const m = Number(ym.slice(5, 7))
+    seedStore({
+      confessions: [
+        {
+          id: 'n1',
+          memberNo: 1,
+          category: '무지출',
+          kind: 'variable',
+          amount: 0,
+          createdAt: `${ym}-05T12:00:00.000Z`,
+        },
+        {
+          id: 'n2',
+          memberNo: 1,
+          category: '식비',
+          kind: 'variable',
+          amount: 12_000,
+          createdAt: `${ym}-11T12:00:00.000Z`,
+        },
+        {
+          id: 'n3',
+          memberNo: 2,
+          category: '카페/간식',
+          kind: 'variable',
+          amount: 5_500,
+          createdAt: `${ym}-12T12:00:00.000Z`,
+        },
+      ],
+    })
+    const { user } = renderScreen(<Monthly />)
+    await user.click(screen.getByRole('button', { name: /이번 달 소비 기록/ }))
+    await user.click(screen.getByRole('tab', { name: '달력' }))
+    expect(screen.getByRole('button', { name: `${m}월 5일 무지출` })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: `${m}월 11일 나간 돈 12,000원` }))
+    expect(screen.getAllByLabelText('기록 삭제')).toHaveLength(1)
+    localStorage.removeItem('moabuli.monthly.logView')
+  })
+})

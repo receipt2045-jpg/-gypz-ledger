@@ -395,6 +395,10 @@ export default function Confess() {
   const calMarks = useMemo(() => {
     const m: Record<string, DayMark> = {}
     for (const c of calMonth) {
+      if (c.category === NO_SPEND) {
+        ;(m[dayOf(c)] ??= {}).heart = true
+        continue
+      }
       if (c.kind !== 'income' && c.kind !== 'variable' && c.kind !== 'fixed') continue
       const d = (m[dayOf(c)] ??= {})
       if (c.kind === 'income') d.plus = (d.plus ?? 0) + c.amount
@@ -1052,8 +1056,8 @@ export default function Confess() {
                   }}
                 />
                 <p className="mt-1.5 text-[11.5px] text-cap">
-                  − 쓴 돈(변동·고정) · <span className="text-brand">+</span> 들어온 돈 · 저축·투자는
-                  빼고 셌어요
+                  − 쓴 돈(변동·고정) · <span className="text-brand">+</span> 들어온 돈 ·{' '}
+                  <span className="text-rose-500">♥</span> 무지출 · 저축·투자는 빼고 셌어요
                 </p>
                 {calDayIn && (
                   <div className="mt-3">

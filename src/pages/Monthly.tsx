@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Mic, Trash2, X } from 'lucide-react'
 import BudgetBars from '../components/BudgetBars'
+import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
 import FixedCostCheck from '../components/FixedCostCheck'
 import MonthlyReportCard from '../components/MonthlyReportCard'
 import MonthlyGlance from '../components/MonthlyGlance'
@@ -12,15 +13,8 @@ import { useLedgerStore } from '../lib/store'
 import { useMonthConfessions } from '../lib/useMonthConfessions'
 import { buildMonthlyCard } from '../lib/monthlyCard'
 import { openingYm, resolveLedger } from '../lib/carryover'
-import {
-  currentYm,
-  formatWon,
-  formatYmKorean,
-  periodLabel,
-  shiftYm,
-  ymOfDay,
-} from '../lib/format'
-import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
+import { currentYm, formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
+import { GROUP_LABEL, GROUP_ORDER, NO_SPEND } from '../lib/constants'
 import { confessSums, monthConfessions } from '../lib/confessLedger'
 import { memberStyle } from '../lib/memberColors'
 import type { CategoryGroup } from '../types'
@@ -86,6 +80,39 @@ export default function Monthly() {
   // 소비 합계엔 들어온 돈(수입 기록)을 섞지 않는다 — 수입도 바로 적을 수 있게 된 뒤로 필요해졌다
   const spendLog = monthLog.filter((c) => c.kind !== 'income')
   const logTotal = spendLog.reduce((sum, c) => sum + c.amount, 0)
+  // 소비 기록 달력으로 보기 (2026-11-24 결영 요청) — 고른 걸 이 기기에 기억한다
+  const [logView, setLogViewState] = useState<'list' | 'calendar'>(() => {
+    try {
+      return localStorage.getItem('moabuli.monthly.logView') === 'calendar' ? 'calendar' : 'list'
+    } catch {
+      return 'list'
+    }
+  })
+  const setLogView = (v: 'list' | 'calendar') => {
+    setLogViewState(v)
+    try {
+      localStorage.setItem('moabuli.monthly.logView', v)
+    } catch {
+      /* 기억 못 해도 그대로 */
+    }
+  }
+  const [logDay, setLogDay] = useState<string | null>(todayKey)
+  const dayKey = (c: { createdAt: string }) => new Date(c.createdAt).toLocaleDateString('sv-SE')
+  // 위 합계와 같은 기준 — 수입이 아닌 건 쓴 돈(−), 수입은 들어온 돈(+)
+  const logMarks: Record<string, DayMark> = {}
+  for (const c of monthLog) {
+    const d = (logMarks[dayKey(c)] ??= {})
+    if (c.category === NO_SPEND) d.heart = true
+    else if (c.kind === 'income') d.plus = (d.plus ?? 0) + c.amount
+    else d.minus = (d.minus ?? 0) + c.amount
+  }
+  const logDayIn = logDay && logDay.startsWith(ym) ? logDay : null
+  const shownLog =
+    logView === 'calendar'
+      ? logDayIn
+        ? monthLog.filter((c) => dayKey(c) === logDayIn)
+        : []
+      : monthLog
 
   // 비정기 지출 — 보는 달 것만 목록에, 합계는 올해 누적 (연간비 감각 유지)
   const monthOccasions = occasions.filter((o) => ymOfDay(o.date) === ym)
@@ -347,7 +374,47 @@ export default function Monthly() {
                 )}
                 {logOpen && (
                   <div className="mt-3 space-y-2 border-t border-line pt-3">
-                    {monthLog.map((c) => {
+                    <div className="flex justify-end">
+                      <div className="flex gap-0.5 rounded-full bg-bg p-0.5" role="tablist">
+                        {(['list', 'calendar'] as const).map((v) => (
+                          <button
+                            key={v}
+                            role="tab"
+                            aria-selected={logView === v}
+                            onClick={() => setLogView(v)}
+                            className={`rounded-full px-3 py-1 text-[12px] font-bold ${
+                              logView === v ? 'bg-white text-ink shadow-card' : 'text-sub'
+                            }`}
+                          >
+                            {v === 'list' ? '목록' : '달력'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {logView === 'calendar' && (
+                      <div className="pb-1">
+                        <MonthCalendar
+                          ym={ym}
+                          marks={logMarks}
+                          selected={logDayIn}
+                          onPick={setLogDay}
+                          today={todayKey}
+                        />
+                        <p className="mt-1.5 text-[11.5px] text-cap">
+                          − 쓴 돈 · <span className="text-brand">+</span> 들어온 돈 ·{' '}
+                          <span className="text-rose-500">♥</span> 무지출
+                        </p>
+                        {logDayIn && (
+                          <p className="mt-3 text-[12.5px] font-bold text-sub">
+                            {Number(logDayIn.slice(5, 7))}월 {Number(logDayIn.slice(8, 10))}일 기록
+                            {shownLog.length === 0 && (
+                              <span className="font-medium text-cap"> · 없어요</span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {shownLog.map((c) => {
                       const d = new Date(c.createdAt)
                       const style = memberStyle(c.memberNo, profile)
                       return (
@@ -376,7 +443,11 @@ export default function Monthly() {
                           {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
                           <button
                             onClick={() => {
-                              if (window.confirm(`${c.category} ${formatWon(c.amount)} 기록을 지울까요?`))
+                              if (
+                                window.confirm(
+                                  `${c.category} ${formatWon(c.amount)} 기록을 지울까요?`,
+                                )
+                              )
                                 removeConfession(c.id)
                             }}
                             className="-m-2 shrink-0 p-2 text-cap active:text-danger"

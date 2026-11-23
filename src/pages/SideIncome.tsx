@@ -567,6 +567,7 @@ export default function SideIncome() {
                 today={todayStr}
                 plusClass={CASH}
                 minusClass={SPENT}
+                plusFirst
               />
               <p className="mt-1.5 text-[11.5px] text-cap">
                 <span className={`font-bold ${CASH}`}>+</span> 번 돈·아낀 돈{'  '}

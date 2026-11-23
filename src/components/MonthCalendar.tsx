@@ -1,7 +1,12 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 /** 날짜 칸에 적을 금액 — plus는 들어온 돈(초록), minus는 나간 돈 */
-export type DayMark = { plus?: number; minus?: number }
+export type DayMark = {
+  plus?: number
+  minus?: number
+  /** 무지출이라고 적은 날 — 그날 쓴 돈이 없으면 하트 (2026-11-24 결영 요청) */
+  heart?: boolean
+}
 
 /** 칸이 좁아서 짧게 — 32,000 → 3.2만, 4,500 → 4.5천, 1,250,000 → 125만 */
 export function shortWon(n: number): string {
@@ -10,7 +15,8 @@ export function shortWon(n: number): string {
   if (a >= 100_000_000) return `${trim(a / 100_000_000)}억`
   if (a >= 10_000) return `${trim(a / 10_000)}만`
   if (a >= 1_000) return `${trim(a / 1_000)}천`
-  return String(a)
+  // 683 → 683원 (단위가 없으면 '+3'처럼 뭔지 몰랐다, 2026-11-24)
+  return `${a}원`
 }
 
 const WEEK = ['일', '월', '화', '수', '목', '금', '토']
@@ -28,7 +34,10 @@ export default function MonthCalendar({
   onMonth,
   plusClass = 'text-brand',
   minusClass = 'text-ink',
+  plusFirst = false,
 }: {
+  /** 들어온 돈을 위에 (부수입) — 아니면 나간 돈이 위 (지출) */
+  plusFirst?: boolean
   /** 금액 글씨 색 — 화면마다 들어온 돈·나간 돈 색이 달라서 */
   plusClass?: string
   minusClass?: string
@@ -103,7 +112,7 @@ export default function MonthCalendar({
               aria-pressed={isSel}
               aria-label={`${m}월 ${d}일${mk?.minus ? ` 나간 돈 ${mk.minus.toLocaleString()}원` : ''}${
                 mk?.plus ? ` 들어온 돈 ${mk.plus.toLocaleString()}원` : ''
-              }`}
+              }${mk?.heart && !mk.minus ? ' 무지출' : ''}`}
               className={`flex min-h-[50px] flex-col items-center rounded-lg px-0.5 pt-1 ${
                 isSel ? 'bg-ink/[0.06] ring-1 ring-ink/30' : 'active:bg-bg'
               }`}
@@ -121,20 +130,27 @@ export default function MonthCalendar({
               >
                 {d}
               </span>
-              {mk?.minus ? (
-                <span
-                  className={`tnum mt-0.5 w-full truncate text-[10px] font-bold leading-tight ${minusClass}`}
-                >
-                  −{shortWon(mk.minus)}
-                </span>
-              ) : null}
-              {mk?.plus ? (
-                <span
-                  className={`tnum w-full truncate text-[10px] font-bold leading-tight ${plusClass}`}
-                >
-                  +{shortWon(mk.plus)}
-                </span>
-              ) : null}
+              <span className={`mt-0.5 flex w-full ${plusFirst ? 'flex-col-reverse' : 'flex-col'}`}>
+                {mk?.heart && !mk.minus ? (
+                  <span aria-hidden className="text-[12px] leading-tight text-rose-500">
+                    ♥
+                  </span>
+                ) : null}
+                {mk?.minus ? (
+                  <span
+                    className={`tnum w-full truncate text-[10px] font-bold leading-tight ${minusClass}`}
+                  >
+                    −{shortWon(mk.minus)}
+                  </span>
+                ) : null}
+                {mk?.plus ? (
+                  <span
+                    className={`tnum w-full truncate text-[10px] font-bold leading-tight ${plusClass}`}
+                  >
+                    +{shortWon(mk.plus)}
+                  </span>
+                ) : null}
+              </span>
             </button>
           )
         })}
