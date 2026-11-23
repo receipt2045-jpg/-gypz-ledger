@@ -1,7 +1,7 @@
 import PcColumns from '../components/PcColumns'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronLeft, ChevronRight, Mic, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Mic, StickyNote, Trash2, X } from 'lucide-react'
 import BudgetBars, { budgetCats } from '../components/BudgetBars'
 import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
 import FixedCostCheck from '../components/FixedCostCheck'
@@ -11,6 +11,7 @@ import OccasionSection from '../components/OccasionSection'
 import SectionList from '../components/SectionList'
 import { useLedgerStore } from '../lib/store'
 import { useMonthConfessions } from '../lib/useMonthConfessions'
+import { useMemos } from '../lib/useMemos'
 import { buildMonthlyCard } from '../lib/monthlyCard'
 import { openingYm, resolveLedger } from '../lib/carryover'
 import { currentYm, formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
@@ -122,6 +123,9 @@ export default function Monthly() {
   // 추가 폼 기본 날짜: 보는 달이 이번 달이면 오늘, 아니면 그 달 1일
   const today = new Date().toLocaleDateString('sv-SE')
   const occasionDefaultDate = today.startsWith(ym) ? today : `${ym}-01`
+  // 우리집 메모 (2026-11-24) — 맨 위 메모 한 줄 미리 보기
+  const memos = useMemos()
+  const topMemo = memos.status === 'ready' ? memos.memos[0] : undefined
   // 비정기 지출 입력 폼 열림
   const [occasionOpen, setOccasionOpen] = useState(false)
 
@@ -327,6 +331,30 @@ export default function Monthly() {
               <span className="flex shrink-0 items-center text-[13px] font-bold text-brand">
                 기록하기 <ChevronRight size={15} />
               </span>
+            </button>
+
+            {/* 우리집 메모 (2026-11-13 의견: "가계부 관련 메모만 따로 모아 두고 싶어요") */}
+            <button
+              onClick={() => navigate('/memo')}
+              className="flex w-full items-center gap-3 rounded-card bg-white px-4 py-3 text-left shadow-card active:bg-line"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50">
+                <StickyNote size={18} className="text-amber-600" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-bold text-ink">
+                  우리집 메모
+                  {memos.memos.length > 0 && (
+                    <span className="ml-1 text-[12.5px] font-semibold text-cap">
+                      {memos.memos.length}개
+                    </span>
+                  )}
+                </span>
+                <span className="mt-0.5 block truncate text-[12.5px] text-sub">
+                  {topMemo ? topMemo.body.split('\n')[0] : '가계부 하면서 떠오른 걸 적어 두세요'}
+                </span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-cap" />
             </button>
 
             {/* 이번 달 소비 기록 — 달력(기본) / 목록 */}

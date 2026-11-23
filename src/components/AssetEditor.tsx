@@ -232,7 +232,7 @@ export default function AssetEditor({
               </button>
               {loanOpen && (
                 <div className="mt-2">
-                  <LoanForm amount={amount} onChange={setLoan} />
+                  <LoanForm amount={amount} onChange={setLoan} onBalance={setAmount} />
                 </div>
               )}
             </div>
@@ -468,7 +468,12 @@ function AssetRow({
         </p>
       )}
       {debt && !foreign && (
-        <LoanEditor item={item} onSave={(loan) => onUpdate(item.id, { loan })} />
+        <LoanEditor
+          item={item}
+          onSave={(loan, balance) =>
+            onUpdate(item.id, balance !== undefined ? { loan, amount: balance } : { loan })
+          }
+        />
       )}
       {memoVisible && (
         <input

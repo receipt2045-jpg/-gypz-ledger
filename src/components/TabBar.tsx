@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { BookOpen, Coins, Home, Landmark, Newspaper, Settings } from 'lucide-react'
+import { StickyNote, BookOpen, Coins, Home, Landmark, Newspaper, Settings } from 'lucide-react'
 import { useLedgerStore } from '../lib/store'
 
 /**
@@ -114,6 +114,7 @@ const SIDE = [
   { to: '/side', label: '부수입', Icon: Coins, end: false },
   { to: '/assets', label: '자산', Icon: Landmark, end: false },
   { to: '/info', label: '돈 공부', Icon: Newspaper, end: false },
+  { to: '/memo', label: '메모', Icon: StickyNote, end: false },
   { to: '/settings', label: '설정', Icon: Settings, end: false },
 ] as const
 
