@@ -111,3 +111,56 @@ describe('부수입 가계부 (2026-11-19)', () => {
     expect(screen.getByRole('button', { name: `${month} 부수입 마감` })).toBeDisabled()
   })
 })
+
+describe('부수입 표로 적기 — 엑셀처럼 (2026-11-23)', () => {
+  const lastRow = () => {
+    const amounts = screen.getAllByLabelText(/번째 줄 금액/)
+    return amounts.length
+  }
+
+  it('맨 아래 빈 줄에 종류·금액을 쓰고 Enter — 저장되고 합계가 늘어난다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    const n = lastRow()
+    await user.type(screen.getByLabelText(`${n}번째 줄 종류`), '중고 판매')
+    await user.type(screen.getByLabelText(`${n}번째 줄 금액`), '20000{Enter}')
+    expect(await screen.findByText('493,000원')).toBeInTheDocument()
+    expect(screen.getByText('저장했어요')).toBeInTheDocument()
+  })
+
+  it('종류 없이 금액만 쓰고 넘어가면 저장하지 않고 알려 준다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    const n = lastRow()
+    await user.type(screen.getByLabelText(`${n}번째 줄 금액`), '5000{Enter}')
+    expect(screen.getByText('종류와 금액을 넣으면 저장돼요')).toBeInTheDocument()
+    expect(screen.getByText('473,000원')).toBeInTheDocument()
+  })
+
+  it('있는 줄의 금액을 고치면 바로 반영된다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    // 예시 첫 줄(날짜순) 금액 칸
+    const first = screen.getByLabelText('1번째 줄 금액') as HTMLInputElement
+    const before = Number(first.value.replace(/,/g, ''))
+    await user.clear(first)
+    await user.type(first, String(before + 1000) + '{Enter}')
+    expect(await screen.findByText('474,000원')).toBeInTheDocument()
+  })
+
+  it('엑셀에서 여러 줄을 복사해 붙여넣으면 한꺼번에 들어간다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    const ym = currentYm()
+    const m = Number(ym.slice(5))
+    const text = ['날짜\t종류\t금액', `${m}/1\t앱테크\t10,000`, `${m}/2\t체험단\t30000\t성수`].join(
+      '\n',
+    )
+    await user.click(screen.getByLabelText(`${lastRow()}번째 줄 메모`))
+    await user.paste(text)
+    expect(
+      await screen.findByText(/2줄을 넣었어요 · 1줄은 날짜나 금액이 없어 뺐어요/),
+    ).toBeInTheDocument()
+    expect(await screen.findByText('513,000원')).toBeInTheDocument()
+  })
+})

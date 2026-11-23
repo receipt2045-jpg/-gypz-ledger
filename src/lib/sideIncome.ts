@@ -192,3 +192,132 @@ export function applyToLedger(
   }
   return { ...ledger, items }
 }
+
+// ── 표로 적기 · 엑셀에서 붙여넣기 (2026-11-23) ──
+
+/** 이 종류가 어느 쪽인지 — 아낀 돈 목록에만 있는 이름이면 아낀 돈, 아니면 들어온 돈 */
+export function kindOfCategory(category: string): SideKind {
+  return SIDE_CATEGORIES.saved.includes(category) && !SIDE_CATEGORIES.cash.includes(category)
+    ? 'saved'
+    : 'cash'
+}
+
+export interface PastedRow {
+  earnedOn: string
+  kind: SideKind
+  category: string
+  amount: number
+  who: 1 | 2 | 'shared'
+  note?: string
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** '2026-11-03' · '2026.11.3' · '11/3' · '11월 3일' → 'YYYY-MM-DD' (연도 없으면 year) */
+export function parseDateCell(cell: string, year: string): string | null {
+  const s = cell.trim()
+  let m = s.match(/^(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})\s*일?$/)
+  if (m) return `${m[1]}-${pad2(+m[2])}-${pad2(+m[3])}`
+  m = s.match(/^(\d{2})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})$/)
+  if (m) return `20${m[1]}-${pad2(+m[2])}-${pad2(+m[3])}`
+  m = s.match(/^(\d{1,2})\s*[-./월]\s*(\d{1,2})\s*일?$/)
+  if (m && +m[1] >= 1 && +m[1] <= 12 && +m[2] >= 1 && +m[2] <= 31)
+    return `${year}-${pad2(+m[1])}-${pad2(+m[2])}`
+  return null
+}
+
+/** '12,000' · '12000원' · '₩12,000' · '1.2만' → 12000 */
+export function parseAmountCell(cell: string): number | null {
+  const s = cell.replace(/[\s,₩원+]/g, '')
+  if (!s) return null
+  const man = s.match(/^(\d+(?:\.\d+)?)만$/)
+  if (man) return Math.round(Number(man[1]) * 10_000)
+  if (!/^\d+(\.\d+)?$/.test(s)) return null
+  const n = Math.round(Number(s))
+  return n > 0 ? n : null
+}
+
+/**
+ * 엑셀·구글 시트에서 복사한 여러 줄(칸은 탭으로 나뉜다)을 부수입 기록으로 읽는다.
+ * 칸 순서는 따지지 않는다 — 날짜처럼 생긴 칸, 금액처럼 생긴 칸, 종류·누가·들어온/아낀을 알아보고
+ * 남는 글은 메모로. 날짜나 금액을 못 읽은 줄(머리줄 등)은 빼고 몇 줄인지 돌려준다.
+ */
+export function parsePastedRows(
+  text: string,
+  opts: { year: string; names: [string, string]; me: 1 | 2 },
+): { rows: PastedRow[]; skipped: number } {
+  const rows: PastedRow[] = []
+  let skipped = 0
+  const lines = text
+    .replace(/\r/g, '')
+    .split('\n')
+    .filter((l) => l.trim())
+  for (const line of lines) {
+    const cells = (line.includes('\t') ? line.split('\t') : [line]).map((c) => c.trim())
+    let earnedOn: string | null = null
+    let amount: number | null = null
+    let kind: SideKind | null = null
+    let category: string | null = null
+    let who: 1 | 2 | 'shared' | null = null
+    const rest: string[] = []
+    for (const c of cells) {
+      if (!c) continue
+      if (!earnedOn) {
+        const d = parseDateCell(c, opts.year)
+        if (d) {
+          earnedOn = d
+          continue
+        }
+      }
+      if (amount === null) {
+        const a = parseAmountCell(c)
+        if (a !== null) {
+          amount = a
+          continue
+        }
+      }
+      if (!kind && /^(들어온\s*돈|들어옴|수입|번\s*돈|현금)$/.test(c)) {
+        kind = 'cash'
+        continue
+      }
+      if (!kind && /^(아낀\s*돈|아낌|절약)$/.test(c)) {
+        kind = 'saved'
+        continue
+      }
+      if (!who) {
+        if (c === opts.names[0] || c === '남편') {
+          who = 1
+          continue
+        }
+        if (c === opts.names[1] || c === '아내') {
+          who = 2
+          continue
+        }
+        if (c === '공동' || c === '함께' || c === '같이') {
+          who = 'shared'
+          continue
+        }
+      }
+      if (!category && [...SIDE_CATEGORIES.cash, ...SIDE_CATEGORIES.saved].includes(c)) {
+        category = c
+        continue
+      }
+      rest.push(c)
+    }
+    if (!earnedOn || amount === null) {
+      skipped++
+      continue
+    }
+    // 종류 칸이 목록에 없는 이름이면 첫 글을 종류로, 나머지는 메모로
+    if (!category) category = (rest.shift() ?? '기타').slice(0, 30)
+    rows.push({
+      earnedOn,
+      kind: kind ?? kindOfCategory(category),
+      category,
+      amount,
+      who: who ?? opts.me,
+      note: rest.join(' ').slice(0, 100) || undefined,
+    })
+  }
+  return { rows, skipped }
+}

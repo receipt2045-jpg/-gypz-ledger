@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import PcColumns from '../components/PcColumns'
+import SideGrid from '../components/SideGrid'
 import { useLedgerStore } from '../lib/store'
 import { useSideIncome } from '../lib/useSideIncome'
 import { displayYm, resolveSnapshot } from '../lib/carryover'
@@ -38,6 +39,22 @@ export default function SideIncome() {
   const side = useSideIncome()
   const [ym, setYm] = useState(currentYm())
   const [writing, setWriting] = useState(false)
+  // 기록 보기 — 표(엑셀처럼 바로 쓰기, 2026-11-23) / 목록. 고른 걸 이 기기에 기억한다
+  const [view, setViewState] = useState<'grid' | 'list'>(() => {
+    try {
+      return localStorage.getItem('moabuli.side.view') === 'list' ? 'list' : 'grid'
+    } catch {
+      return 'grid'
+    }
+  })
+  const setView = (v: 'grid' | 'list') => {
+    setViewState(v)
+    try {
+      localStorage.setItem('moabuli.side.view', v)
+    } catch {
+      /* 기억 못 해도 그대로 */
+    }
+  }
   const [editing, setEditing] = useState<string | null>(null)
   const [settling, setSettling] = useState(false)
   const names: [string, string] = [profile.member1Name, profile.member2Name]
@@ -163,80 +180,113 @@ export default function SideIncome() {
           </div>
         ),
       )}
+    </div>
+  )
 
-      <div className="rounded-card bg-card px-5 py-4 shadow-card">
-        <p className="mb-1 text-[14px] font-bold text-ink">
-          {label} 기록 <span className="text-[12px] font-medium text-cap">눌러서 고쳐요</span>
+  // 이 달 기록 — 표가 넓어서 두 칸으로 나누지 않고 한 줄 전체를 쓴다
+  const records = (
+    <div className="rounded-card bg-card px-5 py-4 shadow-card">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[14px] font-bold text-ink">
+          {label} 기록{' '}
+          <span className="text-[12px] font-medium text-cap">
+            {view === 'grid' ? '칸에 바로 써요' : '눌러서 고쳐요'}
+          </span>
         </p>
-        {month.length === 0 ? (
-          <p className="py-3 text-[13px] text-sub">
-            앱테크로 번 돈, 체험단으로 아낀 돈을 적어 보세요
-          </p>
-        ) : (
-          <div className="divide-y divide-line/70">
-            {month.map((e) =>
-              editing === e.id ? (
-                <SideForm
-                  key={e.id}
-                  initial={e}
-                  ym={ym}
-                  me={side.me}
-                  names={names}
-                  onCancel={() => setEditing(null)}
-                  onSave={async (n) => {
-                    await side.update(e.id, n)
-                    setEditing(null)
-                  }}
-                />
-              ) : (
-                <div
-                  key={e.id}
-                  onClick={() => setEditing(e.id)}
-                  className="-mx-1 flex cursor-pointer items-center gap-2 rounded px-1 py-2.5 active:bg-bg"
-                >
-                  <span className="tnum w-9 shrink-0 text-[11.5px] text-cap">
-                    {Number(e.earnedOn.slice(5, 7))}/{Number(e.earnedOn.slice(8, 10))}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
-                    {e.category}
-                    <span className="text-cap">
-                      {' '}
-                      · {whoLabel(e)}
-                      {e.note ? ` · ${e.note}` : ''}
-                    </span>
-                  </span>
-                  <span
-                    className={`tnum shrink-0 text-[13.5px] font-bold ${e.kind === 'cash' ? CASH : SAVE}`}
-                  >
-                    {e.kind === 'cash' ? '+' : ''}
-                    {formatWon(e.amount)}
-                  </span>
-                  <button
-                    aria-label={`${e.category} 고치기`}
-                    onClick={(ev) => {
-                      ev.stopPropagation()
-                      setEditing(e.id)
-                    }}
-                    className="shrink-0 text-cap active:text-brand"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    aria-label={`${e.category} 지우기`}
-                    onClick={(ev) => {
-                      ev.stopPropagation()
-                      void side.remove(e.id)
-                    }}
-                    className="shrink-0 text-cap active:text-danger"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ),
-            )}
-          </div>
-        )}
+        <div className="flex shrink-0 gap-0.5 rounded-full bg-bg p-0.5" role="tablist">
+          {(['grid', 'list'] as const).map((v) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={view === v}
+              onClick={() => setView(v)}
+              className={`rounded-full px-3 py-1 text-[12px] font-bold ${
+                view === v ? 'bg-white text-ink shadow-card' : 'text-sub'
+              }`}
+            >
+              {v === 'grid' ? '표' : '목록'}
+            </button>
+          ))}
+        </div>
       </div>
+      {view === 'grid' ? (
+        <SideGrid
+          ym={ym}
+          entries={[...month].reverse()}
+          names={names}
+          me={side.me}
+          onAdd={side.add}
+          onUpdate={side.update}
+          onRemove={side.remove}
+        />
+      ) : month.length === 0 ? (
+        <p className="py-3 text-[13px] text-sub">
+          앱테크로 번 돈, 체험단으로 아낀 돈을 적어 보세요
+        </p>
+      ) : (
+        <div className="divide-y divide-line/70">
+          {month.map((e) =>
+            editing === e.id ? (
+              <SideForm
+                key={e.id}
+                initial={e}
+                ym={ym}
+                me={side.me}
+                names={names}
+                onCancel={() => setEditing(null)}
+                onSave={async (n) => {
+                  await side.update(e.id, n)
+                  setEditing(null)
+                }}
+              />
+            ) : (
+              <div
+                key={e.id}
+                onClick={() => setEditing(e.id)}
+                className="-mx-1 flex cursor-pointer items-center gap-2 rounded px-1 py-2.5 active:bg-bg"
+              >
+                <span className="tnum w-9 shrink-0 text-[11.5px] text-cap">
+                  {Number(e.earnedOn.slice(5, 7))}/{Number(e.earnedOn.slice(8, 10))}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
+                  {e.category}
+                  <span className="text-cap">
+                    {' '}
+                    · {whoLabel(e)}
+                    {e.note ? ` · ${e.note}` : ''}
+                  </span>
+                </span>
+                <span
+                  className={`tnum shrink-0 text-[13.5px] font-bold ${e.kind === 'cash' ? CASH : SAVE}`}
+                >
+                  {e.kind === 'cash' ? '+' : ''}
+                  {formatWon(e.amount)}
+                </span>
+                <button
+                  aria-label={`${e.category} 고치기`}
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    setEditing(e.id)
+                  }}
+                  className="shrink-0 text-cap active:text-brand"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  aria-label={`${e.category} 지우기`}
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    void side.remove(e.id)
+                  }}
+                  className="shrink-0 text-cap active:text-danger"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ),
+          )}
+        </div>
+      )}
     </div>
   )
 
@@ -292,6 +342,8 @@ export default function SideIncome() {
           <Plus size={18} /> 부수입 적기
         </button>
       )}
+
+      {records}
 
       <PcColumns
         left={

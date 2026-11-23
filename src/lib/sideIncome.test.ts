@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyToAssets,
+  kindOfCategory,
+  parseAmountCell,
+  parseDateCell,
+  parsePastedRows,
   applyToLedger,
   livingSplit,
   savedAmount,
@@ -99,5 +103,66 @@ describe('부수입 정산 — 보낸 곳에 더하고, 마감을 풀면 뺀다'
     const back = applyToLedger(added, allocs, -1)
     expect(back.items.find((it) => it.id === 'i1')?.actual).toBe(5_000)
     expect(back.items.find((it) => it.member === 2)?.actual).toBe(0)
+  })
+})
+
+describe('엑셀에서 붙여넣기 (2026-11-23)', () => {
+  const opts = { year: '2026', names: ['결영', '남편이'] as [string, string], me: 2 as const }
+
+  it('날짜·금액 모양을 알아본다', () => {
+    expect(parseDateCell('2026-11-03', '2026')).toBe('2026-11-03')
+    expect(parseDateCell('2026.11.3', '2026')).toBe('2026-11-03')
+    expect(parseDateCell('11/3', '2026')).toBe('2026-11-03')
+    expect(parseDateCell('11월 3일', '2026')).toBe('2026-11-03')
+    expect(parseDateCell('앱테크', '2026')).toBeNull()
+    expect(parseAmountCell('12,000원')).toBe(12_000)
+    expect(parseAmountCell('₩ 3,500')).toBe(3_500)
+    expect(parseAmountCell('1.2만')).toBe(12_000)
+    expect(parseAmountCell('메모')).toBeNull()
+  })
+
+  it('칸 순서가 달라도 읽고, 머리줄·빈 줄은 뺀다', () => {
+    const text = [
+      '날짜\t종류\t금액\t누가\t메모',
+      '11/3\t앱테크\t32,000\t결영\t캐시워크',
+      '2026-11-05\t아낀 돈\t체험단\t50000\t남편이\t성수 파스타',
+      '',
+      '11월 9일\t28000\t공동\t당근 판매\t아기 옷',
+    ].join('\n')
+    const { rows, skipped } = parsePastedRows(text, opts)
+    expect(skipped).toBe(1)
+    expect(rows).toEqual([
+      {
+        earnedOn: '2026-11-03',
+        kind: 'cash',
+        category: '앱테크',
+        amount: 32_000,
+        who: 1,
+        note: '캐시워크',
+      },
+      {
+        earnedOn: '2026-11-05',
+        kind: 'saved',
+        category: '체험단',
+        amount: 50_000,
+        who: 2,
+        note: '성수 파스타',
+      },
+      // 목록에 없는 종류는 그대로, 누가가 없으면 나(2)
+      {
+        earnedOn: '2026-11-09',
+        kind: 'cash',
+        category: '당근 판매',
+        amount: 28_000,
+        who: 'shared',
+        note: '아기 옷',
+      },
+    ])
+  })
+
+  it('종류가 아낀 돈 목록에만 있으면 아낀 돈으로', () => {
+    expect(kindOfCategory('체험단')).toBe('saved')
+    expect(kindOfCategory('기타')).toBe('cash')
+    expect(kindOfCategory('당근 판매')).toBe('cash')
   })
 })
