@@ -653,6 +653,29 @@ export default function SideIncome() {
     </div>
   )
 
+  // 부수입 적기 (버튼 / 적는 칸)
+  const writeBox = writing ? (
+    <div className="rounded-card bg-card px-4 py-4 shadow-card">
+      <SideForm
+        ym={ym}
+        me={side.me}
+        names={names}
+        onCancel={() => setWriting(false)}
+        onSave={async (n) => {
+          await side.add(n)
+          setWriting(false)
+        }}
+      />
+    </div>
+  ) : (
+    <button
+      onClick={() => setWriting(true)}
+      className="flex h-12 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
+    >
+      <Plus size={18} /> 부수입 적기
+    </button>
+  )
+
   return (
     <div className="animate-fade-up space-y-4 pb-6">
       {/* 달 고르기 */}
@@ -684,40 +707,32 @@ export default function SideIncome() {
       )}
 
       {/* 이 달 부수입·정산을 맨 위로 (2026-11-23 결영 요청: "정산 금액이 맨 위로") */}
-      <PcColumns left={summary} right={settleBox} />
-
-      {/* 번 돈 꺾은선 — 달을 누르면 그 달로 */}
-      <SideTrend
-        points={trendPoints}
-        current={ym}
-        onPick={setYm}
-        yearCash={year.cash}
-        monthCash={s.cash}
-        monthSpent={s.spent}
+      {/*
+        2026-11-24 결영 요청: 정산하기와 부수입 적기 자리를 바꿨다.
+        폰: 요약 → 부수입 적기 → 꺾은선 → 정산하기 / PC: 왼쪽 요약·적기, 오른쪽 꺾은선·정산
+      */}
+      <PcColumns
+        left={
+          <>
+            {summary}
+            {writeBox}
+          </>
+        }
+        right={
+          <>
+            {/* 번 돈 꺾은선 — 달을 누르면 그 달로 */}
+            <SideTrend
+              points={trendPoints}
+              current={ym}
+              onPick={setYm}
+              yearCash={year.cash}
+              monthCash={s.cash}
+              monthSpent={s.spent}
+            />
+            {settleBox}
+          </>
+        }
       />
-
-      {/* 적기 */}
-      {writing ? (
-        <div className="rounded-card bg-card px-4 py-4 shadow-card">
-          <SideForm
-            ym={ym}
-            me={side.me}
-            names={names}
-            onCancel={() => setWriting(false)}
-            onSave={async (n) => {
-              await side.add(n)
-              setWriting(false)
-            }}
-          />
-        </div>
-      ) : (
-        <button
-          onClick={() => setWriting(true)}
-          className="flex h-12 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
-        >
-          <Plus size={18} /> 부수입 적기
-        </button>
-      )}
 
       {records}
 
