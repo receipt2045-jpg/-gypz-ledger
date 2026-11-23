@@ -226,7 +226,7 @@ export default function SideGrid({
         <table ref={tableRef} className="w-full min-w-[500px] table-fixed border-collapse">
           <colgroup>
             <col className="w-[60px]" />
-            <col className="w-[52px]" />
+            <col className="w-[64px]" />
             <col className="w-[108px]" />
             <col className="w-[92px]" />
             <col className="w-[56px]" />
@@ -281,8 +281,8 @@ export default function SideGrid({
                       onChange={(e) => patch(r.key, { kind: e.target.value as SideKind })}
                       className={`${input} appearance-none px-0 text-center font-semibold ${r.kind === 'cash' ? 'text-emerald-700' : 'text-brand'}`}
                     >
-                      <option value="cash">들어온</option>
-                      <option value="saved">아낀</option>
+                      <option value="cash">번 돈</option>
+                      <option value="saved">아낀 돈</option>
                     </select>
                   </td>
                   <td className={cell}>

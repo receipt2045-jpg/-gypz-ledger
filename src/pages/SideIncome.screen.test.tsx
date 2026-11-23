@@ -6,7 +6,7 @@ import { useLedgerStore } from '../lib/store'
 import { currentYm, formatYmKorean } from '../lib/format'
 import { resolveLedger } from '../lib/carryover'
 
-// 둘러보기(householdId 없음) — 예시 부수입: 이번 달 들어온 돈 21만, 아낀 돈 26만 3천
+// 둘러보기(householdId 없음) — 예시 부수입: 이번 달 번 돈 21만, 아낀 돈 26만 3천
 const month = formatYmKorean(currentYm()).split(' ')[1]
 
 function open() {
@@ -32,19 +32,19 @@ function open() {
 }
 
 describe('부수입 가계부 (2026-11-19)', () => {
-  it('이번 달 부수입을 들어온 돈·아낀 돈으로 나눠 보여 준다', async () => {
+  it('이번 달 부수입을 번 돈·아낀 돈으로 나눠 보여 준다', async () => {
     open()
     expect(await screen.findByText('473,000원')).toBeInTheDocument()
     expect(screen.getAllByText('210,000원').length).toBeGreaterThan(0)
     expect(screen.getAllByText('263,000원').length).toBeGreaterThan(0)
   })
 
-  it('들어온 돈을 적으면 합계가 늘어난다', async () => {
+  it('번 돈을 적으면 합계가 늘어난다', async () => {
     const { user } = open()
     await screen.findByText('473,000원')
     await user.click(screen.getByRole('button', { name: /부수입 적기/ }))
     await user.click(screen.getByRole('button', { name: '중고 판매' }))
-    await user.type(screen.getByLabelText(/들어온 금액/), '20000')
+    await user.type(screen.getByLabelText(/번 금액/), '20000')
     await user.click(screen.getByRole('button', { name: '적기' }))
     expect(await screen.findByText('493,000원')).toBeInTheDocument()
   })
@@ -66,7 +66,7 @@ describe('부수입 가계부 (2026-11-19)', () => {
     await screen.findByText('473,000원')
     await user.click(screen.getByRole('button', { name: /부수입 적기/ }))
     await user.click(screen.getByRole('button', { name: '적기' }))
-    expect(screen.getByText('들어온 금액을 넣어 주세요')).toBeInTheDocument()
+    expect(screen.getByText('번 금액을 넣어 주세요')).toBeInTheDocument()
   })
 
   it('정산 — 통장과 살림으로 보내면 자산·가계부에 더하고, 마감을 풀면 되돌린다', async () => {

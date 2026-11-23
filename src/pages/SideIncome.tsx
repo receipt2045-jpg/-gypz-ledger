@@ -84,7 +84,7 @@ export default function SideIncome() {
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className="rounded-btn bg-emerald-50 px-3 py-2.5">
-          <p className="text-[12px] font-bold text-emerald-700">들어온 돈</p>
+          <p className="text-[12px] font-bold text-emerald-700">번 돈</p>
           <p className="tnum text-[17px] font-extrabold text-emerald-700">{formatWon(s.cash)}</p>
         </div>
         <div className="rounded-btn bg-brand/10 px-3 py-2.5">
@@ -410,7 +410,7 @@ function SideForm({
     const cat = isCustom ? custom.trim() : category
     if (!cat) return setError('무엇으로 벌었는지 적어 주세요')
     if (value <= 0)
-      return setError(kind === 'cash' ? '들어온 금액을 넣어 주세요' : '얼마짜리였는지 넣어 주세요')
+      return setError(kind === 'cash' ? '번 금액을 넣어 주세요' : '얼마짜리였는지 넣어 주세요')
     setSaving(true)
     try {
       await onSave({
@@ -481,7 +481,7 @@ function SideForm({
 
       {kind === 'cash' ? (
         <label className="block">
-          <span className="mb-1.5 block text-[12.5px] font-bold text-sub">들어온 금액</span>
+          <span className="mb-1.5 block text-[12.5px] font-bold text-sub">번 금액</span>
           <AmountInput value={amount} onChange={setAmount} />
         </label>
       ) : (

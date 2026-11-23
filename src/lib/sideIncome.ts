@@ -10,7 +10,7 @@ import type { AssetItem, BudgetItem, MonthlyLedger } from '../types'
 export type SideKind = 'cash' | 'saved'
 
 export const SIDE_KIND_LABEL: Record<SideKind, string> = {
-  cash: '들어온 돈',
+  cash: '번 돈',
   saved: '아낀 돈',
 }
 
