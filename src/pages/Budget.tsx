@@ -194,7 +194,7 @@ export default function Budget() {
       }
     }
     const merged = mergeBudget(server.items, baseline.items, items)
-    const useCon = con[1] > 0 || con[2] > 0 || server.contributions !== undefined
+    const useCon = con[1] !== 0 || con[2] !== 0 || server.contributions !== undefined
     saveLedger({
       ym,
       items: merged,
@@ -329,8 +329,9 @@ export default function Budget() {
                       {COLS.map((c) => (
                         <Cell
                           key={String(c)}
-                          value={c === 'j' ? con[1] + con[2] : con[c]}
-                          sign={c === 'j' ? '+' : '−'}
+                          // 사람 칸은 보내면 −, 받으면 + (2026-11-24 '받아요')
+                          value={c === 'j' ? con[1] + con[2] : -con[c] || 0}
+                          signed
                           tone={c === 'j' ? 'joint' : 'muted'}
                           selected={sel?.row === 'con'}
                           onClick={() => setSel({ row: 'con', col: c })}
@@ -484,14 +485,15 @@ function Cell({
   selected,
   onClick,
   label,
-  sign,
+  signed,
   tone,
 }: {
   value: number
   selected: boolean
   onClick: () => void
   label: string
-  sign?: '+' | '−'
+  /** 앞에 +/− 를 붙인다 (공동통장 주고받기) */
+  signed?: boolean
   tone?: 'muted' | 'joint'
 }) {
   const color =
@@ -506,7 +508,7 @@ function Cell({
     <td className="border-t border-bg px-0.5 py-1">
       <button
         onClick={onClick}
-        aria-label={`${label} ${formatComma(value)}원`}
+        aria-label={`${label} ${signed && value > 0 ? '+' : ''}${formatComma(value)}원`}
         className={`tnum flex w-full items-center justify-end gap-1 rounded-lg border px-1.5 py-2 text-right ${color} ${
           selected
             ? 'border-brand bg-brand/10 ring-2 ring-brand/15'
@@ -514,8 +516,8 @@ function Cell({
         }`}
       >
         <span className="truncate">
-          {value > 0 && sign ? sign : ''}
-          {short(value)}
+          {signed && value !== 0 ? (value > 0 ? '+' : '−') : ''}
+          {short(signed ? Math.abs(value) : value)}
         </span>
       </button>
     </td>
@@ -537,32 +539,70 @@ function ConPanel({
   onChange: (m: 1 | 2, v: number) => void
   onSplit: (mode: 'half' | 'income') => void
 }) {
+  // 받아요 = 공동통장(배우자)에서 생활비를 받는다 — 값은 음수로 둔다 (2026-11-24 결영: "-는 입력이 안 돼").
+  // 금액이 0이어도 고른 쪽을 기억하려고 따로 둔다.
+  const [recv, setRecv] = useState<Record<1 | 2, boolean>>({ 1: con[1] < 0, 2: con[2] < 0 })
+  const pool = con[1] + con[2]
   return (
     <div>
-      <p className="text-[15px] font-bold text-ink">공동통장으로 보내는 돈</p>
+      <p className="text-[15px] font-bold text-ink">공동통장 주고받기</p>
       <p className="mt-0.5 text-[12.5px] text-sub">
-        공동통장에서 나갈 돈 {short(need)}원 · 지금 {short(con[1] + con[2])}원 모여요
+        공동통장에서 나갈 돈 {short(need)}원 · 지금 {pool < 0 ? '−' : ''}
+        {short(Math.abs(pool))}원 {pool < 0 ? '모자라요' : '모여요'}
       </p>
       <div className="mt-3 space-y-2">
         {([1, 2] as const).map((m) => (
-          <label key={m} className="flex items-center gap-2 text-[13.5px] text-sub">
-            <span className="w-16 shrink-0">
+          <div key={m} className="flex flex-wrap items-center gap-2 text-[13.5px] text-sub">
+            <span className="w-14 shrink-0">
               <span className={`mr-1 inline-block h-2 w-2 rounded-full ${dots[m - 1]}`} />
               {names[m - 1]}
             </span>
-            <AmountInput value={con[m]} onChange={(v) => onChange(m, v)} className="flex-1" />
-          </label>
+            <div className="flex shrink-0 gap-0.5 rounded-full bg-bg p-0.5" role="tablist">
+              {([false, true] as const).map((r) => (
+                <button
+                  key={String(r)}
+                  role="tab"
+                  aria-selected={recv[m] === r}
+                  aria-label={`${names[m - 1]} ${r ? '받아요' : '보내요'}`}
+                  onClick={() => {
+                    setRecv((p) => ({ ...p, [m]: r }))
+                    onChange(m, (r ? -1 : 1) * Math.abs(con[m]))
+                  }}
+                  className={`rounded-full px-2.5 py-1 text-[12px] font-bold ${
+                    recv[m] === r ? 'bg-white text-ink shadow-card' : 'text-sub'
+                  }`}
+                >
+                  {r ? '받아요' : '보내요'}
+                </button>
+              ))}
+            </div>
+            <AmountInput
+              value={Math.abs(con[m])}
+              onChange={(v) => onChange(m, recv[m] ? -v : v)}
+              className="min-w-0 basis-full sm:basis-0 sm:flex-1"
+            />
+          </div>
         ))}
       </div>
+      <p className="mt-2 text-[12px] leading-relaxed text-cap">
+        한 사람이 모자란 생활비를 배우자에게 받으면, 주는 사람은 &lsquo;보내요&rsquo;, 받는 사람은
+        &lsquo;받아요&rsquo;로 같은 금액을 적어요.
+      </p>
       <div className="mt-3 flex flex-wrap gap-1.5">
         <button
-          onClick={() => onSplit('half')}
+          onClick={() => {
+            setRecv({ 1: false, 2: false })
+            onSplit('half')
+          }}
           className="rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] font-bold text-sub active:bg-bg"
         >
           나갈 돈 반반
         </button>
         <button
-          onClick={() => onSplit('income')}
+          onClick={() => {
+            setRecv({ 1: false, 2: false })
+            onSplit('income')
+          }}
           className="rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] font-bold text-sub active:bg-bg"
         >
           월급 비율로
