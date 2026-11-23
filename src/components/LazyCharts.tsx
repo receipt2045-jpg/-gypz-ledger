@@ -15,8 +15,17 @@ function Placeholder({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-card bg-line/60 ${className}`} />
 }
 
-const MonthlyCombo = lazy(() => import('./MonthlyCombo'))
-const SavingRateBars = lazy(() => import('./SavingRateBars'))
+/**
+ * 새로 배포된 직후 옛 파일을 못 찾으면 main.tsx가 새로 고침을 걸고 오류를 삼킨다(vite:preloadError).
+ * 그때 import가 빈 값으로 끝나 React가 "reading 'default'" 오류를 냈다 (2026-11-24 자동 오류 제보).
+ * 빈 값이면 새로 고침이 끝날 때까지 빈 자리(Suspense)로 기다린다.
+ */
+function waitIfReloading<T>(load: () => Promise<T | undefined>): () => Promise<T> {
+  return () => load().then((m) => m ?? new Promise<T>(() => {}))
+}
+
+const MonthlyCombo = lazy(waitIfReloading(() => import('./MonthlyCombo')))
+const SavingRateBars = lazy(waitIfReloading(() => import('./SavingRateBars')))
 
 export function LazyMonthlyCombo({ data }: { data: MonthPoint[] }) {
   return (
