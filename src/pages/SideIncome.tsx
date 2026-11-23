@@ -940,7 +940,7 @@ function SideForm({
       </div>
 
       <div className="flex gap-2">
-        <label className="flex-1">
+        <label className="min-w-0 flex-1">
           <span className="mb-1.5 block text-[12.5px] font-bold text-sub">날짜</span>
           <input
             type="date"
@@ -950,7 +950,7 @@ function SideForm({
             className="w-full rounded-btn border border-line bg-white px-3 py-2.5 text-[14px] outline-none focus:border-brand"
           />
         </label>
-        <label className="flex-[1.4]">
+        <label className="min-w-0 flex-[1.4]">
           <span className="mb-1.5 block text-[12.5px] font-bold text-sub">메모</span>
           <input
             value={note}

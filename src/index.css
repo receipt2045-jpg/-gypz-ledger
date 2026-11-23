@@ -66,3 +66,15 @@
     display: none;
   }
 }
+
+/* 아이폰 사파리: 날짜 칸이 주어진 너비를 무시하고 옆 칸(메모)을 덮었다 (2026-11-24 결영 제보).
+   기본 모양을 끄고 줄어들 수 있게 한다 — 눌러서 고르는 건 그대로 된다. */
+input[type='date'] {
+  min-width: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+}
