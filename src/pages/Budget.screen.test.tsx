@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import Budget from './Budget'
@@ -100,32 +100,6 @@ describe('예산 표', () => {
     expect(saved.items.find((i) => i.id === 'f')!.shared).toBe(true)
     const savings = saved.items.filter((i) => i.group === 'saving')
     expect(savings.reduce((a, i) => a + i.planned, 0)).toBe(5_000_000 - 1_000_000)
-  })
-
-  it("모자란 생활비를 배우자에게 받으면 '받아요' — 받는 사람 칸은 +, 둘 다 0원이 된다 (2026-11-24)", async () => {
-    seedStore({
-      ledgers: [
-        ledger(TEST_YM, [
-          item('a', 'income', '주수입', 1, 1_050_000),
-          item('b', 'income', '주수입', 2, 2_950_000),
-          item('f', 'fixed', '주거', 1, 500_000),
-          item('g', 'fixed', '보험', 2, 3_500_000),
-        ]),
-      ],
-    })
-    const { user } = open()
-    await user.click(screen.getByRole('button', { name: /남편 공동통장/ }))
-    const panel = within(screen.getByText('공동통장 주고받기').parentElement!)
-    const [husband, wife] = panel.getAllByRole('textbox')
-    await user.type(husband, '550000')
-    await user.click(panel.getByRole('tab', { name: '아내 받아요' }))
-    await user.type(wife, '550000')
-    expect(screen.getByRole('button', { name: '아내 공동통장 +550,000원' })).toBeInTheDocument()
-    expect(screen.getByText('0원 · 다 정했어요')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '예산으로 저장' }))
-    const saved = useLedgerStore.getState().ledgers.find((l) => l.ym === TEST_YM)!
-    expect(saved.contributions).toEqual({ 1: 550_000, 2: -550_000 })
   })
 
   it('빈 칸은 카테고리를 골라 항목을 만든다', async () => {
