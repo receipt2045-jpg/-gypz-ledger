@@ -44,13 +44,17 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     expect(savedOccasions()[0]).toMatchObject({ title: '친구 결혼식', amount: 100_000 })
   })
 
-  it("상단 '비정기 지출 입력' 버튼을 누르면 입력 폼이 열린다", async () => {
+  it('요약 칸(2026-11-24 개편) — 고정비 칸을 누르면 고정비 항목이 펼쳐지고, 다시 누르면 접힌다', async () => {
     seedWithLedger()
     const { user } = renderScreen(<Monthly />)
-
-    expect(screen.queryByPlaceholderText(/내용/)).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /비정기 지출 입력/ }))
-    expect(screen.getByPlaceholderText(/내용/)).toBeInTheDocument()
+    const tile = screen.getByRole('button', { name: /^고정비 .*자세히$/ })
+    expect(tile).toHaveAttribute('aria-expanded', 'false')
+    await user.click(tile)
+    expect(tile).toHaveAttribute('aria-expanded', 'true')
+    // 예산을 아직 안 세운 집 — 펼치면 예산 세우기 안내
+    expect(screen.getByText(/한눈에 볼 수 있어요/)).toBeInTheDocument()
+    await user.click(tile)
+    expect(tile).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('달을 옮긴 뒤 추가하면 보고 있는 그 달로 기록된다', async () => {
@@ -268,7 +272,8 @@ describe('가계부 탭 — 고백 내역 삭제', () => {
     seedConfessions()
     const { user } = renderScreen(<Monthly />)
 
-    await user.click(screen.getByRole('button', { name: /이번 달 소비 기록/ }))
+    await user.click(screen.getByRole('tab', { name: '목록' }))
+    localStorage.removeItem('moabuli.monthly.logView')
     // 둘 다 삭제 버튼
     const buttons = screen.getAllByLabelText('기록 삭제')
     expect(buttons).toHaveLength(2)
@@ -400,7 +405,6 @@ describe('이번 달 소비 기록 달력 (2026-11-24)', () => {
       ],
     })
     const { user } = renderScreen(<Monthly />)
-    await user.click(screen.getByRole('button', { name: /이번 달 소비 기록/ }))
     await user.click(screen.getByRole('tab', { name: '달력' }))
     expect(screen.getByRole('button', { name: `${m}월 5일 무지출` })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: `${m}월 11일 나간 돈 12,000원` }))

@@ -55,7 +55,7 @@ describe('62일보다 앞선 소비 기록 (2026-11-17 의견: "이전에 입력
     useLedgerStore.setState({ householdId: 'h1', confessionsFrom: '2026-09-16T00:00:00.000Z' })
     between.mockResolvedValue([rec('aug', '2026-08-20T03:00:00', 23_000)])
     renderScreen(<Monthly />)
-    expect((await screen.findAllByText(/이번 달 소비 기록/)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/8월 소비 기록/)).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/1건/).length).toBeGreaterThan(0)
     expect(between).toHaveBeenCalled()
   })

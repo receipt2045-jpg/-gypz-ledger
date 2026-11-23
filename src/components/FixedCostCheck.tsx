@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, ChevronDown, Users } from 'lucide-react'
 import { abbreviateKRW, formatWon } from '../lib/format'
-import {
-  buildFixedCostReport,
-  headlineOf,
-  type CategoryVerdict,
-} from '../lib/fixedCostBenchmark'
+import { buildFixedCostReport, headlineOf, type CategoryVerdict } from '../lib/fixedCostBenchmark'
 import { peerLabel, type PeerRow } from '../lib/peerBenchmark'
 import * as db from '../lib/db'
 import { useLedgerStore } from '../lib/store'
@@ -20,11 +16,15 @@ import type { BudgetItem } from '../types'
 export default function FixedCostCheck({
   items,
   closed,
+  collapsible = false,
 }: {
   items: BudgetItem[]
   closed: boolean
+  /** 가계부 탭 '자세히 보기' — 제목 줄만 보이다가 누르면 펼친다 (2026-11-24) */
+  collapsible?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [shown, setShown] = useState(!collapsible)
   const householdId = useLedgerStore((s) => s.householdId)
   // 또래 비교는 있으면 얹고, 없으면(로그인 전·샘플·통신 실패) 조용히 생략한다
   const [peers, setPeers] = useState<Map<string, PeerRow>>(new Map())
@@ -50,56 +50,70 @@ export default function FixedCostCheck({
 
   return (
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
-      <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-[15px] font-bold text-ink">고정비 점검</h3>
-        {r.totalStatus !== 'unknown' && (
-          <span className="tnum text-[13px] font-bold text-sub">
-            수입의 {Math.round(r.totalRatio * 100)}%
-          </span>
-        )}
-      </div>
-      <p className="text-[12.5px] leading-relaxed text-sub">{headlineOf(r)}</p>
-
-      {/* 줄일 여지가 있으면 10년치로 환산해서 먼저 보여준다 */}
-      {r.totalOverBy > 0 && (
-        <div className="mt-3 rounded-btn bg-brand/10 px-3.5 py-3">
-          <p className="text-[13px] font-bold text-brand">
-            매달 {formatWon(r.totalOverBy)} 줄일 여지가 있어요
-          </p>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-sub">
-            이 돈을 10년 모으면 <b className="text-ink">{abbreviateKRW(r.tenYearTotal)}</b>이에요
-          </p>
-        </div>
-      )}
-
-      <div className="mt-3 space-y-2.5">
-        {r.categories.map((c) => (
-          <Row key={c.category} v={c} peer={peers.get(c.category)} />
-        ))}
-      </div>
-
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="mt-3 flex w-full items-center justify-center gap-1 text-[12px] font-semibold text-cap active:text-sub"
+        type="button"
+        onClick={() => collapsible && setShown((v) => !v)}
+        aria-expanded={shown}
+        disabled={!collapsible}
+        className={`flex w-full items-center justify-between text-left ${shown ? 'mb-1' : ''}`}
       >
-        기준이 궁금하다면
-        <ChevronDown size={13} className={open ? 'rotate-180' : ''} />
+        <h3 className="text-[15px] font-bold text-ink">고정비 점검</h3>
+        <span className="tnum flex items-center gap-1 text-[13px] font-bold text-sub">
+          {r.totalStatus !== 'unknown' && <>수입의 {Math.round(r.totalRatio * 100)}%</>}
+          {collapsible && (
+            <ChevronDown
+              size={16}
+              className={`text-cap transition-transform ${shown ? 'rotate-180' : ''}`}
+            />
+          )}
+        </span>
       </button>
-      {open && (
-        <div className="mt-2 space-y-1.5 border-t border-line pt-2.5">
-          {r.categories
-            .filter((c) => c.band)
-            .map((c) => (
-              <p key={c.category} className="text-[11.5px] leading-relaxed text-cap">
-                <b className="font-semibold text-sub">{c.category}</b> · {c.band!.source}
-              </p>
-            ))}
-          <p className="pt-1 text-[11.5px] leading-relaxed text-cap">
-            널리 쓰이는 눈금이지 정답은 아니에요. 우리집 사정이 먼저입니다.
-          </p>
-        </div>
-      )}
+      {shown && (
+        <>
+          <p className="text-[12.5px] leading-relaxed text-sub">{headlineOf(r)}</p>
 
+          {/* 줄일 여지가 있으면 10년치로 환산해서 먼저 보여준다 */}
+          {r.totalOverBy > 0 && (
+            <div className="mt-3 rounded-btn bg-brand/10 px-3.5 py-3">
+              <p className="text-[13px] font-bold text-brand">
+                매달 {formatWon(r.totalOverBy)} 줄일 여지가 있어요
+              </p>
+              <p className="mt-0.5 text-[12.5px] leading-relaxed text-sub">
+                이 돈을 10년 모으면 <b className="text-ink">{abbreviateKRW(r.tenYearTotal)}</b>
+                이에요
+              </p>
+            </div>
+          )}
+
+          <div className="mt-3 space-y-2.5">
+            {r.categories.map((c) => (
+              <Row key={c.category} v={c} peer={peers.get(c.category)} />
+            ))}
+          </div>
+
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="mt-3 flex w-full items-center justify-center gap-1 text-[12px] font-semibold text-cap active:text-sub"
+          >
+            기준이 궁금하다면
+            <ChevronDown size={13} className={open ? 'rotate-180' : ''} />
+          </button>
+          {open && (
+            <div className="mt-2 space-y-1.5 border-t border-line pt-2.5">
+              {r.categories
+                .filter((c) => c.band)
+                .map((c) => (
+                  <p key={c.category} className="text-[11.5px] leading-relaxed text-cap">
+                    <b className="font-semibold text-sub">{c.category}</b> · {c.band!.source}
+                  </p>
+                ))}
+              <p className="pt-1 text-[11.5px] leading-relaxed text-cap">
+                널리 쓰이는 눈금이지 정답은 아니에요. 우리집 사정이 먼저입니다.
+              </p>
+            </div>
+          )}
+        </>
+      )}
       {/* 맞춤 리포트로 잇던 버튼은 닫아 뒀다 (2026-09-03).
           여기가 '그래서 우리집은 어떻게 하나'가 가장 궁금한 자리였으니,
           리포트를 다시 열 땐 이 자리부터 되살리는 게 좋다. */}
