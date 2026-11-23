@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2, Upload } fro
 import AmountInput from '../components/AmountInput'
 import PcColumns from '../components/PcColumns'
 import SideGrid from '../components/SideGrid'
+import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
+import SideTrend from '../components/SideTrend'
 import { useLedgerStore } from '../lib/store'
 import { useSideIncome } from '../lib/useSideIncome'
 import { displayYm, resolveSnapshot } from '../lib/carryover'
@@ -50,14 +52,15 @@ export default function SideIncome() {
   const [ym, setYm] = useState(currentYm())
   const [writing, setWriting] = useState(false)
   // 기록 보기 — 표(엑셀처럼 바로 쓰기, 2026-11-23) / 목록. 고른 걸 이 기기에 기억한다
-  const [view, setViewState] = useState<'grid' | 'list'>(() => {
+  const [view, setViewState] = useState<'grid' | 'list' | 'calendar'>(() => {
     try {
-      return localStorage.getItem('moabuli.side.view') === 'list' ? 'list' : 'grid'
+      const v = localStorage.getItem('moabuli.side.view')
+      return v === 'list' || v === 'calendar' ? v : 'grid'
     } catch {
       return 'grid'
     }
   })
-  const setView = (v: 'grid' | 'list') => {
+  const setView = (v: 'grid' | 'list' | 'calendar') => {
     setViewState(v)
     try {
       localStorage.setItem('moabuli.side.view', v)
@@ -103,6 +106,31 @@ export default function SideIncome() {
         return { kind, category, month: sum(month), count: month.length, year: sum(inYear) }
       })()
     : null
+  // ── 달력 (2026-11-24) — 날짜 칸에 + 번 돈·아낀 돈 / − 쓴 돈, 누르면 그날 기록만 ──
+  const todayStr = new Date().toLocaleDateString('sv-SE')
+  const [calDay, setCalDay] = useState<string | null>(null)
+  const dayMarks = useMemo(() => {
+    const m: Record<string, DayMark> = {}
+    for (const e of month) {
+      const d = (m[e.earnedOn] ??= {})
+      if (e.kind === 'spent') d.minus = (d.minus ?? 0) + e.amount
+      else d.plus = (d.plus ?? 0) + e.amount
+    }
+    return m
+  }, [month])
+  const calDayIn = calDay && calDay.startsWith(ym) ? calDay : null
+  const shown =
+    view === 'calendar' ? (calDayIn ? month.filter((e) => e.earnedOn === calDayIn) : []) : month
+
+  // ── 번 돈 꺾은선 (2026-11-24) — 최근 6개월, 보는 달이 더 옛날이면 그 달까지 ──
+  const trendEnd = ym < shiftYm(currentYm(), -5) ? shiftYm(ym, 5) : currentYm()
+  const trendPoints = Array.from({ length: 6 }, (_, i) => shiftYm(trendEnd, i - 5)).map((m) => ({
+    ym: m,
+    cash: side.entries
+      .filter((e) => e.kind === 'cash' && ymOfDate(e.earnedOn) === m)
+      .reduce((a, e) => a + e.amount, 0),
+  }))
+
   // 고른 종류 이름 바꾸기 — 모든 달의 같은 종류를 한꺼번에
   const [renameTo, setRenameTo] = useState<string | null>(null)
   const [renaming, setRenaming] = useState(false)
@@ -391,11 +419,15 @@ export default function SideIncome() {
         <p className="text-[14px] font-bold text-ink">
           {label} 기록{' '}
           <span className="text-[12px] font-medium text-cap">
-            {view === 'grid' ? '칸에 바로 써요' : '눌러서 고쳐요'}
+            {view === 'grid'
+              ? '칸에 바로 써요'
+              : view === 'calendar'
+                ? '날짜를 눌러 봐요'
+                : '눌러서 고쳐요'}
           </span>
         </p>
         <div className="flex shrink-0 gap-0.5 rounded-full bg-bg p-0.5" role="tablist">
-          {(['grid', 'list'] as const).map((v) => (
+          {(['grid', 'list', 'calendar'] as const).map((v) => (
             <button
               key={v}
               role="tab"
@@ -405,7 +437,7 @@ export default function SideIncome() {
                 view === v ? 'bg-white text-ink shadow-card' : 'text-sub'
               }`}
             >
-              {v === 'grid' ? '표' : '목록'}
+              {v === 'grid' ? '표' : v === 'list' ? '목록' : '달력'}
             </button>
           ))}
         </div>
@@ -520,71 +552,99 @@ export default function SideIncome() {
           onUpdate={side.update}
           onRemove={side.remove}
         />
-      ) : month.length === 0 ? (
-        <p className="py-3 text-[13px] text-sub">
-          앱테크로 번 돈, 체험단으로 아낀 돈을 적어 보세요
-        </p>
       ) : (
-        <div className="divide-y divide-line/70">
-          {month.map((e) =>
-            editing === e.id ? (
-              <SideForm
-                key={e.id}
-                initial={e}
+        <>
+          {view === 'calendar' && (
+            <div className="mb-2">
+              <MonthCalendar
                 ym={ym}
-                me={side.me}
-                names={names}
-                onCancel={() => setEditing(null)}
-                onSave={async (n) => {
-                  await side.update(e.id, n)
-                  setEditing(null)
-                }}
+                marks={dayMarks}
+                selected={calDayIn}
+                onPick={setCalDay}
+                today={todayStr}
+                plusClass={CASH}
+                minusClass={SPENT}
               />
-            ) : (
-              <div
-                key={e.id}
-                onClick={() => setEditing(e.id)}
-                className="-mx-1 flex cursor-pointer items-center gap-2 rounded px-1 py-2.5 active:bg-bg"
-              >
-                <span className="tnum w-9 shrink-0 text-[11.5px] text-cap">
-                  {Number(e.earnedOn.slice(5, 7))}/{Number(e.earnedOn.slice(8, 10))}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
-                  {e.category}
-                  <span className="text-cap">
-                    {' '}
-                    · {whoLabel(e)}
-                    {e.note ? ` · ${e.note}` : ''}
-                  </span>
-                </span>
-                <span className={`tnum shrink-0 text-[13.5px] font-bold ${TONE[e.kind]}`}>
-                  {e.kind === 'cash' ? '+' : e.kind === 'spent' ? '−' : ''}
-                  {formatWon(e.amount)}
-                </span>
-                <button
-                  aria-label={`${e.category} 고치기`}
-                  onClick={(ev) => {
-                    ev.stopPropagation()
-                    setEditing(e.id)
-                  }}
-                  className="shrink-0 text-cap active:text-brand"
-                >
-                  <Pencil size={14} />
-                </button>
-                <button
-                  aria-label={`${e.category} 지우기`}
-                  onClick={(ev) => {
-                    ev.stopPropagation()
-                    void side.remove(e.id)
-                  }}
-                  className="shrink-0 text-cap active:text-danger"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ),
+              <p className="mt-1.5 text-[11.5px] text-cap">
+                <span className={`font-bold ${CASH}`}>+</span> 번 돈·아낀 돈{'  '}
+                <span className={`font-bold ${SPENT}`}>−</span> 쓴 돈
+              </p>
+              {calDayIn && (
+                <p className="mt-3 text-[12.5px] font-bold text-sub">
+                  {Number(calDayIn.slice(5, 7))}월 {Number(calDayIn.slice(8, 10))}일 기록
+                </p>
+              )}
+            </div>
           )}
-        </div>
+          {view === 'calendar' && !calDayIn ? null : shown.length === 0 ? (
+            <p className="py-3 text-[13px] text-sub">
+              {view === 'calendar'
+                ? '이 날은 기록이 없어요'
+                : '앱테크로 번 돈, 체험단으로 아낀 돈을 적어 보세요'}
+            </p>
+          ) : (
+            <div className="divide-y divide-line/70">
+              {shown.map((e) =>
+                editing === e.id ? (
+                  <SideForm
+                    key={e.id}
+                    initial={e}
+                    ym={ym}
+                    me={side.me}
+                    names={names}
+                    onCancel={() => setEditing(null)}
+                    onSave={async (n) => {
+                      await side.update(e.id, n)
+                      setEditing(null)
+                    }}
+                  />
+                ) : (
+                  <div
+                    key={e.id}
+                    onClick={() => setEditing(e.id)}
+                    className="-mx-1 flex cursor-pointer items-center gap-2 rounded px-1 py-2.5 active:bg-bg"
+                  >
+                    <span className="tnum w-9 shrink-0 text-[11.5px] text-cap">
+                      {Number(e.earnedOn.slice(5, 7))}/{Number(e.earnedOn.slice(8, 10))}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
+                      {e.category}
+                      <span className="text-cap">
+                        {' '}
+                        · {whoLabel(e)}
+                        {e.note ? ` · ${e.note}` : ''}
+                      </span>
+                    </span>
+                    <span className={`tnum shrink-0 text-[13.5px] font-bold ${TONE[e.kind]}`}>
+                      {e.kind === 'cash' ? '+' : e.kind === 'spent' ? '−' : ''}
+                      {formatWon(e.amount)}
+                    </span>
+                    <button
+                      aria-label={`${e.category} 고치기`}
+                      onClick={(ev) => {
+                        ev.stopPropagation()
+                        setEditing(e.id)
+                      }}
+                      className="shrink-0 text-cap active:text-brand"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      aria-label={`${e.category} 지우기`}
+                      onClick={(ev) => {
+                        ev.stopPropagation()
+                        void side.remove(e.id)
+                      }}
+                      className="shrink-0 text-cap active:text-danger"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ),
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -621,6 +681,9 @@ export default function SideIncome() {
 
       {/* 이 달 부수입·정산을 맨 위로 (2026-11-23 결영 요청: "정산 금액이 맨 위로") */}
       <PcColumns left={summary} right={settleBox} />
+
+      {/* 번 돈 꺾은선 — 달을 누르면 그 달로 */}
+      <SideTrend points={trendPoints} current={ym} onPick={setYm} />
 
       {/* 적기 */}
       {writing ? (

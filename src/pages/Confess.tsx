@@ -37,6 +37,7 @@ import {
 import WeeklyCostCard from '../components/WeeklyCostCard'
 import MonthSpendCard from '../components/MonthSpendCard'
 import RecoCard from '../components/RecoCard'
+import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
 import { pickConfessReco, type RecoCard as Reco } from '../lib/reco'
 import { resolveLedger } from '../lib/carryover'
 import { useLedgerStore } from '../lib/store'
@@ -301,6 +302,114 @@ export default function Confess() {
     // 적어두면 정산 수입 단계에 '이번 달 기록 합계'로 떠서 눌러 반영할 수 있다.
     { title: '수입 · 들어온 돈', kind: 'income', cats: categories.income },
   ]
+
+  // 기록 한 줄 — 누르면 고치기, 휴지통은 묻고 지우기 (목록·달력 같이 쓴다)
+  const renderRow = (c: Confession) =>
+    editing === c.id ? (
+      <EditRow
+        key={c.id}
+        c={c}
+        categories={categories}
+        memberNames={memberNames}
+        onSave={(patch) => {
+          updateConfession(c.id, patch)
+          setEditing(null)
+        }}
+        onCancel={() => setEditing(null)}
+      />
+    ) : (
+      <div key={c.id} className="flex items-center gap-2.5 py-2.5">
+        <button
+          onClick={() => setEditing(c.id)}
+          aria-label={`${c.category} 기록 고치기`}
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left active:opacity-60"
+        >
+          <span
+            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+              c.child
+                ? 'bg-amber-50 text-amber-700'
+                : c.shared
+                  ? 'bg-line text-sub'
+                  : memberStyle(c.memberNo, profile).badge
+            }`}
+          >
+            {c.child ? `🧒 ${c.child}` : c.shared ? '공동' : memberNames[c.memberNo - 1]}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
+            {c.category}
+            {c.note && <span className="text-cap"> · {c.note}</span>}
+          </span>
+          <span
+            className={`tnum shrink-0 text-[14px] font-bold ${
+              c.kind === 'income' ? 'text-brand' : 'text-ink'
+            }`}
+          >
+            {c.kind === 'income' ? '+' : ''}
+            {formatWon(c.amount)}
+          </span>
+        </button>
+        {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
+        <button
+          onClick={() => {
+            if (window.confirm(`${c.category} ${formatWon(c.amount)} 기록을 지울까요?`))
+              removeConfession(c.id)
+          }}
+          aria-label="기록 삭제"
+          className="-m-2 shrink-0 p-2 text-cap active:text-danger"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+    )
+
+  // ── 달력으로 보기 (2026-11-24 결영 요청: "지출 내역 달력으로도 볼 수 있으면") ──
+  const [confView, setConfViewState] = useState<'list' | 'calendar'>(() => {
+    try {
+      return localStorage.getItem('moabuli.confess.view') === 'calendar' ? 'calendar' : 'list'
+    } catch {
+      return 'list'
+    }
+  })
+  const setConfView = (v: 'list' | 'calendar') => {
+    setConfViewState(v)
+    try {
+      localStorage.setItem('moabuli.confess.view', v)
+    } catch {
+      /* 기억 못 해도 그대로 */
+    }
+  }
+  const [calYm, setCalYm] = useState(today.slice(0, 7))
+  const [calDay, setCalDay] = useState<string | null>(today)
+  // 지난달로 넘기면 앱에 없는 그 달 기록을 서버에서 읽어 온다
+  useEffect(() => {
+    if (confView !== 'calendar') return
+    const [y, m] = calYm.split('-').map(Number)
+    void loadOlderConfessions(new Date(y, m - 1, 1))
+  }, [confView, calYm, loadOlderConfessions])
+  const dayOf = (c: Confession) => new Date(c.createdAt).toLocaleDateString('sv-SE')
+  const calMonth = useMemo(
+    () => confessions.filter((c) => dayOf(c).startsWith(calYm)),
+    [confessions, calYm],
+  )
+  // 나간 돈 = 변동·고정 지출, 들어온 돈 = 수입. 저축·투자는 칸에 안 센다
+  const calMarks = useMemo(() => {
+    const m: Record<string, DayMark> = {}
+    for (const c of calMonth) {
+      if (c.kind !== 'income' && c.kind !== 'variable' && c.kind !== 'fixed') continue
+      const d = (m[dayOf(c)] ??= {})
+      if (c.kind === 'income') d.plus = (d.plus ?? 0) + c.amount
+      else d.minus = (d.minus ?? 0) + c.amount
+    }
+    return m
+  }, [calMonth])
+  const calOut = Object.values(calMarks).reduce((t, d) => t + (d.minus ?? 0), 0)
+  const calIn = Object.values(calMarks).reduce((t, d) => t + (d.plus ?? 0), 0)
+  const calDayIn = calDay && calDay.startsWith(calYm) ? calDay : null
+  const calDayList = calDayIn
+    ? calMonth
+        .filter((c) => dayOf(c) === calDayIn)
+        .sort((x, y) => (x.createdAt < y.createdAt ? 1 : -1))
+    : []
 
   // ── 저장 (양쪽 흐름 공통) ───────────────────
   const finishSave = (
@@ -898,94 +1007,108 @@ export default function Confess() {
 
         {/* 우리집 기록 (처음엔 최근 14일, 더 보기로 30일씩) — 잘못 쓴 건 여기서 바로 고치거나 지운다 */}
         {/* 최근 14일에 기록이 없어도 '지난 기록 더 보기'는 보여야 한다 (2026-11-19 점검) */}
-        {(recentByDate.length > 0 || hasOlder) && (
+        {(recentByDate.length > 0 || hasOlder || confView === 'calendar') && (
           <div className="rounded-card bg-card px-4 py-3.5 shadow-card">
-            <p className="mb-2 text-[13px] font-bold text-cap">
-              우리집 기록 · 눌러서 고치거나 지울 수 있어요
-            </p>
-            {recentByDate.length === 0 && (
-              <p className="py-2 text-[13px] text-sub">{sinceLabel}부터는 기록이 없어요</p>
-            )}
-            <div className="space-y-3">
-              {recentByDate.map(([date, list]) => (
-                <div key={date}>
-                  <p className="tnum text-[12px] font-bold text-sub">
-                    {date === today ? '오늘' : date.slice(5).replace('-', '월 ') + '일'}
-                  </p>
-                  <div className="divide-y divide-line/70">
-                    {list.map((c) =>
-                      editing === c.id ? (
-                        <EditRow
-                          key={c.id}
-                          c={c}
-                          categories={categories}
-                          memberNames={memberNames}
-                          onSave={(patch) => {
-                            updateConfession(c.id, patch)
-                            setEditing(null)
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="min-w-0 text-[13px] font-bold text-cap">
+                우리집 기록 <span className="font-medium">· 눌러서 고쳐요</span>
+              </p>
+              <div className="flex shrink-0 gap-0.5 rounded-full bg-bg p-0.5" role="tablist">
+                {(['list', 'calendar'] as const).map((v) => (
+                  <button
+                    key={v}
+                    role="tab"
+                    aria-selected={confView === v}
+                    onClick={() => setConfView(v)}
+                    className={`rounded-full px-3 py-1 text-[12px] font-bold ${
+                      confView === v ? 'bg-white text-ink shadow-card' : 'text-sub'
+                    }`}
+                  >
+                    {v === 'list' ? '목록' : '달력'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {confView === 'calendar' ? (
+              <div>
+                <p className="tnum mb-2 text-[12.5px] text-sub">
+                  {Number(calYm.slice(5, 7))}월 쓴 돈{' '}
+                  <b className="text-ink">{formatWon(calOut)}</b>
+                  {calIn > 0 && (
+                    <>
+                      {' · '}들어온 돈 <b className="text-brand">{formatWon(calIn)}</b>
+                    </>
+                  )}
+                </p>
+                <MonthCalendar
+                  ym={calYm}
+                  marks={calMarks}
+                  selected={calDayIn}
+                  onPick={setCalDay}
+                  today={today}
+                  onMonth={(v) => {
+                    setCalYm(v)
+                    setCalDay(null)
+                  }}
+                />
+                <p className="mt-1.5 text-[11.5px] text-cap">
+                  − 쓴 돈(변동·고정) · <span className="text-brand">+</span> 들어온 돈 · 저축·투자는
+                  빼고 셌어요
+                </p>
+                {calDayIn && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[12.5px] font-bold text-sub">
+                        {Number(calDayIn.slice(5, 7))}월 {Number(calDayIn.slice(8, 10))}일 기록
+                      </p>
+                      {calDayIn <= today && (
+                        <button
+                          onClick={() => {
+                            setLogDate(calDayIn)
+                            try {
+                              window.scrollTo({ top: 0, behavior: 'smooth' })
+                            } catch {
+                              /* 못 올려도 그대로 */
+                            }
                           }}
-                          onCancel={() => setEditing(null)}
-                        />
-                      ) : (
-                        <div key={c.id} className="flex items-center gap-2.5 py-2.5">
-                          <button
-                            onClick={() => setEditing(c.id)}
-                            aria-label={`${c.category} 기록 고치기`}
-                            className="flex min-w-0 flex-1 items-center gap-2.5 text-left active:opacity-60"
-                          >
-                            <span
-                              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-                                c.child
-                                  ? 'bg-amber-50 text-amber-700'
-                                  : c.shared
-                                    ? 'bg-line text-sub'
-                                    : memberStyle(c.memberNo, profile).badge
-                              }`}
-                            >
-                              {c.child
-                                ? `🧒 ${c.child}`
-                                : c.shared
-                                  ? '공동'
-                                  : memberNames[c.memberNo - 1]}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
-                              {c.category}
-                              {c.note && <span className="text-cap"> · {c.note}</span>}
-                            </span>
-                            <span
-                              className={`tnum shrink-0 text-[14px] font-bold ${
-                                c.kind === 'income' ? 'text-brand' : 'text-ink'
-                              }`}
-                            >
-                              {c.kind === 'income' ? '+' : ''}
-                              {formatWon(c.amount)}
-                            </span>
-                          </button>
-                          {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
-                          <button
-                            onClick={() => {
-                              if (window.confirm(`${c.category} ${formatWon(c.amount)} 기록을 지울까요?`))
-                                removeConfession(c.id)
-                            }}
-                            aria-label="기록 삭제"
-                            className="-m-2 shrink-0 p-2 text-cap active:text-danger"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      ),
+                          className="shrink-0 rounded-full bg-bg px-2.5 py-1 text-[12px] font-bold text-sub active:bg-line"
+                        >
+                          이 날로 적기
+                        </button>
+                      )}
+                    </div>
+                    {calDayList.length === 0 ? (
+                      <p className="py-2 text-[13px] text-sub">이 날은 기록이 없어요</p>
+                    ) : (
+                      <div className="divide-y divide-line/70">{calDayList.map(renderRow)}</div>
                     )}
                   </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {recentByDate.length === 0 && (
+                  <p className="py-2 text-[13px] text-sub">{sinceLabel}부터는 기록이 없어요</p>
+                )}
+                <div className="space-y-3">
+                  {recentByDate.map(([date, list]) => (
+                    <div key={date}>
+                      <p className="tnum text-[12px] font-bold text-sub">
+                        {date === today ? '오늘' : date.slice(5).replace('-', '월 ') + '일'}
+                      </p>
+                      <div className="divide-y divide-line/70">{list.map(renderRow)}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            {hasOlder && (
-              <button
-                onClick={showMore}
-                className="mt-3 w-full rounded-btn bg-bg py-2.5 text-[13px] font-bold text-sub active:bg-line"
-              >
-                지난 기록 더 보기 · 지금 {sinceLabel}부터
-              </button>
+                {hasOlder && (
+                  <button
+                    onClick={showMore}
+                    className="mt-3 w-full rounded-btn bg-bg py-2.5 text-[13px] font-bold text-sub active:bg-line"
+                  >
+                    지난 기록 더 보기 · 지금 {sinceLabel}부터
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}

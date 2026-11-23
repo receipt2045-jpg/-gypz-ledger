@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import SideIncome from './SideIncome'
 import { renderScreen, seedStore } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
-import { currentYm, formatYmKorean } from '../lib/format'
+import { currentYm, formatYmKorean, shiftYm } from '../lib/format'
 import { resolveLedger } from '../lib/carryover'
 import { readXlsx, writeXlsx } from '../lib/xlsx'
 
@@ -272,5 +272,34 @@ describe('부수입 엑셀로 받기·올리기 (2026-11-23)', () => {
     // 같은 파일을 또 올리면 모두 이미 있다
     await user.upload(screen.getByLabelText('엑셀 파일 고르기'), file)
     expect(await screen.findByText('2줄 모두 이미 적혀 있어요')).toBeInTheDocument()
+  })
+})
+
+describe('부수입 달력·번 돈 꺾은선 (2026-11-24)', () => {
+  it('달력으로 보면 날짜를 눌러 그날 기록만 본다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    await user.click(screen.getByRole('tab', { name: '달력' }))
+    const now = new Date()
+    const d = Math.min(9, Math.max(1, Math.min(now.getDate(), 28)))
+    const cell = screen.getByRole('button', {
+      name: new RegExp(`^${now.getMonth() + 1}월 ${d}일 `),
+    })
+    expect(cell).toHaveAccessibleName(/들어온 돈/)
+    await user.click(cell)
+    expect(screen.getByText(/캐시워크 출금/)).toBeInTheDocument()
+    localStorage.removeItem('moabuli.side.view')
+  })
+
+  it('최근 6개월 번 돈을 꺾은선으로, 달을 누르면 그 달로 간다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    expect(screen.getByRole('img', { name: /번 돈 흐름/ })).toHaveAccessibleName(/210,000원$/)
+    const prevLabel = `${Number(shiftYm(currentYm(), -1).slice(5, 7))}월`
+    await user.click(screen.getByRole('button', { name: `${prevLabel} 부수입 보기` }))
+    expect(screen.getByRole('button', { name: `${prevLabel} 부수입 보기` })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   })
 })

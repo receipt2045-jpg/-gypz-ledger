@@ -493,3 +493,45 @@ describe('지난 기록 더 보기 (2026-11-17 의견: "과거 기록을 일주�
     expect(screen.getByText(/예전/)).toBeInTheDocument()
   })
 })
+
+describe('고백 페이지 — 달력으로 보기 (2026-11-24)', () => {
+  it('달력 칸에 그날 쓴 돈이 나오고, 날짜를 누르면 그날 기록을 고칠 수 있다', async () => {
+    seedStore({
+      memberNo: 1,
+      confessions: [
+        {
+          id: 'k1',
+          memberNo: 1,
+          category: '식비',
+          kind: 'variable',
+          amount: 12_000,
+          note: '저녁',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'k2',
+          memberNo: 1,
+          category: '적금',
+          kind: 'saving',
+          amount: 500_000,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByRole('tab', { name: '달력' }))
+    const now = new Date()
+    // 저축은 쓴 돈에 안 센다
+    expect(
+      screen.getByRole('button', {
+        name: `${now.getMonth() + 1}월 ${now.getDate()}일 나간 돈 12,000원`,
+      }),
+    ).toBeInTheDocument()
+    // 처음엔 오늘이 골라져 있어 오늘 기록이 보인다
+    expect(screen.getByText(/저녁/)).toBeInTheDocument()
+    expect(screen.getAllByLabelText('기록 삭제')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: '지난달 달력' }))
+    expect(screen.queryByLabelText('기록 삭제')).toBeNull()
+    localStorage.removeItem('moabuli.confess.view')
+  })
+})
