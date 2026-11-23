@@ -216,6 +216,21 @@ describe('종류 하나만 보기 — 그 종류 합계 (2026-11-23)', () => {
     expect(screen.getAllByLabelText(/번째 줄 금액/).length).toBeGreaterThan(2)
   })
 
+  it('고른 종류 이름 바꾸기 — 모든 달의 같은 종류가 한꺼번에 바뀐다 (2026-11-24)', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    await user.click(screen.getByRole('button', { name: '앱테크', pressed: false }))
+    await user.click(screen.getByRole('button', { name: /이름 바꾸기/ }))
+    await user.type(screen.getByLabelText('바꿀 종류 이름'), '캐시워크')
+    // 이번 달 1건 + 지난달 1건
+    await user.click(screen.getByRole('button', { name: '2건 모두 바꾸기' }))
+    expect(
+      await screen.findByRole('button', { name: '캐시워크', pressed: true }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '앱테크', pressed: false })).toBeNull()
+    expect(screen.getByText(/1건 · 올해 73,000원/)).toBeInTheDocument()
+  })
+
   it('종류별 칸의 줄을 눌러도 그 종류만 본다', async () => {
     const { user } = open()
     await screen.findByText('473,000원')

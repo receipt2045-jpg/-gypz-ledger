@@ -103,8 +103,27 @@ export default function SideIncome() {
         return { kind, category, month: sum(month), count: month.length, year: sum(inYear) }
       })()
     : null
+  // 고른 종류 이름 바꾸기 — 모든 달의 같은 종류를 한꺼번에
+  const [renameTo, setRenameTo] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState(false)
+  const pickedAll = picked
+    ? side.entries.filter((e) => e.kind === picked.kind && e.category === picked.category).length
+    : 0
+  const doRename = async () => {
+    const to = renameTo?.trim()
+    if (!picked || !to || to === picked.category) return
+    setRenaming(true)
+    try {
+      await side.renameCategory(picked.kind, picked.category, to)
+      setCat(`${picked.kind}|${to}`)
+      setRenameTo(null)
+    } finally {
+      setRenaming(false)
+    }
+  }
   const pickCat = (key: string | null) => {
     setCat(key)
+    setRenameTo(null)
     if (key)
       document
         .getElementById('side-records')
@@ -430,9 +449,64 @@ export default function SideIncome() {
           <p className={`tnum mt-0.5 text-[20px] font-extrabold ${TONE[picked.kind]}`}>
             {formatWon(picked.month)}
           </p>
-          <p className="tnum text-[12px] text-sub">
-            {label} {picked.count}건 · 올해 {formatWon(picked.year)}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="tnum text-[12px] text-sub">
+              {label} {picked.count}건 · 올해 {formatWon(picked.year)}
+            </p>
+            {renameTo === null && (
+              <button
+                onClick={() => setRenameTo('')}
+                className="flex shrink-0 items-center gap-1 text-[12px] font-bold text-sub active:text-ink"
+              >
+                <Pencil size={12} /> 이름 바꾸기
+              </button>
+            )}
+          </div>
+          {renameTo !== null && (
+            <div className="mt-2.5 border-t border-line pt-2.5">
+              <p className="text-[12px] font-semibold text-sub">
+                어떤 종류로 바꿀까요? 모든 달의 '{picked.category}' {pickedAll}건이 같이 바뀌어요
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {SIDE_CATEGORIES[picked.kind]
+                  .filter((c) => c !== picked.category)
+                  .map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setRenameTo(c)}
+                      aria-pressed={renameTo === c}
+                      className={`rounded-full px-2.5 py-1 text-[12px] font-bold ${
+                        renameTo === c ? 'bg-ink text-white' : 'bg-white text-sub active:bg-line'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+              </div>
+              <input
+                value={renameTo}
+                onChange={(e) => setRenameTo(e.target.value)}
+                placeholder="직접 쓰기 (예: 스마트스토어)"
+                aria-label="바꿀 종류 이름"
+                className="mt-2 w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-brand"
+              />
+              <div className="mt-2 flex gap-1.5">
+                <button
+                  onClick={() => setRenameTo(null)}
+                  className="flex-1 rounded-btn bg-white py-2 text-[13px] font-bold text-sub active:bg-line"
+                >
+                  그만두기
+                </button>
+                <button
+                  onClick={() => void doRename()}
+                  disabled={renaming || !renameTo.trim() || renameTo.trim() === picked.category}
+                  className="flex-[2] rounded-btn bg-brand py-2 text-[13px] font-bold text-white disabled:opacity-40"
+                >
+                  {renaming ? '바꾸는 중…' : `${pickedAll}건 모두 바꾸기`}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {view === 'grid' ? (

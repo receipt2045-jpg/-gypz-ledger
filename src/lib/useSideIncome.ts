@@ -66,6 +66,16 @@ export function useSideIncome() {
     await reload()
   }
   /**
+   * 종류 이름 바꾸기 — 그 구분·종류로 적힌 기록을 모든 달에서 한꺼번에 (2026-11-24 결영 요청).
+   * 이미 있는 종류 이름으로 바꾸면 그 종류로 합쳐진다.
+   */
+  const renameCategory = async (kind: SideIncome['kind'], from: string, to: string) => {
+    const list = entries.filter((e) => e.kind === kind && e.category === from)
+    for (const e of list) await api.update(e.id, { category: to })
+    await reload()
+    return list.length
+  }
+  /**
    * 지우기 — 매달 기록을 지우면 다음에 열 때 같은 달이 또 생긴다.
    * 그래서 묶음의 가장 최근 기록이면 남은 것 중 가장 최근 기록의 '매달'을 끈다(멈춤).
    */
@@ -110,6 +120,7 @@ export function useSideIncome() {
     add,
     addBulk,
     update,
+    renameCategory,
     remove,
     settle,
     unsettle,
