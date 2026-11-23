@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import SideIncome from './SideIncome'
 import { renderScreen, seedStore } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
@@ -133,6 +133,21 @@ describe('부수입 표로 적기 — 엑셀처럼 (2026-11-23)', () => {
     await user.type(screen.getByLabelText(`${n}번째 줄 금액`), '20000{Enter}')
     expect(await screen.findByText('493,000원')).toBeInTheDocument()
     expect(screen.getByText('저장했어요')).toBeInTheDocument()
+  })
+
+  it('종류 칸을 누르면 고르기 창 — 쓴 돈 종류를 고르면 구분도 쓴 돈, 금액 칸으로 넘어간다 (2026-11-24 폰 드롭다운)', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    const n = lastRow()
+    await user.click(screen.getByLabelText(`${n}번째 줄 종류`))
+    const pop = screen.getByRole('listbox', { name: '종류 고르기' })
+    await user.click(within(pop).getByRole('option', { name: '광고비' }))
+    expect(screen.queryByRole('listbox', { name: '종류 고르기' })).toBeNull()
+    expect(screen.getByLabelText(`${n}번째 줄 종류`)).toHaveValue('광고비')
+    expect(screen.getByLabelText(`${n}번째 줄 구분`)).toHaveValue('spent')
+    expect(screen.getByLabelText(`${n}번째 줄 금액`)).toHaveFocus()
+    await user.keyboard('30000{Enter}')
+    expect(await screen.findByText('저장했어요')).toBeInTheDocument()
   })
 
   it('종류 없이 금액만 쓰고 넘어가면 저장하지 않고 알려 준다', async () => {
@@ -294,7 +309,10 @@ describe('부수입 달력·번 돈 꺾은선 (2026-11-24)', () => {
   it('최근 6개월 번 돈을 꺾은선으로, 달을 누르면 그 달로 간다', async () => {
     const { user } = open()
     await screen.findByText('473,000원')
-    expect(screen.getByRole('img', { name: /번 돈 흐름/ })).toHaveAccessibleName(/210,000원$/)
+    expect(screen.getByText(`${currentYm().slice(0, 4)}년 번 돈`)).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /최근 6개월 부수입/ })).toHaveAccessibleName(
+      /번 돈 210,000원$/,
+    )
     const prevLabel = `${Number(shiftYm(currentYm(), -1).slice(5, 7))}월`
     await user.click(screen.getByRole('button', { name: `${prevLabel} 부수입 보기` }))
     expect(screen.getByRole('button', { name: `${prevLabel} 부수입 보기` })).toHaveAttribute(

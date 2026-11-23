@@ -10,6 +10,7 @@ import {
   type SideKind,
 } from '../lib/sideIncome'
 import type { NewSideIncome } from '../lib/sideDb'
+import CategoryPop from './CategoryPop'
 
 /**
  * 부수입 표로 적기 (2026-11-23 결영 요청: "엑셀 입력 느낌으로").
@@ -109,6 +110,9 @@ export default function SideGrid({
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const saving = useRef(new Set<string>())
   const tableRef = useRef<HTMLTableElement>(null)
+  // 종류 칸을 누르면 고르기 창 (폰에서 기본 자동완성이 잘 안 떠서, 2026-11-24)
+  const [pop, setPop] = useState<{ key: string; el: HTMLInputElement } | null>(null)
+  const popRow = pop ? rows.find((x) => x.key === pop.key) : undefined
 
   // 서버 기록이 바뀌면 다시 맞춘다 — 쓰는 중인 새 줄은 남긴다
   useEffect(() => {
@@ -317,8 +321,14 @@ export default function SideGrid({
                   <td className={cell}>
                     <input
                       aria-label={`${i + 1}번째 줄 종류`}
-                      list={`side-cats-${r.kind}`}
                       value={r.category}
+                      autoComplete="off"
+                      aria-haspopup="listbox"
+                      aria-expanded={pop?.key === r.key}
+                      onFocus={(e) => setPop({ key: r.key, el: e.currentTarget })}
+                      onClick={(e) => setPop({ key: r.key, el: e.currentTarget })}
+                      onBlur={() => setPop((p) => (p?.key === r.key ? null : p))}
+                      onKeyDown={(e) => e.key === 'Escape' && setPop(null)}
                       placeholder={empty ? '앱테크' : ''}
                       onChange={(e) => {
                         const v = e.target.value
@@ -413,13 +423,22 @@ export default function SideGrid({
           </tbody>
         </table>
       </div>
-      {SIDE_KINDS.map((k) => (
-        <datalist key={k} id={`side-cats-${k}`}>
-          {SIDE_CATEGORIES[k].map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-      ))}
+      {pop && popRow && (
+        <CategoryPop
+          anchor={pop.el}
+          kind={popRow.kind}
+          value={popRow.category}
+          onPick={(category, kind) => {
+            patch(pop.key, { category, kind })
+            setPop(null)
+            // 고르면 바로 금액 칸으로
+            pop.el
+              .closest('tr')
+              ?.querySelector<HTMLInputElement>('input[inputmode="numeric"]')
+              ?.focus()
+          }}
+        />
+      )}
       <p
         className={`mt-2 text-[12px] ${msg ? (msg.ok ? 'text-brand' : 'text-danger') : 'text-cap'}`}
       >

@@ -129,6 +129,9 @@ export default function SideIncome() {
     cash: side.entries
       .filter((e) => e.kind === 'cash' && ymOfDate(e.earnedOn) === m)
       .reduce((a, e) => a + e.amount, 0),
+    spent: side.entries
+      .filter((e) => e.kind === 'spent' && ymOfDate(e.earnedOn) === m)
+      .reduce((a, e) => a + e.amount, 0),
   }))
 
   // 고른 종류 이름 바꾸기 — 모든 달의 같은 종류를 한꺼번에
@@ -683,7 +686,14 @@ export default function SideIncome() {
       <PcColumns left={summary} right={settleBox} />
 
       {/* 번 돈 꺾은선 — 달을 누르면 그 달로 */}
-      <SideTrend points={trendPoints} current={ym} onPick={setYm} />
+      <SideTrend
+        points={trendPoints}
+        current={ym}
+        onPick={setYm}
+        yearCash={year.cash}
+        monthCash={s.cash}
+        monthSpent={s.spent}
+      />
 
       {/* 적기 */}
       {writing ? (
