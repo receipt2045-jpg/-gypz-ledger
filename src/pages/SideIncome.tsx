@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import PcColumns from '../components/PcColumns'
 import SideGrid from '../components/SideGrid'
@@ -14,6 +14,9 @@ import {
   SIDE_CATEGORIES,
   SIDE_KINDS,
   SIDE_KIND_LABEL,
+  isSameSideRow,
+  parsePastedRows,
+  sideSheetRows,
   summarizeSide,
   yearSide,
   ymOfDate,
@@ -23,6 +26,8 @@ import {
   type SideSettlement,
 } from '../lib/sideIncome'
 import type { NewSideIncome } from '../lib/sideDb'
+import { readCsv, readXlsx, writeXlsx } from '../lib/xlsx'
+import { saveFile } from '../lib/native'
 
 /** 3억 9,510만원 → 3억 9,510만 (칸이 좁은 곳) */
 const short = (n: number) => abbreviateKRW(n).replace(/원$/, '')
@@ -117,15 +122,21 @@ export default function SideIncome() {
       <div className="mt-3 grid grid-cols-3 gap-1.5">
         <div className="rounded-btn bg-emerald-50 px-2.5 py-2.5">
           <p className="text-[12px] font-bold text-emerald-700">번 돈</p>
-          <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-emerald-700">{formatWon(s.cash)}</p>
+          <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-emerald-700">
+            {formatWon(s.cash)}
+          </p>
         </div>
         <div className="rounded-btn bg-brand/10 px-2.5 py-2.5">
           <p className="text-[12px] font-bold text-brand">아낀 돈</p>
-          <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-brand">{formatWon(s.saved)}</p>
+          <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-brand">
+            {formatWon(s.saved)}
+          </p>
         </div>
         <div className="rounded-btn bg-rose-50 px-2.5 py-2.5">
           <p className="text-[12px] font-bold text-rose-600">쓴 돈</p>
-          <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-rose-600">{formatWon(s.spent)}</p>
+          <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-rose-600">
+            {formatWon(s.spent)}
+          </p>
         </div>
       </div>
       {s.spent > 0 && (
@@ -233,6 +244,127 @@ export default function SideIncome() {
   )
 
   // 이 달 기록 — 표가 넓어서 두 칸으로 나누지 않고 한 줄 전체를 쓴다
+  // ── 엑셀로 받기·올리기 (2026-11-23) ──
+  const [fileMsg, setFileMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const exportXlsx = async (range: 'month' | 'year') => {
+    const list = side.entries.filter((e) =>
+      range === 'month' ? ymOfDate(e.earnedOn) === ym : e.earnedOn.startsWith(ym.slice(0, 4)),
+    )
+    if (list.length === 0) {
+      setFileMsg({ text: '받을 기록이 없어요', ok: false })
+      return
+    }
+    const data = writeXlsx(sideSheetRows(list, names), {
+      sheet: '부수입',
+      widths: [12, 8, 16, 12, 8, 6, 30],
+    })
+    const name = `모아불리_부수입_${range === 'month' ? ym : ym.slice(0, 4)}.xlsx`
+    const r = await saveFile(
+      new File([data.slice().buffer as ArrayBuffer], name, {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+    )
+    setFileMsg(
+      r === 'failed'
+        ? { text: '파일을 만들지 못했어요', ok: false }
+        : { text: `${name} (${list.length}줄)을 받았어요`, ok: true },
+    )
+  }
+  const importFile = async (file: File) => {
+    setFileMsg(null)
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      const table = /\.xlsx$/i.test(file.name) ? readXlsx(bytes) : readCsv(bytes)
+      const text = table.map((row) => row.join('\t')).join('\n')
+      const { rows, skipped } = parsePastedRows(text, { year: ym.slice(0, 4), names, me: side.me })
+      const fresh = rows.filter((r) => !side.entries.some((e) => isSameSideRow(r, e)))
+      const dup = rows.length - fresh.length
+      if (fresh.length === 0) {
+        setFileMsg({
+          text: rows.length
+            ? `${dup}줄 모두 이미 적혀 있어요`
+            : '파일에서 날짜와 금액이 있는 줄을 찾지 못했어요',
+          ok: false,
+        })
+        return
+      }
+      const notes = [
+        dup ? `이미 있는 ${dup}줄` : '',
+        skipped ? `날짜·금액이 없는 ${skipped}줄` : '',
+      ]
+        .filter(Boolean)
+        .join(', ')
+      if (!window.confirm(`${fresh.length}줄을 넣을까요?${notes ? ` (${notes}은 빼요)` : ''}`))
+        return
+      await side.addBulk(
+        fresh.map((r) => ({
+          earnedOn: r.earnedOn,
+          kind: r.kind,
+          category: r.category,
+          amount: r.amount,
+          price: r.kind === 'saved' ? r.amount : undefined,
+          memberNo: r.who === 'shared' ? side.me : r.who,
+          shared: r.who === 'shared' ? true : undefined,
+          note: r.note,
+          repeat: r.repeat,
+        })),
+      )
+      setFileMsg({
+        text: `${fresh.length}줄을 넣었어요${notes ? ` · ${notes}은 뺐어요` : ''}`,
+        ok: true,
+      })
+    } catch {
+      setFileMsg({
+        text: '파일을 읽지 못했어요. 엑셀(.xlsx)이나 CSV 파일인지 봐 주세요',
+        ok: false,
+      })
+    }
+  }
+  const fileBar = (
+    <div className="mb-2">
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={() => void exportXlsx('month')}
+          className="flex items-center gap-1 rounded-full bg-bg px-3 py-1.5 text-[12px] font-bold text-sub active:bg-line"
+        >
+          <Download size={13} /> {label} 엑셀
+        </button>
+        <button
+          onClick={() => void exportXlsx('year')}
+          className="flex items-center gap-1 rounded-full bg-bg px-3 py-1.5 text-[12px] font-bold text-sub active:bg-line"
+        >
+          <Download size={13} /> 올해 엑셀
+        </button>
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="flex items-center gap-1 rounded-full bg-bg px-3 py-1.5 text-[12px] font-bold text-sub active:bg-line"
+        >
+          <Upload size={13} /> 엑셀 올리기
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,.csv,.tsv,.txt"
+          aria-label="엑셀 파일 고르기"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (file) void importFile(file)
+          }}
+        />
+      </div>
+      {fileMsg && (
+        <p
+          className={`mt-1.5 text-[12px] font-semibold ${fileMsg.ok ? 'text-brand' : 'text-danger'}`}
+        >
+          {fileMsg.text}
+        </p>
+      )}
+    </div>
+  )
+
   const records = (
     <div id="side-records" className="scroll-mt-4 rounded-card bg-card px-5 py-4 shadow-card">
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -258,6 +390,7 @@ export default function SideIncome() {
           ))}
         </div>
       </div>
+      {fileBar}
       {/* 종류 하나만 보기 — 고르면 그 종류 합계와 그 기록만 */}
       {monthCats.length > 1 && (
         <div className="no-scrollbar -mx-5 mb-2 flex gap-1.5 overflow-x-auto px-5 pb-0.5">
@@ -411,7 +544,10 @@ export default function SideIncome() {
         </p>
       )}
 
-      {/* 적기 — 맨 위에서 바로 */}
+      {/* 이 달 부수입·정산을 맨 위로 (2026-11-23 결영 요청: "정산 금액이 맨 위로") */}
+      <PcColumns left={summary} right={settleBox} />
+
+      {/* 적기 */}
       {writing ? (
         <div className="rounded-card bg-card px-4 py-4 shadow-card">
           <SideForm
@@ -436,15 +572,7 @@ export default function SideIncome() {
 
       {records}
 
-      <PcColumns
-        left={
-          <>
-            {summary}
-            {settleBox}
-          </>
-        }
-        right={list}
-      />
+      {list}
     </div>
   )
 }

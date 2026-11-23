@@ -5,6 +5,13 @@ import { renderScreen, seedStore } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
 import { currentYm, formatYmKorean } from '../lib/format'
 import { resolveLedger } from '../lib/carryover'
+import { readXlsx, writeXlsx } from '../lib/xlsx'
+
+const saveFile = vi.hoisted(() => vi.fn(async (_f: File) => 'saved' as const))
+vi.mock('../lib/native', async (orig) => ({
+  ...(await orig<typeof import('../lib/native')>()),
+  saveFile,
+}))
 
 // 둘러보기(householdId 없음) — 예시 부수입: 이번 달 번 돈 21만, 아낀 돈 26만 3천
 const month = formatYmKorean(currentYm()).split(' ')[1]
@@ -214,5 +221,41 @@ describe('종류 하나만 보기 — 그 종류 합계 (2026-11-23)', () => {
     await screen.findByText('473,000원')
     await user.click(screen.getByRole('button', { name: '체험단만 보기' }))
     expect(screen.getByText(/1건 · 올해 140,000원/)).toBeInTheDocument()
+  })
+})
+
+describe('부수입 엑셀로 받기·올리기 (2026-11-23)', () => {
+  it('이번 달 엑셀 — 파일을 만들어 받는다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    await user.click(screen.getByRole('button', { name: new RegExp(`${month} 엑셀`) }))
+    expect(saveFile).toHaveBeenCalled()
+    const file = saveFile.mock.calls.at(-1)![0] as File
+    expect(file.name).toBe(`모아불리_부수입_${currentYm()}.xlsx`)
+    // 머리줄 + 이번 달 예시 7줄
+    const rows = readXlsx(new Uint8Array(await file.arrayBuffer()))
+    expect(rows[0]).toEqual(['날짜', '구분', '종류', '금액', '누가', '매달', '메모'])
+    expect(rows).toHaveLength(8)
+    expect(await screen.findByText(/7줄\)을 받았어요/)).toBeInTheDocument()
+  })
+
+  it('엑셀 올리기 — 새 줄만 넣고, 이미 있는 줄은 뺀다', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { user } = open()
+    await screen.findByText('473,000원')
+    const ym = currentYm()
+    const data = writeXlsx([
+      ['날짜', '구분', '종류', '금액', '누가', '매달', '메모'],
+      [`${ym}-01`, '번 돈', '중고 판매', 15000, '남편', '', '책'],
+      [`${ym}-02`, '쓴 돈', '구독·프로그램', 9900, '아내', '매달', ''],
+    ])
+    const file = new File([data.slice().buffer as ArrayBuffer], '부수입.xlsx')
+    await user.upload(screen.getByLabelText('엑셀 파일 고르기'), file)
+    expect(await screen.findByText(/2줄을 넣었어요/)).toBeInTheDocument()
+    // 473,000 + 15,000 − 9,900
+    expect(await screen.findByText('478,100원')).toBeInTheDocument()
+    // 같은 파일을 또 올리면 모두 이미 있다
+    await user.upload(screen.getByLabelText('엑셀 파일 고르기'), file)
+    expect(await screen.findByText('2줄 모두 이미 적혀 있어요')).toBeInTheDocument()
   })
 })

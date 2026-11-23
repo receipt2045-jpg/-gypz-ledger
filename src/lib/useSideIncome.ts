@@ -55,6 +55,12 @@ export function useSideIncome() {
     await api.add(n)
     await reload()
   }
+  /** 여러 줄 한꺼번에 (붙여넣기·엑셀 올리기) — 한 번만 다시 불러온다 */
+  const addBulk = async (list: NewSideIncome[]) => {
+    const now = new Date().toISOString()
+    await api.addMany(list.map((n) => ({ ...n, id: crypto.randomUUID(), createdAt: now })))
+    await reload()
+  }
   const update = async (id: string, patch: Partial<NewSideIncome>) => {
     await api.update(id, patch)
     await reload()
@@ -102,6 +108,7 @@ export function useSideIncome() {
     status,
     reload,
     add,
+    addBulk,
     update,
     remove,
     settle,

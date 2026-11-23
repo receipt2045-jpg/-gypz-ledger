@@ -237,6 +237,8 @@ export interface PastedRow {
   amount: number
   who: 1 | 2 | 'shared'
   note?: string
+  /** '매달' 칸 */
+  repeat?: boolean
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -287,6 +289,7 @@ export function parsePastedRows(
     let kind: SideKind | null = null
     let category: string | null = null
     let who: 1 | 2 | 'shared' | null = null
+    let repeat = false
     const rest: string[] = []
     for (const c of cells) {
       if (!c) continue
@@ -314,6 +317,10 @@ export function parsePastedRows(
       }
       if (!kind && /^(쓴\s*돈|지출|비용)$/.test(c)) {
         kind = 'spent'
+        continue
+      }
+      if (c === '매달') {
+        repeat = true
         continue
       }
       if (!who) {
@@ -351,6 +358,7 @@ export function parsePastedRows(
       category,
       amount,
       who: who ?? opts.me,
+      ...(repeat ? { repeat: true } : {}),
       note: rest.join(' ').slice(0, 100) || undefined,
     })
   }
@@ -393,4 +401,48 @@ export function dueRepeats(entries: SideIncome[], today: string): SideIncome[] {
     }
   }
   return out
+}
+
+// ── 엑셀로 받기 · 올리기 (2026-11-23) ──
+
+/** 엑셀 머리줄 — 올리기에서도 이 모양을 그대로 읽는다 */
+export const SIDE_SHEET_HEADER = ['날짜', '구분', '종류', '금액', '누가', '매달', '메모']
+
+/** 기록 → 엑셀 줄 (날짜순) */
+export function sideSheetRows(
+  entries: SideIncome[],
+  names: [string, string],
+): (string | number)[][] {
+  const rows = [...entries]
+    .sort((a, b) =>
+      a.earnedOn === b.earnedOn
+        ? a.createdAt < b.createdAt
+          ? -1
+          : 1
+        : a.earnedOn < b.earnedOn
+          ? -1
+          : 1,
+    )
+    .map((e) => [
+      e.earnedOn,
+      SIDE_KIND_LABEL[e.kind],
+      e.category,
+      e.amount,
+      e.shared ? '공동' : names[e.memberNo - 1],
+      e.repeat ? '매달' : '',
+      e.note ?? '',
+    ])
+  return [SIDE_SHEET_HEADER, ...rows]
+}
+
+/** 이미 같은 기록이 있는지 — 받은 엑셀을 그대로 다시 올려도 두 번 들어가지 않게 */
+export function isSameSideRow(r: PastedRow, e: SideIncome): boolean {
+  const who = e.shared ? 'shared' : e.memberNo
+  return (
+    e.earnedOn === r.earnedOn &&
+    e.kind === r.kind &&
+    e.category === r.category &&
+    e.amount === r.amount &&
+    who === r.who
+  )
 }
