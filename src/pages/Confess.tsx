@@ -17,6 +17,7 @@ import {
   Gift,
   HeartPulse,
   Home,
+  ImagePlus,
   Keyboard,
   Mic,
   MonitorPlay,
@@ -38,6 +39,8 @@ import WeeklyCostCard from '../components/WeeklyCostCard'
 import MonthSpendCard from '../components/MonthSpendCard'
 import RecoCard from '../components/RecoCard'
 import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
+import { captureToDrafts, readSpendCapture } from '../lib/spendCapture'
+import { CaptureError } from '../lib/stockDb'
 import { noSpendDays } from '../lib/noSpend'
 import { pickConfessReco, type RecoCard as Reco } from '../lib/reco'
 import { resolveLedger } from '../lib/carryover'
@@ -108,6 +111,10 @@ interface DraftEntry extends ParsedEntry {
   origCategory: string
   /** 줄글에서 뽑힌 말 — 메모를 고쳐도 별칭 학습은 이걸로 한다 */
   origNote?: string
+  /** 캡처로 읽은 건 — 그 건의 날짜 (없으면 고른 날짜) */
+  date?: string
+  /** 캡처가 흐려서 다시 봐야 하는 건 */
+  unsure?: boolean
 }
 
 /** 기록 한 건에 붙는 메모 (2026-11-24: 40자 → 100자, 확인 화면에서도 적기) */
@@ -152,6 +159,10 @@ export default function Confess() {
   const [parseMsg, setParseMsg] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<DraftEntry[] | null>(null)
   const [skipped, setSkipped] = useState<string[]>([])
+  // 캡처로 적기 (2026-11-24) — 카드·은행 앱 캡처를 읽어 확인 화면으로
+  const [capturing, setCapturing] = useState(false)
+  const [dupSkipped, setDupSkipped] = useState<string[]>([])
+  const fileRef = useRef<HTMLInputElement>(null)
   const [listening, setListening] = useState(false)
   const recRef = useRef<SpeechRecognitionLike | null>(null)
   const SR = useMemo(speechRecognitionCtor, [])
@@ -424,13 +435,21 @@ export default function Confess() {
 
   // ── 저장 (양쪽 흐름 공통) ───────────────────
   const finishSave = (
-    entries: { category: string; kind: CategoryGroup; amount: number; note?: string }[],
+    entries: {
+      category: string
+      kind: CategoryGroup
+      amount: number
+      note?: string
+      date?: string
+    }[],
   ) => {
     // 지난 날짜를 골랐으면 그 날 낮 12시로 — 시간대가 밀려 하루 어긋나는 걸 막는다
-    const createdAt =
-      logDate === today ? new Date().toISOString() : new Date(`${logDate}T12:00:00`).toISOString()
+    // 캡처로 읽은 건은 그 건의 날짜로
+    const createdAtOf = (day: string) =>
+      day === today ? new Date().toISOString() : new Date(`${day}T12:00:00`).toISOString()
     let last = null as ReturnType<typeof addConfession> | null
     for (const e of entries) {
+      const createdAt = createdAtOf(e.date ?? logDate)
       last = addConfession({
         category: e.category,
         kind: e.kind,
@@ -496,6 +515,46 @@ export default function Confess() {
     )
   }
 
+  // ── 캡처: 읽기 → 확인 단계로 (2026-11-24) ──────
+  const runCapture = async (file: File) => {
+    setCapturing(true)
+    setParseMsg(null)
+    try {
+      const items = await readSpendCapture(file, categories, today)
+      const r = captureToDrafts(items, categories, aliases, confessions, logDate, today)
+      if (r.drafts.length === 0) {
+        setParseMsg(
+          r.dup.length
+            ? '캡처에 있는 건 이미 다 적혀 있어요'
+            : '캡처에서 결제·입금 내역을 못 찾았어요. 금액이 보이게 다시 캡처해 주세요',
+        )
+        return
+      }
+      setSkipped([])
+      setDupSkipped(r.dup)
+      setDrafts(
+        r.drafts.map((e, i) => ({
+          ...e,
+          key: i,
+          origCategory: e.category,
+          origNote: e.note,
+        })),
+      )
+    } catch (err) {
+      const reason = err instanceof CaptureError ? err.reason : 'failed'
+      setParseMsg(
+        reason === 'login'
+          ? '캡처로 적기는 로그인하면 쓸 수 있어요'
+          : reason === 'limit'
+            ? '오늘은 캡처를 많이 읽었어요. 내일 다시 해 주세요'
+            : '캡처를 읽지 못했어요. 잠시 뒤 다시 해 주세요',
+      )
+    } finally {
+      setCapturing(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
   // ── 줄글: 확인 → 저장 ───────────────────────
   const saveDrafts = () => {
     if (!drafts?.length) return
@@ -541,6 +600,7 @@ export default function Confess() {
     setDraft('')
     setDrafts(null)
     setSkipped([])
+    setDupSkipped([])
     setParseMsg(null)
   }
 
@@ -737,6 +797,22 @@ export default function Confess() {
                     <Trash2 size={17} />
                   </button>
                 </div>
+                {d.date !== undefined && (
+                  <input
+                    type="date"
+                    value={d.date}
+                    max={today}
+                    onChange={(e) =>
+                      setDrafts((prev) =>
+                        prev!.map((x) =>
+                          x.key === d.key ? { ...x, date: e.target.value || logDate } : x,
+                        ),
+                      )
+                    }
+                    aria-label={`${d.category} 날짜`}
+                    className="tnum mt-2 w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] text-ink outline-none focus:border-brand"
+                  />
+                )}
                 <input
                   value={d.note ?? ''}
                   onChange={(e) =>
@@ -749,6 +825,11 @@ export default function Confess() {
                   aria-label={`${d.category} 메모`}
                   className="mt-2 w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] text-ink outline-none placeholder:text-cap focus:border-brand"
                 />
+                {d.unsure && (
+                  <p className="mt-1.5 text-[12px] text-amber-600">
+                    캡처가 흐려서 금액·날짜를 한 번 더 봐 주세요
+                  </p>
+                )}
                 {!d.matched && (
                   <p className="mt-1.5 text-[12px] text-amber-600">
                     어디에 쓴 건지 몰라서 기타로 두었어요. 고쳐주시면 다음부턴 기억할게요.
@@ -758,6 +839,11 @@ export default function Confess() {
             )
           })}
 
+          {dupSkipped.length > 0 && (
+            <p className="px-1 text-[12px] text-cap">
+              이미 적혀 있어서 뺀 것: {dupSkipped.join(' / ')}
+            </p>
+          )}
           {skipped.length > 0 && (
             <p className="px-1 text-[12px] text-cap">
               금액이 없어 건너뛴 부분: {skipped.join(' / ')}
@@ -981,13 +1067,32 @@ export default function Confess() {
             placeholder={'"점심 9천원, 커피 5,500원"\n이라고 말해보세요'}
             className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none placeholder:text-cap"
           />
-          <div className="mt-1 flex items-center justify-between">
+          <div className="mt-1 flex items-center gap-4">
             <button
               onClick={() => setMode('picker')}
               className="flex items-center gap-1.5 text-[13px] font-bold text-sub active:text-ink"
             >
               <Keyboard size={15} /> 버튼으로 고르기
             </button>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={capturing}
+              className="flex items-center gap-1.5 text-[13px] font-bold text-sub active:text-ink disabled:opacity-50"
+            >
+              <ImagePlus size={15} /> {capturing ? '읽는 중…' : '캡처로 적기'}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              aria-label="캡처 사진 고르기"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) void runCapture(f)
+              }}
+            />
+            <span className="flex-1" />
             {SR && (
               <button
                 onClick={toggleMic}
@@ -1007,6 +1112,11 @@ export default function Confess() {
         {listening && (
           <p className="text-center text-[13px] font-bold text-red-500">
             듣고 있어요… 말이 끝나면 자동으로 받아 적어요
+          </p>
+        )}
+        {capturing && (
+          <p className="text-center text-[13px] font-bold text-brand">
+            캡처를 읽고 있어요… 10초쯤 걸려요
           </p>
         )}
         {parseMsg && <p className="px-1 text-[13px] font-bold text-amber-600">{parseMsg}</p>}

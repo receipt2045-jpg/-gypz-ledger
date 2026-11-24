@@ -1,5 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import LoanEditor, { LoanForm } from './LoanEditor'
+import SavingEditor, { SavingForm } from './SavingEditor'
+import type { SavingPlan } from '../lib/saving'
 import { dayString, type LoanInfo } from '../lib/loan'
 import { ChevronDown, ChevronRight, Pencil, Plus, StickyNote, X } from 'lucide-react'
 import AmountInput from './AmountInput'
@@ -58,6 +60,10 @@ export default function AssetEditor({
   // 부채를 추가하면서 바로 대출 정보까지 (2026-10-07 — 추가한 뒤 다시 열어야 해서 못 찾았다)
   const [loanOpen, setLoanOpen] = useState(false)
   const [loan, setLoan] = useState<LoanInfo | null>(null)
+  // 예적금을 추가하면서 바로 매달 자동 저축까지 (2026-11-24)
+  const [savingOpen, setSavingOpen] = useState(false)
+  const [saving, setSaving] = useState<SavingPlan | null>(null)
+  const canSave = kind === 'asset' && group === 'cash' && currency === 'KRW'
 
   const submit = () => {
     if (!name.trim() || amount <= 0) return
@@ -69,6 +75,7 @@ export default function AssetEditor({
         owner,
         amount,
         ...(kind === 'debt' && loanOpen && loan ? { loan } : {}),
+        ...(canSave && savingOpen && saving ? { saving } : {}),
       })
     } else {
       // 외화: 원금+통화 저장, 원화 환산액은 현재 환율로 스냅샷
@@ -87,6 +94,8 @@ export default function AssetEditor({
     setCurrency('KRW')
     setLoanOpen(false)
     setLoan(null)
+    setSavingOpen(false)
+    setSaving(null)
     setAdding(false)
   }
 
@@ -214,6 +223,28 @@ export default function AssetEditor({
             <p className="px-1 text-right text-[12px] text-cap">
               실시간 환율 ≈ {formatWon(krwOf({ amount: 0, currency, fxAmount: amount }, rates))}
             </p>
+          )}
+          {canSave && (
+            <div className="rounded-btn bg-bg p-3">
+              <button
+                type="button"
+                onClick={() => setSavingOpen((v) => !v)}
+                aria-expanded={savingOpen}
+                className="flex w-full items-center justify-between text-[12.5px] font-bold text-brand"
+              >
+                매달 자동으로 쌓기 · 적금 (선택)
+                {savingOpen ? (
+                  <ChevronDown size={15} className="text-cap" />
+                ) : (
+                  <ChevronRight size={15} className="text-cap" />
+                )}
+              </button>
+              {savingOpen && (
+                <div className="mt-2">
+                  <SavingForm amount={amount} onChange={setSaving} />
+                </div>
+              )}
+            </div>
           )}
           {kind === 'debt' && currency === 'KRW' && (
             <div className="rounded-btn bg-bg p-3">
@@ -451,7 +482,13 @@ function AssetRow({
                     amount: v,
                     loan: { ...item.loan, asOf: dayString(new Date()) },
                   })
-                : onChange(item.id, v)
+                : // 적금도 직접 고치면 오늘까지 넣은 돈이 들어간 금액으로 본다 (다음 넣는 날부터 더함)
+                  !debt && item.saving
+                  ? onUpdate(item.id, {
+                      amount: v,
+                      saving: { ...item.saving, asOf: dayString(new Date()) },
+                    })
+                  : onChange(item.id, v)
             }
           />
         )}
@@ -474,6 +511,9 @@ function AssetRow({
             onUpdate(item.id, balance !== undefined ? { loan, amount: balance } : { loan })
           }
         />
+      )}
+      {!debt && !foreign && (item.group === 'cash' || item.saving) && (
+        <SavingEditor item={item} onSave={(saving) => onUpdate(item.id, { saving })} />
       )}
       {memoVisible && (
         <input

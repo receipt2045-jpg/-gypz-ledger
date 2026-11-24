@@ -323,7 +323,7 @@ export async function shrinkImage(file: Blob, max = 1600, quality = 0.85): Promi
   )
 }
 
-const toBase64 = (blob: Blob) =>
+export const toBase64 = (blob: Blob) =>
   new Promise<string>((resolve, reject) => {
     const r = new FileReader()
     r.onload = () => resolve(String(r.result).split(',')[1] ?? '')

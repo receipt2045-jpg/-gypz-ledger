@@ -20,6 +20,8 @@ interface AmountInputProps {
   man?: boolean
   /** 1.5돈처럼 소수를 받는 칸 (2026-11-19 점검: 점이 지워져 1.5가 15가 됐다) — 콤마·계산식은 안 쓴다 */
   decimal?: boolean
+  /** 화면 읽기 이름 — 칸 위 글씨가 label로 묶이지 않을 때 */
+  ariaLabel?: string
 }
 
 /**
@@ -37,6 +39,7 @@ export default function AmountInput({
   error = false,
   man = false,
   decimal = false,
+  ariaLabel,
 }: AmountInputProps) {
   const dec = useNumberText(value, onChange, { blankZero: true })
   const scale = man ? 10_000 : 1
@@ -65,6 +68,7 @@ export default function AmountInput({
           type="text"
           inputMode={decimal ? 'decimal' : 'numeric'}
           autoFocus={autoFocus}
+          aria-label={ariaLabel}
           value={display}
           placeholder={placeholder}
           onChange={(e) => {

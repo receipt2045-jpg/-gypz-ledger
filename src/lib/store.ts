@@ -1,4 +1,5 @@
 import { catchUpLoan } from './loan'
+import { catchUpSaving } from './saving'
 import { renameOwner, repairOwners } from './assetOwner'
 import { swapConfession, swapLedger, swapProfile } from './memberSwap'
 import { currentYm, setMonthStartDay } from './format'
@@ -581,7 +582,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const today = new Date()
     let changed = false
     const items = snap.items.map((it) => {
-      const next = catchUpLoan(it, today)
+      // 대출은 갚는 날마다 줄이고, 적금은 넣는 날마다 늘린다 (2026-11-24)
+      const next = catchUpLoan(it, today) ?? catchUpSaving(it, today)
       if (next) changed = true
       return next ?? it
     })
