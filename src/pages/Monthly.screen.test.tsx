@@ -284,6 +284,25 @@ describe('가계부 탭 — 고백 내역 삭제', () => {
     expect(left.map((c) => c.id)).toEqual(['c1'])
   })
 
+  it('가계부 탭 소비 기록 줄을 누르면 그 자리에서 금액·메모를 고친다 (2026-11-24 요청)', async () => {
+    seedConfessions()
+    const { user } = renderScreen(<Monthly />)
+    await user.click(screen.getByRole('tab', { name: '목록' }))
+    localStorage.removeItem('moabuli.monthly.logView')
+
+    await user.click(screen.getByRole('button', { name: '카페/간식 기록 고치기' }))
+    const amount = screen.getByLabelText('금액')
+    await user.clear(amount)
+    await user.type(amount, '6000')
+    await user.type(screen.getByLabelText('메모'), '설빙')
+    await user.click(screen.getByRole('button', { name: '고치기' }))
+
+    const c2 = useLedgerStore.getState().confessions.find((c) => c.id === 'c2')!
+    expect([c2.amount, c2.note]).toEqual([6_000, '설빙'])
+    expect(useLedgerStore.getState().confessions).toHaveLength(2)
+    expect(screen.queryByLabelText('금액')).toBeNull() // 다 고치면 접힌다
+  })
+
   it('데이터 초기화는 고백까지 지운다', () => {
     seedConfessions()
     useLedgerStore.getState().resetData()

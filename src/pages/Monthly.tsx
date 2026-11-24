@@ -14,7 +14,8 @@ import { useMonthConfessions } from '../lib/useMonthConfessions'
 import { buildMonthlyCard } from '../lib/monthlyCard'
 import { openingYm, resolveLedger } from '../lib/carryover'
 import { currentYm, formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
-import { GROUP_LABEL, GROUP_ORDER, NO_SPEND } from '../lib/constants'
+import { GROUP_LABEL, GROUP_ORDER, NO_SPEND, visibleCategories } from '../lib/constants'
+import EditRow from '../components/ConfessEditRow'
 import { confessSums, monthConfessions } from '../lib/confessLedger'
 import { noSpendDays } from '../lib/noSpend'
 import { memberStyle } from '../lib/memberColors'
@@ -29,12 +30,14 @@ export default function Monthly() {
   const {
     ledgers,
     snapshots,
+    categories: allCategories,
     profile,
     confessions,
     occasions,
     addOccasion,
     removeOccasion,
     removeConfession,
+    updateConfession,
     memberNo,
     saveLedger,
     removeMonth,
@@ -60,6 +63,12 @@ export default function Monthly() {
 
   const ledger = resolveLedger(ledgers, ym)
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
+  // 소비 기록 줄을 누르면 그 자리에서 고친다 (2026-11-24) — 아이 없는 집엔 아동수당 칸을 숨긴 목록으로
+  const [editingLog, setEditingLog] = useState<string | null>(null)
+  const categories = useMemo(
+    () => visibleCategories(allCategories, profile.childNames),
+    [allCategories, profile.childNames],
+  )
   // 내가 이 달 정산을 했는지 — 혼자 끝낸 경우에도 되돌릴 수 있어야 한다
   const me = memberNo ?? 1
   const iSettled = ledger.closed || (ledger.settledMembers ?? []).includes(me)
@@ -161,6 +170,20 @@ export default function Monthly() {
   const logRow = (c: (typeof monthLog)[number]) => {
     const d = new Date(c.createdAt)
     const style = memberStyle(c.memberNo, profile)
+    if (editingLog === c.id)
+      return (
+        <EditRow
+          key={c.id}
+          c={c}
+          categories={categories}
+          memberNames={memberNames}
+          onSave={(patch) => {
+            updateConfession(c.id, patch)
+            setEditingLog(null)
+          }}
+          onCancel={() => setEditingLog(null)}
+        />
+      )
     return (
       <div key={c.id} className="flex items-center gap-2.5">
         {logView === 'list' && (
@@ -175,14 +198,19 @@ export default function Monthly() {
         >
           {c.shared ? '공동' : memberNames[c.memberNo - 1]}
         </span>
-        <span className="min-w-0 flex-1">
+        {/* 줄을 누르면 그 자리에서 고친다 — 금액·종류·메모·날짜·누가 썼는지 */}
+        <button
+          onClick={() => setEditingLog(c.id)}
+          aria-label={`${c.category} 기록 고치기`}
+          className="min-w-0 flex-1 text-left active:opacity-60"
+        >
           <span className="block truncate text-[13.5px] text-ink">{c.category}</span>
           {c.note && (
             <span className="mt-0.5 block break-words text-[12px] leading-snug text-sub">
               {c.note}
             </span>
           )}
-        </span>
+        </button>
         <span
           className={`tnum shrink-0 text-[13.5px] font-bold ${c.kind === 'income' ? 'text-brand' : 'text-ink'}`}
         >
