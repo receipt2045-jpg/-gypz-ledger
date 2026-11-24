@@ -186,37 +186,39 @@ export default function Monthly() {
       )
     return (
       <div key={c.id} className="flex items-center gap-2.5">
-        {logView === 'list' && (
-          <span className="tnum w-10 shrink-0 text-[12px] text-cap">
-            {d.getMonth() + 1}/{d.getDate()}
-          </span>
-        )}
-        <span
-          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-            c.shared ? 'bg-line text-sub' : style.badge
-          }`}
-        >
-          {c.shared ? '공동' : memberNames[c.memberNo - 1]}
-        </span>
-        {/* 줄을 누르면 그 자리에서 고친다 — 금액·종류·메모·날짜·누가 썼는지 */}
+        {/* 줄 전체를 누르면 그 자리에서 고친다 — 금액·종류·메모·날짜·누가 썼는지 (2026-11-24 요청) */}
         <button
           onClick={() => setEditingLog(c.id)}
           aria-label={`${c.category} 기록 고치기`}
-          className="min-w-0 flex-1 text-left active:opacity-60"
+          className="-my-1 flex min-w-0 flex-1 items-center gap-2.5 rounded-btn py-1 text-left active:bg-bg"
         >
-          <span className="block truncate text-[13.5px] text-ink">{c.category}</span>
-          {c.note && (
-            <span className="mt-0.5 block break-words text-[12px] leading-snug text-sub">
-              {c.note}
+          {logView === 'list' && (
+            <span className="tnum w-10 shrink-0 text-[12px] text-cap">
+              {d.getMonth() + 1}/{d.getDate()}
             </span>
           )}
+          <span
+            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+              c.shared ? 'bg-line text-sub' : style.badge
+            }`}
+          >
+            {c.shared ? '공동' : memberNames[c.memberNo - 1]}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13.5px] text-ink">{c.category}</span>
+            {c.note && (
+              <span className="mt-0.5 block break-words text-[12px] leading-snug text-sub">
+                {c.note}
+              </span>
+            )}
+          </span>
+          <span
+            className={`tnum shrink-0 text-[13.5px] font-bold ${c.kind === 'income' ? 'text-brand' : 'text-ink'}`}
+          >
+            {c.kind === 'income' ? '+' : ''}
+            {formatWon(c.amount)}
+          </span>
         </button>
-        <span
-          className={`tnum shrink-0 text-[13.5px] font-bold ${c.kind === 'income' ? 'text-brand' : 'text-ink'}`}
-        >
-          {c.kind === 'income' ? '+' : ''}
-          {formatWon(c.amount)}
-        </span>
         {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
         <button
           onClick={() => {
