@@ -832,7 +832,8 @@ export default function Confess() {
                 )}
                 {!d.matched && (
                   <p className="mt-1.5 text-[12px] text-amber-600">
-                    어디에 쓴 건지 몰라서 기타로 두었어요. 고쳐주시면 다음부턴 기억할게요.
+                    어디에 쓴 건지 몰라서 우선 '{d.category}'에 두었어요. 맞는 종류로 고쳐 주시면
+                    다음부턴 기억할게요.
                   </p>
                 )}
               </div>
@@ -1116,7 +1117,7 @@ export default function Confess() {
         )}
         {capturing && (
           <p className="text-center text-[13px] font-bold text-brand">
-            캡처를 읽고 있어요… 10초쯤 걸려요
+            캡처를 읽고 있어요… 15초쯤 걸려요
           </p>
         )}
         {parseMsg && <p className="px-1 text-[13px] font-bold text-amber-600">{parseMsg}</p>}
