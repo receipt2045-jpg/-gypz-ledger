@@ -19,7 +19,6 @@ import PreviewBar from './components/PreviewBar'
 import Home from './pages/Home'
 import Monthly from './pages/Monthly'
 import SideIncome from './pages/SideIncome'
-import Memo from './pages/Memo'
 import Assets from './pages/Assets'
 import Stocks from './pages/Stocks'
 import StockJournal from './pages/StockJournal'
@@ -282,8 +281,6 @@ function AppRoutes() {
           <Route path="/board" element={<Navigate to="/info" replace />} />
           <Route path="/monthly" element={<Monthly />} />
           <Route path="/side" element={<SideIncome />} />
-          {/* 우리집 메모 (2026-11-24) — 가계부 탭 '메모' 칸·PC 왼쪽 메뉴에서 */}
-          <Route path="/memo" element={<Memo />} />
           <Route path="/assets" element={<Assets />} />
           {/* 주식 일지 (2026-10-25) — 자산 탭 주식 칸에서 들어온다 */}
           <Route path="/stocks" element={<Stocks />} />

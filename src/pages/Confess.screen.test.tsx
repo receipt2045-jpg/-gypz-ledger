@@ -535,3 +535,38 @@ describe('고백 페이지 — 달력으로 보기 (2026-11-24)', () => {
     localStorage.removeItem('moabuli.confess.view')
   })
 })
+
+describe('기록마다 메모 (2026-11-24, 11-13 의견)', () => {
+  it('줄글로 적을 때 확인 화면에서 메모를 고쳐 남기고, 목록에 메모가 다 보인다', async () => {
+    seedStore({ memberNo: 1, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+    await user.type(screen.getByPlaceholderText(/이라고 말해보세요/), '점심 9000원')
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+    const memo = screen.getByLabelText(/메모$/)
+    await user.clear(memo)
+    await user.type(memo, '팀 점심, 다음 달에 돌려받기로 함')
+    await user.click(screen.getByRole('button', { name: '1건 기록하기' }))
+    const saved = useLedgerStore.getState().confessions[0]
+    expect(saved.note).toBe('팀 점심, 다음 달에 돌려받기로 함')
+  })
+
+  it('목록에서 긴 메모도 잘리지 않고 둘째 줄에 보인다', () => {
+    const long = '친구 결혼 축의금 — 우리 결혼 때 10만 원 받아서 같은 금액으로'
+    seedStore({
+      memberNo: 1,
+      confessions: [
+        {
+          id: 'n1',
+          memberNo: 1,
+          category: '경조사',
+          kind: 'variable',
+          amount: 100_000,
+          note: long,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+    renderScreen(<Confess />)
+    expect(screen.getByText(long)).toBeInTheDocument()
+  })
+})

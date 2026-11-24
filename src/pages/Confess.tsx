@@ -106,7 +106,12 @@ function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
 interface DraftEntry extends ParsedEntry {
   key: number
   origCategory: string
+  /** 줄글에서 뽑힌 말 — 메모를 고쳐도 별칭 학습은 이걸로 한다 */
+  origNote?: string
 }
+
+/** 기록 한 건에 붙는 메모 (2026-11-24: 40자 → 100자, 확인 화면에서도 적기) */
+const NOTE_MAX = 100
 
 /**
  * 일일 고백 — 줄글/음성 입력이 기본.
@@ -336,9 +341,13 @@ export default function Confess() {
           >
             {c.child ? `🧒 ${c.child}` : c.shared ? '공동' : memberNames[c.memberNo - 1]}
           </span>
-          <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
-            {c.category}
-            {c.note && <span className="text-cap"> · {c.note}</span>}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[14px] text-ink">{c.category}</span>
+            {c.note && (
+              <span className="mt-0.5 block whitespace-pre-wrap break-words text-[12.5px] leading-snug text-sub">
+                {c.note}
+              </span>
+            )}
           </span>
           <span
             className={`tnum shrink-0 text-[14px] font-bold ${
@@ -482,7 +491,9 @@ export default function Confess() {
     }
     setParseMsg(null)
     setSkipped(r.skipped)
-    setDrafts(r.entries.map((e, i) => ({ ...e, key: i, origCategory: e.category })))
+    setDrafts(
+      r.entries.map((e, i) => ({ ...e, key: i, origCategory: e.category, origNote: e.note })),
+    )
   }
 
   // ── 줄글: 확인 → 저장 ───────────────────────
@@ -491,12 +502,12 @@ export default function Confess() {
     // 카테고리를 고쳤거나 매칭에 실패했던 항목은 별칭으로 학습 (다음부턴 자동)
     const patch: Record<string, string> = {}
     for (const d of drafts) {
-      const word = d.note?.split(' ')[0]
+      const word = d.origNote?.split(' ')[0]
       if (!word || word.length < 2) continue
       if (d.category !== d.origCategory || !d.matched) patch[word] = d.category
     }
     if (Object.keys(patch).length) learnAliases(patch)
-    finishSave(drafts)
+    finishSave(drafts.map((d) => ({ ...d, note: d.note?.trim() || undefined })))
   }
 
   const toggleMic = () => {
@@ -666,7 +677,7 @@ export default function Confess() {
         <Top
           onBack={() => setDrafts(null)}
           title="이렇게 기록할까요?"
-          subtitle="카테고리와 금액을 눌러 고칠 수 있어요"
+          subtitle="종류·금액·메모를 눌러 고칠 수 있어요"
         />
         {pastDateBanner}
         <div className="flex-1 space-y-3 px-5 pb-10 pt-1">
@@ -702,7 +713,6 @@ export default function Confess() {
                         </optgroup>
                       ))}
                     </select>
-                    {d.note && <p className="truncate text-[12px] text-cap">{d.note}</p>}
                   </div>
                   <input
                     inputMode="numeric"
@@ -727,6 +737,18 @@ export default function Confess() {
                     <Trash2 size={17} />
                   </button>
                 </div>
+                <input
+                  value={d.note ?? ''}
+                  onChange={(e) =>
+                    setDrafts((prev) =>
+                      prev!.map((x) => (x.key === d.key ? { ...x, note: e.target.value } : x)),
+                    )
+                  }
+                  maxLength={NOTE_MAX}
+                  placeholder="메모 (선택) 예: 친구 생일 선물"
+                  aria-label={`${d.category} 메모`}
+                  className="mt-2 w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] text-ink outline-none placeholder:text-cap focus:border-brand"
+                />
                 {!d.matched && (
                   <p className="mt-1.5 text-[12px] text-amber-600">
                     어디에 쓴 건지 몰라서 기타로 두었어요. 고쳐주시면 다음부턴 기억할게요.
@@ -776,8 +798,9 @@ export default function Confess() {
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            maxLength={40}
-            placeholder="한 마디 남기기 (선택)"
+            maxLength={NOTE_MAX}
+            placeholder="메모 남기기 (선택)"
+            aria-label="메모"
             className="mb-3 w-full rounded-btn border border-line bg-white px-4 py-3 text-center text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
           />
 
@@ -1279,7 +1302,7 @@ function EditRow({
         onChange={(e) => setNote(e.target.value)}
         placeholder="메모 (선택)"
         aria-label="메모"
-        maxLength={40}
+        maxLength={NOTE_MAX}
         className="w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
       />
       <div className="flex gap-2">
