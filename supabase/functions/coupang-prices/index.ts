@@ -4,8 +4,9 @@
 // 1g(ml·개)당 값(unit_price)과 파트너스 링크를 저장한다. 앱은 표를 읽어 '한 끼 얼마'를 계산한다.
 // 검색 호출 한도가 작아서 한 번에 다 찾지 않는다 — 매시간 몇 개씩(pg_cron, recipe-prices.sql 맨 아래).
 //
-// 막는 것: x-cron-secret 머리글이 COUPANG_CRON_SECRET과 같아야 한다.
-// 설정(Secrets): COUPANG_ACCESS_KEY, COUPANG_SECRET_KEY, COUPANG_CRON_SECRET
+// 막는 것: x-cron-secret 머리글이 app_secrets 표의 coupang_cron 값(서버가 만든 값, recipe-prices-2.sql)과 같아야 한다.
+//   COUPANG_CRON_SECRET을 Secrets에 넣었으면 그 값을 먼저 쓴다 (예전 방식).
+// 설정(Secrets): COUPANG_ACCESS_KEY, COUPANG_SECRET_KEY
 //              (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY는 Supabase가 넣어 준다)
 // 배포할 때 'Verify JWT'는 끈다 — pg_cron은 로그인 토큰을 보내지 않는다.
 import { createClient } from "npm:@supabase/supabase-js";
@@ -87,15 +88,19 @@ function pickProduct(items: SearchItem[], sizeToken: string, packAmount: number)
 }
 
 Deno.serve(async (req) => {
-  if (!CRON_SECRET || req.headers.get("x-cron-secret") !== CRON_SECRET) {
-    return new Response("forbidden", { status: 403 });
-  }
-  if (!ACCESS || !SECRET) return new Response("쿠팡 키가 없어요", { status: 500 });
-
   const db = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+  let expected = CRON_SECRET;
+  if (!expected) {
+    const { data } = await db.from("app_secrets").select("value").eq("name", "coupang_cron").maybeSingle();
+    expected = (data?.value as string | undefined) ?? "";
+  }
+  if (!expected || req.headers.get("x-cron-secret") !== expected) {
+    return new Response("forbidden", { status: 403 });
+  }
+  if (!ACCESS || !SECRET) return new Response("쿠팡 키가 없어요", { status: 500 });
   const { data: rows, error } = await db
     .from("recipe_prices")
     .select("ingredient,keyword,size_token,pack_amount")
