@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { useLedgerStore } from '../lib/store'
 import { deleteGiftReport, fetchChildRecords, fetchGiftReports, insertGiftReport } from '../lib/db'
 import {
@@ -27,6 +27,7 @@ import {
 } from '../lib/childRecurring'
 import type { ChildRecurring, Confession } from '../types'
 import Toggle from './Toggle'
+import SheetTable, { md } from './SheetTable'
 
 /**
  * 자산 탭 — 아이 통장 (2026-10-27).
@@ -129,6 +130,14 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
   }
 
   if (children.length === 0) return null
+  const dayOfRec = (c: Confession) => new Date(c.createdAt).toLocaleDateString('sv-SE')
+  // 표의 '표시' 칸 — 자동(매달 저절로) · 증여 · 살림에(아이 통장에 안 남긴 돈)
+  const tagsOf = (c: Confession) =>
+    [
+      isRecurringRecord(c.id, c.createdAt, profile.childRecurring ?? []) ? '자동' : '',
+      c.gift ? '증여' : '',
+      c.childKeep === false ? '살림에' : '',
+    ].filter(Boolean)
 
   return (
     <section aria-label="아이 통장" className="space-y-2.5">
@@ -206,71 +215,80 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
             >
               부모급여·아동수당 앞으로 몇 달 더 받을까 <ChevronRight size={13} />
             </button>
-            {/* 최근 기록 (앱에 있는 최근 62일) — 잘못 적은 건 여기서 지운다 */}
+            {/* {name} 통장 기록 (앱에 있는 최근 62일) — 엑셀처럼 표로 (2026-11-25 결영 요청).
+                예전엔 최근 4건만 줄로 보였다. 줄 어디를 눌러도 고치기 (2026-11-17 의견) */}
             {confessions.some((c) => c.child === name) && (
-              <div className="mt-2.5 divide-y divide-line/70">
-                {confessions
-                  .filter((c) => c.child === name)
-                  .slice(0, 4)
-                  .map((c) =>
-                    editing === c.id ? (
-                      <ChildRecordEdit
-                        key={c.id}
-                        c={c}
-                        onSave={(patch) => {
-                          updateConfession(c.id, patch)
-                          setEditing(null)
-                        }}
-                        onCancel={() => setEditing(null)}
-                      />
-                    ) : (
-                      // 줄 어디를 눌러도 고치기 (2026-11-17 의견)
-                      <div
-                        key={c.id}
-                        onClick={() => setEditing(c.id)}
-                        className="-mx-1 flex cursor-pointer items-center gap-2 rounded px-1 py-2 text-[13px] active:bg-bg"
-                      >
-                        <span className="tnum shrink-0 text-[11.5px] text-cap">
-                          {new Date(c.createdAt).getMonth() + 1}/{new Date(c.createdAt).getDate()}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-ink">
-                          {c.category}
-                          {c.note && <span className="text-cap"> · {c.note}</span>}
-                          {isRecurringRecord(c.id, c.createdAt, profile.childRecurring ?? []) && (
-                            <span className="ml-1 rounded bg-brand/10 px-1 text-[10.5px] font-bold text-brand">
-                              자동
-                            </span>
-                          )}
-                          {c.gift && (
-                            <span className="ml-1 text-[11px] font-bold text-amber-600">증여</span>
-                          )}
-                          {c.childKeep === false && (
-                            <span className="ml-1 text-[11px] font-bold text-sub">살림에</span>
-                          )}
-                        </span>
-                        <span className="tnum shrink-0 font-bold text-brand">
-                          +{formatWon(c.amount)}
-                        </span>
-                        <button
-                          onClick={() => setEditing(c.id)}
-                          aria-label={`${c.category} 기록 고치기`}
-                          className="shrink-0 text-cap active:text-brand"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            removeConfession(c.id)
-                          }}
-                          aria-label="기록 지우기"
-                          className="shrink-0 text-cap active:text-danger"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ),
+              <div className="mt-3">
+                <p className="mb-1.5 text-[12.5px] font-bold text-sub">{name} 통장 기록</p>
+                <SheetTable
+                  rows={confessions.filter((c) => c.child === name)}
+                  rowKey={(c) => c.id}
+                  bleed="-mx-4 px-4"
+                  minWidth={480}
+                  cols={[
+                    {
+                      key: 'date',
+                      label: '날짜',
+                      width: 62,
+                      align: 'center',
+                      cell: (c) => md(dayOfRec(c)),
+                      tone: () => 'text-sub tnum',
+                      filter: { get: dayOfRec, label: md },
+                    },
+                    {
+                      key: 'category',
+                      label: '종류',
+                      width: 104,
+                      cell: (c) => c.category,
+                      filter: { get: (c) => c.category },
+                    },
+                    {
+                      key: 'note',
+                      label: '메모',
+                      cell: (c) => c.note ?? '',
+                      tone: () => 'text-sub',
+                      filter: { get: (c) => c.note ?? '', text: true },
+                    },
+                    {
+                      key: 'tag',
+                      label: '표시',
+                      width: 76,
+                      align: 'center',
+                      cell: (c) => tagsOf(c).join('·'),
+                      tone: () => 'text-[11.5px] font-bold text-amber-700',
+                      filter: { get: (c) => tagsOf(c).join('·'), label: (v) => v || '(없음)' },
+                    },
+                    {
+                      key: 'amount',
+                      label: '금액',
+                      width: 92,
+                      align: 'right',
+                      cell: (c) => `+${c.amount.toLocaleString('ko-KR')}`,
+                      tone: () => 'font-bold text-brand tnum',
+                    },
+                  ]}
+                  onRowClick={(c) => setEditing(c.id)}
+                  rowLabel={(c) => `${c.category} 기록 고치기`}
+                  editingKey={editing}
+                  renderEdit={(c) => (
+                    <ChildRecordEdit
+                      c={c}
+                      onSave={(patch) => {
+                        updateConfession(c.id, patch)
+                        setEditing(null)
+                      }}
+                      onCancel={() => setEditing(null)}
+                    />
                   )}
+                  onRemove={(c) => removeConfession(c.id)}
+                  removeConfirm={(c) => `${c.category} ${formatWon(c.amount)} 기록을 지울까요?`}
+                  removeLabel="기록 지우기"
+                  summary={(rows) => (
+                    <b className="text-brand">
+                      +{formatWon(rows.reduce((a, c) => a + c.amount, 0))}
+                    </b>
+                  )}
+                />
               </div>
             )}
           </div>

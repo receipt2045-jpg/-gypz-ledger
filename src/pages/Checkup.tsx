@@ -18,6 +18,7 @@ import {
   Users,
 } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
+import SheetTable, { md } from '../components/SheetTable'
 import MonthlyReportCard from '../components/MonthlyReportCard'
 import RecoCard from '../components/RecoCard'
 import { settleReco } from '../lib/reco'
@@ -884,6 +885,8 @@ const LOG_MAX_H = 168
  * 예전엔 합계만 떠서, 15만원이 맞는지 보려면 가계부 탭으로 나갔다 와야 했다.
  * 정산 중에 숫자가 흔들리면 헷갈리므로 여기선 읽기만 된다 — 고치는 건 고백 탭에서.
  */
+const dayOf = (c: { createdAt: string }) => new Date(c.createdAt).toLocaleDateString('sv-SE')
+
 function ConfessLog({
   entries,
   memberNames,
@@ -909,23 +912,53 @@ function ConfessLog({
           className="thin-scroll overflow-y-auto overscroll-contain border-t border-line pt-1"
           style={{ maxHeight: LOG_MAX_H }}
         >
-          {entries.map((c) => {
-            const d = new Date(c.createdAt)
-            return (
-              <div key={c.id} className="flex items-center gap-2 py-1.5">
-                <span className="tnum w-9 shrink-0 text-[11.5px] text-cap">
-                  {d.getMonth() + 1}/{d.getDate()}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
-                  {c.shared ? '공동' : memberNames[c.memberNo - 1]}
-                  {c.note && <span className="text-cap"> · {c.note}</span>}
-                </span>
-                <span className="tnum shrink-0 text-[13px] font-semibold text-ink">
-                  {formatWon(c.amount)}
-                </span>
-              </div>
-            )
-          })}
+          {/* 엑셀처럼 표로 (2026-11-25 결영 요청) — 칸 이름 옆 ▾ 거르기, 읽기만 */}
+          <SheetTable
+            rows={entries}
+            rowKey={(c) => c.id}
+            bleed=""
+            minWidth={300}
+            cols={[
+              {
+                key: 'date',
+                label: '날짜',
+                width: 64,
+                align: 'center',
+                cell: (c) => md(dayOf(c)),
+                tone: () => 'text-sub tnum',
+                filter: { get: dayOf, label: md },
+              },
+              {
+                key: 'who',
+                label: '누가',
+                width: 72,
+                align: 'center',
+                cell: (c) => (c.shared ? '공동' : memberNames[c.memberNo - 1]),
+                filter: {
+                  get: (c) => (c.shared ? 'shared' : String(c.memberNo)),
+                  label: (w) => (w === 'shared' ? '공동' : memberNames[Number(w) - 1]),
+                },
+              },
+              {
+                key: 'note',
+                label: '메모',
+                cell: (c) => c.note ?? '',
+                tone: () => 'text-sub',
+                filter: { get: (c) => c.note ?? '', text: true },
+              },
+              {
+                key: 'amount',
+                label: '금액',
+                width: 88,
+                align: 'right',
+                cell: (c) => c.amount.toLocaleString('ko-KR'),
+                tone: () => 'font-semibold text-ink tnum',
+              },
+            ]}
+            summary={(rows) => (
+              <b className="text-ink">{formatWon(rows.reduce((a, c) => a + c.amount, 0))}</b>
+            )}
+          />
         </div>
       )}
     </div>

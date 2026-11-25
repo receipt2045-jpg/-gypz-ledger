@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import AmountInput from './AmountInput'
+import SheetTable, { md } from './SheetTable'
 import { formatWon } from '../lib/format'
 import { OCCASION_CATEGORIES } from '../lib/constants'
 import type { OccasionEntry } from '../types'
@@ -17,6 +18,7 @@ export default function OccasionSection({
   defaultDate,
   onAdd,
   onRemove,
+  onUpdate,
   emptyText = '아직 기록이 없어요 · 예산이 무너지는 1위가 비정기 지출이에요',
   open: openProp,
   onOpenChange,
@@ -29,6 +31,8 @@ export default function OccasionSection({
   defaultDate?: string
   onAdd?: (e: Omit<OccasionEntry, 'id'>) => void
   onRemove: (id: string) => void
+  /** 줄을 눌러 고치기 (2026-11-25) */
+  onUpdate?: (id: string, patch: Partial<Omit<OccasionEntry, 'id'>>) => void
   emptyText?: string
   // 폼 열림을 밖에서 제어할 때 (가계부 탭 상단 '비정기 지출 입력' 버튼)
   open?: boolean
@@ -61,6 +65,7 @@ export default function OccasionSection({
   const [showYear, setShowYear] = useState(false)
   const hiddenCount = yearItems ? yearItems.length - items.length : 0
   const shown = showYear && yearItems ? yearItems : items
+  const [editing, setEditing] = useState<string | null>(null)
 
   return (
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
@@ -76,12 +81,14 @@ export default function OccasionSection({
         )}
       </div>
       <p className="mb-2 text-[12px] text-cap">
-        경조사·명절·자동차·세금처럼 <b className="font-semibold">가끔 오는 큰돈</b> · 공동 카드 지출도
-        여기에 · 올해 합계{' '}
+        경조사·명절·자동차·세금처럼 <b className="font-semibold">가끔 오는 큰돈</b> · 공동 카드
+        지출도 여기에 · 올해 합계{' '}
         <span className="tnum font-semibold text-sub">{formatWon(yearTotal)}</span>
       </p>
       {!onAdd && (
-        <p className="mb-2 text-[12px] text-cap">기록은 가계부 탭에서 해요 · 여기선 한눈에 봅니다</p>
+        <p className="mb-2 text-[12px] text-cap">
+          기록은 가계부 탭에서 해요 · 여기선 한눈에 봅니다
+        </p>
       )}
 
       {onAdd && open && (
@@ -122,36 +129,65 @@ export default function OccasionSection({
         </div>
       )}
 
+      {/* 엑셀처럼 표로 (2026-11-25 결영 요청) — 칸 이름 옆 ▾ 거르기, 줄을 누르면 고치기 */}
       {shown.length === 0 ? (
         <p className="py-3 text-center text-[13px] text-cap">{emptyText}</p>
       ) : (
-        <div className="divide-y divide-line/70">
-          {shown.map((o) => (
-            <div key={o.id} className="flex items-center justify-between py-3">
-              <div className="min-w-0">
-                <p className="truncate text-[15px] font-medium text-ink">{o.title}</p>
-                <p className="mt-0.5 text-[12px] text-cap">
-                  {o.date.replace(/-/g, '.')} · {o.category}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="tnum text-[15px] font-semibold text-ink">
-                  {formatWon(o.amount)}
-                </span>
-                {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
-                <button
-                  onClick={() => {
-                    if (window.confirm(`${o.title} ${formatWon(o.amount)}을 지울까요?`)) onRemove(o.id)
-                  }}
-                  className="-m-2 p-2 text-cap active:text-danger"
-                  aria-label="삭제"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <SheetTable
+          rows={shown}
+          rowKey={(o) => o.id}
+          minWidth={420}
+          cols={[
+            {
+              key: 'date',
+              label: '날짜',
+              width: 66,
+              align: 'center',
+              cell: (o) => md(o.date),
+              tone: () => 'text-sub tnum',
+              filter: { get: (o) => o.date, label: md },
+            },
+            {
+              key: 'category',
+              label: '종류',
+              width: 90,
+              cell: (o) => o.category,
+              filter: { get: (o) => o.category },
+            },
+            {
+              key: 'title',
+              label: '내용',
+              cell: (o) => o.title,
+              filter: { get: (o) => o.title, text: true },
+            },
+            {
+              key: 'amount',
+              label: '금액',
+              width: 100,
+              align: 'right',
+              cell: (o) => o.amount.toLocaleString('ko-KR'),
+              tone: () => 'font-bold text-ink tnum',
+            },
+          ]}
+          onRowClick={onUpdate ? (o) => setEditing(o.id) : undefined}
+          rowLabel={(o) => `${o.title} 고치기`}
+          editingKey={editing}
+          renderEdit={(o) => (
+            <OccasionEdit
+              o={o}
+              onCancel={() => setEditing(null)}
+              onSave={(patch) => {
+                onUpdate?.(o.id, patch)
+                setEditing(null)
+              }}
+            />
+          )}
+          onRemove={(o) => onRemove(o.id)}
+          removeConfirm={(o) => `${o.title} ${formatWon(o.amount)}을 지울까요?`}
+          summary={(rows) => (
+            <b className="text-ink">{formatWon(rows.reduce((a, o) => a + o.amount, 0))}</b>
+          )}
+        />
       )}
 
       {hiddenCount > 0 && (
@@ -162,6 +198,74 @@ export default function OccasionSection({
           {showYear ? '이 달 것만 보기' : `올해 전체 보기 · ${yearItems?.length}건`}
         </button>
       )}
+    </div>
+  )
+}
+
+/** 비정기 지출 한 줄 고치기 — 표 줄 자리에서 */
+function OccasionEdit({
+  o,
+  onSave,
+  onCancel,
+}: {
+  o: OccasionEntry
+  onSave: (patch: Omit<OccasionEntry, 'id'>) => void
+  onCancel: () => void
+}) {
+  const [date, setDate] = useState(o.date)
+  const [category, setCategory] = useState(o.category)
+  const [title, setTitle] = useState(o.title)
+  const [amount, setAmount] = useState(o.amount)
+  const cats = OCCASION_CATEGORIES.includes(o.category)
+    ? OCCASION_CATEGORIES
+    : [o.category, ...OCCASION_CATEGORIES]
+  return (
+    <div className="space-y-2 rounded-btn bg-bg p-3">
+      <div className="flex gap-2">
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => e.target.value && setDate(e.target.value)}
+          aria-label="날짜"
+          className="tnum flex-1 rounded-btn border border-line bg-white px-3 py-2 text-[14px] text-ink outline-none focus:border-brand"
+        />
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          aria-label="종류"
+          className="rounded-btn border border-line bg-white px-3 py-2 text-[14px] text-ink outline-none focus:border-brand"
+        >
+          {cats.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        aria-label="내용"
+        className="w-full rounded-btn border border-line bg-white px-3 py-2 text-[14px] text-ink outline-none focus:border-brand"
+      />
+      <AmountInput value={amount} onChange={setAmount} ariaLabel="금액" />
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="h-10 flex-1 rounded-btn bg-white text-[14px] font-semibold text-sub active:bg-line"
+        >
+          그대로 두기
+        </button>
+        <button
+          onClick={() =>
+            title.trim() && amount > 0 && onSave({ date, category, title: title.trim(), amount })
+          }
+          disabled={!title.trim() || amount <= 0}
+          className="h-10 flex-[2] rounded-btn bg-brand text-[14px] font-bold text-white disabled:opacity-40"
+        >
+          고치기
+        </button>
+      </div>
     </div>
   )
 }

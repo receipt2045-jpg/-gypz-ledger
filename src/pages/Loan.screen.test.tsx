@@ -47,6 +47,8 @@ describe('대출 상환 (2026-10-07 제보)', () => {
     seedStore({ snapshots: [{ ym: TEST_YM, items: [house, mortgage] }] })
     const { user } = renderScreen(<AssetSetup />)
     await user.click(screen.getAllByRole('button', { name: /남편|공동|아내/ })[0])
+    // 2026-11-25 자산 등록이 엑셀 표 — 줄을 눌러 자세히(대출 정보)를 연다
+    await user.click(await screen.findByRole('button', { name: '주택담보대출 자세히' }))
     const open = await screen.findByRole('button', { name: /대출 정보 넣기/ })
     await user.click(open)
     await user.click(screen.getByRole('tab', { name: '남은 돈으로' }))
@@ -72,6 +74,7 @@ describe('대출 상환 (2026-10-07 제보)', () => {
     expect(screen.getByText(/다 갚는 달/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '추가' }))
     expect(screen.getByText('보금자리')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '보금자리 자세히' }))
     expect(screen.getByText(/갚아요/)).toBeInTheDocument()
   })
 
@@ -79,6 +82,8 @@ describe('대출 상환 (2026-10-07 제보)', () => {
     seedStore({ snapshots: [{ ym: TEST_YM, items: [house, mortgage] }] })
     const { user } = renderScreen(<AssetSetup />)
     await user.click(screen.getAllByRole('button', { name: /남편|공동|아내/ })[0])
+    // 2026-11-25 자산 등록이 엑셀 표 — 줄을 눌러 자세히(대출 정보)를 연다
+    await user.click(await screen.findByRole('button', { name: '주택담보대출 자세히' }))
     await user.click(await screen.findByRole('button', { name: /대출 정보 넣기/ }))
     await user.click(screen.getByRole('tab', { name: '남은 돈으로' }))
     await user.type(screen.getByPlaceholderText('예) 4.2'), '3')
@@ -92,6 +97,8 @@ describe('대출 상환 (2026-10-07 제보)', () => {
     seedStore({ snapshots: [{ ym: TEST_YM, items: [house, mortgage] }] })
     const { user } = renderScreen(<AssetSetup />)
     await user.click(screen.getAllByRole('button', { name: /남편|공동|아내/ })[0])
+    // 2026-11-25 자산 등록이 엑셀 표 — 줄을 눌러 자세히(대출 정보)를 연다
+    await user.click(await screen.findByRole('button', { name: '주택담보대출 자세히' }))
     await user.click(await screen.findByRole('button', { name: /대출 정보 넣기/ }))
     await user.type(screen.getByPlaceholderText('예) 300,000,000'), '300000000')
     fireEvent.change(screen.getByLabelText('대출 받은 달'), { target: { value: '2024-01' } })

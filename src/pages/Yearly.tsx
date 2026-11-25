@@ -14,7 +14,8 @@ import type { CategoryGroup } from '../types'
 
 export default function Yearly() {
   const navigate = useNavigate()
-  const { ledgers, occasions, removeOccasion, profile, confessions } = useLedgerStore()
+  const { ledgers, occasions, removeOccasion, updateOccasion, profile, confessions } =
+    useLedgerStore()
   const [year, setYear] = useState(profile.startYear || new Date().getFullYear())
 
   const yms = useMemo(
@@ -197,6 +198,7 @@ export default function Yearly() {
               items={yearOccasions}
               yearTotal={occasionTotal}
               onRemove={removeOccasion}
+              onUpdate={updateOccasion}
               emptyText={`${year}년 기록이 없어요 · 가계부 탭에서 적을 수 있어요`}
             />
           </>

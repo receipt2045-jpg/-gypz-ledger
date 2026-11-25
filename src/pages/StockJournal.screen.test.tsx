@@ -26,7 +26,8 @@ describe('주식 일지 (2026-10-25)', () => {
     expect(await screen.findByText('SK하이닉스')).toBeInTheDocument()
     expect(screen.getByText('2,500,000원')).toBeInTheDocument()
     expect(screen.getByText('+25.0%')).toBeInTheDocument()
-    expect(screen.getByText(/목표가 300,000원까지 20% 남음/)).toBeInTheDocument()
+    // 2026-11-25 엑셀 표 — 목표가 칸
+    expect(screen.getByText(/300,000원 · 20% 남음/)).toBeInTheDocument()
   })
 
   it('종목 일지: 오늘 샀어요 → 평균이 바뀌고 기록이 쌓인다, 배우자 한 줄', async () => {

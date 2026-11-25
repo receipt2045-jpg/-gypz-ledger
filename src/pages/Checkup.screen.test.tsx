@@ -198,7 +198,8 @@ describe('정산 화면 — 고백 합계 밑 내역 펼쳐 보기', () => {
 
     const box = screen.getByText(/첫 건 메모/).closest('div.overflow-y-auto')
     expect(box).not.toBeNull()
-    expect(box!.children).toHaveLength(8)
+    // 2026-11-25 엑셀 표 — 표 줄이 8개
+    expect(box!.querySelectorAll('tbody tr')).toHaveLength(8)
     // 끝까지 밀었을 때 정산 화면까지 같이 밀리면 안 된다
     expect(box).toHaveClass('overscroll-contain')
   })

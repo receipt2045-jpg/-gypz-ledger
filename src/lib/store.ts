@@ -217,6 +217,8 @@ interface LedgerState extends AppData {
   // 경조사/연간비
   addOccasion: (entry: Omit<OccasionEntry, 'id'>) => void
   removeOccasion: (id: string) => void
+  /** 비정기 지출 고치기 (2026-11-25 — 표에서 줄을 눌러 고친다) */
+  updateOccasion: (id: string, patch: Partial<Omit<OccasionEntry, 'id'>>) => void
   // 카테고리 관리
   /** 'added' | 'exists'(같은 칸에 이미 있음) | 다른 칸 이름(그 칸에 이미 있음) */
   addCategory: (group: CategoryGroup, name: string) => 'added' | 'exists' | CategoryGroup
@@ -488,6 +490,22 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const hid = get().householdId
     if (hid) {
       const op: PendingOp = { kind: 'occasion', key: `occasion:${full.id}`, payload: full }
+      db.pushOccasion(hid, full).catch(onSaveFailed(op))
+    }
+  },
+
+  updateOccasion: (id, patch) => {
+    const cur = get().occasions.find((o) => o.id === id)
+    if (!cur) return
+    const full: OccasionEntry = { ...cur, ...patch, id }
+    set((s) => ({
+      occasions: s.occasions
+        .map((o) => (o.id === id ? full : o))
+        .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    }))
+    const hid = get().householdId
+    if (hid) {
+      const op: PendingOp = { kind: 'occasion', key: `occasion:${id}`, payload: full }
       db.pushOccasion(hid, full).catch(onSaveFailed(op))
     }
   },

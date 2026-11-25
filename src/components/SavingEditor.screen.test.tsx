@@ -33,6 +33,8 @@ const setup = (assets: AssetItem[]) => {
 describe('적금 자동 저축 입력 (2026-11-24 의견)', () => {
   it('예적금 줄에서 매달 넣는 돈·넣는 날·만기를 적어 저장한다', async () => {
     const { user, onUpdate } = setup([cash])
+    // 2026-11-25 엑셀 표 — 줄을 눌러 자세히를 연다
+    await user.click(screen.getByRole('button', { name: '청년도약계좌 자세히' }))
     await user.click(screen.getByRole('button', { name: /매달 자동으로 쌓기/ }))
     await user.type(screen.getByLabelText('매달 넣는 돈'), '300000')
     await user.selectOptions(screen.getByLabelText('넣는 날'), '10')
@@ -50,6 +52,7 @@ describe('적금 자동 저축 입력 (2026-11-24 의견)', () => {
     const { user, onUpdate } = setup([
       { ...cash, saving: { monthly: 500_000, day: 25, asOf: '2026-11-01' } },
     ])
+    await user.click(screen.getByRole('button', { name: '청년도약계좌 자세히' }))
     expect(screen.getByText(/자동 저축/)).toBeInTheDocument()
     await user.click(screen.getByText(/자동 저축/))
     await user.click(screen.getByRole('button', { name: '끄기' }))

@@ -6,6 +6,7 @@ import { dayString, type LoanInfo } from '../lib/loan'
 import { ChevronDown, ChevronRight, Pencil, Plus, StickyNote, X } from 'lucide-react'
 import AmountInput from './AmountInput'
 import AssetIcon from './AssetIcon'
+import SheetTable from './SheetTable'
 import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER } from '../lib/constants'
 import {
   CURRENCIES,
@@ -99,6 +100,106 @@ export default function AssetEditor({
     setAdding(false)
   }
 
+  // 엑셀처럼 표로 (2026-11-25 결영 요청) — 금액 칸은 바로 고치고, 줄을 누르면 자세히(이름·메모·대출·적금)
+  // 자산 탭에서 누르고 왔으면 그 줄을 펼쳐 둔다
+  const [open, setOpen] = useState<string | null>(focusId ?? null)
+  const sheet = (list: AssetItem[], debt: boolean) => (
+    <div className="rounded-card bg-card px-4 py-3 shadow-card">
+      <SheetTable
+        rows={list}
+        rowKey={(it) => it.id}
+        bleed="-mx-4 px-4"
+        minWidth={560}
+        cols={[
+          {
+            key: 'name',
+            label: '이름',
+            width: 128,
+            cell: (it) => (
+              <>
+                {it.name}
+                {it.saving && <span className="ml-1 text-[11px] font-bold text-brand">자동</span>}
+                {it.loan && <span className="ml-1 text-[11px] font-bold text-danger">대출</span>}
+              </>
+            ),
+            tone: () => 'font-semibold text-ink',
+            filter: { get: (it) => it.name },
+          },
+          {
+            key: 'amount',
+            label: '금액',
+            width: 138,
+            align: 'right',
+            cell: (it) => (
+              <AmountCell
+                item={it}
+                debt={debt}
+                rates={rates}
+                onChange={onChange}
+                onUpdate={onUpdate}
+              />
+            ),
+          },
+          {
+            key: 'group',
+            label: '구분',
+            width: 76,
+            cell: (it) => (debt ? '부채' : ASSET_GROUP_LABEL[it.group]),
+            tone: () => (debt ? 'text-danger' : 'text-sub'),
+            filter: {
+              get: (it) => it.group,
+              label: (g) => ASSET_GROUP_LABEL[g as AssetGroup] ?? g,
+            },
+          },
+          {
+            key: 'owner',
+            label: '누구',
+            width: 68,
+            align: 'center',
+            cell: (it) => it.owner ?? '공동',
+            filter: { get: (it) => it.owner ?? '공동' },
+          },
+          {
+            key: 'note',
+            label: '메모',
+            cell: (it) => it.note ?? '',
+            tone: () => 'text-sub',
+            filter: { get: (it) => it.note ?? '', text: true },
+          },
+        ]}
+        onRowClick={(it) => setOpen((o) => (o === it.id ? null : it.id))}
+        rowLabel={(it) => `${it.name} 자세히`}
+        editingKey={open}
+        renderEdit={(it) => (
+          <div className="space-y-1.5 py-1">
+            <AssetRow
+              item={it}
+              ownerOptions={ownerOptions}
+              rates={rates}
+              onChange={onChange}
+              onNote={onNote}
+              onUpdate={onUpdate}
+              onRemove={onRemove}
+              focus={it.id === focusId}
+              debt={debt}
+            />
+            <button
+              onClick={() => setOpen(null)}
+              className="w-full py-1 text-center text-[12.5px] font-bold text-sub active:text-ink"
+            >
+              접기
+            </button>
+          </div>
+        )}
+        onRemove={(it) => onRemove(it.id)}
+        removeConfirm={(it) => `${it.name || '이 항목'}을 지울까요?`}
+        summary={(rows) => (
+          <b className="text-ink">{formatWon(rows.reduce((a, it) => a + it.amount, 0))}</b>
+        )}
+      />
+    </div>
+  )
+
   const assetItems = assets.filter((it) => it.kind === 'asset')
   const debtItems = assets.filter((it) => it.kind === 'debt')
 
@@ -118,34 +219,9 @@ export default function AssetEditor({
           </p>
         </div>
       )}
-      {assetItems.map((it) => (
-        <AssetRow
-          key={it.id}
-          item={it}
-          ownerOptions={ownerOptions}
-          rates={rates}
-          onChange={onChange}
-          onNote={onNote}
-          onUpdate={onUpdate}
-          onRemove={onRemove}
-          focus={it.id === focusId}
-        />
-      ))}
+      {assetItems.length > 0 && sheet(assetItems, false)}
       {debtItems.length > 0 && <p className="px-1 pt-2 text-[13px] font-bold text-danger">부채</p>}
-      {debtItems.map((it) => (
-        <AssetRow
-          key={it.id}
-          item={it}
-          ownerOptions={ownerOptions}
-          rates={rates}
-          onChange={onChange}
-          onNote={onNote}
-          onUpdate={onUpdate}
-          onRemove={onRemove}
-          focus={it.id === focusId}
-          debt
-        />
-      ))}
+      {debtItems.length > 0 && sheet(debtItems, true)}
 
       {adding ? (
         <div
@@ -525,5 +601,54 @@ function AssetRow({
         />
       )}
     </div>
+  )
+}
+
+/**
+ * 표의 금액 칸 — 엑셀처럼 바로 고친다 (2026-11-25).
+ * 대출·적금이 걸린 항목은 직접 고친 날을 기준일로 (AssetRow와 같은 규칙). 외화는 줄을 눌러 고친다.
+ */
+function AmountCell({
+  item,
+  debt,
+  rates,
+  onChange,
+  onUpdate,
+}: {
+  item: AssetItem
+  debt: boolean
+  rates: Rates
+  onChange: (id: string, v: number) => void
+  onUpdate: (id: string, patch: Partial<Omit<AssetItem, 'id'>>) => void
+}) {
+  const ccy = (item.currency as Currency) ?? 'KRW'
+  if (ccy !== 'KRW')
+    return (
+      <span className="tnum font-semibold">
+        {(item.fxAmount ?? 0).toLocaleString('ko-KR')}
+        {CURRENCY_SYMBOL[ccy]}
+        <span className="ml-1 text-[11px] font-medium text-cap">
+          ≈{abbreviateKRW(krwOf(item, rates))}
+        </span>
+      </span>
+    )
+  const set = (v: number) =>
+    debt && item.loan
+      ? onUpdate(item.id, { amount: v, loan: { ...item.loan, asOf: dayString(new Date()) } })
+      : !debt && item.saving
+        ? onUpdate(item.id, { amount: v, saving: { ...item.saving, asOf: dayString(new Date()) } })
+        : onChange(item.id, v)
+  return (
+    <span className="flex items-center" onClick={(e) => e.stopPropagation()}>
+      <input
+        aria-label={`${item.name} 금액`}
+        inputMode="numeric"
+        value={item.amount ? item.amount.toLocaleString('ko-KR') : ''}
+        placeholder="0"
+        onChange={(e) => set(Number(e.target.value.replace(/[^\d]/g, '').slice(0, 13)) || 0)}
+        className={`tnum h-9 w-full min-w-0 rounded-[4px] bg-transparent px-1 text-right font-semibold outline-none focus:bg-brand/5 focus:ring-2 focus:ring-inset focus:ring-brand ${debt ? 'text-danger' : 'text-ink'}`}
+      />
+      <span className="ml-0.5 shrink-0 text-[11px] text-cap">원</span>
+    </span>
   )
 }

@@ -112,6 +112,24 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     await user.click(screen.getByLabelText('삭제'))
     expect(savedOccasions()).toHaveLength(0)
   })
+
+  it('비정기 지출 표 — 줄을 눌러 그 자리에서 고친다 (2026-11-25)', async () => {
+    seedWithLedger()
+    useLedgerStore.setState({
+      occasions: [
+        { id: 'o2', date: '2026-03-05', category: '세금', title: '자동차세', amount: 150_000 },
+      ],
+    })
+    const { user } = renderScreen(<Monthly />)
+    await user.click(screen.getByRole('button', { name: /올해 전체 보기/ }))
+    await user.click(screen.getByRole('button', { name: '자동차세 고치기' }))
+    const amount = screen.getByLabelText('금액')
+    await user.clear(amount)
+    await user.type(amount, '180000')
+    await user.click(screen.getByRole('button', { name: '고치기' }))
+    expect(savedOccasions()[0]).toMatchObject({ id: 'o2', title: '자동차세', amount: 180_000 })
+    expect(screen.getByText('180,000')).toBeInTheDocument()
+  })
 })
 
 describe('가계부 탭 — 정산 취소', () => {

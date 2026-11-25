@@ -203,7 +203,7 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
 
     it('연필이 아니라 줄 아무 데나 눌러도 고치기가 열린다 (2026-11-17)', async () => {
       const { user } = seed()
-      await user.click(await screen.findByText('+50,000원'))
+      await user.click(await screen.findByText('+50,000')) // 표의 금액 칸 (2026-11-25 엑셀 표)
       expect(screen.getByLabelText('고칠 금액')).toBeInTheDocument()
     })
 

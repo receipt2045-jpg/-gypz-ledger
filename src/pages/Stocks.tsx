@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
 import { useLedgerStore } from '../lib/store'
+import SheetTable from '../components/SheetTable'
 import { useFxRates } from '../lib/fx'
 import { abbreviateKRW } from '../lib/format'
 import { CaptureError, readCapture, type CaptureItem } from '../lib/stockDb'
@@ -223,96 +224,162 @@ export default function Stocks() {
         </div>
       )}
 
-      <div className="space-y-2.5">
-        {holding.map(({ s, pos, val, journal, reason }) => {
-          const prog = targetProgress(s, pos.avgPrice)
-          const toTarget = toTargetRate(s)
-          return (
-            <button
-              key={s.id}
-              onClick={() => navigate(`/stocks/${s.id}`)}
-              className="block w-full rounded-card bg-card px-4 py-3.5 text-left shadow-card active:bg-line/40"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="min-w-0 truncate text-[15.5px] font-bold text-ink">
-                  {s.name}
-                  <OwnerBadge owner={s.owner} label={ownerName(s.owner)} />
-                  <span className="ml-1.5 align-[1px] text-[11.5px] font-medium text-cap">
-                    {stockTag(s)}
-                  </span>
-                </span>
-                <span className="tnum shrink-0 text-[15px] font-bold text-ink">
-                  {money(val.value, s.currency)}
-                </span>
-              </div>
-              <div className="mt-0.5 flex items-baseline justify-between gap-2">
-                <span className="min-w-0 truncate text-[12.5px] text-cap">
-                  {fmtQty(pos.qty)}주 · 평균 {money(pos.avgPrice, s.currency)}
-                  {reason && ` · ${reason}`}
-                </span>
-                {val.rate != null && (
-                  <span
-                    className={`tnum shrink-0 text-[13px] font-bold ${val.rate >= 0 ? 'text-danger' : 'text-brand'}`}
-                  >
-                    {val.rate >= 0 ? '+' : ''}
-                    {(val.rate * 100).toFixed(1)}%
-                  </span>
-                )}
-              </div>
-              {prog != null && (
-                <>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
-                    <div
-                      className="h-full rounded-full bg-brand"
-                      style={{ width: `${prog * 100}%` }}
-                    />
-                  </div>
-                  <p className="mt-1 text-[11.5px] text-cap">
-                    {toTarget != null && toTarget > 0
-                      ? `목표가 ${money(s.targetPrice!, s.currency)}까지 ${(toTarget * 100).toFixed(0)}% 남음`
-                      : `목표가 ${money(s.targetPrice!, s.currency)}에 닿았어요`}
-                  </p>
-                </>
-              )}
-              <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11.5px] font-bold">
-                <span className="text-cap">일지 {journal}개</span>
-                {unseen[s.id] ? (
-                  <span className="rounded-full bg-pink-50 px-2 text-pink-600">
-                    새 기록 {unseen[s.id]}
-                  </span>
-                ) : null}
-                {!reason && (
-                  <span className="rounded-full bg-amber-50 px-2 text-amber-700">
-                    이유 비었어요
-                  </span>
-                )}
-              </div>
-            </button>
-          )
-        })}
-      </div>
+      {/* 종목 목록 — 엑셀처럼 표로 (2026-11-25 결영 요청). 칸 이름 옆 ▾ 거르기, 줄을 누르면 그 종목 일지 */}
+      {holding.length > 0 && (
+        <div className="rounded-card bg-card px-4 py-3 shadow-card">
+          <p className="mb-2 text-[13.5px] font-bold text-sub">가진 종목 {holding.length}개</p>
+          <SheetTable
+            rows={holding}
+            rowKey={(r) => r.s.id}
+            bleed="-mx-4 px-4"
+            minWidth={1040}
+            onRowClick={(r) => navigate(`/stocks/${r.s.id}`)}
+            rowLabel={(r) => `${r.s.name} 일지 보기`}
+            cols={[
+              {
+                key: 'name',
+                label: '종목',
+                width: 130,
+                cell: (r) => r.s.name,
+                tone: () => 'font-bold text-ink',
+                filter: { get: (r) => r.s.name },
+              },
+              {
+                key: 'value',
+                label: '지금 금액',
+                width: 112,
+                align: 'right',
+                cell: (r) => money(r.val.value, r.s.currency),
+                tone: () => 'font-bold text-ink tnum',
+              },
+              {
+                key: 'rate',
+                label: '수익률',
+                width: 74,
+                align: 'right',
+                cell: (r) =>
+                  r.val.rate == null
+                    ? '–'
+                    : `${r.val.rate >= 0 ? '+' : ''}${(r.val.rate * 100).toFixed(1)}%`,
+                tone: (r) =>
+                  `tnum font-bold ${r.val.rate == null ? 'text-cap' : r.val.rate >= 0 ? 'text-danger' : 'text-brand'}`,
+              },
+              {
+                key: 'owner',
+                label: '누구',
+                width: 70,
+                align: 'center',
+                cell: (r) => ownerName(r.s.owner),
+                filter: {
+                  get: (r) => String(r.s.owner),
+                  label: (o) => ownerName(o === 'shared' ? 'shared' : (Number(o) as 1 | 2)),
+                },
+              },
+              {
+                key: 'tag',
+                label: '구분',
+                width: 84,
+                cell: (r) => stockTag(r.s),
+                tone: () => 'text-sub',
+                filter: { get: (r) => stockTag(r.s) },
+              },
+              {
+                key: 'qty',
+                label: '수량',
+                width: 68,
+                align: 'right',
+                cell: (r) => `${fmtQty(r.pos.qty)}주`,
+                tone: () => 'tnum text-sub',
+              },
+              {
+                key: 'avg',
+                label: '평균단가',
+                width: 100,
+                align: 'right',
+                cell: (r) => money(r.pos.avgPrice, r.s.currency),
+                tone: () => 'tnum text-sub',
+              },
+              {
+                key: 'target',
+                label: '목표가',
+                width: 160,
+                align: 'right',
+                cell: (r) => {
+                  const t = toTargetRate(r.s)
+                  if (t == null || targetProgress(r.s, r.pos.avgPrice) == null) return ''
+                  return `${money(r.s.targetPrice!, r.s.currency)} · ${t > 0 ? `${(t * 100).toFixed(0)}% 남음` : '닿음'}`
+                },
+                tone: () => 'tnum text-sub',
+              },
+              {
+                key: 'reason',
+                label: '산 이유',
+                cell: (r) => r.reason || '비었어요',
+                tone: (r) => (r.reason ? 'text-sub' : 'font-bold text-amber-700'),
+                filter: { get: (r) => r.reason, text: true },
+              },
+              {
+                key: 'journal',
+                label: '일지',
+                width: 72,
+                align: 'center',
+                cell: (r) => (
+                  <>
+                    {r.journal}
+                    {unseen[r.s.id] ? (
+                      <span className="ml-1 rounded-full bg-pink-50 px-1.5 text-[10.5px] font-bold text-pink-600">
+                        새 {unseen[r.s.id]}
+                      </span>
+                    ) : null}
+                  </>
+                ),
+                tone: () => 'tnum text-sub',
+              },
+            ]}
+          />
+        </div>
+      )}
 
       {sold.length > 0 && (
         <details className="rounded-card bg-card px-4 py-3 shadow-card">
           <summary className="cursor-pointer text-[13.5px] font-bold text-sub">
             다 판 종목 {sold.length}개
           </summary>
-          <div className="mt-2 divide-y divide-line">
-            {sold.map(({ s, pos }) => (
-              <button
-                key={s.id}
-                onClick={() => navigate(`/stocks/${s.id}`)}
-                className="flex w-full items-center justify-between py-2.5 text-left"
-              >
-                <span className="text-[14px] font-bold text-ink">{s.name}</span>
-                <span
-                  className={`tnum text-[13px] font-bold ${pos.realized >= 0 ? 'text-danger' : 'text-brand'}`}
-                >
-                  {pos.realized >= 0 ? '+' : '−'}
-                  {money(Math.abs(pos.realized), s.currency)}
-                </span>
-              </button>
-            ))}
+          <div className="mt-2">
+            <SheetTable
+              rows={sold}
+              rowKey={(r) => r.s.id}
+              bleed="-mx-4 px-4"
+              minWidth={320}
+              onRowClick={(r) => navigate(`/stocks/${r.s.id}`)}
+              rowLabel={(r) => `${r.s.name} 일지 보기`}
+              cols={[
+                {
+                  key: 'name',
+                  label: '종목',
+                  cell: (r) => r.s.name,
+                  tone: () => 'font-bold text-ink',
+                  filter: { get: (r) => r.s.name },
+                },
+                {
+                  key: 'owner',
+                  label: '누구',
+                  width: 70,
+                  align: 'center',
+                  cell: (r) => ownerName(r.s.owner),
+                },
+                {
+                  key: 'realized',
+                  label: '판 손익',
+                  width: 120,
+                  align: 'right',
+                  cell: (r) =>
+                    `${r.pos.realized >= 0 ? '+' : '−'}${money(Math.abs(r.pos.realized), r.s.currency)}`,
+                  tone: (r) =>
+                    `tnum font-bold ${r.pos.realized >= 0 ? 'text-danger' : 'text-brand'}`,
+                },
+              ]}
+            />
           </div>
         </details>
       )}
@@ -326,22 +393,6 @@ export default function Stocks() {
 
 export function fmtQty(q: number) {
   return Number.isInteger(q) ? q.toLocaleString('ko-KR') : String(Math.round(q * 10000) / 10000)
-}
-
-function OwnerBadge({ owner, label }: { owner: StockOwner; label: string }) {
-  const tone =
-    owner === 'shared'
-      ? 'bg-line text-sub'
-      : owner === 1
-        ? 'bg-brand/10 text-brand'
-        : 'bg-pink-50 text-pink-600'
-  return (
-    <span
-      className={`ml-1.5 rounded-full px-1.5 py-0.5 align-[2px] text-[10.5px] font-bold ${tone}`}
-    >
-      {label}
-    </span>
-  )
 }
 
 function OwnerPicker({

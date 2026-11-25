@@ -42,6 +42,7 @@ export default function Monthly() {
     occasions,
     addOccasion,
     removeOccasion,
+    updateOccasion,
     removeConfession,
     updateConfession,
     memberNo,
@@ -521,6 +522,7 @@ export default function Monthly() {
               defaultDate={occasionDefaultDate}
               onAdd={addOccasion}
               onRemove={removeOccasion}
+              onUpdate={updateOccasion}
               open={occasionOpen}
               onOpenChange={setOccasionOpen}
               emptyText={`${label}엔 아직 없어요 · 경조사·명절·자동차 같은 큰돈이 생기면 바로 적어두세요`}
