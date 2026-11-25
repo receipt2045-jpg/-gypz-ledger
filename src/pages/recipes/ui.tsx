@@ -43,14 +43,10 @@ export function KidTag({ r }: { r: Recipe }) {
   )
 }
 
-/** 사진 — 아직 없는 레시피는 그림 글자 */
+/** 사진 — 아직 없는 레시피는 아무것도 안 그린다 (11-26 결영: 그림 글자 별로, 사진은 나중에 하나씩) */
 export function Dish({ r, className }: { r: Recipe; className: string }) {
-  if (r.photo) return <img src={r.photo.src} alt={r.name} loading="lazy" className={`${className} bg-bg object-cover`} />
-  return (
-    <div className={`${className} flex items-center justify-center bg-orange-50`} aria-hidden>
-      <span className="text-[44px] leading-none">{r.emoji}</span>
-    </div>
-  )
+  if (!r.photo) return null
+  return <img src={r.photo.src} alt={r.name} loading="lazy" className={`${className} bg-bg object-cover`} />
 }
 
 export function Part({ title, right, children }: { title: string; right?: string; children: ReactNode }) {
@@ -110,14 +106,14 @@ export function Tabs({ at }: { at: 'week' | 'all' | 'season' }) {
   )
 }
 
-/** 막대 하나 — 넘으면 빨강 */
-export function Bar({ value, max, tone = 'brand' }: { value: number; max: number; tone?: 'brand' | 'green' }) {
+/** 막대 하나 — 모아불리 파랑(가계부 식비는 연한 파랑), 넘으면 빨강 (11-26 결영: 주황·초록 별로) */
+export function Bar({ value, max, tone = 'brand' }: { value: number; max: number; tone?: 'brand' | 'soft' }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
   const over = max > 0 && value > max
   return (
     <div className="h-2 overflow-hidden rounded-full bg-line">
       <div
-        className={`h-2 rounded-full ${over ? 'bg-danger' : tone === 'green' ? 'bg-green-500' : 'bg-orange-500'}`}
+        className={`h-2 rounded-full ${over ? 'bg-danger' : tone === 'soft' ? 'bg-brand/45' : 'bg-brand'}`}
         style={{ width: `${pct}%` }}
       />
     </div>

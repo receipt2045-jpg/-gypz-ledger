@@ -16,6 +16,7 @@ import {
 import { INGREDIENTS, PANTRY, RECIPES, recipeBySlug } from './recipes'
 import { REELS } from './reels'
 import { SEASON } from './season'
+import { ING_NUT, mealPerAdult } from './nutrition'
 
 const S = DEFAULT_SETTINGS
 const { packs } = packsWithEstimate({})
@@ -140,5 +141,14 @@ describe('집밥 플래너 (2026-11-26)', () => {
   it('릴스 1편 레시피가 다 있고, 제철 재료 id도 다 있다', () => {
     for (const ep of REELS) for (const x of Object.values(ep.meal).filter(Boolean)) expect(recipeBySlug(x), x).toBeDefined()
     for (const list of Object.values(SEASON)) for (const i of list) if (i.ing) expect(INGREDIENTS[i.ing], i.name).toBeDefined()
+  })
+
+  it('영양 어림 — 레시피 재료마다 값이 있고, 메인 한 상이면 단백질이 꽤 나온다', () => {
+    for (const r of RECIPES) for (const [id] of r.ingredients) expect(ING_NUT[id], `${r.slug}:${id}`).toBeDefined()
+    const n = mealPerAdult(['ganjang-dwaeji-bulgogi', 'aehobak-bokkeum', 'gul-miyeokguk'])
+    expect(n.protein).toBeGreaterThan(25)
+    expect(n.protein).toBeLessThan(60)
+    expect(n.kcal).toBeGreaterThan(500)
+    expect(n.kcal).toBeLessThan(1100)
   })
 })

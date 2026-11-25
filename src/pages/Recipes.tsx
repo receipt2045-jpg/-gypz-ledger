@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Check, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 import OneTeamCard from '../components/OneTeamCard'
-import ShareMore from '../components/ShareMore'
 import SiteFooter from '../components/SiteFooter'
 import {
   BASE_SERVINGS,
@@ -21,7 +20,7 @@ import {
   type Pack,
   type Recipe,
 } from '../lib/recipes'
-import { fetchRecipePrices, packsOf, pricesDate, type IngredientPrice } from '../lib/recipePrices'
+import { fetchRecipePrices, pricesDate, type IngredientPrice } from '../lib/recipePrices'
 import { reelById } from '../lib/reels'
 import { Week, Shop } from './recipes/Week'
 import { Setup } from './recipes/Setup'
@@ -29,6 +28,8 @@ import { Season } from './recipes/Season'
 import { Reel } from './recipes/Reel'
 import { usePlanner } from './recipes/usePlanner'
 import { Dish, KidTag, RoleTag, Tabs } from './recipes/ui'
+import { MoreRecipes } from './recipes/MoreRecipes'
+import { dishPerPerson } from '../lib/nutrition'
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`
 /** 12,520 → "1만 2,500원" — 큰 숫자는 백 원 단위로 */
@@ -115,7 +116,6 @@ export default function Recipes() {
       .then(setRows)
       .catch(() => setRows([]))
   }, [])
-  const packs = useMemo(() => packsOf(rows), [rows])
 
   const page = slug?.replace(/\/+$/, '')
   const recipe = page ? recipeBySlug(page) : undefined
@@ -142,7 +142,7 @@ export default function Recipes() {
             owned={owned}
             people={people}
             setPeople={setPeople}
-            packs={packs}
+            packs={planner.packs}
           />
         ) : recipe ? (
           <Detail
@@ -152,7 +152,7 @@ export default function Recipes() {
             inCart={cart.includes(recipe.slug)}
             toggleCart={() => toggleCart(recipe.slug)}
             owned={owned}
-            packs={packs}
+            packs={planner.packs}
           />
         ) : (
           <Pick
@@ -167,7 +167,7 @@ export default function Recipes() {
 
         {/* 끝부분 순서: 다른 자료 → 원팀프로젝트 → 자료 출처 */}
         <div className="space-y-4 bg-bg px-4 pb-28 pt-8">
-          <ShareMore />
+          <MoreRecipes recipe={recipe} month={planner.month} />
           <OneTeamCardLink />
           <Sources date={pricesDate(rows)} recipe={recipe} />
         </div>
@@ -270,23 +270,26 @@ function Pick({
         <People people={people} setPeople={setPeople} />
       </div>
 
-      <ul className="mt-4 space-y-7">
+      <ul className="mt-4 space-y-6">
         {list.map((r) => {
           const inCart = cart.includes(r.slug)
           const extras = extrasFor(r, owned)
           return (
             <li key={r.slug}>
-              <div className="relative">
-                <button
-                  onClick={() => open(r.slug)}
-                  className="block w-full active:opacity-80"
-                  aria-label={`${r.name} 보기`}
-                >
-                  <Dish r={r} className="aspect-[16/11] w-full rounded-2xl" />
-                </button>
-                <CartButton inCart={inCart} onClick={() => toggleCart(r.slug)} floating />
-              </div>
-              <button onClick={() => open(r.slug)} className="mt-2.5 block w-full text-left">
+              {r.photo && (
+                <div className="relative mb-2.5">
+                  <button
+                    onClick={() => open(r.slug)}
+                    className="block w-full active:opacity-80"
+                    aria-label={`${r.name} 보기`}
+                  >
+                    <Dish r={r} className="aspect-[16/11] w-full rounded-2xl" />
+                  </button>
+                  <CartButton inCart={inCart} onClick={() => toggleCart(r.slug)} floating />
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+              <button onClick={() => open(r.slug)} className="block min-w-0 flex-1 text-left">
                 <span className="flex items-center gap-1.5">
                   <span className="text-[18px] font-extrabold text-ink">{r.name}</span>
                   <RoleTag role={r.role} />
@@ -304,6 +307,8 @@ function Pick({
                   <span className="text-cap"> · {r.minutes}분</span>
                 </span>
               </button>
+              {!r.photo && <CartButton inCart={inCart} onClick={() => toggleCart(r.slug)} />}
+              </div>
             </li>
           )
         })}
@@ -547,17 +552,19 @@ function Detail({
 
   return (
     <article>
-      {/* 사진 — 화면 꽉 차게, 뒤로 버튼은 사진 위에 */}
-      <div className="relative">
+      {/* 사진 — 화면 꽉 차게, 뒤로 버튼은 사진 위에. 사진이 없으면 위쪽 줄에 */}
+      <div className={r.photo ? 'relative' : 'flex items-center justify-between px-3 pt-3'}>
         <Dish r={r} className="aspect-[4/3] w-full" />
         <button
           onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/recipes'))}
           aria-label="뒤로"
-          className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-ink shadow"
+          className={`flex h-10 w-10 items-center justify-center rounded-full text-ink ${
+            r.photo ? 'absolute left-3 top-3 bg-white/90 shadow' : 'bg-bg'
+          }`}
         >
           <ChevronLeft size={22} />
         </button>
-        <CartButton inCart={inCart} onClick={toggleCart} floating />
+        <CartButton inCart={inCart} onClick={toggleCart} floating={!!r.photo} />
       </div>
 
       <div className="px-5 pt-5">
@@ -594,6 +601,18 @@ function Detail({
           <People people={people} setPeople={setPeople} />
         </div>
 
+        {/* 식약처 값이 없는 레시피는 재료로 어림한 열량·단백질 두 칸 */}
+        {!n && (
+          <>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-center">
+              <Nut label="단백질 (약)" value={`${Math.round(dishPerPerson(r).protein)}`} unit="g" />
+              <Nut label="열량 (약)" value={`${Math.round(dishPerPerson(r).kcal)}`} unit="kcal" />
+            </div>
+            <p className="mt-2 text-center text-[12px] text-cap">
+              어른 1인분 · 밥 빼고 · 재료로 어림한 값이에요
+            </p>
+          </>
+        )}
         {/* 영양소 — 숫자 네 칸, 나트륨만 % (식약처 값을 확인한 레시피만) */}
         {n && (
         <>

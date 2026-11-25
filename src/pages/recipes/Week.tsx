@@ -4,6 +4,7 @@ import { Check, ChevronRight, RefreshCw, SlidersHorizontal, Wallet } from 'lucid
 import { DAY_NAMES, budgetPreview, portionsOf, tripDays, tripShopping, type Meal } from '../../lib/mealPlan'
 import { INGREDIENTS, PROTEIN_NAME, amountText, recipeBySlug, type Recipe } from '../../lib/recipes'
 import { Back, Bar, Dish, Part, RoleTag, Tabs, man, won, wonShort } from './ui'
+import { mealPerAdult } from '../../lib/nutrition'
 import type { Planner } from './usePlanner'
 
 const go = (navigate: ReturnType<typeof useNavigate>, to: string) => {
@@ -181,7 +182,20 @@ function DayRow({ day, meal, onSwap }: { day: number; meal: Meal; onSwap: () => 
         ))}
       </ul>
       {!meal.soup && <p className="mt-1.5 text-[12px] text-cap">국물 있는 메인이라 국은 따로 안 끓여요</p>}
+      <Nutri slugs={[meal.main, meal.sub, meal.soup]} />
     </div>
+  )
+}
+
+/** 한 상 영양 — 단백질 먼저 (11-26 결영) */
+function Nutri({ slugs }: { slugs: string[] }) {
+  const n = mealPerAdult(slugs.filter(Boolean))
+  const kid = n.protein / 2
+  return (
+    <p className="mt-2 rounded-lg bg-bg px-2.5 py-1.5 text-[12px] text-sub">
+      단백질 <b className="text-ink">약 {Math.round(n.protein)}g</b> · {Math.round(n.kcal / 10) * 10}kcal
+      <span className="text-cap"> (어른 1인, 밥 포함)</span> · 아기 몫 약 {Math.round(kid)}g
+    </p>
   )
 }
 
@@ -214,7 +228,7 @@ function LedgerLine({ p }: { p: Planner }) {
       {b.planned > 0 ? (
         <>
           <div className="mt-1.5">
-            <Bar value={b.spent} max={b.planned} tone="green" />
+            <Bar value={b.spent} max={b.planned} tone="soft" />
           </div>
           <p className="mt-1 text-[12px] text-cap">
             {b.planned >= b.spent ? `남은 식비 ${wonShort(b.planned - b.spent)}` : `${wonShort(b.spent - b.planned)} 넘었어요`}
@@ -355,7 +369,7 @@ export function Shop({ p }: { p: Planner }) {
                     const r = recipeBySlug(slug)
                     if (!r) return null
                     return (
-                      <button key={slug} onClick={() => go(navigate, `/recipes/${slug}`)} className="text-left">
+                      <button key={slug} onClick={() => go(navigate, `/recipes/${slug}`)} className="rounded-xl border border-line p-2 text-left">
                         <Dish r={r} className="aspect-square w-full rounded-xl" />
                         <span className="mt-1 block">
                           <RoleTag role={r.role} />

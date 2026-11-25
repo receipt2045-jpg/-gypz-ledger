@@ -32,6 +32,7 @@ export function Reel({ ep, p }: { ep: ReelEpisode; p: Planner }) {
               <span className="mt-1 block">
                 <RoleTag role={r.role} />
               </span>
+              <span className="mt-0.5 block text-[13px] font-bold leading-snug text-ink">{r.name}</span>
             </div>
           ))}
         </div>
