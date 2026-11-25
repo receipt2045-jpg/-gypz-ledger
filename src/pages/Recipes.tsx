@@ -22,6 +22,13 @@ import {
   type Recipe,
 } from '../lib/recipes'
 import { fetchRecipePrices, packsOf, pricesDate, type IngredientPrice } from '../lib/recipePrices'
+import { reelById } from '../lib/reels'
+import { Week, Shop } from './recipes/Week'
+import { Setup } from './recipes/Setup'
+import { Season } from './recipes/Season'
+import { Reel } from './recipes/Reel'
+import { usePlanner } from './recipes/usePlanner'
+import { Dish, KidTag, RoleTag, Tabs } from './recipes/ui'
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`
 /** 12,520 → "1만 2,500원" — 큰 숫자는 백 원 단위로 */
@@ -86,6 +93,11 @@ const isStrings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x ==
  * "집에 뭐 있어요?" → 그 재료로 되는 레시피 → 담기 → 추가로 살 재료만 봉지 단위로.
  * 3일에 한 번 장 보는 집을 생각했다: 레시피 셋을 담으면 그게 사흘 장보기 목록이다.
  * /recipes = 고르기, /recipes/cart = 장보기 목록, /recipes/:slug = 한 가지 레시피.
+ *
+ * 2026-11-26 집밥 플래너로 키움 (결영 확정, 링크 하나):
+ * /recipes = 이번 주 집밥(우리집 기준으로 짠 일주일 한 상), /recipes/setup = 우리집 식비 기준,
+ * /recipes/shop?t=0 = 장보기 한 번 목록, /recipes/season = 제철 달력, /recipes/reel-1123 = 릴스 편,
+ * /recipes/all = 레시피 전체(재료로 고르기), /recipes/cart = 담은 레시피 장보기.
  */
 export default function Recipes() {
   const { slug } = useParams()
@@ -106,12 +118,24 @@ export default function Recipes() {
   const packs = useMemo(() => packsOf(rows), [rows])
 
   const page = slug?.replace(/\/+$/, '')
-  const recipe = page && page !== 'cart' ? recipeBySlug(page) : undefined
+  const recipe = page ? recipeBySlug(page) : undefined
+  const reel = page?.startsWith('reel-') ? reelById(page.slice(5)) : undefined
+  const planner = usePlanner()
 
   return (
     <div className="flex min-h-screen justify-center bg-white break-keep">
       <div className="w-full max-w-app">
-        {page === 'cart' ? (
+        {!page ? (
+          <Week p={planner} />
+        ) : page === 'setup' ? (
+          <Setup p={planner} />
+        ) : page === 'shop' ? (
+          <Shop p={planner} />
+        ) : page === 'season' ? (
+          <Season month={planner.month} />
+        ) : reel ? (
+          <Reel ep={reel} p={planner} />
+        ) : page === 'cart' ? (
           <Cart
             cart={cart}
             toggleCart={toggleCart}
@@ -150,7 +174,7 @@ export default function Recipes() {
         <SiteFooter />
       </div>
 
-      {page !== 'cart' && cart.length > 0 && <CartBar count={cart.length} />}
+      {(page === 'all' || recipe) && cart.length > 0 && <CartBar count={cart.length} />}
     </div>
   )
 }
@@ -213,8 +237,10 @@ function Pick({
   }
 
   return (
-    <div className="px-4 pb-6 pt-7">
-      <p className="text-[13px] font-bold text-brand">결영이네 집밥</p>
+    <>
+    <Tabs at="all" />
+    <div className="px-4 pb-6 pt-6">
+      <p className="text-[13px] font-bold text-brand">결영이네 집밥 레시피 {RECIPES.length}가지</p>
       <h1 className="mt-1 text-[26px] font-extrabold leading-snug text-ink">집에 뭐 있어요?</h1>
       <p className="mt-1 text-[15px] text-sub">고르면 그걸로 만드는 레시피만 보여 드려요.</p>
 
@@ -256,17 +282,16 @@ function Pick({
                   className="block w-full active:opacity-80"
                   aria-label={`${r.name} 보기`}
                 >
-                  <img
-                    src={r.photo.src}
-                    alt={r.name}
-                    loading="lazy"
-                    className="aspect-[16/11] w-full rounded-2xl bg-bg object-cover"
-                  />
+                  <Dish r={r} className="aspect-[16/11] w-full rounded-2xl" />
                 </button>
                 <CartButton inCart={inCart} onClick={() => toggleCart(r.slug)} floating />
               </div>
               <button onClick={() => open(r.slug)} className="mt-2.5 block w-full text-left">
-                <span className="block text-[18px] font-extrabold text-ink">{r.name}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-[18px] font-extrabold text-ink">{r.name}</span>
+                  <RoleTag role={r.role} />
+                  <KidTag r={r} />
+                </span>
                 <span className="mt-0.5 block text-[14px] text-sub">
                   {extras.length ? (
                     <>
@@ -284,6 +309,7 @@ function Pick({
         })}
       </ul>
     </div>
+    </>
   )
 }
 
@@ -352,7 +378,7 @@ function Cart({
   const recipes = cart.map(recipeBySlug).filter((r): r is Recipe => !!r)
   const list = shoppingList(recipes, people, owned, withPantry, packs)
   const back = () => {
-    navigate('/recipes')
+    navigate('/recipes/all')
     window.scrollTo(0, 0)
   }
 
@@ -459,11 +485,7 @@ function Cart({
                 }}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
-                <img
-                  src={r.photo.src}
-                  alt=""
-                  className="h-14 w-14 shrink-0 rounded-xl bg-bg object-cover"
-                />
+                <Dish r={r} className="h-14 w-14 shrink-0 rounded-xl" />
                 <span className="min-w-0">
                   <span className="block truncate text-[16px] font-bold text-ink">{r.name}</span>
                   <span className="block text-[13px] text-cap">{r.minutes}분 · 순서 보기</span>
@@ -497,7 +519,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
       className="-ml-1 flex items-center gap-0.5 text-[14px] font-semibold text-sub"
     >
       <ChevronLeft size={19} />
-      레시피 고르기
+      레시피
     </button>
   )
 }
@@ -527,10 +549,10 @@ function Detail({
     <article>
       {/* 사진 — 화면 꽉 차게, 뒤로 버튼은 사진 위에 */}
       <div className="relative">
-        <img src={r.photo.src} alt={r.name} className="aspect-[4/3] w-full bg-bg object-cover" />
+        <Dish r={r} className="aspect-[4/3] w-full" />
         <button
-          onClick={() => navigate('/recipes')}
-          aria-label="레시피 고르기"
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/recipes'))}
+          aria-label="뒤로"
           className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-ink shadow"
         >
           <ChevronLeft size={22} />
@@ -539,8 +561,22 @@ function Detail({
       </div>
 
       <div className="px-5 pt-5">
-        <h1 className="text-[26px] font-extrabold text-ink">{r.name}</h1>
+        <div className="flex gap-1">
+          <RoleTag role={r.role} />
+          <KidTag r={r} />
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-extrabold text-ink">{r.name}</h1>
         <p className="mt-1 text-[15px] text-sub">{r.sub}</p>
+        {r.babyTip && (
+          <div className="mt-4 rounded-2xl bg-pink-50 px-4 py-3 text-[14px] leading-relaxed text-pink-900">
+            <b>아기 식판</b> · {r.babyTip}
+          </div>
+        )}
+        {r.adultTip && (
+          <p className="mt-2 text-[13px] text-sub">
+            <b className="text-ink">어른만 매콤하게</b> · {r.adultTip}
+          </p>
+        )}
 
         {/* 더 사야 하는 돈 — 집에 있는 재료·양념은 빼고 */}
         <div className="mt-5 flex items-end justify-between border-y border-line py-4">
@@ -558,7 +594,9 @@ function Detail({
           <People people={people} setPeople={setPeople} />
         </div>
 
-        {/* 영양소 — 숫자 네 칸, 나트륨만 % */}
+        {/* 영양소 — 숫자 네 칸, 나트륨만 % (식약처 값을 확인한 레시피만) */}
+        {n && (
+        <>
         <div className="mt-4 grid grid-cols-4 gap-2 text-center">
           <Nut label="열량" value={`${Math.round(n.kcal)}`} unit="kcal" />
           <Nut label="탄수화물" value={`${Math.round(n.carb)}`} unit="g" />
@@ -573,6 +611,8 @@ function Detail({
         <p className="mt-2 text-center text-[12px] text-cap">
           한 사람 한 끼{r.withRice ? '(밥 한 공기 포함)' : ''} · 나트륨은 하루 권장량 대비
         </p>
+        </>
+        )}
 
         {/* 재료 — 이름 · 양 */}
         <Part title="재료" right={`${people}인분`}>
@@ -665,21 +705,27 @@ function Sources({ date, recipe }: { date: string | null; recipe?: Recipe }) {
           · 영양소 — 식품의약품안전처 「전국통합식품영양성분정보(음식) 표준데이터」(공공데이터포털).
           음식 100g(ml)당 값에 1인분 양을 곱했어요. 나트륨 하루 기준 2,000mg
         </li>
-        <li>· 레시피 — 흔한 집밥을 집에서 하기 쉽게 정리했어요</li>
+        <li>
+          · 레시피 — 흔한 집밥을 집에서 하기 쉽게 새로 썼어요. 다른 레시피 사이트의 글·사진은 옮기지 않았어요
+        </li>
+        <li>
+          · 「약」 붙은 재료값 — 2026년 11월 마트·쿠팡 흔한 값을 어림한 거예요. 실제 값은 가게마다 달라요
+        </li>
+        <li>· 제철 재료 — 흔히 그 달에 많이 나고 값이 내려가는 재료예요. 지역·날씨에 따라 달라요</li>
         <li>
           · 사진 — 위키미디어 공용(Commons).{' '}
-          {(recipe ? [recipe] : RECIPES).map((r, i) => (
+          {(recipe ? [recipe] : RECIPES).filter((r) => r.photo).map((r, i) => (
             <span key={r.slug}>
               {i > 0 && ', '}
               <a
-                href={r.photo.page}
+                href={r.photo!.page}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline"
               >
                 {r.name}
               </a>{' '}
-              {r.photo.author} ({r.photo.license})
+              {r.photo!.author} ({r.photo!.license})
             </span>
           ))}
         </li>

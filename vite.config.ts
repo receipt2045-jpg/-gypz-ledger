@@ -65,9 +65,9 @@ const OG_PAGES: OgPage[] = [
   },
   {
     dir: 'recipes',
-    title: '결영이네 집밥 레시피',
-    description: '집에 있는 재료로 레시피를 고르면, 더 살 재료와 영양소까지 알려 줘요.',
-    image: 'https://moabuli.com/og-recipes.png?v=1',
+    title: '결영이네 집밥 · 3살 아기 집 일주일 10만원 식단',
+    description: '우리집 식비 기준만 정하면 메인·서브·국 한 상과 3일 장보기 목록을 짜 드려요. 아기 식판·제철 달력까지.',
+    image: 'https://moabuli.com/og-recipes.png?v=2',
   },
 ]
 

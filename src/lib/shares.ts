@@ -32,6 +32,17 @@ export const parseShareCategory = (v: string | null): ShareCategory | null =>
 
 export const SHARES: ShareItem[] = [
   {
+    slug: 'recipes',
+    path: '/recipes',
+    title: '3살 아기 집, 일주일 10만원 집밥 식단',
+    sub: '우리집 식비 기준만 정하면 메인·서브·국 한 상과 3일 장보기 목록을 짜 드려요 — 아기 식판·제철 달력까지',
+    category: '집밥',
+    date: '2026-11-26',
+    minutes: 3,
+    emoji: '🍚',
+    tint: 'bg-orange-50',
+  },
+  {
     slug: 'toothpaste',
     path: '/toothpaste',
     title: '무불소 아기치약 10종, 성분·뚜껑·가격 비교',
@@ -85,17 +96,6 @@ export const SHARES: ShareItem[] = [
     minutes: 3,
     emoji: '🛒',
     tint: 'bg-red-50',
-  },
-  {
-    slug: 'recipes',
-    path: '/recipes',
-    title: '집에 뭐 있어요? 그걸로 저녁 고르기',
-    sub: '집에 있는 재료로 고르고, 더 살 재료와 영양소까지 봐요',
-    category: '집밥',
-    date: '2026-11-01',
-    minutes: 3,
-    emoji: '🍚',
-    tint: 'bg-orange-50',
   },
   {
     slug: 'child-benefit',

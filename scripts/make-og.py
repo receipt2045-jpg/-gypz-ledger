@@ -89,7 +89,7 @@ def toothpaste_card() -> Image.Image:
 
 
 def recipes_card() -> Image.Image:
-    return titled_card("집밥 레시피", "한 끼 얼마 · 영양소까지")
+    return titled_card("일주일 10만원 집밥", "3살 아기 집 식단 · 3일 장보기")
 
 
 def titled_card(title: str, sub: str) -> Image.Image:

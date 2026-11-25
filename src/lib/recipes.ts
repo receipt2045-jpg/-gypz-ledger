@@ -8,6 +8,8 @@
  *   여기는 "얼마나 쓰나"만 갖고, 값은 표에서 읽어 곱한다.
  */
 
+import { MORE_INGREDIENTS, MORE_RECIPES } from './recipesMore'
+
 /** 재료 — id는 recipe_prices 표의 ingredient와 같다 */
 export interface Ingredient {
   id: string
@@ -18,25 +20,32 @@ export interface Ingredient {
   spoon?: number
   /** 한 개(한 모·한 대)가 몇 g인지 — 채소는 "1/2개"로 보여 준다 */
   piece?: { g: number; word: string }
+  /**
+   * 예상 한 봉지 [값(원), 몇 단위] — 2026-11 마트·쿠팡 흔한 값을 어림한 것 (2026-11-26).
+   * recipe_prices 표에 실제 값이 있으면 그걸 쓰고, 없을 때만 이 값으로 "약 얼마"를 보여 준다.
+   */
+  est?: [price: number, units: number]
+  /** 장보기 목록 칸 — 고기·생선 / 채소 / 그 밖에 (양념은 PANTRY) */
+  shelf?: 'meat' | 'veg' | 'etc'
 }
 
 export const INGREDIENTS: Record<string, Ingredient> = {
   rice: { id: 'rice', name: '밥', unit: 'g' },
-  kimchi: { id: 'kimchi', name: '배추김치', unit: 'g' },
-  pork: { id: 'pork', name: '돼지고기 앞다리살', unit: 'g' },
-  tofu: { id: 'tofu', name: '두부', unit: 'g', piece: { g: 300, word: '모' } },
-  greenOnion: { id: 'greenOnion', name: '대파', unit: 'g', piece: { g: 100, word: '대' } },
-  onion: { id: 'onion', name: '양파', unit: 'g', piece: { g: 200, word: '개' } },
-  zucchini: { id: 'zucchini', name: '애호박', unit: '개', piece: { g: 1, word: '개' } },
-  potato: { id: 'potato', name: '감자', unit: 'g', piece: { g: 150, word: '개' } },
-  carrot: { id: 'carrot', name: '당근', unit: 'g', piece: { g: 200, word: '개' } },
+  kimchi: { id: 'kimchi', name: '배추김치', unit: 'g', est: [9900, 1000], shelf: 'etc' },
+  pork: { id: 'pork', name: '돼지고기 앞다리살', unit: 'g', est: [9900, 600], shelf: 'meat' },
+  tofu: { id: 'tofu', name: '두부', unit: 'g', piece: { g: 300, word: '모' }, est: [2000, 300], shelf: 'etc' },
+  greenOnion: { id: 'greenOnion', name: '대파', unit: 'g', piece: { g: 100, word: '대' }, est: [2500, 500], shelf: 'veg' },
+  onion: { id: 'onion', name: '양파', unit: 'g', piece: { g: 200, word: '개' }, est: [2500, 600], shelf: 'veg' },
+  zucchini: { id: 'zucchini', name: '애호박', unit: '개', piece: { g: 1, word: '개' }, est: [1500, 1], shelf: 'veg' },
+  potato: { id: 'potato', name: '감자', unit: 'g', piece: { g: 150, word: '개' }, est: [3000, 600], shelf: 'veg' },
+  carrot: { id: 'carrot', name: '당근', unit: 'g', piece: { g: 200, word: '개' }, est: [1500, 300], shelf: 'veg' },
   doenjang: { id: 'doenjang', name: '된장', unit: 'g', spoon: 18 },
-  seaweed: { id: 'seaweed', name: '자른 미역', unit: 'g' },
-  beefSoup: { id: 'beefSoup', name: '소고기 국거리', unit: 'g' },
-  beefBulgogi: { id: 'beefBulgogi', name: '소고기 불고기용', unit: 'g' },
-  chicken: { id: 'chicken', name: '닭볶음탕용 닭', unit: 'g' },
-  curry: { id: 'curry', name: '카레 가루', unit: 'g' },
-  egg: { id: 'egg', name: '달걀', unit: '개' },
+  seaweed: { id: 'seaweed', name: '자른 미역', unit: 'g', est: [3000, 50], shelf: 'etc' },
+  beefSoup: { id: 'beefSoup', name: '소고기 국거리', unit: 'g', est: [7900, 300], shelf: 'meat' },
+  beefBulgogi: { id: 'beefBulgogi', name: '소고기 불고기용', unit: 'g', est: [12900, 500], shelf: 'meat' },
+  chicken: { id: 'chicken', name: '닭볶음탕용 닭', unit: 'g', est: [7900, 1000], shelf: 'meat' },
+  curry: { id: 'curry', name: '카레 가루', unit: 'g', est: [2500, 100], shelf: 'etc' },
+  egg: { id: 'egg', name: '달걀', unit: '개', est: [4500, 10], shelf: 'etc' },
   gochujang: { id: 'gochujang', name: '고추장', unit: 'g', spoon: 18 },
   gochugaru: { id: 'gochugaru', name: '고춧가루', unit: 'g', spoon: 7 },
   soySauce: { id: 'soySauce', name: '진간장', unit: 'ml', spoon: 15 },
@@ -45,8 +54,29 @@ export const INGREDIENTS: Record<string, Ingredient> = {
   garlic: { id: 'garlic', name: '다진 마늘', unit: 'g', spoon: 10 },
   sesameOil: { id: 'sesameOil', name: '참기름', unit: 'ml', spoon: 15 },
   oil: { id: 'oil', name: '식용유', unit: 'ml', spoon: 15 },
-  pancakeMix: { id: 'pancakeMix', name: '부침가루', unit: 'g', spoon: 8 },
+  pancakeMix: { id: 'pancakeMix', name: '부침가루', unit: 'g', spoon: 8, est: [2500, 500], shelf: 'etc' },
   salt: { id: 'salt', name: '소금', unit: 'g', spoon: 15 },
+  // ── 2026-11-26 집밥 플래너 — 아이도 먹는 메인·제철 채소·순한 국 ──
+  duck: { id: 'duck', name: '오리 슬라이스', unit: 'g', est: [8900, 400], shelf: 'meat' },
+  chickenThigh: { id: 'chickenThigh', name: '닭다리살(정육)', unit: 'g', est: [8900, 600], shelf: 'meat' },
+  porkMince: { id: 'porkMince', name: '다진 돼지고기', unit: 'g', est: [5900, 400], shelf: 'meat' },
+  porkSuyuk: { id: 'porkSuyuk', name: '돼지 앞다리 수육용', unit: 'g', est: [10900, 800], shelf: 'meat' },
+  mackerel: { id: 'mackerel', name: '순살 고등어', unit: 'g', est: [7900, 400], shelf: 'meat' },
+  samchi: { id: 'samchi', name: '순살 삼치', unit: 'g', est: [8900, 400], shelf: 'meat' },
+  salmon: { id: 'salmon', name: '생연어', unit: 'g', est: [9900, 250], shelf: 'meat' },
+  oyster: { id: 'oyster', name: '생굴', unit: 'g', est: [7900, 300], shelf: 'meat' },
+  enoki: { id: 'enoki', name: '팽이버섯', unit: 'g', est: [1000, 150], shelf: 'veg', piece: { g: 150, word: '봉' } },
+  mushroom: { id: 'mushroom', name: '느타리버섯', unit: 'g', est: [2000, 200], shelf: 'veg' },
+  mu: { id: 'mu', name: '무', unit: 'g', est: [2500, 1500], shelf: 'veg', piece: { g: 1500, word: '개' } },
+  spinach: { id: 'spinach', name: '시금치', unit: 'g', est: [2500, 300], shelf: 'veg', piece: { g: 300, word: '단' } },
+  beanSprout: { id: 'beanSprout', name: '콩나물', unit: 'g', est: [1500, 300], shelf: 'veg' },
+  broccoli: { id: 'broccoli', name: '브로콜리', unit: 'g', est: [2500, 300], shelf: 'veg', piece: { g: 300, word: '개' } },
+  cabbage: { id: 'cabbage', name: '알배추', unit: 'g', est: [2500, 800], shelf: 'veg', piece: { g: 800, word: '통' } },
+  eomuk: { id: 'eomuk', name: '사각 어묵', unit: 'g', est: [2500, 300], shelf: 'etc' },
+  anchovy: { id: 'anchovy', name: '잔멸치', unit: 'g', est: [4900, 100], shelf: 'etc' },
+  oligo: { id: 'oligo', name: '올리고당', unit: 'ml', spoon: 15 },
+  sesame: { id: 'sesame', name: '통깨', unit: 'g', spoon: 8 },
+  starch: { id: 'starch', name: '전분가루', unit: 'g', spoon: 8 },
 }
 
 /** 100g(ml)당 영양 — 식약처 음식 DB 값 그대로 */
@@ -70,11 +100,40 @@ export interface Photo {
   author: string
 }
 
+/** 한 상에서 맡는 자리 — 메인 반찬 / 서브 반찬 / 국 / 한 그릇(카레·볶음밥, 한 상 짜기엔 안 씀) */
+export type Role = 'main' | 'sub' | 'soup' | 'one'
+/** 메인에 들어가는 고기·생선 */
+export type Protein = 'pork' | 'chicken' | 'duck' | 'beef' | 'fish' | 'seafood'
+export const PROTEIN_NAME: Record<Protein, string> = {
+  pork: '돼지',
+  chicken: '닭',
+  duck: '오리',
+  beef: '소',
+  fish: '생선',
+  seafood: '해산물',
+}
+/**
+ * 아이도 먹나 — ok: 그대로 / adapt: 맵거나 짠 양념 넣기 전에 덜면 돼요 / adult: 어른 메뉴(매움)
+ * 3살 아기가 있는 집은 식단 짜기에서 adult를 빼고 짠다.
+ */
+export type KidFit = 'ok' | 'adapt' | 'adult'
+
 export interface Recipe {
   slug: string
   name: string
   emoji: string
-  photo: Photo
+  /** 사진이 아직 없는 레시피는 그림 글자(emoji)로 보여 준다 */
+  photo?: Photo
+  role: Role
+  /** 메인이면 꼭 — 고기·생선 돌려 쓰기에 쓴다 */
+  protein?: Protein
+  kid: KidFit
+  /** 아기 식판 — 같은 반찬에서 3살 아기 몫 덜어내기·간 조절 한 줄 */
+  babyTip?: string
+  /** 어른만 매콤하게 — adapt 메뉴에 */
+  adultTip?: string
+  /** 제철 달(1~12) — 이 달이면 식단 짜기에서 먼저 고른다. 없으면 사계절 */
+  months?: number[]
   minutes: number
   /** 한 줄 소개 */
   sub: string
@@ -83,7 +142,8 @@ export interface Recipe {
   steps: string[]
   /** 1인분 양(g 또는 ml)과 그 음식의 영양 */
   serving: number
-  per100: Per100
+  /** 영양 — 식약처 값을 확인한 레시피만. 없으면 영양 칸을 안 보여 준다 */
+  per100?: Per100
   /** 밥이 따로 필요한 음식이면 밥 1공기를 한 끼에 더한다 */
   withRice: boolean
 }
@@ -100,9 +160,10 @@ export const RICE_PER100: Per100 = {
   sodium: 0,
 }
 
-export const RECIPES: Recipe[] = [
+const BASE_RECIPES: Recipe[] = [
   {
     slug: 'kimchi-jjigae',
+    role: 'soup', protein: 'pork', kid: 'adult',
     name: '돼지고기 김치찌개',
     emoji: '🍲',
     photo: {
@@ -143,6 +204,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'doenjang-jjigae',
+    role: 'soup', kid: 'ok', babyTip: '된장을 반만 풀었을 때 한 국자 먼저 덜어 주세요.',
     name: '애호박 된장찌개',
     emoji: '🥘',
     photo: {
@@ -182,6 +244,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'miyeokguk',
+    role: 'soup', protein: 'beef', kid: 'ok', babyTip: '국간장 넣기 전에 한 국자 덜고, 미역은 잘게 잘라 주세요.',
     name: '소고기 미역국',
     emoji: '🥣',
     photo: {
@@ -219,6 +282,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'jeyuk',
+    role: 'main', protein: 'pork', kid: 'adult',
     name: '제육볶음',
     emoji: '🌶️',
     photo: {
@@ -260,6 +324,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'bulgogi',
+    role: 'main', protein: 'beef', kid: 'ok', babyTip: '익힌 고기를 잘게 잘라 주세요. 간장은 2/3만 넣어도 돼요.',
     name: '소불고기',
     emoji: '🥩',
     photo: {
@@ -300,6 +365,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'dakbokkeumtang',
+    role: 'main', protein: 'chicken', kid: 'adult',
     name: '닭볶음탕',
     emoji: '🍗',
     photo: {
@@ -342,6 +408,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'curry',
+    role: 'one', protein: 'pork', kid: 'ok', babyTip: '카레 가루 넣기 전에 건더기를 조금 덜어 우유 한 숟갈과 끓여 주세요.',
     name: '돼지고기 카레라이스',
     emoji: '🍛',
     photo: {
@@ -381,6 +448,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'kimchi-fried-rice',
+    role: 'one', kid: 'adult',
     name: '김치볶음밥',
     emoji: '🍳',
     photo: {
@@ -420,6 +488,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'gyeran-mari',
+    role: 'sub', kid: 'ok', babyTip: '한입 크기로 썰어 그대로 올려 주세요.',
     name: '달걀말이',
     emoji: '🥚',
     photo: {
@@ -456,6 +525,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'pork-dubu-jorim',
+    role: 'main', protein: 'pork', kid: 'adapt', babyTip: '고춧가루 넣기 전에 고기·두부를 한 국자 덜어 주세요.', adultTip: '아기 몫을 덜고 고춧가루를 넣어요.',
     name: '돼지고기 두부조림',
     emoji: '🍖',
     photo: {
@@ -497,6 +567,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'kimchijeon',
+    role: 'sub', kid: 'adult',
     name: '김치전',
     emoji: '🥞',
     photo: {
@@ -534,6 +605,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'dubu-jorim',
+    role: 'sub', kid: 'adapt', babyTip: '고춧가루 넣기 전에 두부 두세 조각을 덜어 주세요.', adultTip: '아기 몫을 덜고 고춧가루를 넣어요.',
     name: '두부조림',
     emoji: '🧈',
     photo: {
@@ -573,6 +645,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'dubu-buchim',
+    role: 'sub', kid: 'ok', babyTip: '간장 없이 그대로 작게 잘라 주세요.',
     name: '두부부침',
     emoji: '🍳',
     photo: {
@@ -609,6 +682,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'gyeran-jjim',
+    role: 'sub', kid: 'ok', babyTip: '소금을 반만 넣어도 맛있어요.',
     name: '달걀찜',
     emoji: '🥚',
     photo: {
@@ -644,6 +718,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'gyeran-jangjorim',
+    role: 'sub', kid: 'ok', babyTip: '달걀 하나를 반으로 갈라 노른자 쪽부터 주세요.',
     name: '달걀장조림',
     emoji: '🍯',
     photo: {
@@ -680,6 +755,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'gamja-jorim',
+    role: 'sub', kid: 'ok', babyTip: '간장을 넣고 졸이기 전에 감자 몇 조각을 덜어 주세요.',
     name: '감자조림',
     emoji: '🥔',
     photo: {
@@ -719,6 +795,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'kimchi-jjim',
+    role: 'main', protein: 'pork', kid: 'adult',
     name: '돼지고기 김치찜',
     emoji: '🥘',
     photo: {
@@ -758,6 +835,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'dubu-kimchi',
+    role: 'main', protein: 'pork', kid: 'adult',
     name: '두부김치',
     emoji: '🍽️',
     photo: {
@@ -799,6 +877,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'gamja-jeon',
+    role: 'sub', kid: 'ok', babyTip: '소금을 빼고 아기 몫부터 작게 부쳐 주세요.',
     name: '감자전',
     emoji: '🥔',
     photo: {
@@ -835,6 +914,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'ganjang-dwaeji-bulgogi',
+    role: 'main', protein: 'pork', kid: 'ok', babyTip: '간장 양념 넣기 전에 고기 80g을 덜어 따로 볶고 잘게 잘라 주세요.',
     name: '간장 돼지불고기',
     emoji: '🍖',
     photo: {
@@ -844,11 +924,11 @@ export const RECIPES: Recipe[] = [
       author: 'chomjong',
     },
     minutes: 25,
-    sub: '안 매운 돼지고기 반찬, 아이도 같이',
+    sub: '안 매운 돼지고기 반찬, 양념은 아기가 넣어요',
     ingredients: [
       ['pork', 300],
       ['onion', 100],
-      ['carrot', 30],
+      ['enoki', 150],
       ['greenOnion', 30],
       ['soySauce', 45],
       ['sugar', 18],
@@ -859,7 +939,7 @@ export const RECIPES: Recipe[] = [
       '간장, 설탕, 다진 마늘, 참기름을 섞어 양념을 만들어요.',
       '돼지고기에 양념을 버무려 15분 둬요.',
       '팬에 고기를 펼쳐 중불에서 익혀요.',
-      '양파, 당근을 넣고 3분, 대파를 넣고 1분 더 볶아요.',
+      '양파, 팽이버섯을 넣고 센 불에 3분, 대파를 넣고 1분 더 볶아요.',
     ],
     serving: 200,
     per100: {
@@ -875,6 +955,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'dubu-doenjangguk',
+    role: 'soup', kid: 'ok', babyTip: '된장을 반만 풀었을 때 두부와 국물을 덜어 주세요.',
     name: '두부 된장국',
     emoji: '🍵',
     photo: {
@@ -912,6 +993,7 @@ export const RECIPES: Recipe[] = [
   },
   {
     slug: 'gyeranguk',
+    role: 'soup', kid: 'ok', babyTip: '국간장·소금 넣기 전에 한 국자 덜어 주세요.',
     name: '달걀국',
     emoji: '🥣',
     photo: {
@@ -948,6 +1030,10 @@ export const RECIPES: Recipe[] = [
   },
 ]
 
+/** 2026-11-26 아이도 먹는 레시피 22개를 더했다 (recipesMore.ts) */
+export const RECIPES: Recipe[] = [...BASE_RECIPES, ...MORE_RECIPES]
+Object.assign(INGREDIENTS, MORE_INGREDIENTS)
+
 /** 레시피 재료 양의 기준 인원 */
 export const BASE_SERVINGS = 2
 export const SERVING_OPTIONS = [2, 3, 4] as const
@@ -969,7 +1055,8 @@ const scale = (p: Per100, g: number): Nutrition => ({
 })
 
 /** 한 사람 한 끼 영양 — 밥이 필요한 음식이면 밥 1공기 포함 */
-export function mealNutrition(r: Recipe): Nutrition {
+export function mealNutrition(r: Recipe): Nutrition | null {
+  if (!r.per100) return null
   const dish = scale(r.per100, r.serving)
   if (!r.withRice) return dish
   const rice = scale(RICE_PER100, RICE_BOWL.cookedG)
@@ -1069,6 +1156,10 @@ export const PANTRY = new Set([
   'sesameOil',
   'oil',
   'salt',
+  // 2026-11-26 — 올리고당·통깨·전분은 한 번 사면 오래 쓰는 양념
+  'oligo',
+  'sesame',
+  'starch',
 ])
 
 /** 고른 재료를 쓰는 레시피 — 고른 재료를 많이 쓰는 것부터. 아무것도 안 고르면 전부 */

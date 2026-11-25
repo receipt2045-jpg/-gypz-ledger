@@ -19,14 +19,14 @@ describe('집밥 레시피 (2026-11-01)', () => {
   })
 
   it('김치찌개 한 끼 — 찌개 300ml(105kcal, 나트륨 792mg) + 밥 한 공기(349kcal)', () => {
-    const n = mealNutrition(recipeBySlug('kimchi-jjigae')!)
+    const n = mealNutrition(recipeBySlug('kimchi-jjigae')!)!
     expect(Math.round(n.kcal)).toBe(105 + 349)
     expect(Math.round(n.sodium)).toBe(792)
   })
 
   it('카레라이스는 밥이 들어 있어 밥을 따로 더하지 않는다', () => {
     const r = recipeBySlug('curry')!
-    expect(Math.round(mealNutrition(r).kcal)).toBe(500)
+    expect(Math.round(mealNutrition(r)!.kcal)).toBe(500)
     expect(ingredientsFor(r, 2).filter(([id]) => id === 'rice')).toHaveLength(1)
   })
 
