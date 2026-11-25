@@ -1,7 +1,15 @@
 import PcColumns from '../components/PcColumns'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, Check, ChevronLeft, ChevronRight, Settings, TrendingUp } from 'lucide-react'
+import {
+  BarChart3,
+  Check,
+  ChefHat,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  TrendingUp,
+} from 'lucide-react'
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import InviteBanner from '../components/InviteBanner'
@@ -143,6 +151,13 @@ export default function Home() {
             aria-label="연간 리포트"
           >
             <BarChart3 size={19} />
+          </button>
+          <button
+            onClick={() => navigate('/recipes')}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-cap active:bg-line"
+            aria-label="집밥 플래너"
+          >
+            <ChefHat size={19} />
           </button>
           <button
             onClick={() => navigate('/settings')}

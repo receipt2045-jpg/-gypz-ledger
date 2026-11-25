@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { BookOpen, Coins, Home, Landmark, Newspaper, Settings } from 'lucide-react'
+import { BookOpen, ChefHat, Coins, Home, Landmark, Newspaper, Settings } from 'lucide-react'
 import { useLedgerStore } from '../lib/store'
 
 /**
@@ -114,6 +114,8 @@ const SIDE = [
   { to: '/side', label: '부수입', Icon: Coins, end: false },
   { to: '/assets', label: '자산', Icon: Landmark, end: false },
   { to: '/info', label: '돈 공부', Icon: Newspaper, end: false },
+  // 집밥 플래너 (2026-11-26 결영 요청)
+  { to: '/recipes', label: '집밥', Icon: ChefHat, end: false },
   { to: '/settings', label: '설정', Icon: Settings, end: false },
 ] as const
 

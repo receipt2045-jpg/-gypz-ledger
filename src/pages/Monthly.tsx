@@ -1,4 +1,5 @@
 import PcColumns from '../components/PcColumns'
+import RecipeLink from '../components/RecipeLink'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronLeft, ChevronRight, Mic, Trash2, X } from 'lucide-react'
@@ -377,6 +378,9 @@ export default function Monthly() {
                 기록하기 <ChevronRight size={15} />
               </span>
             </button>
+
+            {/* 집밥 플래너로 바로 (2026-11-26 결영 요청) */}
+            <RecipeLink />
 
             {/* 이번 달 소비 기록 — 달력(기본) / 목록 */}
             <div className="rounded-card bg-card px-5 py-4 shadow-card">

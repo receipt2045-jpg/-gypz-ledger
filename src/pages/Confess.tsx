@@ -41,6 +41,7 @@ import RecoCard from '../components/RecoCard'
 import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
 import EditRow, { NOTE_MAX } from '../components/ConfessEditRow'
 import ConfessTable from '../components/ConfessTable'
+import RecipeLink, { isFoodSpend } from '../components/RecipeLink'
 import type { FilterState } from '../components/ExcelFilter'
 import { captureToDrafts, readSpendCapture } from '../lib/spendCapture'
 import { CaptureError } from '../lib/stockDb'
@@ -690,6 +691,13 @@ export default function Confess() {
               <span className="text-[14px] font-bold text-amber-700">{result.reaction.action}</span>
               <ChevronRight size={18} className="shrink-0 text-amber-500" />
             </button>
+          )}
+
+          {/* 먹는 데 쓴 돈을 적었으면 집밥 플래너로 (2026-11-26 결영 요청) */}
+          {result.saved.some((e) => isFoodSpend(e.category)) && (
+            <div className="mt-4">
+              <RecipeLink variant="nudge" />
+            </div>
           )}
 
           {/* 맞춤 추천 한 장 (2026-10-24) — 방금 적은 것에 맞는 계산기·원팀. 같은 카드는 하루 한 번 */}
