@@ -9,6 +9,10 @@
  */
 
 import { MORE_INGREDIENTS, MORE_RECIPES } from './recipesMore'
+import { P1_INGREDIENTS, P1_RECIPES } from './recipesP1'
+import { P2_INGREDIENTS, P2_RECIPES } from './recipesP2'
+import { P3_INGREDIENTS, P3_RECIPES } from './recipesP3'
+import { P4_INGREDIENTS, P4_RECIPES } from './recipesP4'
 
 /** 재료 — id는 recipe_prices 표의 ingredient와 같다 */
 export interface Ingredient {
@@ -77,6 +81,81 @@ export const INGREDIENTS: Record<string, Ingredient> = {
   oligo: { id: 'oligo', name: '올리고당', unit: 'ml', spoon: 15 },
   sesame: { id: 'sesame', name: '통깨', unit: 'g', spoon: 8 },
   starch: { id: 'starch', name: '전분가루', unit: 'g', spoon: 8 },
+  // ── 2026-11-26 피클 100선 다시 쓰기 — 고기 부위·생선·채소·면 ──
+  porkNeck: { id: 'porkNeck', name: '돼지 목살', unit: 'g', est: [11900, 500], shelf: 'meat' },
+  porkRib: { id: 'porkRib', name: '돼지갈비(찜용)', unit: 'g', est: [14900, 1000], shelf: 'meat' },
+  porkTenderloin: { id: 'porkTenderloin', name: '돼지 안심', unit: 'g', est: [7900, 500], shelf: 'meat' },
+  porkLoin: { id: 'porkLoin', name: '돼지 등심(돈가스용)', unit: 'g', est: [7900, 500], shelf: 'meat' },
+  porkBoneless: { id: 'porkBoneless', name: '감자탕용 순살 등뼈살', unit: 'g', est: [10900, 700], shelf: 'meat' },
+  beefRib: { id: 'beefRib', name: '소갈비(찜용)', unit: 'g', est: [29900, 1000], shelf: 'meat' },
+  beefRound: { id: 'beefRound', name: '소고기 홍두깨·우둔(장조림·산적용)', unit: 'g', est: [9900, 400], shelf: 'meat' },
+  beefTenderloin: { id: 'beefTenderloin', name: '소 안심', unit: 'g', est: [12900, 200], shelf: 'meat' },
+  beefMince: { id: 'beefMince', name: '다진 소고기', unit: 'g', est: [7900, 300], shelf: 'meat' },
+  beefShank: { id: 'beefShank', name: '소 사태', unit: 'g', est: [12900, 500], shelf: 'meat' },
+  chickenLeg: { id: 'chickenLeg', name: '닭다리(뼈 있는)', unit: 'g', est: [8900, 1000], shelf: 'meat' },
+  chickenWhole: { id: 'chickenWhole', name: '영계(삼계탕용)', unit: 'g', est: [6900, 600], shelf: 'meat' },
+  chickenBreast: { id: 'chickenBreast', name: '닭가슴살', unit: 'g', est: [6900, 500], shelf: 'meat' },
+  chickenMince: { id: 'chickenMince', name: '다진 닭고기', unit: 'g', est: [5900, 400], shelf: 'meat' },
+  smokedDuck: { id: 'smokedDuck', name: '훈제오리', unit: 'g', est: [9900, 400], shelf: 'meat' },
+  hairtail: { id: 'hairtail', name: '손질 갈치', unit: 'g', est: [12900, 400], shelf: 'meat' },
+  cod: { id: 'cod', name: '손질 대구', unit: 'g', est: [9900, 500], shelf: 'meat' },
+  shrimp: { id: 'shrimp', name: '냉동 칵테일새우', unit: 'g', est: [8900, 300], shelf: 'meat' },
+  croaker: { id: 'croaker', name: '손질 조기', unit: '개', est: [9900, 6], shelf: 'meat' },
+  flounder: { id: 'flounder', name: '손질 가자미', unit: '개', est: [9900, 2], shelf: 'meat' },
+  crab: { id: 'crab', name: '꽃게', unit: '개', est: [12900, 2], shelf: 'meat' },
+  squid: { id: 'squid', name: '손질 오징어', unit: '개', est: [9900, 2], shelf: 'meat' },
+  abalone: { id: 'abalone', name: '전복', unit: '개', est: [12900, 4], shelf: 'meat' },
+  clam: { id: 'clam', name: '해감 바지락', unit: 'g', est: [5900, 500], shelf: 'meat' },
+  pollack: { id: 'pollack', name: '손질 동태', unit: 'g', est: [6900, 600], shelf: 'meat' },
+  driedPollack: { id: 'driedPollack', name: '북어채', unit: 'g', est: [5900, 100], shelf: 'etc' },
+  mungSprout: { id: 'mungSprout', name: '숙주', unit: 'g', est: [1500, 300], shelf: 'veg' },
+  lettuce: { id: 'lettuce', name: '상추', unit: 'g', est: [2500, 200], shelf: 'veg' },
+  cucumber: { id: 'cucumber', name: '오이', unit: '개', est: [3000, 3], shelf: 'veg' },
+  eggplant: { id: 'eggplant', name: '가지', unit: '개', est: [2500, 2], shelf: 'veg' },
+  kingOyster: { id: 'kingOyster', name: '새송이버섯', unit: 'g', est: [2500, 300], shelf: 'veg' },
+  shiitake: { id: 'shiitake', name: '표고버섯', unit: 'g', est: [3500, 200], shelf: 'veg' },
+  cabbageHead: { id: 'cabbageHead', name: '양배추', unit: 'g', piece: { g: 1500, word: '통' }, est: [3500, 1500], shelf: 'veg' },
+  tomato: { id: 'tomato', name: '토마토', unit: 'g', piece: { g: 150, word: '개' }, est: [4900, 600], shelf: 'veg' },
+  cherryTomato: { id: 'cherryTomato', name: '방울토마토', unit: 'g', est: [4900, 500], shelf: 'veg' },
+  bellPepper: { id: 'bellPepper', name: '피망', unit: '개', est: [2500, 2], shelf: 'veg' },
+  sweetPotato: { id: 'sweetPotato', name: '고구마', unit: 'g', est: [4900, 1000], shelf: 'veg' },
+  kabocha: { id: 'kabocha', name: '단호박', unit: 'g', piece: { g: 1000, word: '통' }, est: [3500, 1000], shelf: 'veg' },
+  perillaLeaf: { id: 'perillaLeaf', name: '깻잎', unit: 'g', est: [1500, 30], shelf: 'veg' },
+  jujube: { id: 'jujube', name: '대추', unit: 'g', est: [3000, 100], shelf: 'etc' },
+  corn: { id: 'corn', name: '옥수수 통조림', unit: 'g', est: [2000, 340], shelf: 'etc' },
+  tofuSoft: { id: 'tofuSoft', name: '순두부', unit: 'g', est: [1500, 350], shelf: 'etc' },
+  blackBean: { id: 'blackBean', name: '검은콩(서리태)', unit: 'g', est: [5900, 300], shelf: 'etc' },
+  riceCake: { id: 'riceCake', name: '떡볶이 떡', unit: 'g', est: [3000, 500], shelf: 'etc' },
+  riceCakeSoup: { id: 'riceCakeSoup', name: '떡국 떡', unit: 'g', est: [4500, 1000], shelf: 'etc' },
+  glassNoodle: { id: 'glassNoodle', name: '당면', unit: 'g', est: [3500, 300], shelf: 'etc' },
+  somen: { id: 'somen', name: '소면', unit: 'g', est: [2500, 900], shelf: 'etc' },
+  udon: { id: 'udon', name: '우동 면', unit: '개', est: [3900, 2], shelf: 'etc' },
+  spaghetti: { id: 'spaghetti', name: '스파게티 면', unit: 'g', est: [2900, 500], shelf: 'etc' },
+  yubu: { id: 'yubu', name: '초밥용 유부(조미)', unit: 'g', est: [3500, 160], shelf: 'etc' },
+  danmuji: { id: 'danmuji', name: '단무지', unit: 'g', est: [1500, 200], shelf: 'etc' },
+  tomatoSauce: { id: 'tomatoSauce', name: '토마토 소스', unit: 'g', est: [3900, 600], shelf: 'etc' },
+  jjajang: { id: 'jjajang', name: '짜장 가루(순한 맛)', unit: 'g', est: [2500, 100], shelf: 'etc' },
+  cream: { id: 'cream', name: '생크림', unit: 'ml', est: [3900, 500], shelf: 'etc' },
+  glutinousRice: { id: 'glutinousRice', name: '찹쌀', unit: 'g', est: [5000, 1000], shelf: 'etc' },
+  nuts: { id: 'nuts', name: '아몬드 슬라이스', unit: 'g', est: [4900, 100], shelf: 'etc' },
+  rawRice: { id: 'rawRice', name: '쌀(리조또·밥 짓기)', unit: 'g' },
+  butter: { id: 'butter', name: '버터', unit: 'g', spoon: 13 },
+  cheese: { id: 'cheese', name: '슬라이스 치즈', unit: '개' },
+  milk: { id: 'milk', name: '우유', unit: 'ml', spoon: 15 },
+  ketchup: { id: 'ketchup', name: '케첩', unit: 'g', spoon: 17 },
+  oliveOil: { id: 'oliveOil', name: '올리브유', unit: 'ml', spoon: 15 },
+  perillaOil: { id: 'perillaOil', name: '들기름', unit: 'ml', spoon: 15 },
+  kelp: { id: 'kelp', name: '다시마', unit: 'g' },
+  stockAnchovy: { id: 'stockAnchovy', name: '국물용 멸치', unit: 'g' },
+  flour: { id: 'flour', name: '밀가루', unit: 'g', spoon: 8 },
+  breadcrumb: { id: 'breadcrumb', name: '빵가루', unit: 'g', spoon: 5 },
+  pepper: { id: 'pepper', name: '후추', unit: 'g', spoon: 6 },
+  lemonJuice: { id: 'lemonJuice', name: '레몬즙', unit: 'ml', spoon: 15 },
+  herb: { id: 'herb', name: '말린 허브', unit: 'g', spoon: 2 },
+  ssamjang: { id: 'ssamjang', name: '쌈장', unit: 'g', spoon: 18 },
+  laver: { id: 'laver', name: '김(자른 것)', unit: 'g' },
+  perillaPowder: { id: 'perillaPowder', name: '들깨가루', unit: 'g', spoon: 7 },
+  vinegar: { id: 'vinegar', name: '식초', unit: 'ml', spoon: 15 },
 }
 
 /** 100g(ml)당 영양 — 식약처 음식 DB 값 그대로 */
@@ -132,6 +211,8 @@ export interface Recipe {
   babyTip?: string
   /** 어른만 매콤하게 — adapt 메뉴에 */
   adultTip?: string
+  /** 국물 있는 메인(탕·전골·백숙) — 그날은 국을 따로 안 끓인다 */
+  brothy?: boolean
   /** 제철 달(1~12) — 이 달이면 식단 짜기에서 먼저 고른다. 없으면 사계절 */
   months?: number[]
   minutes: number
@@ -1031,8 +1112,16 @@ const BASE_RECIPES: Recipe[] = [
 ]
 
 /** 2026-11-26 아이도 먹는 레시피 22개를 더했다 (recipesMore.ts) */
-export const RECIPES: Recipe[] = [...BASE_RECIPES, ...MORE_RECIPES]
-Object.assign(INGREDIENTS, MORE_INGREDIENTS)
+/** 2026-11-26 피클 100선 중 겹치지 않는 77가지를 양·역할까지 다시 써서 더했다 (recipesP1~P4.ts) */
+export const RECIPES: Recipe[] = [
+  ...BASE_RECIPES,
+  ...MORE_RECIPES,
+  ...P1_RECIPES,
+  ...P2_RECIPES,
+  ...P3_RECIPES,
+  ...P4_RECIPES,
+]
+Object.assign(INGREDIENTS, MORE_INGREDIENTS, P1_INGREDIENTS, P2_INGREDIENTS, P3_INGREDIENTS, P4_INGREDIENTS)
 
 /** 레시피 재료 양의 기준 인원 */
 export const BASE_SERVINGS = 2
@@ -1160,6 +1249,25 @@ export const PANTRY = new Set([
   'oligo',
   'sesame',
   'starch',
+  // 피클 100선(2026-11-26) — 버터·우유·치즈처럼 아이 있는 집에 늘 있는 것, 쌀
+  'butter',
+  'cheese',
+  'milk',
+  'ketchup',
+  'oliveOil',
+  'perillaOil',
+  'kelp',
+  'stockAnchovy',
+  'flour',
+  'breadcrumb',
+  'pepper',
+  'lemonJuice',
+  'herb',
+  'ssamjang',
+  'laver',
+  'perillaPowder',
+  'vinegar',
+  'rawRice',
 ])
 
 /** 고른 재료를 쓰는 레시피 — 고른 재료를 많이 쓰는 것부터. 아무것도 안 고르면 전부 */

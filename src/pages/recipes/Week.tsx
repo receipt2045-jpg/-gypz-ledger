@@ -180,6 +180,7 @@ function DayRow({ day, meal, onSwap }: { day: number; meal: Meal; onSwap: () => 
           </li>
         ))}
       </ul>
+      {!meal.soup && <p className="mt-1.5 text-[12px] text-cap">국물 있는 메인이라 국은 따로 안 끓여요</p>}
     </div>
   )
 }

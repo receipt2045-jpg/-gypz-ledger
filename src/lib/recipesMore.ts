@@ -451,7 +451,7 @@ export const MORE_RECIPES: Recipe[] = [
   {
     slug: 'gul-miyeokguk',
     role: 'soup', protein: 'seafood', kid: 'ok',
-    babyTip: '국간장 넣기 전에 한 국자 덜고, 굴은 잘게 잘라 주세요.',
+    babyTip: '국간장 넣기 전에 한 국자 덜고, 굴은 속까지 완전히 익었는지 보고 잘게 잘라 주세요.',
     name: '굴 미역국',
     emoji: '🦪',
     months: [11, 12, 1, 2],

@@ -119,7 +119,7 @@ export function tripDays(s: MealSettings): number[][] {
   return out
 }
 
-/** 한 상 */
+/** 한 상 — 국물 있는 메인(brothy)이면 soup은 '' */
 export interface Meal {
   main: string
   sub: string
@@ -187,16 +187,24 @@ interface PickCtx {
   basket: Set<string>
   /** 어제 메인 고기 */
   lastProtein?: Protein
+  /** 이 장보기에서 이미 메인으로 쓴 고기·생선 재료 — 사흘 내내 고등어만 나오지 않게 */
+  mains?: Set<string>
+  /** 오늘 한 상에 이미 들어간 재료 — 감자조림 옆에 감자국이 오지 않게 */
+  today?: Set<string>
   rand: () => number
 }
 
 function score(r: Recipe, c: PickCtx): number {
-  let v = c.rand()
+  // 같은 기준이라도 주마다 다양하게 — 운을 조금 크게
+  let v = c.rand() * 1.6
   if (inSeason(r, c.month)) v += 0.7
   if (c.used.has(r.slug)) v -= 3
   if (r.role === 'main' && r.protein && r.protein === c.lastProtein) v -= 1
   const ids = buyIds(r)
   v += 0.25 * ids.filter((id) => c.basket.has(id)).length
+  // 같은 날 반찬끼리 재료가 겹치면 덜 고른다 (장보기에선 이득이어도 밥상이 단조롭다)
+  if (c.today) v -= 0.9 * ids.filter((id) => c.today!.has(id)).length
+  if (r.role === 'main' && c.mains && INGREDIENTS[ids[0]]?.shelf === 'meat' && c.mains.has(ids[0])) v -= 1.2
   // 새로 사야 하는 재료 값이 비쌀수록 덜 고른다
   const extra = ids
     .filter((id) => !c.basket.has(id))
@@ -227,16 +235,25 @@ function pick(role: Role, c: PickCtx, not: string[] = []): Recipe | null {
 }
 
 function pickMeal(c: PickCtx, not: string[] = []): Meal | null {
+  c.today = new Set()
   const main = pick('main', c, not)
+  if (main) for (const id of buyIds(main)) c.today.add(id)
   const sub = pick('sub', c, not)
-  const soup = pick('soup', c, not)
-  if (!main || !sub || !soup) return null
+  if (sub) for (const id of buyIds(sub)) c.today.add(id)
+  // 탕·전골·백숙처럼 국물 있는 메인이면 그날 국은 따로 안 끓인다
+  const soup = main?.brothy ? null : pick('soup', c, not)
+  c.today = undefined
+  if (!main || !sub || (!soup && !main.brothy)) return null
   for (const r of [main, sub, soup]) {
+    if (!r) continue
     c.used.add(r.slug)
     for (const id of buyIds(r)) c.basket.add(id)
   }
+  c.mains = c.mains ?? new Set()
+  const key = buyIds(main)[0]
+  if (key) c.mains.add(key)
   c.lastProtein = main.protein
-  return { main: main.slug, sub: sub.slug, soup: soup.slug }
+  return { main: main.slug, sub: sub.slug, soup: soup?.slug ?? '' }
 }
 
 /** 장보기 한 번이 예산을 넘으면, 가장 많이 줄이는 반찬 하나씩 바꾼다 */
@@ -249,10 +266,14 @@ function fitBudget(plan: WeekPlan, days: number[], s: MealSettings, packs: Recor
     for (const d of days) {
       const meal = plan[d]
       if (!meal) continue
+      const brothy = !!recipeBySlug(meal.main)?.brothy
       for (const role of ['main', 'sub', 'soup'] as const) {
+        if (role === 'soup' && !meal.soup) continue
         const taken = new Set(plan.flatMap((m) => (m ? [m.main, m.sub, m.soup] : [])))
         for (const r of RECIPES) {
           if (r.role !== role || !allowed(r, s) || taken.has(r.slug)) continue
+          // 국물 메인은 국물 메인끼리만 바꾼다 (국 칸이 비었거나 차 있는 게 그대로)
+          if (role === 'main' && !!r.brothy !== brothy) continue
           // 메인을 바꿀 때도 앞뒤 날과 다른 고기로
           if (role === 'main' && [plan[d - 1], plan[d + 1]].some((m) => m && recipeBySlug(m.main)?.protein === r.protein))
             continue
@@ -341,7 +362,7 @@ export function swapDay(
   const { packs } = packsWithEstimate(live)
   const trip = tripDays(s).find((t) => t.includes(day)) ?? [day]
   const others = plan.filter((m, i): m is Meal => !!m && i !== day)
-  const used = new Set(others.flatMap((m) => [m.main, m.sub, m.soup]))
+  const used = new Set(others.flatMap((m) => [m.main, m.sub, m.soup].filter(Boolean)))
   const basket = new Set(
     trip
       .filter((d) => d !== day)
@@ -349,7 +370,7 @@ export function swapDay(
       .flatMap(buyIds),
   )
   const before = plan[day]
-  const not = before ? [before.main, before.sub, before.soup] : []
+  const not = before ? [before.main, before.sub, before.soup].filter(Boolean) : []
   // 몇 번 골라 보고 이 장보기가 예산 안에 드는 첫 한 상 — 없으면 가장 싼 한 상
   let best: { meal: Meal; cost: number } | null = null
   for (let k = 0; k < 20; k++) {
@@ -406,7 +427,9 @@ export function planStillValid(plan: WeekPlan, s: MealSettings): boolean {
   return plan.every((m, d) => {
     if (!days.has(d)) return m === null
     if (!m) return false
-    return [m.main, m.sub, m.soup].every((x) => {
+    const main = recipeBySlug(m.main)
+    if (!m.soup && !main?.brothy) return false
+    return [m.main, m.sub, m.soup].filter(Boolean).every((x) => {
       const r = recipeBySlug(x)
       return !!r && allowed(r, s)
     })

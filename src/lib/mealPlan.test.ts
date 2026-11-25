@@ -21,8 +21,8 @@ const S = DEFAULT_SETTINGS
 const { packs } = packsWithEstimate({})
 
 describe('집밥 플래너 (2026-11-26)', () => {
-  it('레시피 44가지 — 재료는 다 목록에 있고, 사야 하는 재료는 모두 예상값이 있다', () => {
-    expect(RECIPES.length).toBeGreaterThanOrEqual(44)
+  it('레시피 100가지 넘게 — 재료는 다 목록에 있고, 사야 하는 재료는 모두 예상값이 있다', () => {
+    expect(RECIPES.length).toBeGreaterThanOrEqual(120)
     expect(new Set(RECIPES.map((r) => r.slug)).size).toBe(RECIPES.length)
     for (const r of RECIPES)
       for (const [id] of r.ingredients) {
@@ -50,21 +50,22 @@ describe('집밥 플래너 (2026-11-26)', () => {
   it('한 상은 메인·서브·국, 일주일 안에서 같은 반찬이 겹치지 않고, 배달 날은 비운다', () => {
     const plan = makeWeekPlan(S, 11, '2026-11-23#0')
     expect(plan[6]).toBeNull()
-    const all = plan.flatMap((m) => (m ? [m.main, m.sub, m.soup] : []))
-    expect(all).toHaveLength(18)
-    expect(new Set(all).size).toBe(18)
+    const all = plan.flatMap((m) => (m ? [m.main, m.sub, m.soup].filter(Boolean) : []))
+    expect(new Set(all).size).toBe(all.length)
     for (const m of plan) {
       if (!m) continue
       expect(recipeBySlug(m.main)!.role).toBe('main')
       expect(recipeBySlug(m.sub)!.role).toBe('sub')
-      expect(recipeBySlug(m.soup)!.role).toBe('soup')
+      // 국물 있는 메인이면 국은 비운다
+      if (recipeBySlug(m.main)!.brothy) expect(m.soup).toBe('')
+      else expect(recipeBySlug(m.soup)!.role).toBe('soup')
     }
     expect(planStillValid(plan, S)).toBe(true)
   })
 
   it('아이가 있으면 매운 어른 메뉴는 안 나온다', () => {
     const plan = makeWeekPlan(S, 11, 'x#1')
-    for (const m of plan) if (m) for (const x of [m.main, m.sub, m.soup]) expect(recipeBySlug(x)!.kid).not.toBe('adult')
+    for (const m of plan) if (m) for (const x of [m.main, m.sub, m.soup].filter(Boolean)) expect(recipeBySlug(x)!.kid).not.toBe('adult')
   })
 
   it('어제와 같은 고기를 연달아 쓰지 않는다 (같은 장보기 안)', () => {
@@ -90,7 +91,7 @@ describe('집밥 플래너 (2026-11-26)', () => {
     const plan = makeWeekPlan(s, 11, 'z#0')
     for (const m of plan) {
       if (!m) continue
-      for (const x of [m.main, m.sub, m.soup]) {
+      for (const x of [m.main, m.sub, m.soup].filter(Boolean)) {
         const r = recipeBySlug(x)!
         expect(allowed(r, s)).toBe(true)
         expect(r.ingredients.some(([id]) => ['egg', 'oyster'].includes(id))).toBe(false)
@@ -105,13 +106,13 @@ describe('집밥 플래너 (2026-11-26)', () => {
     expect(next[0]).toEqual(plan[0])
     expect(next[2]).toEqual(plan[2])
     expect(next[1]).not.toEqual(plan[1])
-    const all = next.flatMap((m) => (m ? [m.main, m.sub, m.soup] : []))
+    const all = next.flatMap((m) => (m ? [m.main, m.sub, m.soup].filter(Boolean) : []))
     expect(new Set(all).size).toBe(all.length)
   })
 
   it('11월이면 제철(굴·무·시금치…) 반찬이 들어간다', () => {
     const plan = makeWeekPlan(S, 11, '2026-11-23#0')
-    const seasonal = plan.flatMap((m) => (m ? [m.main, m.sub, m.soup] : [])).filter((x) => recipeBySlug(x)!.months?.includes(11))
+    const seasonal = plan.flatMap((m) => (m ? [m.main, m.sub, m.soup].filter(Boolean) : [])).filter((x) => recipeBySlug(x)!.months?.includes(11))
     expect(seasonal.length).toBeGreaterThan(0)
   })
 
@@ -137,7 +138,7 @@ describe('집밥 플래너 (2026-11-26)', () => {
   })
 
   it('릴스 1편 레시피가 다 있고, 제철 재료 id도 다 있다', () => {
-    for (const ep of REELS) for (const x of Object.values(ep.meal)) expect(recipeBySlug(x), x).toBeDefined()
+    for (const ep of REELS) for (const x of Object.values(ep.meal).filter(Boolean)) expect(recipeBySlug(x), x).toBeDefined()
     for (const list of Object.values(SEASON)) for (const i of list) if (i.ing) expect(INGREDIENTS[i.ing], i.name).toBeDefined()
   })
 })
