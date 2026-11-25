@@ -1,5 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import PcColumns from '../components/PcColumns'
 import SideGrid from '../components/SideGrid'
@@ -40,6 +50,12 @@ const SAVE = 'text-brand'
 const SPENT = 'text-rose-600'
 /** 구분마다 글자색 */
 const TONE = { cash: CASH, saved: SAVE, spent: SPENT } as const
+
+/** 수입(번 돈·아낀 돈) / 지출(쓴 돈) — 2026-11-25 결영 요청: "수입 지출로 나눠주고 필터 기능 넣어줘" */
+type Flow = 'in' | 'out'
+const flowOf = (k: SideKind): Flow => (k === 'spent' ? 'out' : 'in')
+const FLOW_LABEL: Record<Flow, string> = { in: '수입', out: '지출' }
+const FLOW_SUB: Record<Flow, string> = { in: '번 돈·아낀 돈', out: '쓴 돈' }
 
 /**
  * 부수입 가계부 (2026-11-19) — 하단 '부수입' 탭.
@@ -85,14 +101,36 @@ export default function SideIncome() {
           ? 1
           : -1,
     )
+  // 거르기 (2026-11-25) — 수입·지출 / 누가 / 종류·메모 찾기
+  const [flow, setFlow] = useState<'all' | Flow>('all')
+  const [whoF, setWhoF] = useState<'all' | 1 | 2 | 'shared'>('all')
+  const [q, setQ] = useState('')
+  const query = q.trim().toLowerCase()
+  const filtering = flow !== 'all' || whoF !== 'all' || query !== ''
+  const filtered = monthAll.filter(
+    (e) =>
+      (flow === 'all' || flowOf(e.kind) === flow) &&
+      (whoF === 'all' || (whoF === 'shared' ? !!e.shared : !e.shared && e.memberNo === whoF)) &&
+      (!query || `${e.category} ${e.note ?? ''}`.toLowerCase().includes(query)),
+  )
   // 종류 하나만 보기 (2026-11-23 결영 요청: "카테고리 선택하면 그것만 총액") — '구분|종류'
   const [cat, setCat] = useState<string | null>(null)
   const catKey = (e: { kind: SideKind; category: string }) => `${e.kind}|${e.category}`
-  const month = cat ? monthAll.filter((e) => catKey(e) === cat) : monthAll
-  // 이 달에 있는 종류 — 금액 큰 순
-  const monthCats = SIDE_KINDS.flatMap((k) =>
-    s.byCategory[k].map((c) => ({ key: `${k}|${c.category}`, kind: k, ...c })),
-  ).sort((a, b) => b.amount - a.amount)
+  const month = cat ? filtered.filter((e) => catKey(e) === cat) : filtered
+  // 이 달에 있는 종류 — 금액 큰 순 (수입·지출을 골랐으면 그쪽 종류만)
+  const monthCats = SIDE_KINDS.filter((k) => flow === 'all' || flowOf(k) === flow)
+    .flatMap((k) => s.byCategory[k].map((c) => ({ key: `${k}|${c.category}`, kind: k, ...c })))
+    .sort((a, b) => b.amount - a.amount)
+  const pickFlow = (f: 'all' | Flow) => {
+    setFlow(f)
+    if (f !== 'all' && cat && flowOf(cat.split('|')[0] as SideKind) !== f) setCat(null)
+  }
+  const clearFilters = () => {
+    setFlow('all')
+    setWhoF('all')
+    setQ('')
+    setCat(null)
+  }
   const picked = cat
     ? (() => {
         const [kind, category] = cat.split('|') as [SideKind, string]
@@ -416,6 +454,29 @@ export default function SideIncome() {
     </div>
   )
 
+  // 수입·지출 칸 — 거르기·고른 종류에 맞는 쪽만
+  const groups = (['in', 'out'] as const).filter(
+    (g) => (flow === 'all' || flow === g) && (!picked || flowOf(picked.kind) === g),
+  )
+  const groupHead = (g: Flow, list: SideEntry[]) => {
+    const part = list.filter((e) => flowOf(e.kind) === g)
+    const sum = part.reduce((a, e) => a + e.amount, 0)
+    return (
+      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <p className={`text-[13.5px] font-bold ${g === 'in' ? CASH : SPENT}`}>
+          {FLOW_LABEL[g]}{' '}
+          <span className="text-[11.5px] font-medium text-cap">
+            {FLOW_SUB[g]} · {part.length}건
+          </span>
+        </p>
+        <p className={`tnum text-[13.5px] font-bold ${g === 'in' ? CASH : SPENT}`}>
+          {sum > 0 && (g === 'in' ? '+' : '−')}
+          {formatWon(sum)}
+        </p>
+      </div>
+    )
+  }
+
   const records = (
     <div id="side-records" className="scroll-mt-4 rounded-card bg-card px-5 py-4 shadow-card">
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -446,6 +507,72 @@ export default function SideIncome() {
         </div>
       </div>
       {fileBar}
+      {/* 거르기 — 수입·지출 / 누가 / 종류·메모 찾기 (2026-11-25) */}
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        <div
+          className="flex shrink-0 gap-0.5 rounded-full bg-bg p-0.5"
+          role="group"
+          aria-label="수입·지출 거르기"
+        >
+          {(['all', 'in', 'out'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => pickFlow(f)}
+              aria-pressed={flow === f}
+              className={`rounded-full px-3 py-1 text-[12px] font-bold ${
+                flow === f
+                  ? 'bg-white text-ink shadow-card'
+                  : f === 'in'
+                    ? CASH
+                    : f === 'out'
+                      ? SPENT
+                      : 'text-sub'
+              }`}
+            >
+              {f === 'all' ? '전체' : FLOW_LABEL[f]}
+            </button>
+          ))}
+        </div>
+        <select
+          aria-label="누가 거르기"
+          value={String(whoF)}
+          onChange={(e) => {
+            const v = e.target.value
+            setWhoF(v === 'all' || v === 'shared' ? v : (Number(v) as 1 | 2))
+          }}
+          className={`shrink-0 rounded-full bg-bg px-3 py-1.5 text-[12px] font-bold outline-none ${
+            whoF === 'all' ? 'text-sub' : 'text-ink'
+          }`}
+        >
+          <option value="all">누가: 모두</option>
+          <option value="1">{names[0]}</option>
+          <option value="2">{names[1]}</option>
+          <option value="shared">공동</option>
+        </select>
+        <label className="flex min-w-[150px] flex-1 items-center gap-1.5 rounded-full bg-bg px-3 py-1.5">
+          <Search size={13} className="shrink-0 text-cap" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="종류·메모 찾기"
+            aria-label="종류·메모 찾기"
+            className="min-w-0 flex-1 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-cap"
+          />
+          {q && (
+            <button onClick={() => setQ('')} aria-label="찾는 말 지우기" className="text-cap">
+              <X size={13} />
+            </button>
+          )}
+        </label>
+        {filtering && (
+          <button
+            onClick={clearFilters}
+            className="shrink-0 text-[12px] font-bold text-sub active:text-ink"
+          >
+            거르기 끄기
+          </button>
+        )}
+      </div>
       {/* 종류 하나만 보기 — 고르면 그 종류 합계와 그 기록만 */}
       {monthCats.length > 1 && (
         <div className="no-scrollbar -mx-5 mb-2 flex gap-1.5 overflow-x-auto px-5 pb-0.5">
@@ -460,7 +587,7 @@ export default function SideIncome() {
                   : `bg-bg active:bg-line ${c ? TONE[c.kind] : 'text-sub'}`
               }`}
             >
-              {c ? c.category : '전체'}
+              {c ? c.category : '모든 종류'}
             </button>
           ))}
         </div>
@@ -545,16 +672,29 @@ export default function SideIncome() {
         </div>
       )}
       {view === 'grid' ? (
-        <SideGrid
-          ym={ym}
-          preset={picked ? { kind: picked.kind, category: picked.category } : undefined}
-          entries={[...month].reverse()}
-          names={names}
-          me={side.me}
-          onAdd={side.add}
-          onUpdate={side.update}
-          onRemove={side.remove}
-        />
+        <div className="space-y-4">
+          {groups.map((g, gi) => (
+            <div key={g}>
+              {groupHead(g, month)}
+              <SideGrid
+                ym={ym}
+                labelPrefix={`${FLOW_LABEL[g]} `}
+                showHint={gi === groups.length - 1}
+                preset={
+                  picked
+                    ? { kind: picked.kind, category: picked.category }
+                    : { kind: g === 'in' ? 'cash' : 'spent', category: '' }
+                }
+                entries={month.filter((e) => flowOf(e.kind) === g).reverse()}
+                names={names}
+                me={side.me}
+                onAdd={side.add}
+                onUpdate={side.update}
+                onRemove={side.remove}
+              />
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           {view === 'calendar' && (
@@ -582,71 +722,82 @@ export default function SideIncome() {
           )}
           {view === 'calendar' && !calDayIn ? null : shown.length === 0 ? (
             <p className="py-3 text-[13px] text-sub">
-              {view === 'calendar'
-                ? '이 날은 기록이 없어요'
-                : '앱테크로 번 돈, 체험단으로 아낀 돈을 적어 보세요'}
+              {filtering || cat
+                ? '고른 조건에 맞는 기록이 없어요'
+                : view === 'calendar'
+                  ? '이 날은 기록이 없어요'
+                  : '앱테크로 번 돈, 체험단으로 아낀 돈을 적어 보세요'}
             </p>
           ) : (
-            <div className="divide-y divide-line/70">
-              {shown.map((e) =>
-                editing === e.id ? (
-                  <SideForm
-                    key={e.id}
-                    initial={e}
-                    ym={ym}
-                    me={side.me}
-                    names={names}
-                    onCancel={() => setEditing(null)}
-                    onSave={async (n) => {
-                      await side.update(e.id, n)
-                      setEditing(null)
-                    }}
-                  />
-                ) : (
-                  <div
-                    key={e.id}
-                    onClick={() => setEditing(e.id)}
-                    className="-mx-1 flex cursor-pointer items-center gap-2 rounded px-1 py-2.5 active:bg-bg"
-                  >
-                    <span className="tnum w-9 shrink-0 text-[11.5px] text-cap">
-                      {Number(e.earnedOn.slice(5, 7))}/{Number(e.earnedOn.slice(8, 10))}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
-                      {e.category}
-                      <span className="text-cap">
-                        {' '}
-                        · {whoLabel(e)}
-                        {e.note ? ` · ${e.note}` : ''}
-                      </span>
-                    </span>
-                    <span className={`tnum shrink-0 text-[13.5px] font-bold ${TONE[e.kind]}`}>
-                      {e.kind === 'cash' ? '+' : e.kind === 'spent' ? '−' : ''}
-                      {formatWon(e.amount)}
-                    </span>
-                    <button
-                      aria-label={`${e.category} 고치기`}
-                      onClick={(ev) => {
-                        ev.stopPropagation()
-                        setEditing(e.id)
-                      }}
-                      className="shrink-0 text-cap active:text-brand"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      aria-label={`${e.category} 지우기`}
-                      onClick={(ev) => {
-                        ev.stopPropagation()
-                        void side.remove(e.id)
-                      }}
-                      className="shrink-0 text-cap active:text-danger"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+            groups.map((g) => {
+              const part = shown.filter((e) => flowOf(e.kind) === g)
+              if (part.length === 0) return null
+              return (
+                <div key={g} className="mt-3 first:mt-0">
+                  {groupHead(g, part)}
+                  <div className="divide-y divide-line/70">
+                    {part.map((e) =>
+                      editing === e.id ? (
+                        <SideForm
+                          key={e.id}
+                          initial={e}
+                          ym={ym}
+                          me={side.me}
+                          names={names}
+                          onCancel={() => setEditing(null)}
+                          onSave={async (n) => {
+                            await side.update(e.id, n)
+                            setEditing(null)
+                          }}
+                        />
+                      ) : (
+                        <div
+                          key={e.id}
+                          onClick={() => setEditing(e.id)}
+                          className="-mx-1 flex cursor-pointer items-center gap-2 rounded px-1 py-2.5 active:bg-bg"
+                        >
+                          <span className="tnum w-9 shrink-0 text-[11.5px] text-cap">
+                            {Number(e.earnedOn.slice(5, 7))}/{Number(e.earnedOn.slice(8, 10))}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
+                            {e.category}
+                            <span className="text-cap">
+                              {' '}
+                              · {whoLabel(e)}
+                              {e.note ? ` · ${e.note}` : ''}
+                            </span>
+                          </span>
+                          <span className={`tnum shrink-0 text-[13.5px] font-bold ${TONE[e.kind]}`}>
+                            {e.kind === 'cash' ? '+' : e.kind === 'spent' ? '−' : ''}
+                            {formatWon(e.amount)}
+                          </span>
+                          <button
+                            aria-label={`${e.category} 고치기`}
+                            onClick={(ev) => {
+                              ev.stopPropagation()
+                              setEditing(e.id)
+                            }}
+                            className="shrink-0 text-cap active:text-brand"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            aria-label={`${e.category} 지우기`}
+                            onClick={(ev) => {
+                              ev.stopPropagation()
+                              void side.remove(e.id)
+                            }}
+                            className="shrink-0 text-cap active:text-danger"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ),
+                    )}
                   </div>
-                ),
-              )}
-            </div>
+                </div>
+              )
+            })
           )}
         </>
       )}

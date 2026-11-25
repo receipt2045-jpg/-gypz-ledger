@@ -121,7 +121,7 @@ describe('부수입 가계부 (2026-11-19)', () => {
 
 describe('부수입 표로 적기 — 엑셀처럼 (2026-11-23)', () => {
   const lastRow = () => {
-    const amounts = screen.getAllByLabelText(/번째 줄 금액/)
+    const amounts = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/)
     return amounts.length
   }
 
@@ -129,8 +129,8 @@ describe('부수입 표로 적기 — 엑셀처럼 (2026-11-23)', () => {
     const { user } = open()
     await screen.findByText('473,000원')
     const n = lastRow()
-    await user.type(screen.getByLabelText(`${n}번째 줄 종류`), '중고 판매')
-    await user.type(screen.getByLabelText(`${n}번째 줄 금액`), '20000{Enter}')
+    await user.type(screen.getByLabelText(`수입 ${n}번째 줄 종류`), '중고 판매')
+    await user.type(screen.getByLabelText(`수입 ${n}번째 줄 금액`), '20000{Enter}')
     expect(await screen.findByText('493,000원')).toBeInTheDocument()
     expect(screen.getByText('저장했어요')).toBeInTheDocument()
   })
@@ -139,13 +139,13 @@ describe('부수입 표로 적기 — 엑셀처럼 (2026-11-23)', () => {
     const { user } = open()
     await screen.findByText('473,000원')
     const n = lastRow()
-    await user.click(screen.getByLabelText(`${n}번째 줄 종류`))
+    await user.click(screen.getByLabelText(`수입 ${n}번째 줄 종류`))
     const pop = screen.getByRole('listbox', { name: '종류 고르기' })
     await user.click(within(pop).getByRole('option', { name: '광고비' }))
     expect(screen.queryByRole('listbox', { name: '종류 고르기' })).toBeNull()
-    expect(screen.getByLabelText(`${n}번째 줄 종류`)).toHaveValue('광고비')
-    expect(screen.getByLabelText(`${n}번째 줄 구분`)).toHaveValue('spent')
-    expect(screen.getByLabelText(`${n}번째 줄 금액`)).toHaveFocus()
+    expect(screen.getByLabelText(`수입 ${n}번째 줄 종류`)).toHaveValue('광고비')
+    expect(screen.getByLabelText(`수입 ${n}번째 줄 구분`)).toHaveValue('spent')
+    expect(screen.getByLabelText(`수입 ${n}번째 줄 금액`)).toHaveFocus()
     await user.keyboard('30000{Enter}')
     expect(await screen.findByText('저장했어요')).toBeInTheDocument()
   })
@@ -154,7 +154,7 @@ describe('부수입 표로 적기 — 엑셀처럼 (2026-11-23)', () => {
     const { user } = open()
     await screen.findByText('473,000원')
     const n = lastRow()
-    await user.type(screen.getByLabelText(`${n}번째 줄 금액`), '5000{Enter}')
+    await user.type(screen.getByLabelText(`수입 ${n}번째 줄 금액`), '5000{Enter}')
     expect(screen.getByText('종류와 금액을 넣으면 저장돼요')).toBeInTheDocument()
     expect(screen.getByText('473,000원')).toBeInTheDocument()
   })
@@ -163,7 +163,7 @@ describe('부수입 표로 적기 — 엑셀처럼 (2026-11-23)', () => {
     const { user } = open()
     await screen.findByText('473,000원')
     // 예시 첫 줄(날짜순) 금액 칸
-    const first = screen.getByLabelText('1번째 줄 금액') as HTMLInputElement
+    const first = screen.getByLabelText('수입 1번째 줄 금액') as HTMLInputElement
     const before = Number(first.value.replace(/,/g, ''))
     await user.clear(first)
     await user.type(first, String(before + 1000) + '{Enter}')
@@ -178,7 +178,7 @@ describe('부수입 표로 적기 — 엑셀처럼 (2026-11-23)', () => {
     const text = ['날짜\t종류\t금액', `${m}/1\t앱테크\t10,000`, `${m}/2\t체험단\t30000\t성수`].join(
       '\n',
     )
-    await user.click(screen.getByLabelText(`${lastRow()}번째 줄 메모`))
+    await user.click(screen.getByLabelText(`수입 ${lastRow()}번째 줄 메모`))
     await user.paste(text)
     expect(
       await screen.findByText(/2줄을 넣었어요 · 1줄은 날짜나 금액이 없어 뺐어요/),
@@ -191,11 +191,11 @@ describe('부수입 쓴 돈 (2026-11-23)', () => {
   it('표에서 쓴 돈을 적으면 남은 돈(번 돈 − 쓴 돈)이 나온다', async () => {
     const { user } = open()
     await screen.findByText('473,000원')
-    const n = screen.getAllByLabelText(/번째 줄 금액/).length
-    await user.selectOptions(screen.getByLabelText(`${n}번째 줄 구분`), 'spent')
-    await user.type(screen.getByLabelText(`${n}번째 줄 종류`), '수수료')
-    await user.click(screen.getByLabelText(`${n}번째 줄 매달`))
-    await user.type(screen.getByLabelText(`${n}번째 줄 금액`), '3000{Enter}')
+    const n = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
+    await user.selectOptions(screen.getByLabelText(`수입 ${n}번째 줄 구분`), 'spent')
+    await user.type(screen.getByLabelText(`수입 ${n}번째 줄 종류`), '수수료')
+    await user.click(screen.getByLabelText(`수입 ${n}번째 줄 매달`))
+    await user.type(screen.getByLabelText(`수입 ${n}번째 줄 금액`), '3000{Enter}')
     // 210,000 − 3,000
     expect(await screen.findByText('207,000원')).toBeInTheDocument()
     expect(screen.getByText(/번 돈 − 쓴 돈 = 남은 돈/)).toBeInTheDocument()
@@ -206,10 +206,10 @@ describe('부수입 쓴 돈 (2026-11-23)', () => {
   it('정산할 때 보낼 수 있는 돈은 쓴 돈을 뺀 만큼', async () => {
     const { user } = open()
     await screen.findByText('473,000원')
-    const n = screen.getAllByLabelText(/번째 줄 금액/).length
-    await user.selectOptions(screen.getByLabelText(`${n}번째 줄 구분`), 'spent')
-    await user.type(screen.getByLabelText(`${n}번째 줄 종류`), '교통비')
-    await user.type(screen.getByLabelText(`${n}번째 줄 금액`), '10000{Enter}')
+    const n = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
+    await user.selectOptions(screen.getByLabelText(`수입 ${n}번째 줄 구분`), 'spent')
+    await user.type(screen.getByLabelText(`수입 ${n}번째 줄 종류`), '교통비')
+    await user.type(screen.getByLabelText(`수입 ${n}번째 줄 금액`), '10000{Enter}')
     await screen.findByText('200,000원')
     await user.click(screen.getByRole('button', { name: `${month} 부수입 정산하기` }))
     expect(screen.getByText('안 보낸 돈 200,000원')).toBeInTheDocument()
@@ -226,7 +226,7 @@ describe('종류 하나만 보기 — 그 종류 합계 (2026-11-23)', () => {
     expect(screen.getAllByText('32,000원').length).toBeGreaterThan(0)
     // 표엔 앱테크 한 줄 + 새 줄(앱테크로 미리 채움)
     expect(screen.getAllByLabelText(/번째 줄 금액/)).toHaveLength(2)
-    expect(screen.getByLabelText('2번째 줄 종류')).toHaveValue('앱테크')
+    expect(screen.getByLabelText('수입 2번째 줄 종류')).toHaveValue('앱테크')
     await user.click(screen.getByRole('button', { name: '전체 보기' }))
     expect(screen.getAllByLabelText(/번째 줄 금액/).length).toBeGreaterThan(2)
   })
@@ -251,6 +251,44 @@ describe('종류 하나만 보기 — 그 종류 합계 (2026-11-23)', () => {
     await screen.findByText('473,000원')
     await user.click(screen.getByRole('button', { name: '체험단만 보기' }))
     expect(screen.getByText(/1건 · 올해 140,000원/)).toBeInTheDocument()
+  })
+})
+
+describe('수입·지출로 나눠 보기·거르기 (2026-11-25)', () => {
+  it('표가 수입·지출 두 칸 — 지출 칸 빈 줄에 쓰면 쓴 돈으로 들어간다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    expect(screen.getByText('+473,000원')).toBeInTheDocument()
+    expect(screen.getByLabelText('지출 1번째 줄 구분')).toHaveValue('spent')
+    await user.type(screen.getByLabelText('지출 1번째 줄 종류'), '수수료')
+    await user.type(screen.getByLabelText('지출 1번째 줄 금액'), '3000{Enter}')
+    expect(await screen.findByText('−3,000원')).toBeInTheDocument()
+    expect(screen.getByText('470,000원')).toBeInTheDocument()
+  })
+
+  it('수입·지출·누가·찾기로 거른다', async () => {
+    const { user } = open()
+    await screen.findByText('473,000원')
+    const all = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
+    // 지출만 — 수입 표는 안 보인다
+    await user.click(screen.getByRole('button', { name: '지출', pressed: false }))
+    expect(screen.queryAllByLabelText(/^수입 \d+번째 줄 금액/)).toHaveLength(0)
+    expect(screen.getByLabelText('지출 1번째 줄 금액')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '거르기 끄기' }))
+    // 메모·종류 찾기
+    await user.type(screen.getByLabelText('종류·메모 찾기'), '앱테크')
+    expect(screen.getAllByLabelText(/^수입 \d+번째 줄 금액/)).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: '찾는 말 지우기' }))
+    expect(screen.getAllByLabelText(/^수입 \d+번째 줄 금액/)).toHaveLength(all)
+    // 누가 — 둘로 나뉜다
+    await user.selectOptions(screen.getByLabelText('누가 거르기'), '1')
+    const one = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
+    await user.selectOptions(screen.getByLabelText('누가 거르기'), '2')
+    const two = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
+    await user.selectOptions(screen.getByLabelText('누가 거르기'), 'shared')
+    const sh = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
+    // 빈 줄은 표마다 하나씩
+    expect(one - 1 + (two - 1) + (sh - 1)).toBe(all - 1)
   })
 })
 

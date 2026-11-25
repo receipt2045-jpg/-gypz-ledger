@@ -92,7 +92,13 @@ export default function SideGrid({
   onAdd,
   onUpdate,
   onRemove,
+  labelPrefix = '',
+  showHint = true,
 }: {
+  /** 표가 둘(수입·지출)일 때 칸 이름 앞에 붙인다 — '수입 1번째 줄 금액' */
+  labelPrefix?: string
+  /** 아래 안내 글 — 표가 둘이면 마지막 표에만 */
+  showHint?: boolean
   ym: string
   /** 종류 하나만 보는 중이면 새 줄에 그 종류를 미리 채운다 */
   preset?: { kind: SideKind; category: string }
@@ -290,7 +296,7 @@ export default function SideGrid({
                   <td className={cell}>
                     <input
                       data-first
-                      aria-label={`${i + 1}번째 줄 날짜`}
+                      aria-label={`${labelPrefix}${i + 1}번째 줄 날짜`}
                       value={r.dateText}
                       placeholder="11/3"
                       onChange={(e) => {
@@ -308,7 +314,7 @@ export default function SideGrid({
                   </td>
                   <td className={cell}>
                     <select
-                      aria-label={`${i + 1}번째 줄 구분`}
+                      aria-label={`${labelPrefix}${i + 1}번째 줄 구분`}
                       value={r.kind}
                       onChange={(e) => patch(r.key, { kind: e.target.value as SideKind })}
                       className={`${input} appearance-none px-0 text-center font-semibold ${r.kind === 'cash' ? 'text-emerald-700' : r.kind === 'saved' ? 'text-brand' : 'text-rose-600'}`}
@@ -320,7 +326,7 @@ export default function SideGrid({
                   </td>
                   <td className={cell}>
                     <input
-                      aria-label={`${i + 1}번째 줄 종류`}
+                      aria-label={`${labelPrefix}${i + 1}번째 줄 종류`}
                       value={r.category}
                       autoComplete="off"
                       aria-haspopup="listbox"
@@ -347,7 +353,7 @@ export default function SideGrid({
                   </td>
                   <td className={cell}>
                     <input
-                      aria-label={`${i + 1}번째 줄 금액`}
+                      aria-label={`${labelPrefix}${i + 1}번째 줄 금액`}
                       inputMode="numeric"
                       value={comma(digits(r.amount))}
                       placeholder={empty ? '0' : ''}
@@ -365,7 +371,7 @@ export default function SideGrid({
                   </td>
                   <td className={cell}>
                     <select
-                      aria-label={`${i + 1}번째 줄 누가`}
+                      aria-label={`${labelPrefix}${i + 1}번째 줄 누가`}
                       value={String(r.who)}
                       onChange={(e) =>
                         patch(r.key, {
@@ -385,7 +391,7 @@ export default function SideGrid({
                   <td className={`${cell} text-center`}>
                     <input
                       type="checkbox"
-                      aria-label={`${i + 1}번째 줄 매달`}
+                      aria-label={`${labelPrefix}${i + 1}번째 줄 매달`}
                       checked={r.repeat}
                       onChange={(e) => patch(r.key, { repeat: e.target.checked })}
                       className="h-4 w-4 align-middle accent-[#3182F6]"
@@ -393,7 +399,7 @@ export default function SideGrid({
                   </td>
                   <td className={cell}>
                     <input
-                      aria-label={`${i + 1}번째 줄 메모`}
+                      aria-label={`${labelPrefix}${i + 1}번째 줄 메모`}
                       value={r.note}
                       maxLength={100}
                       onChange={(e) => patch(r.key, { note: e.target.value })}
@@ -404,7 +410,7 @@ export default function SideGrid({
                     {r.id && (
                       <button
                         type="button"
-                        aria-label={`${i + 1}번째 줄 지우기`}
+                        aria-label={`${labelPrefix}${i + 1}번째 줄 지우기`}
                         onClick={() => {
                           if (
                             window.confirm(`${r.category} ${comma(digits(r.amount))}원을 지울까요?`)
@@ -439,12 +445,14 @@ export default function SideGrid({
           }}
         />
       )}
-      <p
-        className={`mt-2 text-[12px] ${msg ? (msg.ok ? 'text-brand' : 'text-danger') : 'text-cap'}`}
-      >
-        {msg?.text ??
-          '칸에 바로 쓰고 다른 줄로 넘어가면 저장돼요 · 엑셀에서 여러 줄을 복사해 붙여넣어도 돼요'}
-      </p>
+      {(msg || showHint) && (
+        <p
+          className={`mt-2 text-[12px] ${msg ? (msg.ok ? 'text-brand' : 'text-danger') : 'text-cap'}`}
+        >
+          {msg?.text ??
+            '칸에 바로 쓰고 다른 줄로 넘어가면 저장돼요 · 엑셀에서 여러 줄을 복사해 붙여넣어도 돼요'}
+        </p>
+      )}
     </div>
   )
 }
