@@ -55,6 +55,8 @@ export async function createHousehold(): Promise<Membership> {
 export async function joinHousehold(code: string): Promise<Membership> {
   const { data, error } = await supabase.rpc('join_household', { code })
   if (error) throw error
+  // 틀린 코드면 서버가 빈 결과를 준다 — 틀린 시도를 세려고 오류 대신 (security-fix-2026-11-26.sql)
+  if (!data?.id) throw new Error('초대 코드를 찾을 수 없어요')
   return { householdId: data.id, memberNo: 2 }
 }
 
@@ -63,8 +65,9 @@ export async function joinHousehold(code: string): Promise<Membership> {
  * 둘이 쓰는 가계부면 서버가 거부한다.
  */
 export async function switchHousehold(code: string): Promise<void> {
-  const { error } = await supabase.rpc('switch_household', { code })
+  const { data, error } = await supabase.rpc('switch_household', { code })
   if (error) throw error
+  if (!data?.id) throw new Error('초대 코드를 찾을 수 없어요')
 }
 
 // ── 전체 데이터 로드 ──────────────────────────
@@ -576,10 +579,13 @@ export async function signOutEverywhere() {
   await supabase.auth.signOut()
 }
 
-/** 회원 탈퇴: 내 가구·모든 데이터 삭제 후 로그아웃 (RPC delete_my_account) */
+/**
+ * 회원 탈퇴: 내 가구·모든 데이터와 로그인 계정까지 지운다 (Edge Function delete-account).
+ * 2026-11-26 보안 점검: 예전엔 RPC delete_my_account만 불러서 로그인 계정과 계정에 묶인 기록이 남았다.
+ */
 export async function deleteMyAccount() {
-  const { error } = await supabase.rpc('delete_my_account')
-  if (error) throw error
+  const { data, error } = await supabase.functions.invoke('delete-account', { body: {} })
+  if (error || !(data as { ok?: boolean } | null)?.ok) throw new Error('잠시 뒤 다시 해 주세요')
 }
 
 /** 모든 기록 삭제 (가구/멤버십은 유지) */

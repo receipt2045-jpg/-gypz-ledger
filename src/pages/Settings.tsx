@@ -97,7 +97,8 @@ export default function Settings() {
       // 서버의 푸시 토큰·설정·기록 삭제 — 웹에서 탈퇴해도 폰에 토큰이 남아 있을 수 있어 앱 여부와 상관없이 부른다. 실패해도 탈퇴는 계속
       await deleteMyPushData().catch((err) => console.warn('[push] 푸시 데이터 삭제 실패', err))
       await deleteMyAccount()
-      await supabase.auth.signOut()
+      // 계정이 이미 지워져 서버 로그아웃은 실패한다 — 이 기기의 로그인만 지운다
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined)
       alert('탈퇴가 완료됐어요. 그동안 함께해 주셔서 고마웠어요 🤍')
     } catch (err) {
       setDeleting(false)

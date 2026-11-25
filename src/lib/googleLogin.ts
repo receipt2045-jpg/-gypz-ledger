@@ -3,7 +3,7 @@
  * 앱은 폰의 구글 계정 선택 창 → ID 토큰 → Supabase, 웹은 예전처럼 리디렉션.
  */
 import { isNative } from './native'
-import { supabase } from './supabase'
+import { markOAuthStart, supabase } from './supabase'
 
 let ready: Promise<void> | null = null
 
@@ -12,7 +12,12 @@ const userCancelled = (err: unknown) => (err as { code?: string } | null)?.code 
 
 export async function loginWithGoogle(redirectTo: string): Promise<{ error: string | null }> {
   if (!isNative()) {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
+    // 돌아올 때 주소의 로그인을 받아도 되는지 표시 (supabase.ts acceptUrlSession)
+    markOAuthStart()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    })
     return { error: error?.message ?? null }
   }
   const webClientId = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID
