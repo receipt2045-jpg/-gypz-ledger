@@ -3,7 +3,9 @@ const native = vi.fn(() => false)
 vi.mock('./native', () => ({ isNative: () => native() }))
 const signInWithOAuth = vi.fn(async (_o: unknown) => ({ error: null }))
 const signInWithIdToken = vi.fn(async (_o: unknown) => ({ error: null }))
+const markOAuthStart = vi.fn()
 vi.mock('./supabase', () => ({
+  markOAuthStart: () => markOAuthStart(),
   supabase: { auth: { signInWithOAuth: (o: unknown) => signInWithOAuth(o), signInWithIdToken: (o: unknown) => signInWithIdToken(o) } },
 }))
 const initialize = vi.fn(async (_o: unknown) => {})
@@ -25,6 +27,8 @@ describe('loginWithGoogle', () => {
     await loginWithGoogle('https://moabuli.com/')
     expect(signInWithOAuth).toHaveBeenCalledWith({ provider: 'google', options: { redirectTo: 'https://moabuli.com/' } })
     expect(initialize).not.toHaveBeenCalled()
+    // 돌아올 때 주소의 로그인을 받아도 된다는 표시 (2026-11-26 보안 점검)
+    expect(markOAuthStart).toHaveBeenCalled()
   })
 
   it('앱은 폰의 구글 계정으로 받은 토큰으로 로그인한다', async () => {
