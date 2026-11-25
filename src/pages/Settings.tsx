@@ -2,7 +2,7 @@ import MonthStartPicker from '../components/MonthStartPicker'
 import SiteFooter from '../components/SiteFooter'
 import PcColumns from '../components/PcColumns'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Copy,
   Check,
@@ -18,15 +18,20 @@ import {
   Plus,
 } from 'lucide-react'
 import Card from '../components/Card'
+import PasswordInput, { hasHangul } from '../components/PasswordInput'
 import FeedbackCard from '../components/FeedbackCard'
 import { shareInvite } from '../lib/invite'
+import { saveFile } from '../lib/native'
 import { marketingConsentOf, setMarketingConsent } from '../lib/marketing'
 import { listRequests } from '../lib/reportAdmin'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import * as db from '../lib/db'
 import { amIStaff } from '../lib/qna'
-import { deleteMyAccount } from '../lib/db'
+import { deleteMyAccount, signOutEverywhere } from '../lib/db'
+import { deleteMyPushData } from '../lib/pushPrefs'
+import NotificationSettings from '../components/NotificationSettings'
+import { forgetPushToken } from '../lib/pushNative'
 import { COLOR_STYLE, MEMBER_COLORS, memberColor, type MemberColor } from '../lib/memberColors'
 import { GROUP_LABEL, GROUP_ORDER, visibleCategories } from '../lib/constants'
 import type { AppData, CategoryGroup } from '../types'
@@ -88,6 +93,9 @@ export default function Settings() {
       return
     setDeleting(true)
     try {
+      await forgetPushToken()
+      // 서버의 푸시 토큰·설정·기록 삭제 — 웹에서 탈퇴해도 폰에 토큰이 남아 있을 수 있어 앱 여부와 상관없이 부른다. 실패해도 탈퇴는 계속
+      await deleteMyPushData().catch((err) => console.warn('[push] 푸시 데이터 삭제 실패', err))
       await deleteMyAccount()
       await supabase.auth.signOut()
       alert('탈퇴가 완료됐어요. 그동안 함께해 주셔서 고마웠어요 🤍')
@@ -158,15 +166,30 @@ export default function Settings() {
     void refreshCategories()
   }, [refreshCategories])
 
-  const handleExport = () => {
+  // 백업 파일 — 소비 기록 전부를 같이 담고, 끝나면 알려 준다 (2026-11-19 점검: 기록이 빠지고 아무 말이 없었다)
+  const [exportMsg, setExportMsg] = useState('')
+  const handleExport = async () => {
     const data = exportData()
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `gypz-ledger-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    const hid = useLedgerStore.getState().householdId
+    if (hid) {
+      try {
+        data.confessions = await db.fetchAllConfessions(hid)
+      } catch {
+        alert('소비 기록을 다 읽지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.')
+        return
+      }
+    }
+    const name = `moabuli-backup-${new Date().toLocaleDateString('sv-SE')}.json`
+    const r = await saveFile(
+      new File([JSON.stringify(data, null, 2)], name, { type: 'application/json' }),
+    )
+    if (r === 'failed') alert('파일을 저장하지 못했어요. 다시 시도해 주세요.')
+    else {
+      setExportMsg(
+        `${name} 파일로 저장했어요 · 소비 기록 ${(data.confessions ?? []).length}건 포함`,
+      )
+      setTimeout(() => setExportMsg(''), 4000)
+    }
   }
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,6 +200,15 @@ export default function Settings() {
       try {
         const data = JSON.parse(String(reader.result)) as AppData
         if (!data.profile || !Array.isArray(data.ledgers)) throw new Error('형식 오류')
+        // 지금 가계부를 통째로 바꾸는 일이라 한 번 묻는다 (2026-11-19 점검)
+        if (
+          !window.confirm(
+            data.confessions
+              ? '지금 가계부가 이 파일 내용으로 통째로 바뀌어요. 계속할까요?'
+              : '정산·자산·비정기 지출이 이 파일 내용으로 바뀌어요. 소비 기록은 지금 것을 그대로 둬요. 계속할까요?',
+          )
+        )
+          return
         importData(data)
         alert('가져오기 완료!')
       } catch {
@@ -208,10 +240,14 @@ export default function Settings() {
             <Card>
               <h2 className="mb-1 text-[15px] font-bold text-ink">부부 연결</h2>
               <p className="text-[13px] text-sub">
-                {memberNo
-                  ? `내 계정은 구성원 ${memberNo}(${memberNo === 1 ? profile.member1Name : profile.member2Name})이에요. `
-                  : ''}
-                배우자에게 아래 초대 코드를 알려주면 함께 쓸 수 있어요.
+                {/* 예시에선 계정도 초대 코드도 없다 — 눌러도 아무 일 없던 버튼 대신 안내 (2026-11-19 점검) */}
+                {!inviteCode
+                  ? '가입하면 초대 코드가 생겨요. 배우자에게 보내면 같은 가계부를 함께 써요.'
+                  : `${
+                      memberNo
+                        ? `내 계정은 구성원 ${memberNo}(${memberNo === 1 ? profile.member1Name : profile.member2Name})이에요. `
+                        : ''
+                    }배우자에게 아래 초대 코드를 알려주면 함께 쓸 수 있어요.`}
               </p>
               <div className="mt-3 flex items-center gap-2">
                 <span className="tnum flex-1 rounded-btn bg-bg px-4 py-3 text-center text-[18px] font-extrabold tracking-[0.25em] text-ink">
@@ -219,7 +255,8 @@ export default function Settings() {
                 </span>
                 <button
                   onClick={copyInvite}
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-btn bg-bg text-sub active:bg-line"
+                  disabled={!inviteCode}
+                  className="flex h-12 w-12 disabled:opacity-40 shrink-0 items-center justify-center rounded-btn bg-bg text-sub active:bg-line"
                   aria-label="초대 코드 복사"
                 >
                   {copied ? <Check size={19} /> : <Copy size={19} />}
@@ -227,7 +264,8 @@ export default function Settings() {
               </div>
               <button
                 onClick={sendInvite}
-                className="mt-2 flex h-12 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
+                disabled={!inviteCode}
+                className="mt-2 flex h-12 disabled:opacity-40 w-full items-center justify-center gap-1.5 rounded-btn bg-brand text-[15px] font-bold text-white shadow-cta active:bg-brand-dark"
               >
                 <Share2 size={17} />
                 {invited ? '보냈어요' : '배우자에게 초대 보내기'}
@@ -402,7 +440,19 @@ export default function Settings() {
                           className="inline-flex items-center gap-1 rounded-full bg-bg px-3 py-1.5 text-[13px] font-medium text-ink"
                         >
                           {c}
-                          <button onClick={() => removeCategory(g, c)} aria-label={`${c} 삭제`}>
+                          {/* 지우기 전에 묻는다 — 목록에서만 빠지고 적어 둔 기록은 남는다 (2026-11-19 점검) */}
+                          <button
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `'${c}' 항목을 목록에서 뺄까요? 이미 적은 기록은 그대로 남아요.`,
+                                )
+                              )
+                                removeCategory(g, c)
+                            }}
+                            aria-label={`${c} 삭제`}
+                            className="-m-1.5 p-1.5"
+                          >
                             <X size={13} className="text-cap" />
                           </button>
                         </span>
@@ -452,6 +502,11 @@ export default function Settings() {
                 >
                   <Download size={18} /> JSON 내보내기
                 </button>
+                {exportMsg && (
+                  <p className="px-1 text-[12px] font-semibold text-brand" role="status">
+                    {exportMsg}
+                  </p>
+                )}
                 <button
                   onClick={() => fileRef.current?.click()}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
@@ -474,6 +529,12 @@ export default function Settings() {
               </div>
             </Card>
 
+            {/* 알림 (2026-11-04) — 앱에서만 스위치, 웹은 안내 한 줄 */}
+            <Card>
+              <h2 className="mb-3 text-[15px] font-bold text-ink">알림</h2>
+              <NotificationSettings />
+            </Card>
+
             {/* 계정 */}
             <Card>
               <h2 className="mb-3 text-[15px] font-bold text-ink">계정</h2>
@@ -482,7 +543,7 @@ export default function Settings() {
                 <MarketingToggle />
                 <PasswordForm />
                 <button
-                  onClick={() => supabase.auth.signOut()}
+                  onClick={() => signOutEverywhere()}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-btn bg-bg text-[15px] font-semibold text-ink active:bg-line"
                 >
                   <LogOut size={18} /> 로그아웃
@@ -622,15 +683,34 @@ function MarketingToggle() {
 }
 
 function PasswordForm() {
-  const [open, setOpen] = useState(false)
+  // 비밀번호 재설정 메일 링크로 왔으면 바로 새 비밀번호 칸을 연다 (2026-11-19)
+  const location = useLocation()
+  const [open, setOpen] = useState(
+    () => !!(location.state as { resetPassword?: boolean } | null)?.resetPassword,
+  )
   const [pw, setPw] = useState('')
+  // 한 번 더 (2026-11-23 제보: 정한 비밀번호로 이메일 로그인이 안 됨 — 오타를 못 보고 정했다)
+  const [pw2, setPw2] = useState('')
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
+  // 로그인할 때 쓸 이메일 — 구글로 가입했으면 그 Gmail 주소
+  const [email, setEmail] = useState('')
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''))
+  }, [])
 
   const save = async () => {
     if (busy) return
     if (pw.length < 6) {
       setMsg({ text: '비밀번호는 6자 이상이어야 해요.', ok: false })
+      return
+    }
+    if (hasHangul(pw)) {
+      setMsg({ text: '비밀번호에 한글이 섞였어요. 영문 자판으로 바꿔서 쳐 주세요.', ok: false })
+      return
+    }
+    if (pw !== pw2) {
+      setMsg({ text: '두 칸의 비밀번호가 달라요. 눈 버튼으로 확인해 보세요.', ok: false })
       return
     }
     setBusy(true)
@@ -643,10 +723,13 @@ function PasswordForm() {
       setMsg({ text, ok: false })
     } else {
       setMsg({
-        text: '✅ 비밀번호가 설정됐어요. 이제 어디서든 이메일+비밀번호로 로그인하세요!',
+        text: email
+          ? `✅ 비밀번호를 정했어요. 이제 ${email} + 이 비밀번호로도 로그인할 수 있어요.`
+          : '✅ 비밀번호를 정했어요. 이제 이메일 + 이 비밀번호로도 로그인할 수 있어요.',
         ok: true,
       })
       setPw('')
+      setPw2('')
       setOpen(false)
     }
   }
@@ -655,20 +738,32 @@ function PasswordForm() {
     <div className="space-y-2">
       {open ? (
         <div className="space-y-2 rounded-btn bg-bg p-3">
-          <input
-            type="password"
+          {email && (
+            <p className="px-1 text-[12.5px] text-sub">
+              로그인 이메일 <b className="text-ink">{email}</b>
+            </p>
+          )}
+          <PasswordInput
             value={pw}
-            onChange={(e) => setPw(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && save()}
+            onChange={setPw}
             placeholder="새 비밀번호 (6자 이상)"
+            label="새 비밀번호"
             autoComplete="new-password"
-            className="w-full rounded-btn border border-line bg-white px-3.5 py-3 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
+          />
+          <PasswordInput
+            value={pw2}
+            onChange={setPw2}
+            onEnter={save}
+            placeholder="한 번 더"
+            label="새 비밀번호 한 번 더"
+            autoComplete="new-password"
           />
           <div className="flex gap-2">
             <button
               onClick={() => {
                 setOpen(false)
                 setPw('')
+                setPw2('')
                 setMsg(null)
               }}
               className="h-11 flex-1 rounded-btn bg-white text-[14px] font-semibold text-sub active:bg-line"
@@ -677,7 +772,7 @@ function PasswordForm() {
             </button>
             <button
               onClick={save}
-              disabled={busy || pw.length < 6}
+              disabled={busy || pw.length < 6 || !pw2}
               className="h-11 flex-1 rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark disabled:opacity-40"
             >
               {busy ? '저장 중…' : '저장'}

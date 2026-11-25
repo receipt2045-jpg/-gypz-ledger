@@ -45,7 +45,7 @@ vi.mock('../lib/posts', async (orig) => ({
   ]),
 }))
 
-describe('돈 공부 탭 — 계산기 · 오늘의 경제 · 원팀프로젝트 · 공지', () => {
+describe('돈 공부 탭 — 자료 나눔 · 오늘의 경제 · 계산기 · 원팀프로젝트', () => {
   const renderInfo = () =>
     render(
       <MemoryRouter initialEntries={['/info']}>
@@ -59,33 +59,23 @@ describe('돈 공부 탭 — 계산기 · 오늘의 경제 · 원팀프로젝트
       </MemoryRouter>,
     )
 
-  it('육아휴직 계산기 소식이 공지로 보인다', () => {
-    renderInfo()
-    expect(screen.getByText('🍼 육아휴직 계산기가 나왔어요')).toBeInTheDocument()
-    expect(screen.getByText('9월 30일')).toBeInTheDocument()
-  })
-
-  it('폰: 계산기 → 원팀프로젝트 → 자료 나눔 → 오늘의 경제', async () => {
+  it('폰: 자료 나눔 → 오늘의 경제 → 계산기 → 원팀프로젝트, 공지 칸은 없다 (2026-11-21)', async () => {
     renderInfo()
     await screen.findByText('매물 고갈된 전세 시장')
     const names = screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'))
-    expect(names).toEqual(['계산기', '원팀프로젝트', '자료 나눔', '오늘의 경제', '공지'])
+    expect(names).toEqual(['자료 나눔', '오늘의 경제', '계산기'])
+    // 원팀프로젝트는 맨 아래 작은 띠
+    const band = screen.getByRole('button', { name: /원팀프로젝트/ })
+    const calc = screen.getByRole('region', { name: '계산기' })
+    expect(calc.compareDocumentPosition(band) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByText('🍼 육아휴직 계산기가 나왔어요')).not.toBeInTheDocument()
+    expect(screen.queryByText(/보내주신 의견/)).not.toBeInTheDocument()
   })
 
-  it('원팀프로젝트 칸: 소개 페이지 링크와 5기 이야기', () => {
+  it('원팀프로젝트 띠를 누르면 5기 부부 이야기로', () => {
     renderInfo()
-    expect(screen.getByRole('link', { name: /원팀프로젝트 보러가기/ })).toHaveAttribute(
-      'href',
-      'https://oneteamm.netlify.app',
-    )
-    fireEvent.click(screen.getByText('5기 부부들은 이렇게 하고 있어요'))
+    fireEvent.click(screen.getByRole('button', { name: /원팀프로젝트/ }))
     expect(screen.getByText('이야기 화면')).toBeInTheDocument()
-  })
-
-  it('공지의 계산해보기로 계산기에 간다', () => {
-    renderInfo()
-    fireEvent.click(screen.getByRole('button', { name: /계산해보기/ }))
-    expect(screen.getByText('계산기 화면')).toBeInTheDocument()
   })
 
   it('계산기 칸에서도 육아휴직 계산기로 간다', () => {

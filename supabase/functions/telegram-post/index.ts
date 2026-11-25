@@ -134,12 +134,14 @@ function kakaoText(original: string) {
   return `${original.trim()}\n\n📱 지난 글은 모아불리에서 모아 봐요\nhttps://moabuli.com/news`;
 }
 
-async function reply(chatId: number, text: string, replyTo?: number) {
+// 부부방에 주제(칸)가 켜져 있으면(2026-11-24) 받은 글이 있던 칸으로 답한다. 없으면 General
+async function reply(chatId: number, thread: number | undefined, text: string, replyTo?: number) {
   await fetch(`https://api.telegram.org/bot${BOT}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
+      ...(thread ? { message_thread_id: thread } : {}),
       text,
       disable_web_page_preview: true,
       ...(replyTo ? { reply_parameters: { message_id: replyTo } } : {}),
@@ -174,11 +176,12 @@ Deno.serve(async (req) => {
     const msg = update.message ?? update.edited_message;
     if (!msg) return new Response("ok");
     const chatId: number = msg.chat.id;
+    const thread: number | undefined = msg.is_topic_message ? msg.message_thread_id : undefined;
     const text: string = (msg.text ?? msg.caption ?? "").trim();
 
     // 처음 설정할 때 — 내 대화방 번호를 알려준다
     if (text === "/id" || text === "/start") {
-      await reply(chatId, `이 대화방 번호: ${chatId}\nSupabase의 TELEGRAM_ALLOWED_CHAT_ID에 넣어 주세요.`);
+      await reply(chatId, thread, `이 대화방 번호: ${chatId}\nSupabase의 TELEGRAM_ALLOWED_CHAT_ID에 넣어 주세요.`);
       return new Response("ok");
     }
     if (!ALLOWED || String(chatId) !== ALLOWED) return new Response("ok");
@@ -192,10 +195,10 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
       if (!data) {
-        await reply(chatId, "지울 글이 없어요.");
+        await reply(chatId, thread, "지울 글이 없어요.");
       } else {
         await db.from("posts").delete().eq("id", data.id);
-        await reply(chatId, `🗑 지웠어요: ${data.title}`);
+        await reply(chatId, thread, `🗑 지웠어요: ${data.title}`);
       }
       return new Response("ok");
     }
@@ -204,7 +207,7 @@ Deno.serve(async (req) => {
     const source = stripCommand(POST_WORDS.test(text) ? (msg.reply_to_message?.text ?? "") : text);
     if (!source || source.length < 20) {
       await reply(
-        chatId,
+        chatId, thread,
         '올릴 글을 못 찾았어요. 뉴스 메시지에 "올려"라고 답장하거나, 고친 글을 통째로 보내 주세요.',
       );
       return new Response("ok");
@@ -212,18 +215,18 @@ Deno.serve(async (req) => {
 
     const r = await savePost(db, source);
     if (!r.ok) {
-      await reply(chatId, `앱에 못 올렸어요: ${r.reason}`);
+      await reply(chatId, thread, `앱에 못 올렸어요: ${r.reason}`);
       return new Response("ok");
     }
 
     const [, mm, dd] = r.post.post_date.split("-");
     const head = r.replaced ? "✏️ 고친 글로 바꿨어요" : "✅ 앱에 올렸어요";
     await reply(
-      chatId,
+      chatId, thread,
       `${head} · ${Number(mm)}월 ${Number(dd)}일 ${r.post.title}\n잘못 올렸으면 "지워"라고 보내 주세요.\n\n아래 글을 길게 눌러 복사해서 카톡방에 붙여넣으세요 👇`,
       msg.message_id,
     );
-    await reply(chatId, kakaoText(source));
+    await reply(chatId, thread, kakaoText(source));
   } catch (err) {
     console.error(err);
   }

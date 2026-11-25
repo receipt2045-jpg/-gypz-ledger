@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "400039754836",
+    "project_id": "striped-century-502904-r5",
+    "storage_bucket": "striped-century-502904-r5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:400039754836:android:6a8458cbfb37b72d5281c1",
+        "android_client_info": {
+          "package_name": "moabuli.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "400039754836-8arc5cj2tnecbqo3l2t4c87llrdhjolq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXq89JXTRAw6YRZHMQVx07LSLupZfENo0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "400039754836-8arc5cj2tnecbqo3l2t4c87llrdhjolq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

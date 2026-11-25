@@ -26,6 +26,7 @@ import { leaveCardFile } from '../lib/leaveCard'
 import { leaveNumbersFromLedgers, type LedgerNumbers } from '../lib/leaveFromLedger'
 import { useLedgerStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
+import { isNative, shareFile } from '../lib/native'
 import { fetchHouseholdData, getMyMembership } from '../lib/db'
 import { formatMonthKorean } from '../lib/format'
 import type { MonthlyLedger } from '../types'
@@ -303,8 +304,8 @@ export default function ParentalLeave() {
               </ul>
               <p className="mt-3">
                 아이가 태어나자마자 휴직을 시작하고, 고정비·변동비는 지금 그대로 쓴다고 봤어요.
-                급여는 세전 월급(통상임금) 기준이라 실수령으로 넣으면 실제로는 같거나 조금 더
-                받아요. 방향을 보는 용도로만 쓰시고, 정확한 금액은 고용보험에서 확인하세요.
+                월급 칸은 평소 살림을 보려고 실수령으로 받아요. 휴직급여는 원래 세전 월급(통상임금)으로
+                정해져서, 실제로 받는 휴직급여는 이 계산과 같거나 조금 더 많아요. 방향을 보는 용도로만 쓰시고, 정확한 금액은 고용보험에서 확인하세요.
               </p>
             </div>
           </div>
@@ -500,19 +501,7 @@ function ImageSheet({ file, onClose }: { file: File; onClose: () => void }) {
     typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
 
   const onSave = async () => {
-    if (canShareFile) {
-      try {
-        await navigator.share({ files: [file], title: '모아불리 육아휴직 계산' })
-        return
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
-      }
-    }
-    if (!url) return
-    const a = document.createElement('a')
-    a.href = url
-    a.download = file.name
-    a.click()
+    await shareFile(file, '모아불리 육아휴직 계산')
   }
 
   return (
@@ -545,7 +534,7 @@ function ImageSheet({ file, onClose }: { file: File; onClose: () => void }) {
           className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white"
         >
           <Download size={17} />
-          {canShareFile ? '사진에 저장하거나 보내기' : '이미지 저장하기'}
+          {canShareFile || isNative() ? '사진에 저장하거나 보내기' : '이미지 저장하기'}
         </button>
         <p className="mt-2 text-center text-[12px] text-cap">
           저장이 안 되면 이미지를 길게 눌러 저장하세요.

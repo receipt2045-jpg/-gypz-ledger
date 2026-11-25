@@ -6,9 +6,9 @@ import { Baby, ChevronLeft, ChevronRight, UserRound } from 'lucide-react'
 import AssetEditor from '../components/AssetEditor'
 import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
-import { activeYm, genId, mergeAssets, netWorthOf, resolveSnapshot } from '../lib/carryover'
+import { assetEditYm, genId, mergeAssets, netWorthOf, resolveSnapshot } from '../lib/carryover'
 import { memberStyle } from '../lib/memberColors'
-import { abbreviateKRW } from '../lib/format'
+import { abbreviateKRW, formatYmKorean } from '../lib/format'
 import type { AssetItem } from '../types'
 
 /**
@@ -20,7 +20,17 @@ export default function AssetSetup() {
   const location = useLocation()
   const { ledgers, snapshots, profile, memberNo, saveSnapshot } = useLedgerStore()
 
-  const [ym] = useState(() => activeYm(ledgers))
+  // 자산 탭에서 어디를 눌렀는지 (2026-11-17) — 누구 것 · 어느 항목 · 지난달이면 그 달
+  const nav =
+    (location.state as {
+      owner?: string
+      focusId?: string
+      focusName?: string
+      ym?: string
+    } | null) ?? {}
+  const [ym] = useState(() => nav.ym ?? assetEditYm(ledgers, snapshots))
+  // 지난달을 고치러 왔으면 어느 달인지 위에 적어 둔다
+  const monthNote = nav.ym ? `${formatYmKorean(nav.ym)} 자산을 고쳐요 · ` : ''
   // 화면을 열 때의 원본 — 저장할 때 '내가 지운 것'과 '배우자가 그사이 추가한 것'을 가르는 기준
   const [baseline] = useState<AssetItem[]>(() => resolveSnapshot(snapshots, ym).items)
   const [assets, setAssets] = useState<AssetItem[]>(() => baseline.map((it) => ({ ...it })))
@@ -30,7 +40,7 @@ export default function AssetSetup() {
 
   // 자산 탭 카드에서 넘어온 경우 그 소유자를 바로 선택 (공동은 로그인 구성원 편집기로)
   const initSel = () => {
-    const owner = (location.state as { owner?: string } | null)?.owner
+    const owner = nav.owner
     if (!owner) return null
     if (owner === '공동') return memberNames[(memberNo ?? 1) - 1]
     return owner // 부부 또는 자녀 이름
@@ -77,7 +87,7 @@ export default function AssetSetup() {
 
   const save = () => {
     void persist()
-    navigate('/assets')
+    navigate('/assets', { state: { saved: true } })
   }
 
   // ── 구성원 선택 (부부 + 자녀) ─────────────
@@ -87,7 +97,7 @@ export default function AssetSetup() {
         <Header
           onBack={() => navigate(-1)}
           title="자산 등록"
-          subtitle="어떤 통장에 얼마 있는지 확인해 봐요"
+          subtitle={`${monthNote}어떤 통장에 얼마 있는지 확인해 봐요`}
         />
         <div className="flex-1 space-y-3 px-5 pt-4">
           {([1, 2] as const).map((m) => {
@@ -173,6 +183,10 @@ export default function AssetSetup() {
           childNames.includes(a.owner!),
       )
   const netWorth = netWorthOf({ ym, items: assets })
+  // 누른 항목 — 같은 id가 없으면(앞달에서 이어 온 달) 같은 이름으로
+  const focusId =
+    visibleAssets.find((a) => a.id === nav.focusId)?.id ??
+    visibleAssets.find((a) => a.name === nav.focusName)?.id
 
   return (
     <Frame>
@@ -180,9 +194,10 @@ export default function AssetSetup() {
         onBack={saveAndBack}
         title="자산 등록"
         subtitle={
-          isChild
+          monthNote +
+          (isChild
             ? `${selName} · 자녀 앞으로 모아둔 통장을 입력해요`
-            : `${selName} · 내 통장과 공동 통장을 입력해요`
+            : `${selName} · 내 통장과 공동 통장을 입력해요`)
         }
       />
       <div className="flex-1 px-5 pb-32">
@@ -190,6 +205,7 @@ export default function AssetSetup() {
           assets={visibleAssets}
           ownerOptions={['공동', ...memberNames, ...childNames]}
           defaultOwner={selName}
+          focusId={focusId}
           onChange={setAmount}
           onNote={setNote}
           onUpdate={updateAsset}

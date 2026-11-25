@@ -1,7 +1,7 @@
 import { abbreviateKRW } from '../lib/format'
 import type { BudgetItem } from '../types'
 
-interface CatBudget {
+export interface CatBudget {
   category: string
   planned: number
   actual: number
@@ -11,18 +11,20 @@ interface CatBudget {
  * 카테고리별 예산 대비 지출 막대 (호호양·구채희 홈의 대표 만족 요소).
  * 예산(계획) 대비 실제 사용률을 가로 막대로. 초과는 빨강.
  */
-export default function BudgetBars({
-  items,
-  confessed,
-  settledMembers = [],
+type SpendGroup = 'fixed' | 'variable'
+
+/**
+ * 카테고리별 예산·쓴 돈 — 막대와 가계부 탭 요약 칸(고정비·변동비, 2026-11-24)이 같이 쓴다.
+ * group을 주면 그 그룹만.
+ */
+export function budgetCats(
+  items: BudgetItem[],
+  confessed: Map<string, number> | null | undefined,
+  settledMembers: (1 | 2)[] = [],
   closed = false,
-}: {
-  items: BudgetItem[]
-  /** (구성원:그룹:카테고리) → 이번 달 소비 기록 합계. 정산 전인 사람 몫을 채우는 데 쓴다 */
-  confessed?: Map<string, number> | null
-  settledMembers?: (1 | 2)[]
-  closed?: boolean
-}) {
+  group?: SpendGroup,
+): { cats: CatBudget[]; planned: number; actual: number; fromLog: boolean } {
+  const inGroup = (g: string) => (group ? g === group : g === 'fixed' || g === 'variable')
   /**
    * 제보(9/10): "지출에서 각 카테고리별로 현재 얼마나 사용했는지 알 수 있었으면".
    * 정산 전엔 실제값이 0이라 막대가 늘 비어 있었다. 아직 정산 안 한 사람 몫은
@@ -42,7 +44,7 @@ export default function BudgetBars({
     map.set(category, cur)
   }
   for (const it of items) {
-    if (it.group !== 'fixed' && it.group !== 'variable') continue
+    if (!inGroup(it.group)) continue
     let actual = it.actual
     const key = `${it.member}:${it.group}:${it.category}`
     if (fillFromLog(it.member) && !applied.has(key)) {
@@ -59,9 +61,9 @@ export default function BudgetBars({
   if (confessed) {
     for (const [key, amount] of confessed) {
       if (applied.has(key) || amount <= 0) continue
-      const [m, group, ...rest] = key.split(':')
+      const [m, g, ...rest] = key.split(':')
       const member = Number(m) as 1 | 2
-      if ((group !== 'fixed' && group !== 'variable') || !fillFromLog(member)) continue
+      if (!inGroup(g) || !fillFromLog(member)) continue
       add(rest.join(':'), 0, amount)
       fromLog = true
     }
@@ -77,8 +79,35 @@ export default function BudgetBars({
       return a.planned > 0 ? b.planned - a.planned : b.actual - a.actual
     })
 
-  const totalPlanned = cats.reduce((s, c) => s + c.planned, 0)
-  const totalActual = cats.reduce((s, c) => s + c.actual, 0)
+  return {
+    cats,
+    planned: cats.reduce((s, c) => s + c.planned, 0),
+    actual: cats.reduce((s, c) => s + c.actual, 0),
+    fromLog,
+  }
+}
+
+export default function BudgetBars({
+  items,
+  confessed,
+  settledMembers = [],
+  closed = false,
+  group,
+}: {
+  items: BudgetItem[]
+  /** (구성원:그룹:카테고리) → 이번 달 소비 기록 합계. 정산 전인 사람 몫을 채우는 데 쓴다 */
+  confessed?: Map<string, number> | null
+  settledMembers?: (1 | 2)[]
+  closed?: boolean
+  /** 고정비나 변동비만 볼 때 */
+  group?: SpendGroup
+}) {
+  const {
+    cats,
+    planned: totalPlanned,
+    actual: totalActual,
+    fromLog,
+  } = budgetCats(items, confessed, settledMembers, closed, group)
 
   if (cats.length === 0) {
     return (
@@ -94,8 +123,10 @@ export default function BudgetBars({
     <div className="space-y-3">
       {/* 전체 사용률 */}
       <div className="flex items-center justify-between text-[13px]">
+        {/* 홈 카드는 변동지출만이라 숫자가 달라 보인다 — 고정비가 들어간다고 밝힌다 (2026-11-19 점검) */}
         <span className="text-sub">
-          지출 <span className="tnum font-bold text-ink">{abbreviateKRW(totalActual)}</span>
+          {group === 'fixed' ? '고정비' : group === 'variable' ? '변동지출' : '고정비+변동지출'}{' '}
+          <span className="tnum font-bold text-ink">{abbreviateKRW(totalActual)}</span>
           <span className="text-cap"> / 예산 {abbreviateKRW(totalPlanned)}</span>
         </span>
         <span
@@ -106,7 +137,9 @@ export default function BudgetBars({
       </div>
 
       {fromLog && (
-        <p className="-mt-1 text-[11.5px] text-cap">정산 전인 분은 이번 달 소비 기록으로 채웠어요</p>
+        <p className="-mt-1 text-[11.5px] text-cap">
+          정산 전인 분은 이번 달 소비 기록으로 채웠어요
+        </p>
       )}
 
       {/* 카테고리별 막대 */}
@@ -123,7 +156,10 @@ export default function BudgetBars({
                 <span className="font-medium text-ink">{c.category}</span>
                 <span className={`tnum ${over ? 'font-bold text-danger' : 'text-sub'}`}>
                   {abbreviateKRW(c.actual)}
-                  <span className="text-cap"> / {unbudgeted ? '예산 없음' : abbreviateKRW(c.planned)}</span>
+                  <span className="text-cap">
+                    {' '}
+                    / {unbudgeted ? '예산 없음' : abbreviateKRW(c.planned)}
+                  </span>
                 </span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-line">

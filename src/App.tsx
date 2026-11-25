@@ -10,7 +10,7 @@ import { attachSourceToUser, captureSource } from './lib/source'
 import { capturePendingInvite, restoreInviteFromAccount } from './lib/invite'
 import { applyMarketingChoice } from './lib/marketing'
 import { rememberLogin, startsAtLogin } from './lib/preview'
-import { getMyMembership, type Membership } from './lib/db'
+import { getMyMembership, signOutEverywhere, type Membership } from './lib/db'
 import { useLedgerStore } from './lib/store'
 import AppFrame from './components/AppFrame'
 import SyncBanner from './components/SyncBanner'
@@ -18,6 +18,7 @@ import UpdateBanner from './components/UpdateBanner'
 import PreviewBar from './components/PreviewBar'
 import Home from './pages/Home'
 import Monthly from './pages/Monthly'
+import SideIncome from './pages/SideIncome'
 import Assets from './pages/Assets'
 import Stocks from './pages/Stocks'
 import StockJournal from './pages/StockJournal'
@@ -43,14 +44,23 @@ import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import IntroSlides from './pages/IntroSlides'
 import Legal from './pages/Legal'
+import AuthConfirm from './pages/AuthConfirm'
 import ParentalLeave from './pages/ParentalLeave'
 import Gold from './pages/Gold'
 import Recipes from './pages/Recipes'
 import GiftGuide from './pages/GiftGuide'
 import ChildBenefit from './pages/ChildBenefit'
+import Coupang from './pages/Coupang'
+import Cofix from './pages/Cofix'
+import Survey from './pages/Survey'
+import Values from './pages/Values'
+import Toothpaste from './pages/Toothpaste'
+import ShareDock from './components/ShareDock'
+import MoneyToon from './pages/MoneyToon'
 import Share from './pages/Share'
 import PublicNews from './pages/PublicNews'
 import Roadmap from './pages/Roadmap'
+import { syncPushToken } from './lib/pushNative'
 
 export default function App() {
   return (
@@ -60,6 +70,8 @@ export default function App() {
       <Routes>
         {/* 방침·약관은 로그인 전에도 열람 가능 */}
         <Route path="/legal/:doc" element={<Legal />} />
+        {/* 메일 링크(가입 확인·비밀번호 재설정) — moabuli.com에서 직접 처리해야 앱으로 열린다 */}
+        <Route path="/auth/confirm" element={<AuthConfirm />} />
         {/* 육아휴직 계산기 — 영상·SNS에서 바로 들어오는 자리라 로그인 밖에 둔다 */}
         <Route path="/leave" element={<ParentalLeave />} />
         {/* 금테크 정리 — 단톡·인스타에서 바로 들어오는 자리라 로그인 밖에 둔다 */}
@@ -70,6 +82,16 @@ export default function App() {
         {/* 아이 통장 증여 신고 정리 · 부모급여·아동수당 계산기 (2026-10-27) — 공개 자료 */}
         <Route path="/gift-guide" element={<GiftGuide />} />
         <Route path="/child-benefit" element={<ChildBenefit />} />
+        {/* 쿠팡에서 돈 돌려받는 법 (2026-11-09) — 릴스 댓글 '쿠팡'으로 받은 링크가 오는 자리 */}
+        <Route path="/coupang" element={<Coupang />} />
+        {/* 코픽스 오르면 이자 얼마 더 (2026-11-17) — 머니그랩 코픽스 툰 댓글로 받은 링크가 오는 자리 */}
+        <Route path="/cofix" element={<Cofix />} />
+        <Route path="/survey" element={<Survey />} />
+        <Route path="/values" element={<Values />} />
+        {/* 무불소 아기치약 10종 비교 + 양치 파우치 3종 (2026-11-21) — 인스타 링크로 들어오는 자리 */}
+        <Route path="/toothpaste" element={<Toothpaste />} />
+        <Route path="/money" element={<MoneyToon />} />
+        <Route path="/money/:slug" element={<MoneyToon />} />
         {/* 결영이네 자료 나눔 목록 (2026-10-24) — 단톡방 공지에 거는 링크 하나 */}
         <Route path="/share" element={<Share />} />
         {/* 오늘의 경제 — 카톡 톡방 링크로 들어오는 자리라 로그인 밖에 둔다 */}
@@ -83,6 +105,8 @@ export default function App() {
         <Route path="/consult" element={<Consult />} />
         <Route path="*" element={<AuthGate />} />
       </Routes>
+      {/* 자료 화면이면 맨 아래에 '몇 명이 봤어요 · 공유하기' (2026-11-21) */}
+      <ShareDock />
     </>
   )
 }
@@ -95,6 +119,17 @@ async function onSignedIn(user: User) {
   rememberLogin(true) // 다음에 이 기기로 오면 예시 대신 로그인 화면부터
   await attachSourceToUser(user)
   await applyMarketingChoice(user)
+  void syncPushToken(user.id) // 앱에서 알림을 켠 사람만 토큰을 다시 등록 (웹은 아무것도 안 함)
+  // 공개 페이지(#/values 등)에서 '로그인'을 눌러 왔으면 그 페이지로 돌려보낸다
+  try {
+    const back = localStorage.getItem('moabuli.returnTo')
+    if (back) {
+      localStorage.removeItem('moabuli.returnTo')
+      if (/^\/[a-z-]+$/.test(back)) window.location.hash = '#' + back
+    }
+  } catch {
+    /* 못 읽으면 홈 그대로 */
+  }
 }
 
 /**
@@ -128,10 +163,9 @@ function Preview({ onLogin }: { onLogin: () => void }) {
   if (status !== 'ready') return <Splash message="예시 가계부 불러오는 중…" />
   return (
     <>
-      {/* 안내 바가 화면 맨 위를 가리지 않게 그만큼 내린다 */}
-      <div className="h-[58px]" aria-hidden />
-      <AppRoutes />
+      {/* 안내 바는 화면 흐름 맨 위에 둔다 — 떠 있으면 정산·자산 등록의 뒤로가기·진행 막대를 덮었다 (2026-11-19 점검) */}
       <PreviewBar onStart={onLogin} onLogin={onLogin} />
+      <AppRoutes />
     </>
   )
 }
@@ -250,6 +284,7 @@ function AppRoutes() {
           {/* 옛 탭 주소(2026-09-30 개편 전) — 홈 화면 바로가기·링크가 깨지지 않게 */}
           <Route path="/board" element={<Navigate to="/info" replace />} />
           <Route path="/monthly" element={<Monthly />} />
+          <Route path="/side" element={<SideIncome />} />
           <Route path="/assets" element={<Assets />} />
           {/* 주식 일지 (2026-10-25) — 자산 탭 주식 칸에서 들어온다 */}
           <Route path="/stocks" element={<Stocks />} />
@@ -325,7 +360,7 @@ function Splash({ message, error }: { message: string; error?: boolean }) {
         </p>
         {error && (
           <button
-            onClick={() => supabase.auth.signOut()}
+            onClick={() => signOutEverywhere()}
             className="mt-6 text-[13px] text-cap underline"
           >
             로그아웃

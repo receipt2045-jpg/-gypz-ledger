@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Wallet } from 'lucide-react'
 import InAppBrowserNotice from '../components/InAppBrowserNotice'
+import PasswordInput, { hasHangul } from '../components/PasswordInput'
 import { supabase } from '../lib/supabase'
 import { pendingInvite } from '../lib/invite'
 import { stashMarketingChoice } from '../lib/marketing'
+import { loginWithGoogle as googleSignIn } from '../lib/googleLogin'
 
 // OAuth 로그인 후 돌아올 주소 (배포 주소가 바뀌어도 자동 대응)
 const redirectTo = window.location.origin + import.meta.env.BASE_URL
 
 // Supabase 에러 메시지 → 한국어
 function koError(message: string): string {
-  if (message.includes('Invalid login credentials')) return '이메일 또는 비밀번호가 맞지 않아요'
+  // 2026-11-23 제보: 구글로 가입한 뒤 비밀번호를 정했는데 이메일 로그인이 안 됨 — 무엇을 볼지 같이 알려 준다
+  if (message.includes('Invalid login credentials'))
+    return '이메일 또는 비밀번호가 맞지 않아요. 눈 버튼으로 친 글자를 확인해 보세요(한글 자판·대문자). 구글로 가입했다면 구글로 들어가서 설정 › 계정에서 비밀번호를 먼저 정해야 해요'
   if (message.includes('User already registered'))
     return '이미 가입된 이메일이에요. 로그인해 주세요'
   if (message.includes('Password should be at least')) return '비밀번호는 6자 이상이어야 해요'
@@ -46,12 +50,30 @@ export default function Login({ onPreview }: { onPreview?: () => void } = {}) {
     setBusy(true)
     setError('')
     const { error: err } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password,
     })
     setBusy(false)
     if (err) setError(koError(err.message))
     // 성공하면 App의 onAuthStateChange가 화면을 전환함
+  }
+
+  const resetPassword = async () => {
+    const to = email.trim().toLowerCase()
+    setError('')
+    setNotice('')
+    if (!to.includes('@')) {
+      setError('위 칸에 가입한 이메일을 먼저 적어 주세요.')
+      return
+    }
+    setBusy(true)
+    const { error: err } = await supabase.auth.resetPasswordForEmail(to, { redirectTo })
+    setBusy(false)
+    if (err) setError(koError(err.message))
+    else
+      setNotice(
+        '비밀번호를 다시 정하는 메일을 보냈어요. 메일의 링크를 누르면 새 비밀번호를 정할 수 있어요. (구글로 가입했다면 구글로 계속하기를 눌러 주세요)',
+      )
   }
 
   const signUp = async () => {
@@ -65,7 +87,7 @@ export default function Login({ onPreview }: { onPreview?: () => void } = {}) {
     setNotice('')
     const now = new Date().toISOString()
     const { data, error: err } = await supabase.auth.signUp({
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password,
       options: {
         emailRedirectTo: redirectTo,
@@ -92,12 +114,9 @@ export default function Login({ onPreview }: { onPreview?: () => void } = {}) {
     setError('')
     // 구글로 나갔다 돌아오면 화면 상태가 사라진다 — 고른 값을 맡겨 두고 간다
     stashMarketingChoice(marketing)
-    const { error: err } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo },
-    })
-    if (err) setError(koError(err.message))
-    // 성공하면 구글 로그인 페이지로 리디렉션됨
+    const { error: err } = await googleSignIn(redirectTo)
+    if (err) setError(koError(err))
+    // 웹: 성공하면 구글 로그인 페이지로 리디렉션됨 / 앱: 계정 선택 후 바로 로그인
   }
 
   return (
@@ -166,17 +185,24 @@ export default function Login({ onPreview }: { onPreview?: () => void } = {}) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="이메일 주소"
               autoComplete="email"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               className="w-full rounded-btn border border-line bg-white px-4 py-3.5 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
             />
-            <input
-              type="password"
+            <PasswordInput
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && signIn()}
+              onChange={setPassword}
+              onEnter={signIn}
               placeholder="비밀번호 (6자 이상)"
+              label="비밀번호"
               autoComplete="current-password"
-              className="w-full rounded-btn border border-line bg-white px-4 py-3.5 text-[15px] text-ink outline-none focus:border-brand placeholder:text-cap"
             />
+            {hasHangul(password) && (
+              <p className="px-1 text-[12.5px] font-semibold text-amber-700">
+                비밀번호에 한글이 섞였어요 — 영문 자판으로 바꿔서 쳐 주세요
+              </p>
+            )}
             <button
               onClick={signIn}
               disabled={!canSubmit}
@@ -190,6 +216,15 @@ export default function Login({ onPreview }: { onPreview?: () => void } = {}) {
               className="h-12 w-full rounded-btn bg-white text-[14px] font-semibold text-ink shadow-card active:bg-line disabled:opacity-40"
             >
               회원가입
+            </button>
+            {/* 비밀번호를 잊으면 되찾을 길이 없었다 (2026-11-19 점검) — 메일 링크 → 설정에서 새 비밀번호 */}
+            <button
+              type="button"
+              onClick={resetPassword}
+              disabled={busy}
+              className="w-full py-1 text-center text-[13px] font-medium text-sub underline-offset-2 active:underline"
+            >
+              비밀번호를 잊었어요
             </button>
             {password.length > 0 && password.length < 6 && (
               <p className="text-[13px] text-cap">비밀번호를 6자 이상 입력하면 버튼이 활성화돼요</p>

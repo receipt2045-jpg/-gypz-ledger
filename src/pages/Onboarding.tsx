@@ -1,11 +1,31 @@
 import MonthStartPicker from '../components/MonthStartPicker'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Heart, KeyRound, Plus, Target } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
-import { supabase } from '../lib/supabase'
-import { createHousehold, joinHousehold, pushProfile, type Membership } from '../lib/db'
+import {
+  createHousehold,
+  joinHousehold,
+  pushProfile,
+  signOutEverywhere,
+  type Membership,
+} from '../lib/db'
 import { abbreviateKRW } from '../lib/format'
 import { clearPendingInvite, pendingInvite } from '../lib/invite'
+import { supabase } from '../lib/supabase'
+
+/**
+ * 서버가 돌려준 이유를 그대로 보여 준다 (2026-11-20 제보).
+ * supabase 오류는 Error가 아니라 { message } 모양이라, 예전엔 늘 '참여하지 못했어요'만 떠서
+ * 이미 두 명이 들어와 있다는 진짜 이유가 가려졌다.
+ */
+const reasonOf = (err: unknown, fallback: string) =>
+  err &&
+  typeof err === 'object' &&
+  'message' in err &&
+  typeof err.message === 'string' &&
+  err.message
+    ? err.message
+    : fallback
 
 export default function Onboarding({ onDone }: { onDone: (m: Membership) => void }) {
   const [mode, setMode] = useState<'choose' | 'join' | 'profile'>('choose')
@@ -20,6 +40,11 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
   const [name2, setName2] = useState('아내')
   const [target, setTarget] = useState(1_000_000_000)
   const [startDay, setStartDay] = useState(1)
+  // 지금 로그인한 계정 — 전에 다른 방법(구글·이메일)으로 참여했으면 계정이 둘이 된다
+  const [account, setAccount] = useState('')
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => setAccount(data.user?.email ?? ''))
+  }, [])
 
   const handleCreate = async () => {
     if (busy) return
@@ -32,7 +57,7 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
       setBusy(false)
       setMode('profile')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '가계부를 만들지 못했어요')
+      setError(reasonOf(err, '가계부를 만들지 못했어요'))
       setBusy(false)
     }
   }
@@ -63,7 +88,7 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
       clearPendingInvite()
       onDone(m)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '참여하지 못했어요')
+      setError(reasonOf(err, '참여하지 못했어요'))
       setBusy(false)
     }
   }
@@ -250,14 +275,30 @@ export default function Onboarding({ onDone }: { onDone: (m: Membership) => void
           )}
 
           {error && <p className="mt-3 text-[13px] text-danger">{error}</p>}
+          {/* 이미 두 명 — 대부분 같은 사람이 다른 계정으로 한 번 더 들어온 경우다 (2026-11-20 제보) */}
+          {error.includes('이미 두 명') && (
+            <div className="mt-3 rounded-btn bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-800">
+              전에 이 초대로 참여한 적이 있다면, 그때 쓴 계정으로 다시 로그인해 주세요. 카톡 안에서
+              열었다면 크롬·사파리로 열어서 로그인해 보세요.
+              <button
+                onClick={() => signOutEverywhere()}
+                className="mt-2 block h-10 w-full rounded-btn bg-white text-[13.5px] font-bold text-amber-800 active:bg-amber-100"
+              >
+                다른 계정으로 로그인
+              </button>
+            </div>
+          )}
 
           {mode !== 'profile' && (
             <button
-              onClick={() => supabase.auth.signOut()}
+              onClick={() => signOutEverywhere()}
               className="mt-8 w-full text-center text-[13px] text-cap underline"
             >
               다른 계정으로 로그인
             </button>
+          )}
+          {mode !== 'profile' && account && (
+            <p className="mt-2 text-center text-[12px] text-cap">지금 로그인: {account}</p>
           )}
         </div>
       </div>

@@ -16,6 +16,10 @@ describe('해시 없이 들어온 주소 — 링크 서비스가 #을 떼거나 
     expect(hashFromPath('/leave', '?s=abc', '')).toBe('/#/leave?s=abc')
   })
 
+  it('메일 링크 /auth/confirm 쿼리를 해시로 옮긴다', () => {
+    expect(hashFromPath('/auth/confirm', '?token_hash=a&type=signup', '')).toBe('/#/auth/confirm?token_hash=a&type=signup')
+  })
+
   it('이미 해시가 있거나 첫 화면이면 건드리지 않는다', () => {
     expect(hashFromPath('/', '', '#/leave')).toBeNull()
     expect(hashFromPath('/', '', '')).toBeNull()

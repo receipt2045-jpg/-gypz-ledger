@@ -1,17 +1,17 @@
-import { useMemo, useState } from 'react'
-import { displayOwner } from '../lib/assetOwner'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, Pencil } from 'lucide-react'
-import AssetGlance from '../components/AssetGlance'
+import AssetGlance, { type EditTarget } from '../components/AssetGlance'
 import Card from '../components/Card'
 import StockJournalCard from '../components/StockJournalCard'
 import ChildMoneyCard from '../components/ChildMoneyCard'
 import { useLedgerStore } from '../lib/store'
-import { netWorthOf, resolveSnapshot, totalAssets } from '../lib/carryover'
-import { krwOf, useFxRates } from '../lib/fx'
+import { netWorthOf, resolveSnapshot } from '../lib/carryover'
+import { useFxRates } from '../lib/fx'
 import { abbreviateKRW, currentYm, formatYmKorean } from '../lib/format'
 import { computeRoadmap, roadmapInput } from '../lib/roadmap'
-import { assetSeries, isOwned } from '../lib/assetGlance'
+import { isOwned } from '../lib/assetGlance'
+import { assetTrend } from '../lib/assetTrend'
 
 /**
  * 자산 탭 — 한 화면에 담아 캡처 한 장으로 보이게 (2026-10-05).
@@ -21,21 +21,27 @@ import { assetSeries, isOwned } from '../lib/assetGlance'
  * 고치기는 오른쪽 위 연필 → 자산 등록 화면.
  *
  * 자산 로드맵 입구는 설정에서 여기로 옮겼다(2026-10-06) — 캡처 칸(기준 날짜 줄) 아래에 둬서 캡처엔 안 찍힌다.
+ *
+ * 2026-11-17 의견: 자산 구성을 맨 위로, 주식 일지·아이 통장은 그 아래로.
+ * 카드·이름·표 줄·흐름 그래프의 달 — 어디를 눌러도 그 자리를 고치러 간다.
  */
 export default function Assets() {
   const navigate = useNavigate()
+  // 자산 등록에서 '저장하기'로 왔으면 저장됐다고 잠깐 알려 준다 (2026-11-19 점검: 아무 말 없이 돌아왔다)
+  const location = useLocation()
+  const [savedMsg, setSavedMsg] = useState(
+    () => !!(location.state as { saved?: boolean } | null)?.saved,
+  )
+  useEffect(() => {
+    if (!savedMsg) return
+    const t = setTimeout(() => setSavedMsg(false), 3000)
+    return () => clearTimeout(t)
+  }, [savedMsg])
   const { snapshots, profile } = useLedgerStore()
   const rates = useFxRates()
-  const latestYm = snapshots.length ? snapshots[snapshots.length - 1].ym : currentYm()
-
-  const stored = resolveSnapshot(snapshots, latestYm)
-  // 외화 항목은 실시간 환율로 원화 환산 (현재 화면 기준)
-  const items = stored.items.map((it) => ({
-    ...it,
-    amount: krwOf(it, rates),
-    owner: displayOwner(it.owner, profile),
-  }))
-  const assets = totalAssets({ ...stored, items })
+  // 외화 항목은 실시간 환율로 원화 환산 (현재 화면 기준).
+  // 전체 자산 흐름 — 기록한 달부터 최근 12개월까지 (2026-11-17: 지난달도 눌러서 보게)
+  const { latestYm, items, series } = assetTrend(snapshots, profile, rates)
 
   const childNames = profile.childNames ?? []
   const owners = [profile.member1Name, profile.member2Name, '공동', ...childNames]
@@ -56,10 +62,8 @@ export default function Assets() {
   const showTabs = items.length > 0 && ownerTabs.length > 1
   const picked = showTabs && tab !== ALL ? tab : null
 
-  // 전체 자산 흐름 — 마지막(지금) 점은 실시간 환율 반영값으로 맞춘다
-  const series = assetSeries(snapshots, latestYm, 5).map((d, i, arr) =>
-    i === arr.length - 1 ? { ...d, value: assets } : d,
-  )
+  // 눌러서 고치기 — 지난달은 그 달을, 아니면 자산 등록 화면이 늘 고치던 달을
+  const edit = (to: EditTarget) => navigate('/asset-setup', { state: to })
 
   // 로드맵 카드 한 줄 — 홈 10년 목표 카드·로드맵 화면과 같은 계산 (지금 달 기준)
   const reachYm = useMemo(() => {
@@ -71,7 +75,14 @@ export default function Assets() {
   return (
     <div className="animate-fade-up space-y-4">
       <header className="flex items-center justify-between gap-2 px-1 pt-2">
-        <h1 className="text-[18px] font-bold text-ink">우리집 자산</h1>
+        <h1 className="text-[18px] font-bold text-ink">
+          우리집 자산
+          {savedMsg && (
+            <span role="status" className="ml-2 text-[12.5px] font-semibold text-brand">
+              ✓ 저장했어요
+            </span>
+          )}
+        </h1>
         <button
           onClick={() => navigate('/asset-setup')}
           className="flex items-center gap-1 rounded-full bg-brand/10 px-3 py-1.5 text-[12px] font-bold text-brand active:bg-brand/20"
@@ -79,11 +90,6 @@ export default function Assets() {
           <Pencil size={12} /> 등록·수정
         </button>
       </header>
-
-      {/* 주식 일지 (2026-10-25) — 종목별 매매 기록, 부부가 같이 */}
-      <StockJournalCard />
-      {/* 아이 통장 (2026-10-27) — 아이 앞으로 들어온 돈·증여 기록 */}
-      <ChildMoneyCard childAssets={childAssets} />
 
       {items.length === 0 && (
         <Card onClick={() => navigate('/asset-setup')}>
@@ -110,7 +116,15 @@ export default function Assets() {
         </div>
       )}
 
-      <AssetGlance items={items} picked={picked} owners={owners} ym={latestYm} series={series} pc />
+      <AssetGlance
+        items={items}
+        picked={picked}
+        owners={owners}
+        ym={latestYm}
+        series={series}
+        pc
+        onEdit={edit}
+      />
 
       <button
         onClick={() => navigate('/roadmap')}
@@ -134,6 +148,11 @@ export default function Assets() {
         </span>
         <ChevronRight size={18} className="shrink-0 text-cap" />
       </button>
+
+      {/* 주식 일지 (2026-10-25) — 종목별 매매 기록, 부부가 같이 */}
+      <StockJournalCard />
+      {/* 아이 통장 (2026-10-27) — 아이 앞으로 들어온 돈·증여 기록. 자산 구성 아래로 (2026-11-17) */}
+      <ChildMoneyCard childAssets={childAssets} />
     </div>
   )
 }

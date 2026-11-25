@@ -7,13 +7,15 @@ import { LazySavingRateBars } from '../components/LazyCharts'
 import OccasionSection from '../components/OccasionSection'
 import { useLedgerStore } from '../lib/store'
 import { summarize } from '../lib/carryover'
+import { confessSums } from '../lib/confessLedger'
 import { formatComma } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER } from '../lib/constants'
 import type { CategoryGroup } from '../types'
 
 export default function Yearly() {
   const navigate = useNavigate()
-  const { ledgers, occasions, removeOccasion, profile } = useLedgerStore()
+  const { ledgers, occasions, removeOccasion, updateOccasion, profile, confessions } =
+    useLedgerStore()
   const [year, setYear] = useState(profile.startYear || new Date().getFullYear())
 
   const yms = useMemo(
@@ -27,17 +29,40 @@ export default function Yearly() {
     return m
   }, [ledgers, year])
 
+  // 정산 전인 달의 변동지출은 아직 실제값이 없어 빈칸이었다 — 가계부 탭처럼 소비 기록 합계로 채운다 (2026-11-19 점검)
+  const logOf = (ym: string, category: string) => {
+    let sum = 0
+    for (const [key, v] of confessSums(confessions, ym)) {
+      const [, g, ...rest] = key.split(':')
+      if (g === 'variable' && rest.join(':') === category) sum += v
+    }
+    return sum
+  }
+  const fromLog = (ym: string, group: CategoryGroup) =>
+    group === 'variable' && !ledgerByYm.get(ym)?.closed
+
   const actualOf = (ym: string, group: CategoryGroup, category: string) => {
     const l = ledgerByYm.get(ym)
     if (!l) return 0
-    return l.items
+    const actual = l.items
       .filter((it) => it.group === group && it.category === category)
       .reduce((a, it) => a + it.actual, 0)
+    return fromLog(ym, group) && !actual ? logOf(ym, category) : actual
   }
 
   const groupTotalOf = (ym: string, group: CategoryGroup) => {
     const l = ledgerByYm.get(ym)
     if (!l) return 0
+    // 표에 줄이 없는 분류(카페·배달 등)로 적은 기록까지 합계엔 넣는다
+    if (fromLog(ym, group)) {
+      const inTable = catByGroup[group].reduce((a, c) => a + actualOf(ym, group, c), 0)
+      let others = 0
+      for (const [key, v] of confessSums(confessions, ym)) {
+        const [, g, ...rest] = key.split(':')
+        if (g === 'variable' && !catByGroup[group].includes(rest.join(':'))) others += v
+      }
+      return inTable + others
+    }
     return l.items.filter((it) => it.group === group).reduce((a, it) => a + it.actual, 0)
   }
 
@@ -129,7 +154,7 @@ export default function Yearly() {
                         </th>
                         {yms.map((ym) => (
                           <th key={ym} className="min-w-[42px] px-1.5 py-1.5 font-semibold">
-                            {Number(ym.split('-')[1])}
+                            {Number(ym.split('-')[1])}월
                           </th>
                         ))}
                       </tr>
@@ -144,6 +169,7 @@ export default function Yearly() {
                           actualOf={actualOf}
                           groupTotalOf={groupTotalOf}
                           toMan={toMan}
+                          hasMonth={(ym) => ledgerByYm.has(ym)}
                         />
                       ))}
                     </tbody>
@@ -172,6 +198,7 @@ export default function Yearly() {
               items={yearOccasions}
               yearTotal={occasionTotal}
               onRemove={removeOccasion}
+              onUpdate={updateOccasion}
               emptyText={`${year}년 기록이 없어요 · 가계부 탭에서 적을 수 있어요`}
             />
           </>
@@ -188,7 +215,10 @@ function FragmentGroup({
   actualOf,
   groupTotalOf,
   toMan,
+  hasMonth,
 }: {
+  /** 그 달 가계부가 있나 — 없으면 0이 아니라 '–' (2026-11-19 점검) */
+  hasMonth: (ym: string) => boolean
   group: CategoryGroup
   categories: string[]
   yms: string[]
@@ -205,7 +235,7 @@ function FragmentGroup({
         </td>
         {yms.map((ym) => (
           <td key={ym} className="px-1.5 py-1.5">
-            {toMan(groupTotalOf(ym, group))}
+            {hasMonth(ym) ? toMan(groupTotalOf(ym, group)) : '–'}
           </td>
         ))}
       </tr>
@@ -216,7 +246,7 @@ function FragmentGroup({
           </td>
           {yms.map((ym) => (
             <td key={ym} className="px-1.5 py-1.5">
-              {toMan(actualOf(ym, group, cat))}
+              {hasMonth(ym) ? toMan(actualOf(ym, group, cat)) : '–'}
             </td>
           ))}
         </tr>

@@ -344,8 +344,12 @@ function evaluate(i: LoanFinderInput, withPlans: boolean): { need: number; all: 
     if (i.kids >= 2) incomeOk = income <= 1 * EOK
     else if (i.kids === 1) incomeOk = income <= 9_000 * MAN
     // 신혼(혼인 7년 이내): 합산 8,500만 이하, 또는 부부 중 한 명이 7,000만 이하 (2026.10.19 신규 신청분부터)
+    // 외벌이(한 사람 소득 0원)는 '한 명이 7,000만 이하'를 늘 통과해 1.5억도 된다고 나왔다 (2026-11-19 점검)
+    // — 그 기준은 둘 다 버는 집에만 쓴다
     else if (i.newly)
-      incomeOk = income <= 8_500 * MAN || i.income1 <= 7_000 * MAN || i.income2 <= 7_000 * MAN
+      incomeOk =
+        income <= 8_500 * MAN ||
+        (i.income1 > 0 && i.income2 > 0 && Math.min(i.income1, i.income2) <= 7_000 * MAN)
     else incomeOk = income <= 7_000 * MAN
     if (i.deal > 6 * EOK || i.kb > 6 * EOK) b.push('시세·매매가 모두 6억 이하')
     if (!incomeOk)
@@ -495,14 +499,18 @@ function maxPrice(i: LoanFinderInput, affordable: number): { price: number; via:
   const fine = 100 * MAN
   let best = 0
   let name: string | null = null
-  for (let p = coarse; p <= i.own + 20 * EOK; p += coarse) {
+  // 0을 잔뜩 붙여 넣어도 화면이 멈추지 않게 위 끝을 잡는다 (2026-11-19 점검)
+  const top = Math.min(i.own + 20 * EOK, 100 * EOK)
+  for (let p = coarse; p <= top; p += coarse) {
     const v = via(p)
     if (v) {
       best = p
       name = v
     }
   }
-  for (let p = best + fine; best > 0 && p < best + coarse; p += fine) {
+  // 끝을 미리 정해 둔다 — 안에서 best가 바뀌면 끝도 같이 밀려 우리 돈이 클수록 끝없이 돌았다 (2026-11-19 점검)
+  const end = best + coarse
+  for (let p = best + fine; best > 0 && p < end; p += fine) {
     const v = via(p)
     if (v) {
       best = p
@@ -512,7 +520,13 @@ function maxPrice(i: LoanFinderInput, affordable: number): { price: number; via:
   return best > i.own ? { price: best, via: name } : { price: i.own, via: null }
 }
 
-export function findLoans(i: LoanFinderInput): LoanFinderResult {
+export function findLoans(input: LoanFinderInput): LoanFinderResult {
+  // KB시세를 모르면 비워 두는 집이 많다 — 비우면 한도가 전부 0원으로 나왔다. 매매가로 대신한다 (2026-11-19 점검)
+  const i = {
+    ...input,
+    deal: input.deal || input.kb,
+    kb: input.kb || input.deal,
+  }
   const { need, all } = evaluate(i, true)
   // 유리한 순 — 필요한 만큼 나오는 것 먼저, 그다음 첫 달 갚는 돈이 적은 것
   const loans = all

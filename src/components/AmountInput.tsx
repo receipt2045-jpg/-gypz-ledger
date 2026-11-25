@@ -3,6 +3,7 @@ import { Calculator } from 'lucide-react'
 import CalcPad from './CalcPad'
 import { evaluate, isExpr } from '../lib/calc'
 import { abbreviateKRW, formatComma, parseNumber } from '../lib/format'
+import { useNumberText } from '../lib/useNumberText'
 
 interface AmountInputProps {
   value: number
@@ -17,6 +18,10 @@ interface AmountInputProps {
    * value·onChange는 그대로 원 단위. 1억 이상이면 칸 아래에 "2억 5,310만원"처럼 한글로도 보여 준다.
    */
   man?: boolean
+  /** 1.5돈처럼 소수를 받는 칸 (2026-11-19 점검: 점이 지워져 1.5가 15가 됐다) — 콤마·계산식은 안 쓴다 */
+  decimal?: boolean
+  /** 화면 읽기 이름 — 칸 위 글씨가 label로 묶이지 않을 때 */
+  ariaLabel?: string
 }
 
 /**
@@ -33,13 +38,16 @@ export default function AmountInput({
   suffix,
   error = false,
   man = false,
+  decimal = false,
+  ariaLabel,
 }: AmountInputProps) {
+  const dec = useNumberText(value, onChange, { blankZero: true })
   const scale = man ? 10_000 : 1
   const unit = suffix ?? (man ? '만원' : '원')
   const shown = Math.round(value / scale)
   const [draft, setDraft] = useState<string | null>(null)
   const [calcOpen, setCalcOpen] = useState(false)
-  const display = draft ?? (shown === 0 ? '' : formatComma(shown))
+  const display = decimal ? dec.text : (draft ?? (shown === 0 ? '' : formatComma(shown)))
   const preview = draft !== null ? evaluate(draft) : null
 
   const commit = () => {
@@ -58,12 +66,14 @@ export default function AmountInput({
       >
         <input
           type="text"
-          inputMode="numeric"
+          inputMode={decimal ? 'decimal' : 'numeric'}
           autoFocus={autoFocus}
+          aria-label={ariaLabel}
           value={display}
           placeholder={placeholder}
           onChange={(e) => {
             const raw = e.target.value
+            if (decimal) return dec.change(raw)
             if (isExpr(raw)) return setDraft(raw)
             setDraft(null)
             onChange(Math.max(0, parseNumber(raw)) * scale)

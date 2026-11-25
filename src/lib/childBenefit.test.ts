@@ -38,6 +38,12 @@ describe('아이 지원금 계산 (2026-10-27)', () => {
     expect(r.homeCare.months).toBe(0)
   })
 
+  it('돌부터 다닐 거면 0세엔 집에서 보는 부모급여 그대로 (2026-11-19 점검)', () => {
+    const r = computeBenefit({ ...base, daycare: true, daycareFrom: 12 }, now)
+    expect(r.parentPay).toMatchObject({ months: 4, total: 4 * 1_000_000 })
+    expect(r.homeCare.months).toBe(0)
+  })
+
   it('아직 안 태어났으면 예정일 달부터 세고 첫만남이용권(둘째 300만)도 더한다', () => {
     const r = computeBenefit(
       { ...base, birth: '2027-02-01', order: 2, region: 'declineSpecial', voucher: true },

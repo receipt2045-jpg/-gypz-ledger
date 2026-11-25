@@ -1,4 +1,5 @@
 import { catchUpLoan } from './loan'
+import { catchUpSaving } from './saving'
 import { renameOwner, repairOwners } from './assetOwner'
 import { swapConfession, swapLedger, swapProfile } from './memberSwap'
 import { currentYm, setMonthStartDay } from './format'
@@ -19,7 +20,14 @@ import { dueMonths, payDate, recurringId } from './childRecurring'
 import { YEAREND_SAVE_KEY } from './yearEndTax'
 import { buildSeed, sampleConfessions } from '../seed'
 import * as db from './db'
-import { enqueue, flushQueue, migrateLegacyQueue, pendingCount, type PendingOp } from './syncQueue'
+import {
+  dropQueued,
+  enqueue,
+  flushQueue,
+  migrateLegacyQueue,
+  pendingCount,
+  type PendingOp,
+} from './syncQueue'
 
 /** op 하나를 실제로 서버에 보낸다 */
 async function sendOp(op: PendingOp, hid: string): Promise<void> {
@@ -59,6 +67,29 @@ function onSaveFailed(op: PendingOp) {
     enqueue(op)
     useLedgerStore.setState({ pendingSync: pendingCount() })
   }
+}
+
+/**
+ * 달 통째·프로필처럼 '그때 상태 전체'를 덮어쓰는 저장 (2026-11-17).
+ * 같은 key는 마지막에 보낸 것만 의미가 있다:
+ * - 성공하면 큐에 남은 옛 실패분을 버린다(나중에 다시 보내 최신을 되돌리지 않게)
+ * - 더 새 저장이 이미 나간 뒤 옛 저장이 실패하면 큐에 넣지 않는다
+ */
+const lastPush = new Map<string, number>()
+let pushSeq = 0
+function pushLatest(op: PendingOp, run: () => Promise<void>) {
+  const n = ++pushSeq
+  lastPush.set(op.key, n)
+  run()
+    .then(() => {
+      if (lastPush.get(op.key) !== n) return
+      dropQueued(op.key)
+      useLedgerStore.setState({ pendingSync: pendingCount() })
+    })
+    .catch((err) => {
+      if (lastPush.get(op.key) !== n) return
+      onSaveFailed(op)(err)
+    })
 }
 
 /**
@@ -129,6 +160,10 @@ interface LedgerState extends AppData {
   inviteCode: string | null
   sample: boolean // 샘플 둘러보기 모드 (householdId가 없어 DB 저장은 자동으로 건너뜀)
   confessions: Confession[] // 일일 고백 로그 (최근 62일, 정산과 독립)
+  /** 서버에서 읽어 온 소비 기록이 언제부터인지 (ISO) — 그 앞은 loadOlderConfessions로 */
+  confessionsFrom: string | null
+  /** until까지 앞선 소비 기록을 더 읽어 온다 (지난달 보기·지난 기록 더 보기). 새로 읽은 건수, 못 읽었으면 null */
+  loadOlderConfessions: (until: Date) => Promise<number | null>
   pendingSync: number // 아직 서버에 못 보낸 저장 건수 (연결되면 자동 재전송)
   syncFailed: boolean // 재시도할 수 없는 저장 실패 (전체 초기화·가져오기)
   init: (membership: db.Membership) => Promise<void>
@@ -161,6 +196,8 @@ interface LedgerState extends AppData {
         | 'shared'
         | 'cardOwner'
         | 'cash'
+        | 'gift'
+        | 'childKeep'
       >
     >,
   ) => void
@@ -180,6 +217,8 @@ interface LedgerState extends AppData {
   // 경조사/연간비
   addOccasion: (entry: Omit<OccasionEntry, 'id'>) => void
   removeOccasion: (id: string) => void
+  /** 비정기 지출 고치기 (2026-11-25 — 표에서 줄을 눌러 고친다) */
+  updateOccasion: (id: string, patch: Partial<Omit<OccasionEntry, 'id'>>) => void
   // 카테고리 관리
   /** 'added' | 'exists'(같은 칸에 이미 있음) | 다른 칸 이름(그 칸에 이미 있음) */
   addCategory: (group: CategoryGroup, name: string) => 'added' | 'exists' | CategoryGroup
@@ -210,6 +249,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
   inviteCode: null,
   sample: false,
   confessions: [],
+  confessionsFrom: null,
   aliases: {},
   pendingSync: 0,
   syncFailed: false,
@@ -232,7 +272,11 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     get().repairAssetOwners()
     get().ensureIncomeCategories()
     try {
-      set({ confessions: await db.fetchConfessions(householdId) })
+      const since = db.confessionWindowStart()
+      set({
+        confessions: await db.fetchConfessions(householdId, since),
+        confessionsFrom: since.toISOString(),
+      })
     } catch (err) {
       console.error('[sync] 고백 로그 동기화 실패:', err)
     }
@@ -250,6 +294,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       inviteCode: null,
       sample: true,
       confessions: sampleConfessions(),
+      confessionsFrom: null,
       aliases: {},
     }),
 
@@ -262,10 +307,35 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       inviteCode: null,
       sample: false,
       confessions: [],
+      confessionsFrom: null,
       aliases: {},
       pendingSync: 0,
       syncFailed: false,
     }),
+
+  loadOlderConfessions: async (until) => {
+    const { householdId, confessionsFrom } = get()
+    if (!householdId || !confessionsFrom) return null
+    const from = new Date(confessionsFrom)
+    if (until >= from) return 0
+    // 같은 기간을 두 번 읽지 않게 먼저 경계를 옮긴다 (실패하면 되돌린다)
+    set({ confessionsFrom: until.toISOString() })
+    try {
+      const older = await db.fetchConfessionsBetween(householdId, until, from)
+      let added = 0
+      set((s) => {
+        const have = new Set(s.confessions.map((c) => c.id))
+        const fresh = older.filter((c) => !have.has(c.id))
+        added = fresh.length
+        return { confessions: [...s.confessions, ...fresh] }
+      })
+      return added
+    } catch (err) {
+      console.error('[sync] 지난 소비 기록 읽기 실패:', err)
+      set({ confessionsFrom: from.toISOString() })
+      return null
+    }
+  },
 
   learnAliases: (patch) => {
     const merged = { ...get().aliases, ...patch }
@@ -349,7 +419,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const hid = get().householdId
     if (hid) {
       const op: PendingOp = { kind: 'profile', key: 'profile', payload: profile }
-      db.pushProfile(hid, profile).catch(onSaveFailed(op))
+      pushLatest(op, () => db.pushProfile(hid, profile))
     }
   },
 
@@ -362,7 +432,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     set({ profile, confessions: s.confessions.map(swapConfession) })
     if (hid) {
       const op: PendingOp = { kind: 'profile', key: 'profile', payload: profile }
-      db.pushProfile(hid, profile).catch(onSaveFailed(op))
+      pushLatest(op, () => db.pushProfile(hid, profile))
     }
     for (const l of s.ledgers) get().saveLedger(swapLedger(l))
   },
@@ -381,7 +451,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const hid = get().householdId
     if (hid) {
       const op: PendingOp = { kind: 'ledger', key: `ledger:${ledger.ym}`, payload: ledger }
-      db.pushLedger(hid, ledger).catch(onSaveFailed(op))
+      pushLatest(op, () => db.pushLedger(hid, ledger))
     }
   },
 
@@ -393,7 +463,7 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const hid = get().householdId
     if (hid) {
       const op: PendingOp = { kind: 'snapshot', key: `snapshot:${snapshot.ym}`, payload: snapshot }
-      db.pushSnapshot(hid, snapshot).catch(onSaveFailed(op))
+      pushLatest(op, () => db.pushSnapshot(hid, snapshot))
     }
   },
 
@@ -403,6 +473,12 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       snapshots: s.snapshots.filter((sn) => sn.ym !== ym),
     }))
     const hid = get().householdId
+    // 못 보낸 이 달 저장분이 나중에 다시 나가 지운 달을 되살리지 않게 (2026-11-19 점검)
+    for (const key of [`ledger:${ym}`, `snapshot:${ym}`]) {
+      dropQueued(key)
+      lastPush.set(key, ++pushSeq) // 보내는 중이던 옛 저장이 실패해도 큐에 다시 안 넣는다
+    }
+    set({ pendingSync: pendingCount() })
     if (hid) db.deleteMonth(hid, ym).catch(reportSyncError)
   },
 
@@ -414,6 +490,22 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const hid = get().householdId
     if (hid) {
       const op: PendingOp = { kind: 'occasion', key: `occasion:${full.id}`, payload: full }
+      db.pushOccasion(hid, full).catch(onSaveFailed(op))
+    }
+  },
+
+  updateOccasion: (id, patch) => {
+    const cur = get().occasions.find((o) => o.id === id)
+    if (!cur) return
+    const full: OccasionEntry = { ...cur, ...patch, id }
+    set((s) => ({
+      occasions: s.occasions
+        .map((o) => (o.id === id ? full : o))
+        .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    }))
+    const hid = get().householdId
+    if (hid) {
+      const op: PendingOp = { kind: 'occasion', key: `occasion:${id}`, payload: full }
       db.pushOccasion(hid, full).catch(onSaveFailed(op))
     }
   },
@@ -508,7 +600,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
     const today = new Date()
     let changed = false
     const items = snap.items.map((it) => {
-      const next = catchUpLoan(it, today)
+      // 대출은 갚는 날마다 줄이고, 적금은 넣는 날마다 늘린다 (2026-11-24)
+      const next = catchUpLoan(it, today) ?? catchUpSaving(it, today)
       if (next) changed = true
       return next ?? it
     })
@@ -549,6 +642,8 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       snapshots: data.snapshots,
       occasions: data.occasions,
       categories: data.categories,
+      ...(data.confessions ? { confessions: data.confessions } : {}),
+      ...(data.aliases ? { aliases: data.aliases } : {}),
     })
     const hid = get().householdId
     if (hid) db.replaceAllData(hid, data).catch(reportSyncError)
@@ -562,6 +657,9 @@ export const useLedgerStore = create<LedgerState>()((set, get) => ({
       snapshots: s.snapshots,
       occasions: s.occasions,
       categories: s.categories,
+      // 화면에 있는 건 최근 것뿐이라, 로그인한 집은 설정의 내보내기가 서버에서 전부 읽어 바꿔 넣는다
+      confessions: s.confessions,
+      aliases: s.aliases,
     }
   },
 }))

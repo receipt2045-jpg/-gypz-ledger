@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { abbreviateKRW, formatComma, formatYmKorean } from '../lib/format'
+import AmountInput from './AmountInput'
+import { abbreviateKRW, currentYm, formatComma, formatYmKorean } from '../lib/format'
 import {
   LOAN_METHOD_LABEL,
   dayString,
   graduatedPlan,
+  loanFromStart,
   loanTotalCost,
   paymentIfRateUp,
   monthlyPayment,
@@ -13,6 +15,8 @@ import {
   type LoanMethod,
 } from '../lib/loan'
 import type { AssetItem } from '../types'
+import { useLedgerStore } from '../lib/store'
+import { resolveLedger } from '../lib/carryover'
 
 const short = (n: number) => abbreviateKRW(n).replace(/원$/, '')
 
@@ -24,47 +28,87 @@ export function LoanForm({
   amount,
   initial,
   onChange,
+  onBalance,
   hideLedger = false,
 }: {
   /** 남은 대출금 — 매달 갚는 돈 미리보기에 쓴다 */
   amount: number
   initial?: LoanInfo
   onChange: (draft: LoanInfo | null) => void
+  /** '처음 빌린 돈으로' 적으면 계산한 지금 남은 돈을 알린다 — 부채 금액을 이 값으로 맞춘다 */
+  onBalance?: (balance: number) => void
   /** 돈 공부 '대출 이자' 계산기처럼 저장하지 않는 곳에선 '가계부에도 넣기'를 숨긴다 */
   hideLedger?: boolean
 }) {
+  // 처음 빌린 돈으로(기본) / 남은 돈으로 (2026-11-24 — 남은 돈에 처음 기간을 넣으면 매달 갚는 돈이 적게 나왔다)
+  const [mode, setMode] = useState<'start' | 'balance'>(
+    initial ? (initial.start ? 'start' : 'balance') : hideLedger ? 'balance' : 'start',
+  )
+  const st = initial?.start
+  const [principal, setPrincipal] = useState(st?.principal ?? 0)
+  const [startYm, setStartYm] = useState(st?.startYm ?? '')
+  const [prepaid, setPrepaid] = useState(st?.prepaid ?? 0)
+  const firstMonths = st ? st.totalMonths : initial?.months
   const [rate, setRate] = useState(initial ? String(initial.rate) : '')
-  const [years, setYears] = useState(initial ? String(Math.floor(initial.months / 12)) : '')
-  const [months, setMonths] = useState(initial ? String(initial.months % 12) : '')
+  const [years, setYears] = useState(firstMonths ? String(Math.floor(firstMonths / 12)) : '')
+  const [months, setMonths] = useState(firstMonths ? String(firstMonths % 12) : '')
   const [payDay, setPayDay] = useState(initial?.payDay ?? 25)
   const [method, setMethod] = useState<LoanMethod>(initial?.method ?? 'annuity')
-  const [toLedger, setToLedger] = useState(initial?.toLedger ?? true)
+  // 고정지출에 이미 대출 항목이 있으면 처음엔 끈다 — 켜 두면 두 번 셌다 (2026-11-19 점검)
+  const existingLoan = useLedgerStore((s) =>
+    resolveLedger(s.ledgers, currentYm()).items.find(
+      (it) => it.group === 'fixed' && /대출|상환|이자/.test(it.category),
+    ),
+  )
+  const [toLedger, setToLedger] = useState(initial?.toLedger ?? !existingLoan)
 
   const totalMonths = (Number(years) || 0) * 12 + (Number(months) || 0)
-  const draft: LoanInfo | null =
-    rate !== '' && totalMonths > 0
-      ? {
-          rate: Number(rate),
-          months: totalMonths,
-          payDay,
-          method,
-          asOf: initial?.asOf ?? dayString(new Date()),
-          toLedger,
-          // 체증식 — 지금 남은 원금으로 첫 달 갚는 돈과 매달 늘어나는 금액을 잡아 둔다
-          ...(method === 'graduated' && amount > 0
-            ? (() => {
-                const plan = graduatedPlan(amount, Number(rate), totalMonths)
-                return { gradPayment: plan.first, gradStep: plan.step }
-              })()
-            : {}),
-        }
+  const fromStart =
+    mode === 'start' &&
+    rate !== '' &&
+    totalMonths > 0 &&
+    principal > 0 &&
+    /^\d{4}-\d{2}$/.test(startYm)
+      ? loanFromStart(
+          { principal, totalMonths, startYm, prepaid },
+          { rate: Number(rate), payDay, method },
+          new Date(),
+        )
       : null
-  const key = JSON.stringify(draft)
+  const draft: LoanInfo | null =
+    mode === 'start'
+      ? fromStart
+        ? {
+            ...fromStart.loan,
+            toLedger,
+            start: { principal, totalMonths, startYm, ...(prepaid > 0 ? { prepaid } : {}) },
+          }
+        : null
+      : rate !== '' && totalMonths > 0
+        ? {
+            rate: Number(rate),
+            months: totalMonths,
+            payDay,
+            method,
+            asOf: initial?.asOf ?? dayString(new Date()),
+            toLedger,
+            // 체증식 — 지금 남은 원금으로 첫 달 갚는 돈과 매달 늘어나는 금액을 잡아 둔다
+            ...(method === 'graduated' && amount > 0
+              ? (() => {
+                  const plan = graduatedPlan(amount, Number(rate), totalMonths)
+                  return { gradPayment: plan.first, gradStep: plan.step }
+                })()
+              : {}),
+          }
+        : null
+  const balance = mode === 'start' ? (fromStart?.balance ?? 0) : amount
+  const key = JSON.stringify([draft, mode === 'start' ? balance : null])
   useEffect(() => {
     onChange(draft)
+    if (mode === 'start' && fromStart) onBalance?.(fromStart.balance)
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const preview = draft && amount > 0 ? monthlyPayment(amount, draft) : null
+  const preview = draft && balance > 0 ? monthlyPayment(balance, draft) : null
   const payoff = draft ? payoffYm(draft, new Date()) : null
   // 예시 글자(placeholder)가 채워진 값처럼 보여 "숫자가 고정이에요" 제보 (2026-10-07)
   // → 예시는 '예)'를 붙여 옅게, 단위는 칸 안 오른쪽에 따로
@@ -76,8 +120,58 @@ export function LoanForm({
   const field =
     'mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-right text-[14px] font-semibold text-ink outline-none focus:border-brand'
 
+  const ymNow = currentYm()
   return (
     <div className="space-y-2">
+      {!hideLedger && (
+        <div
+          className="flex gap-0.5 rounded-full bg-white p-0.5"
+          role="tablist"
+          aria-label="적는 방식"
+        >
+          {(['start', 'balance'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="tab"
+              aria-selected={mode === v}
+              onClick={() => setMode(v)}
+              className={`flex-1 rounded-full py-1.5 text-[12.5px] font-bold ${
+                mode === v ? 'bg-brand text-white' : 'text-sub'
+              }`}
+            >
+              {v === 'start' ? '처음 빌린 돈으로' : '남은 돈으로'}
+            </button>
+          ))}
+        </div>
+      )}
+      {mode === 'start' && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="col-span-2 text-[11.5px] text-cap">
+            처음 빌린 돈 (대출 원금)
+            <AmountInput
+              value={principal}
+              onChange={setPrincipal}
+              placeholder="예) 300,000,000"
+              className="mt-1"
+            />
+          </label>
+          <label className="text-[11.5px] text-cap">
+            대출 받은 달
+            <input
+              type="month"
+              value={startYm}
+              max={ymNow}
+              onChange={(e) => setStartYm(e.target.value)}
+              className={field}
+            />
+          </label>
+          <label className="text-[11.5px] text-cap">
+            미리 더 갚은 돈 (없으면 0)
+            <AmountInput value={prepaid} onChange={setPrepaid} placeholder="0" className="mt-1" />
+          </label>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <label className="text-[11.5px] text-cap">
           연 금리
@@ -107,7 +201,7 @@ export function LoanForm({
           </select>
         </label>
         <label className="text-[11.5px] text-cap">
-          남은 기간
+          {mode === 'start' ? '처음 정한 기간' : '남은 기간'}
           <span className={box}>
             <input
               inputMode="numeric"
@@ -120,7 +214,7 @@ export function LoanForm({
           </span>
         </label>
         <label className="text-[11.5px] text-cap">
-          더 남은 개월 (없으면 비워 두기)
+          그리고 몇 개월 더 (2년 6개월이면 6)
           <span className={box}>
             <input
               inputMode="numeric"
@@ -163,6 +257,28 @@ export function LoanForm({
           가계부 고정지출에도 '대출 상환'으로 매달 넣기
         </label>
       )}
+      {!hideLedger && existingLoan && !initial && (
+        <p className="-mt-1 text-[11.5px] leading-relaxed text-cap">
+          고정지출에 '{existingLoan.category}'이 이미 있어서 꺼 뒀어요 · 켜면 두 번 셀 수 있어요
+        </p>
+      )}
+      {fromStart && (
+        <p className="rounded-btn bg-brand/10 px-3 py-2 text-[12.5px] leading-relaxed text-sub">
+          {fromStart.balance > 0 ? (
+            <>
+              지금 남은 대출{' '}
+              <b className="tnum text-[14px] font-bold text-ink">
+                {formatComma(fromStart.balance)}원
+              </b>
+              <br />
+              남은 기간 {Math.floor(fromStart.loan.months / 12)}년 {fromStart.loan.months % 12}개월
+              {onBalance && ' · 부채 금액도 이 값으로 맞춰요'}
+            </>
+          ) : (
+            '다 갚은 대출이에요'
+          )}
+        </p>
+      )}
       {preview && (
         <p className="rounded-btn bg-white px-3 py-2 text-[12.5px] leading-relaxed text-sub">
           매달 <b className="tnum text-[14px] font-bold text-brand">{short(preview.payment)}원</b> ·
@@ -187,13 +303,15 @@ export function LoanForm({
           어림값이에요.
         </p>
       )}
-      {preview && draft && <LoanRisk amount={amount} loan={draft} payment={preview.payment} />}
+      {preview && draft && <LoanRisk amount={balance} loan={draft} payment={preview.payment} />}
       {!draft && (
         <p className="px-1 text-[12px] text-cap">
-          금리와 남은 기간을 넣으면 매달 갚는 돈이 계산돼요
+          {mode === 'start'
+            ? '처음 빌린 돈·받은 달·금리·기간을 넣으면 지금 남은 돈과 매달 갚는 돈이 계산돼요'
+            : '금리와 남은 기간을 넣으면 매달 갚는 돈이 계산돼요'}
         </p>
       )}
-      {draft && amount <= 0 && (
+      {draft && mode === 'balance' && amount <= 0 && (
         <p className="px-1 text-[12px] text-cap">남은 대출금을 넣으면 매달 갚는 돈이 보여요</p>
       )}
     </div>
@@ -209,11 +327,13 @@ export default function LoanEditor({
   onSave,
 }: {
   item: AssetItem
-  onSave: (loan: LoanInfo | undefined) => void
+  /** balance — '처음 빌린 돈으로' 계산한 지금 남은 돈 (부채 금액을 맞춘다) */
+  onSave: (loan: LoanInfo | undefined, balance?: number) => void
 }) {
   const saved = item.loan
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<LoanInfo | null>(saved ?? null)
+  const [balance, setBalance] = useState<number | undefined>(undefined)
 
   if (!open) {
     const p = saved ? monthlyPayment(item.amount, saved) : null
@@ -244,7 +364,15 @@ export default function LoanEditor({
         대출 정보
         <ChevronDown size={15} className="text-cap" />
       </button>
-      <LoanForm amount={item.amount} initial={saved} onChange={setDraft} />
+      <LoanForm
+        amount={item.amount}
+        initial={saved}
+        onChange={(d) => {
+          setDraft(d)
+          if (!d?.start) setBalance(undefined)
+        }}
+        onBalance={setBalance}
+      />
       <div className="flex gap-2">
         {saved && (
           <button
@@ -260,7 +388,7 @@ export default function LoanEditor({
         <button
           onClick={() => {
             if (!draft) return
-            onSave(draft)
+            onSave(draft, draft.start ? balance : undefined)
             setOpen(false)
           }}
           disabled={!draft}

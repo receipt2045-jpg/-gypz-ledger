@@ -187,7 +187,7 @@ export default function Gold() {
           </p>
           <div className="mt-3 space-y-4">
             <Field label="몇 돈?">
-              <AmountInput value={v.don} onChange={(don) => set({ don })} suffix="돈" />
+              <AmountInput value={v.don} onChange={(don) => set({ don })} suffix="돈" decimal />
             </Field>
             <Field label="금방 살 때 1돈" hint="금방이나 한국금거래소 '살 때' 값">
               <AmountInput value={v.shopBuyDon} onChange={(shopBuyDon) => set({ shopBuyDon })} />

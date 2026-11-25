@@ -282,3 +282,32 @@ export function sortItemsByGroup(items: BudgetItem[]): BudgetItem[] {
     return a.member - b.member
   })
 }
+
+/** 자산 화면이 보여 주는 달 — 가장 늦은 스냅샷 달과 이번 달 중 늦은 쪽 */
+export function displayYm(snapshots: AssetSnapshot[]): string {
+  const now = currentYm()
+  const last = snapshots.length ? snapshots[snapshots.length - 1].ym : now
+  return last > now ? last : now
+}
+
+/**
+ * 자산 등록 화면이 고칠 달 (2026-11-17).
+ * 보통은 정산할 달(activeYm) — 그 뒤 달은 거기서 이어 와서 자산 탭에 그대로 보인다.
+ * 그런데 대출 자동 상환·아이 통장 더하기가 그 뒤 달(이번 달)을 따로 저장해 두면,
+ * 정산할 달을 고쳐도 자산 탭(이번 달)엔 안 보였다 — 그때는 자산 탭이 보여 주는 달을 고친다.
+ */
+export function assetEditYm(ledgers: MonthlyLedger[], snapshots: AssetSnapshot[]): string {
+  const target = activeYm(ledgers)
+  const shown = displayYm(snapshots)
+  return snapshots.some((s) => s.ym > target && s.ym <= shown) ? shown : target
+}
+
+/**
+ * 가계부·홈을 열 때 처음 보여 줄 달 (2026-11-17 점검, 11-01 의견: "로그인하면 12월부터 봐져요").
+ * 정산할 달(activeYm)인데, 다음 달 예산을 미리 세웠거나 이번 달을 일찍 정산해서 다음 달이 되면
+ * 이번 달로 맞춘다 — 미래 달은 ▶로 넘어가서 본다.
+ */
+export function openingYm(ledgers: MonthlyLedger[], now: string = currentYm()): string {
+  const ym = activeYm(ledgers)
+  return ym > now ? now : ym
+}

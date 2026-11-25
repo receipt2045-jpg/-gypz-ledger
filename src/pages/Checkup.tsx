@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { LOAN_CATEGORY, addLoanItems, loanLedgerAmounts } from '../lib/loan'
 import PcShell from '../components/PcShell'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -18,6 +18,7 @@ import {
   Users,
 } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
+import SheetTable, { md } from '../components/SheetTable'
 import MonthlyReportCard from '../components/MonthlyReportCard'
 import RecoCard from '../components/RecoCard'
 import { settleReco } from '../lib/reco'
@@ -27,6 +28,7 @@ import { buildMonthlyCard } from '../lib/monthlyCard'
 import { useLedgerStore } from '../lib/store'
 import * as db from '../lib/db'
 import { confessEntries, confessSums, missingConfessedItems } from '../lib/confessLedger'
+import { useMonthConfessions } from '../lib/useMonthConfessions'
 import {
   activeYm,
   emptyItem,
@@ -42,6 +44,7 @@ import {
   currentYm,
   formatMonthKorean,
   formatPercent,
+  formatComma,
   formatWon,
   formatYmKorean,
   shiftYm,
@@ -56,6 +59,10 @@ interface StepDef {
   groups: CategoryGroup[]
   sameAsLast: boolean // "지난달과 같아요" 노출 여부
 }
+
+/** 정산(실제값)의 변동지출은 0원이어도 된다 — 그 달에 안 쓴 것 */
+const zeroOk = (it: BudgetItem, field: 'planned' | 'actual') =>
+  field === 'actual' && it.group === 'variable'
 
 const STEPS: StepDef[] = [
   { title: '수입', subtitle: '이번 달 벌어들인 돈이에요', groups: ['income'], sameAsLast: true },
@@ -182,6 +189,8 @@ export default function Checkup() {
     [snapshots, ym],
   )
 
+  // 62일보다 앞선 달을 정산하면 그 달 소비 기록을 마저 읽어 와야 합계가 맞는다 (2026-11-17)
+  useMonthConfessions(ym)
   // 정산 모드: 이번 달 고백 합계를 항목별 초안으로 제안 (예산 모드는 미래 계획이라 제외)
   const confessHints = useMemo(
     () => (isBudget ? null : confessSums(confessions, ym)),
@@ -210,8 +219,16 @@ export default function Checkup() {
   const stepDef = STEPS[step - 1] // 금액 스텝이 아닐 땐 undefined
   const missingConfessed = useMemo(
     () =>
-      member && stepDef ? missingConfessedItems(confessHints, member, stepDef.groups, items) : [],
-    [confessHints, member, stepDef, items],
+      !member || !stepDef
+        ? []
+        : bothMode
+          ? // 한 사람이 두 사람 몫을 넣을 땐 배우자 기록도 같이 (2026-11-19 점검: 아내 기록이 빠졌다)
+            [
+              ...missingConfessedItems(confessHints, 1, stepDef.groups, items),
+              ...missingConfessedItems(confessHints, 2, stepDef.groups, items),
+            ].sort((a, b) => b.amount - a.amount)
+          : missingConfessedItems(confessHints, member, stepDef.groups, items),
+    [confessHints, member, bothMode, stepDef, items],
   )
 
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
@@ -238,12 +255,20 @@ export default function Checkup() {
   const selectMember = (m: 1 | 2, both = false) => {
     setMember(m)
     setBothMode(both)
-    // 정산(결산) 모드는 실제값 시작점을 계획값으로 채움. 예산 모드는 계획값 그대로 편집.
+    // 정산(결산) 모드 실제값 시작점 — 수입·저축·고정비는 대개 계획대로라 계획값으로 채운다.
+    // 변동지출은 예산을 채워 두면 그대로 끝냈을 때 예산이 '실제 쓴 돈'으로 남았다 (2026-11-19 점검) —
+    // 이번 달 소비 기록 합계로 채우고, 기록이 없으면 비워 둔다(예산은 칸 안 흐린 글씨로).
     if (!isBudget) {
       setItems((prev) =>
-        prev.map((it) =>
-          both || it.member === m ? { ...it, actual: it.actual || it.planned } : it,
-        ),
+        prev.map((it) => {
+          if (!(both || it.member === m) || it.actual) return it
+          if (it.group === 'variable')
+            return {
+              ...it,
+              actual: confessHints?.get(`${it.member}:variable:${it.category}`) ?? 0,
+            }
+          return { ...it, actual: it.planned }
+        }),
       )
     }
     setStep(1)
@@ -276,15 +301,7 @@ export default function Checkup() {
       if (names.length > 1) orderCategories(g, names)
     }
     // 정산을 끝내지 않고 나가도 바꾼 순서가 남게 — 삭제와 같은 방식으로 바로 저장
-    if (!member) return
-    void fetchBase().then((base) => {
-      saveLedger({
-        ym,
-        items: mergeMemberItems(base.items, items, member),
-        closed: base.closed,
-        settledMembers: base.settledMembers ?? [],
-      })
-    })
+    saveNow(items)
   }
   const addItem = (group: CategoryGroup, category: string, forMember: 1 | 2) => {
     setItems((prev) => [
@@ -293,15 +310,19 @@ export default function Checkup() {
     ])
   }
   /** 고백 합계를 금액까지 채워서 항목으로 추가 (정산 모드 전용) */
-  const addFromConfession = (group: CategoryGroup, category: string, amount: number) => {
-    if (!member) return
+  const addFromConfession = (
+    group: CategoryGroup,
+    category: string,
+    amount: number,
+    forMember?: 1 | 2,
+  ) => {
+    const who = forMember ?? member
+    if (!who) return
     setItems((prev) => {
-      if (
-        prev.some((it) => it.member === member && it.group === group && it.category === category)
-      ) {
+      if (prev.some((it) => it.member === who && it.group === group && it.category === category)) {
         return prev
       }
-      const base = emptyItem(group, category, member)
+      const base = emptyItem(group, category, who)
       return [...prev, { ...base, planned: 0, actual: amount }]
     })
   }
@@ -330,12 +351,38 @@ export default function Checkup() {
    */
   const removeItem = (id: string) => {
     if (!member) return
+    // 금액이 든 항목을 X 한 번에 지우면 되돌릴 길이 없다 — 한 번 묻는다 (2026-11-19 점검)
+    const target = items.find((it) => it.id === id)
+    if (
+      target &&
+      target[field] > 0 &&
+      !window.confirm(`${target.category} ${formatWon(target[field])}을 지울까요?`)
+    )
+      return
     const next = items.filter((it) => it.id !== id)
     setItems(next)
-    void fetchBase().then((base) => {
+    saveNow(next)
+  }
+
+  /**
+   * 지우기·순서 바꾸기를 바로 저장한다 (정산 완료 상태는 그대로).
+   *
+   * 제보(2026-11-17): "새로 만든 칸이 안 지워지고, 지운 금액이 다시 살아나요".
+   * '둘 다 제가 입력할게요'로 배우자 항목을 지우면, 저장할 때 배우자 몫을 서버 것으로
+   * 채워 넣어서 지운 항목이 그대로 남았다 — 나갔다 오면 되살아났다.
+   * 둘 다 입력할 땐 화면 목록이 두 사람 몫 전부라 그대로 저장한다(정산 완료와 같은 규칙).
+   * 저장은 차례로 보낸다 — 빨리 두 번 지우면 앞의 저장이 늦게 끝나 뒤의 것을 덮을 수 있었다.
+   */
+  const saveChain = useRef(Promise.resolve())
+  const saveNow = (nextItems: BudgetItem[]) => {
+    if (!member) return
+    const m = member
+    const both = bothMode
+    saveChain.current = saveChain.current.then(async () => {
+      const base = await fetchBase()
       saveLedger({
         ym,
-        items: mergeMemberItems(base.items, next, member),
+        items: both ? nextItems : mergeMemberItems(base.items, nextItems, m),
         closed: base.closed,
         settledMembers: base.settledMembers ?? [],
       })
@@ -537,7 +584,7 @@ export default function Checkup() {
               />
               <ResultRow label="계획 지출" value={formatWon(planned.expense)} />
               <ResultRow
-                label="예상 잉여현금"
+                label="예상 남는 돈"
                 value={formatWon(planned.surplus)}
                 danger={planned.surplus < 0}
               />
@@ -577,7 +624,7 @@ export default function Checkup() {
 
           <div className="mt-7 w-full space-y-2.5 rounded-card bg-card p-5 text-left shadow-card">
             <ResultRow label="저축·투자율" value={formatPercent(s.savingInvestRate)} accent />
-            <ResultRow label="잉여현금" value={formatWon(s.surplus)} danger={s.surplus < 0} />
+            <ResultRow label="남는 돈" value={formatWon(s.surplus)} danger={s.surplus < 0} />
             <ResultRow
               label="순자산 증감"
               value={`${nwDelta >= 0 ? '+' : '−'}${abbreviateKRW(Math.abs(nwDelta))}`}
@@ -627,7 +674,8 @@ export default function Checkup() {
   const liveSurplus = summarize({ ym, items: myItems, closed: !isBudget }).surplus
 
   // 빈값·0원 항목이 있으면 다음 단계로 못 넘어감 (삭제하거나 금액 입력)
-  const stepInvalid = stepItems.some((it) => !it[field] || it[field] <= 0)
+  // 단, 정산의 변동지출은 0원도 답이다 — 그 달에 안 쓴 것 (2026-11-19)
+  const stepInvalid = stepItems.some((it) => !zeroOk(it, field) && (!it[field] || it[field] <= 0))
   const proceed = () => {
     if (stepInvalid) {
       setShowErrors(true)
@@ -692,7 +740,7 @@ export default function Checkup() {
         {/* 잉여현금 실시간 표시 */}
         <div className="mb-2 flex items-center justify-between rounded-btn bg-ink px-4 py-2.5">
           <span className="text-[13px] font-semibold text-white/80">
-            {bothMode ? '우리집' : memberName} {isBudget ? '예상 잉여현금' : '잉여현금'}
+            {bothMode ? '우리집' : memberName} {isBudget ? '예상 남는 돈' : '남는 돈'}
           </span>
           <span
             className={`tnum text-[16px] font-extrabold ${liveSurplus < 0 ? 'text-[#FF8A93]' : 'text-white'}`}
@@ -700,6 +748,13 @@ export default function Checkup() {
             {formatWon(liveSurplus)}
           </span>
         </div>
+        {/* 빨간 숫자만 보면 앱이 틀린 줄 안다 — 왜 모자란지 한 줄 (2026-11-19 점검) */}
+        {liveSurplus < 0 && (
+          <p className="-mt-1 mb-2 px-1 text-[12px] leading-snug text-sub">
+            {isBudget ? '계획한' : '적은'} 저축·지출이 수입보다 {formatWon(-liveSurplus)} 많아요
+            {bothMode ? '' : ' · 배우자 몫이나 공동통장으로 메우는 돈은 빠져 있어요'}
+          </p>
+        )}
         <div className="space-y-2">
           <button
             onClick={proceed}
@@ -830,6 +885,8 @@ const LOG_MAX_H = 168
  * 예전엔 합계만 떠서, 15만원이 맞는지 보려면 가계부 탭으로 나갔다 와야 했다.
  * 정산 중에 숫자가 흔들리면 헷갈리므로 여기선 읽기만 된다 — 고치는 건 고백 탭에서.
  */
+const dayOf = (c: { createdAt: string }) => new Date(c.createdAt).toLocaleDateString('sv-SE')
+
 function ConfessLog({
   entries,
   memberNames,
@@ -855,23 +912,53 @@ function ConfessLog({
           className="thin-scroll overflow-y-auto overscroll-contain border-t border-line pt-1"
           style={{ maxHeight: LOG_MAX_H }}
         >
-          {entries.map((c) => {
-            const d = new Date(c.createdAt)
-            return (
-              <div key={c.id} className="flex items-center gap-2 py-1.5">
-                <span className="tnum w-9 shrink-0 text-[11.5px] text-cap">
-                  {d.getMonth() + 1}/{d.getDate()}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
-                  {c.shared ? '공동' : memberNames[c.memberNo - 1]}
-                  {c.note && <span className="text-cap"> · {c.note}</span>}
-                </span>
-                <span className="tnum shrink-0 text-[13px] font-semibold text-ink">
-                  {formatWon(c.amount)}
-                </span>
-              </div>
-            )
-          })}
+          {/* 엑셀처럼 표로 (2026-11-25 결영 요청) — 칸 이름 옆 ▾ 거르기, 읽기만 */}
+          <SheetTable
+            rows={entries}
+            rowKey={(c) => c.id}
+            bleed=""
+            minWidth={300}
+            cols={[
+              {
+                key: 'date',
+                label: '날짜',
+                width: 64,
+                align: 'center',
+                cell: (c) => md(dayOf(c)),
+                tone: () => 'text-sub tnum',
+                filter: { get: dayOf, label: md },
+              },
+              {
+                key: 'who',
+                label: '누가',
+                width: 72,
+                align: 'center',
+                cell: (c) => (c.shared ? '공동' : memberNames[c.memberNo - 1]),
+                filter: {
+                  get: (c) => (c.shared ? 'shared' : String(c.memberNo)),
+                  label: (w) => (w === 'shared' ? '공동' : memberNames[Number(w) - 1]),
+                },
+              },
+              {
+                key: 'note',
+                label: '메모',
+                cell: (c) => c.note ?? '',
+                tone: () => 'text-sub',
+                filter: { get: (c) => c.note ?? '', text: true },
+              },
+              {
+                key: 'amount',
+                label: '금액',
+                width: 88,
+                align: 'right',
+                cell: (c) => c.amount.toLocaleString('ko-KR'),
+                tone: () => 'font-semibold text-ink tnum',
+              },
+            ]}
+            summary={(rows) => (
+              <b className="text-ink">{formatWon(rows.reduce((a, c) => a + c.amount, 0))}</b>
+            )}
+          />
         </div>
       )}
     </div>
@@ -909,8 +996,8 @@ function MoneyStep({
   examples: string[]
   hints?: Map<string, number> | null // (구성원:그룹:카테고리) → 이번 달 고백 합계
   logs?: Map<string, Confession[]> | null // 같은 키 → 그 합계를 이루는 고백 내역
-  missingConfessed?: { group: CategoryGroup; category: string; amount: number }[]
-  onAddConfessed?: (g: CategoryGroup, category: string, amount: number) => void
+  missingConfessed?: { group: CategoryGroup; category: string; amount: number; member: 1 | 2 }[]
+  onAddConfessed?: (g: CategoryGroup, category: string, amount: number, member: 1 | 2) => void
   onChange: (id: string, v: number) => void
   onNote: (id: string, note: string) => void
   onAdd: (g: CategoryGroup, c: string, member: 1 | 2) => void
@@ -974,11 +1061,18 @@ function MoneyStep({
           <div className="space-y-1.5">
             {missingConfessed.map((m) => (
               <button
-                key={`${m.group}:${m.category}`}
-                onClick={() => onAddConfessed(m.group, m.category, m.amount)}
+                key={`${m.member}:${m.group}:${m.category}`}
+                onClick={() => onAddConfessed(m.group, m.category, m.amount, m.member)}
                 className="flex w-full items-center justify-between rounded-btn bg-white px-3 py-2.5 text-left shadow-card active:bg-line"
               >
-                <span className="text-[14px] font-semibold text-ink">{m.category}</span>
+                <span className="text-[14px] font-semibold text-ink">
+                  {m.category}
+                  {showMember && (
+                    <span className="ml-1.5 text-[12px] font-medium text-sub">
+                      {memberNames[m.member - 1]}
+                    </span>
+                  )}
+                </span>
                 <span className="flex items-center gap-2">
                   <span className="tnum text-[14px] font-bold text-ink">{formatWon(m.amount)}</span>
                   <Plus size={16} className="text-brand" />
@@ -988,7 +1082,9 @@ function MoneyStep({
           </div>
           <button
             onClick={() =>
-              missingConfessed.forEach((m) => onAddConfessed(m.group, m.category, m.amount))
+              missingConfessed.forEach((m) =>
+                onAddConfessed(m.group, m.category, m.amount, m.member),
+              )
             }
             className="mt-2 h-11 w-full rounded-btn bg-brand text-[14px] font-bold text-white active:bg-brand-dark"
           >
@@ -1134,7 +1230,8 @@ function MoneyStep({
         </div>
       )}
       {items.map((it, idx) => {
-        const invalid = showErrors && (!it[valueField] || it[valueField] <= 0)
+        const invalid =
+          showErrors && !zeroOk(it, valueField) && (!it[valueField] || it[valueField] <= 0)
         const memoVisible = memoOpen === it.id || !!it.note
         return (
           <div key={it.id} className="rounded-card bg-card px-4 py-3 shadow-card">
@@ -1202,6 +1299,9 @@ function MoneyStep({
             <AmountInput
               className="mt-2"
               value={it[valueField]}
+              placeholder={
+                valueField === 'actual' && it.planned > 0 ? `예산 ${formatComma(it.planned)}` : '0'
+              }
               error={invalid}
               onChange={(v) => onChange(it.id, v)}
             />
@@ -1216,7 +1316,7 @@ function MoneyStep({
             )}
             {invalid && (
               <p className="mt-1.5 text-right text-[12px] font-medium text-danger">
-                금액을 입력해 주세요 ❗️
+                금액을 입력해 주세요 ❗️ 없는 항목이면 X로 지워요
               </p>
             )}
             {(() => {

@@ -1,4 +1,5 @@
 import type { LoanInfo } from './lib/loan'
+import type { SavingPlan } from './lib/saving'
 export type CategoryGroup = 'income' | 'saving' | 'investment' | 'fixed' | 'variable'
 // 그룹 라벨: 수입, 저축, 투자, 고정지출, 변동지출
 
@@ -138,6 +139,8 @@ export interface AssetItem {
   note?: string
   /** 부채만 — 대출 정보가 있으면 매달 갚는 돈을 계산하고 갚는 날마다 원금을 줄인다 (lib/loan.ts) */
   loan?: LoanInfo
+  /** 예적금만 — 매달 넣는 돈이 있으면 넣는 날마다 잔액을 늘린다 (lib/saving.ts, 2026-11-24) */
+  saving?: SavingPlan
 }
 
 export interface AssetSnapshot {
@@ -192,4 +195,11 @@ export interface AppData {
   snapshots: AssetSnapshot[]
   occasions: OccasionEntry[]
   categories: Categories
+  /**
+   * 소비 기록 전부 (2026-11-19 점검). 예전 백업엔 없었는데, 가져오기는 서버 기록을 다 지워서
+   * 백업을 가져오면 소비 기록이 영영 사라졌다. 없는 옛 백업을 가져오면 기록은 건드리지 않는다.
+   */
+  confessions?: Confession[]
+  /** 기록 화면이 배운 말 → 분류 */
+  aliases?: Record<string, string>
 }

@@ -12,7 +12,9 @@ vi.mock('../lib/db', () => ({
   joinHousehold: (c: string) => joinHousehold(c),
   createHousehold: () => createHousehold(),
   pushProfile: vi.fn(),
+  signOutEverywhere: () => signOutEverywhere(),
 }))
+const signOutEverywhere = vi.fn()
 
 beforeEach(() => localStorage.clear())
 
@@ -68,6 +70,14 @@ describe('가구 연결 화면 — 초대 링크로 온 사람', () => {
   })
 })
 
+describe('가구 연결 화면 — 로그아웃', () => {
+  it("'다른 계정으로 로그인'은 푸시 토큰을 지우는 공통 로그아웃을 쓴다", async () => {
+    const { user } = renderScreen(<Onboarding onDone={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: '다른 계정으로 로그인' }))
+    expect(signOutEverywhere).toHaveBeenCalled()
+  })
+})
+
 describe('가구 연결 화면 — 그냥 들어온 사람', () => {
   it('예전처럼 새로 만들기와 코드 입력이 둘 다 있다', () => {
     renderScreen(<Onboarding onDone={vi.fn()} />)
@@ -87,5 +97,22 @@ describe('가구 연결 화면 — 그냥 들어온 사람', () => {
     await user.click(screen.getByText('새 가계부 만들기'))
 
     expect(localStorage.getItem('moabuli_invite')).toBeNull()
+  })
+})
+
+describe('참여가 안 될 때 진짜 이유를 보여 준다 (2026-11-20 제보)', () => {
+  it('서버 이유(이미 두 명)를 그대로 보여 주고, 그때 쓴 계정으로 다시 로그인하라고 안내한다', async () => {
+    localStorage.setItem('moabuli_invite', CODE)
+    // supabase 오류는 Error가 아니라 { message } 모양 — 예전엔 '참여하지 못했어요'만 떴다
+    joinHousehold.mockRejectedValue({ message: '이 가계부에는 이미 두 명이 연결되어 있어요' })
+    const { user } = renderScreen(<Onboarding onDone={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: '참여하기' }))
+
+    expect(screen.getByText('이 가계부에는 이미 두 명이 연결되어 있어요')).toBeInTheDocument()
+    expect(screen.queryByText('참여하지 못했어요')).not.toBeInTheDocument()
+    expect(screen.getByText(/그때 쓴 계정으로 다시 로그인/)).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: '다른 계정으로 로그인' })[0])
+    expect(signOutEverywhere).toHaveBeenCalled()
   })
 })

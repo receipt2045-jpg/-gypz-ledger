@@ -11,10 +11,10 @@ const labels = () =>
     .filter(Boolean)
 
 describe('하단 탭 — 2026-09-30 개편', () => {
-  it('왼쪽부터 가계부 · 자산 · 홈 · 정보 · 설정 순이다', () => {
+  it('왼쪽부터 가계부 · 부수입 · 홈 · 자산 · 돈 공부 순이다 (2026-11-19 부수입 탭, 설정은 홈 톱니바퀴로)', () => {
     seedStore({})
     renderScreen(<TabBar />)
-    expect(labels()).toEqual(['가계부', '자산', '홈', '돈 공부', '설정'])
+    expect(labels()).toEqual(['가계부', '부수입', '홈', '자산', '돈 공부'])
   })
 
   it('자산 로드맵·게시판 탭은 없다', () => {
@@ -32,7 +32,7 @@ describe('하단 탭 — 2026-09-30 개편', () => {
     expect(href('가계부')).toBe('/monthly')
     expect(href('자산')).toBe('/assets')
     expect(href('돈 공부')).toBe('/info')
-    expect(href('설정')).toBe('/settings')
+    expect(href('부수입')).toBe('/side')
   })
 
   it('오늘 소비 기록을 안 했으면 가계부 탭이 굵어진다', () => {

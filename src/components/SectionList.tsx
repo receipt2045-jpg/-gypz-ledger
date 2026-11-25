@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { BudgetItem } from '../types'
 import { effectiveAmount } from '../lib/carryover'
 import { formatComma, formatWon } from '../lib/format'
+import SheetTable from './SheetTable'
 
 interface SectionListProps {
   title: string
@@ -24,6 +25,7 @@ export default function SectionList({
   if (items.length === 0) return null
 
   const subtotal = items.reduce((acc, it) => acc + effectiveAmount(it, closed), 0)
+  const whoOf = (it: BudgetItem) => (it.shared ? '공동' : memberNames[it.member - 1])
 
   return (
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
@@ -44,42 +46,69 @@ export default function SectionList({
           )}
         </span>
       </button>
+      {/* 엑셀처럼 표로 (2026-11-25 결영 요청) — 칸 이름 옆 ▾ 거르기 */}
       {open && (
-        <div className="mt-1 divide-y divide-line/70">
-          {items.map((it) => {
-            const main = effectiveAmount(it, closed)
-            const diff = it.actual - it.planned
-            const good = goodWhenOver ? diff >= 0 : diff <= 0
-            const diffColor = good ? 'text-brand' : 'text-danger'
-            return (
-              <div key={it.id} className="flex items-center justify-between py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[15px] font-medium text-ink">{it.category}</p>
-                  <p className="mt-0.5 truncate text-[12px] text-cap">
-                    {it.shared ? '공동' : memberNames[it.member - 1]}
-                    {it.note ? ` · ${it.note}` : ''}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="tnum text-[15px] font-semibold text-ink">{formatComma(main)}원</p>
-                  {closed ? (
-                    diff !== 0 ? (
-                      <p className={`tnum mt-0.5 text-[12px] font-medium ${diffColor}`}>
-                        예산 대비 {diff > 0 ? '+' : '−'}
-                        {formatComma(Math.abs(diff))}
-                      </p>
-                    ) : (
-                      <p className="mt-0.5 text-[12px] text-cap">예산과 동일</p>
-                    )
-                  ) : (
-                    <p className="tnum mt-0.5 text-[12px] text-cap">
-                      계획 {formatComma(it.planned)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+        <div className="mt-2">
+          <SheetTable
+            rows={items}
+            rowKey={(it) => it.id}
+            minWidth={460}
+            cols={[
+              {
+                key: 'category',
+                label: '항목',
+                width: 110,
+                cell: (it) => it.category,
+                filter: { get: (it) => it.category },
+              },
+              {
+                key: 'who',
+                label: '누구',
+                width: 76,
+                align: 'center',
+                cell: (it) => whoOf(it),
+                filter: { get: (it) => whoOf(it) },
+              },
+              {
+                key: 'note',
+                label: '메모',
+                cell: (it) => it.note ?? '',
+                tone: () => 'text-sub',
+                filter: { get: (it) => it.note ?? '', text: true },
+              },
+              {
+                key: 'amount',
+                label: closed ? '실제' : '금액',
+                width: 96,
+                align: 'right',
+                cell: (it) => formatComma(effectiveAmount(it, closed)),
+                tone: () => 'font-semibold text-ink tnum',
+              },
+              {
+                key: 'diff',
+                label: closed ? '예산 대비' : '계획',
+                width: 92,
+                align: 'right',
+                cell: (it) => {
+                  const diff = it.actual - it.planned
+                  if (!closed) return formatComma(it.planned)
+                  if (diff === 0) return '같음'
+                  return `${diff > 0 ? '+' : '−'}${formatComma(Math.abs(diff))}`
+                },
+                tone: (it) => {
+                  const diff = it.actual - it.planned
+                  if (!closed || diff === 0) return 'text-cap tnum'
+                  const good = goodWhenOver ? diff >= 0 : diff <= 0
+                  return `tnum font-medium ${good ? 'text-brand' : 'text-danger'}`
+                },
+              },
+            ]}
+            summary={(rows) => (
+              <b className="text-ink">
+                {formatWon(rows.reduce((a, it) => a + effectiveAmount(it, closed), 0))}
+              </b>
+            )}
+          />
         </div>
       )}
     </div>

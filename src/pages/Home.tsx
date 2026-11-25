@@ -5,6 +5,9 @@ import { BarChart3, Check, ChevronLeft, ChevronRight, Settings, TrendingUp } fro
 import Card from '../components/Card'
 import InfoTip from '../components/InfoTip'
 import InviteBanner from '../components/InviteBanner'
+import { AssetTrend, type EditTarget } from '../components/AssetGlance'
+import { assetTrend } from '../lib/assetTrend'
+import { useFxRates } from '../lib/fx'
 import { type MonthPoint } from '../components/MonthlyCombo'
 import { LazyMonthlyCombo } from '../components/LazyCharts'
 import ProgressBar from '../components/ProgressBar'
@@ -34,6 +37,7 @@ import {
 import { TERM_TIP } from '../lib/constants'
 import { NO_CONTRIBUTIONS, totalLeft } from '../lib/budgetPlan'
 import { computeRoadmap, roadmapInput } from '../lib/roadmap'
+import PushAskSheet from '../components/PushAskSheet'
 
 /**
  * 홈 = 대시보드만. 기록(고백·예산·정산·자산 등록)은 각 탭에서:
@@ -45,7 +49,8 @@ export default function Home() {
 
   // 보고 있는 달 — 정산해도 자동으로 넘어가지 않고, ◀▶로 직접 선택
   const latestLedgerYm = ledgers.length ? ledgers[ledgers.length - 1].ym : activeYm(ledgers)
-  const [ym, setYm] = useState(latestLedgerYm)
+  // 다음 달 예산을 미리 세웠어도 처음엔 이번 달 (11-01 의견: "로그인하면 12월부터 봐져요")
+  const [ym, setYm] = useState(() => (latestLedgerYm > currentYm() ? currentYm() : latestLedgerYm))
   const maxYm = shiftYm(latestLedgerYm, 1) // 다음 달까지(예산 미리보기)
 
   const ledger = resolveLedger(ledgers, ym)
@@ -54,6 +59,10 @@ export default function Home() {
   const snapshot = resolveSnapshot(snapshots, ym)
   const netWorth = netWorthOf(snapshot)
   const series = netWorthSeries(snapshots, ym, 6)
+  // 전체 자산 흐름 — 자산 탭과 같은 그래프. 점을 누르면 지난달과 견준 표 (2026-11-17 의견)
+  const rates = useFxRates()
+  const trend = useMemo(() => assetTrend(snapshots, profile, rates), [snapshots, profile, rates])
+  const editAsset = (to: EditTarget) => navigate('/asset-setup', { state: to })
   const prev = series.length >= 2 ? series[series.length - 2].value : netWorth
   const delta = signedAbbrev(netWorth - prev)
 
@@ -105,6 +114,8 @@ export default function Home() {
 
   return (
     <div className="animate-fade-up space-y-4 pb-24">
+      {/* 앱 처음 알림 안내 (웹·예시에선 안 뜬다) */}
+      <PushAskSheet />
       {/* 달 선택 + 설정 */}
       <div className="relative flex items-center justify-center gap-3 pt-2">
         <button
@@ -172,6 +183,9 @@ export default function Home() {
         />
       )}
 
+      {/* 전체 자산 흐름 — 홈에서도 바로 (2026-11-17 의견). 점을 누르면 그 달 표 */}
+      <AssetTrend series={trend.series} onEdit={editAsset} />
+
       {/* 혼자 쓰는 집이면 배우자 초대 — 정산은 둘 다 해야 끝난다 */}
       <InviteBanner />
 
@@ -180,7 +194,7 @@ export default function Home() {
         left={
           <>
             {/* 오늘 카드 — 매일의 기록이 예산·연말정산으로 이어지는 허브 */}
-            <TodayCard />
+            <TodayCard ym={ym} />
 
             {/* 이번 달 할 일 — 월초 예산 / 월말 정산 */}
             {todo && (
@@ -228,7 +242,7 @@ export default function Home() {
               {ledger.closed ? (
                 <>
                   <p className="text-[13px] font-medium text-cap">
-                    {formatMonthKorean(ym)} 잉여현금
+                    {formatMonthKorean(ym)} 남는 돈
                     <InfoTip text={TERM_TIP.surplus} />
                   </p>
                   <p

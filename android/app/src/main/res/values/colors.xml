@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 기존 TWA 앱의 backgroundColor와 같다 -->
+    <color name="splash_background">#F2F4F6</color>
+</resources>

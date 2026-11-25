@@ -1,5 +1,6 @@
 import { applyCategoryChanges, type CategoryChange } from './categoryChanges'
 import { supabase } from './supabase'
+import { forgetPushToken } from './pushNative'
 import type { ChildRecord, GiftReport } from './childMoney'
 import type { PeerRow } from './peerBenchmark'
 import type {
@@ -213,7 +214,8 @@ export async function deleteMonth(householdId: string, ym: string) {
 }
 
 export async function pushOccasion(householdId: string, entry: OccasionEntry) {
-  const { error } = await supabase.from('occasions').insert({
+  // upsert — 고친 기록도 같은 길로 (2026-11-25 비정기 지출 표에서 고치기)
+  const { error } = await supabase.from('occasions').upsert({
     id: entry.id,
     household_id: householdId,
     date: entry.date,
@@ -287,11 +289,12 @@ export async function pushCategories(householdId: string, categories: Categories
 export async function fetchChildRecords(householdId: string): Promise<ChildRecord[]> {
   const { data, error } = await supabase
     .from('confessions')
-    .select('child, category, amount, child_keep, gift, created_at')
+    .select('id, child, category, amount, child_keep, gift, created_at')
     .eq('household_id', householdId)
     .not('child', 'is', null)
   if (error) throw error
   return (data ?? []).map((r) => ({
+    id: r.id as string | undefined,
     child: r.child,
     category: r.category,
     amount: Number(r.amount),
@@ -344,10 +347,20 @@ export async function deleteGiftReport(id: string): Promise<void> {
   if (error) throw error
 }
 
+/** 앱을 열 때 읽는 소비 기록 기간 — 그 앞은 필요할 때 fetchConfessionsBetween으로 */
+export const CONFESSION_WINDOW_DAYS = 62
+
+export function confessionWindowStart(now = new Date()): Date {
+  const since = new Date(now)
+  since.setDate(since.getDate() - CONFESSION_WINDOW_DAYS)
+  return since
+}
+
 /** 최근 62일 고백 로그 (스트릭 계산 + 월 로그 표시용) */
-export async function fetchConfessions(householdId: string): Promise<Confession[]> {
-  const since = new Date()
-  since.setDate(since.getDate() - 62)
+export async function fetchConfessions(
+  householdId: string,
+  since: Date = confessionWindowStart(),
+): Promise<Confession[]> {
   const { data, error } = await supabase
     .from('confessions')
     .select('*')
@@ -355,7 +368,48 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
     .gte('created_at', since.toISOString())
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (data ?? []).map((r) => ({
+  return (data ?? []).map(rowToConfession)
+}
+
+/**
+ * 62일보다 앞선 소비 기록 (2026-11-17 의견: "이전에 입력해둔 소비기록이 사라져요").
+ * 지난달을 열거나 '지난 기록 더 보기'를 누를 때 [from, to) 사이만 더 읽는다.
+ */
+export async function fetchConfessionsBetween(
+  householdId: string,
+  from: Date,
+  to: Date,
+): Promise<Confession[]> {
+  const { data, error } = await supabase
+    .from('confessions')
+    .select('*')
+    .eq('household_id', householdId)
+    .gte('created_at', from.toISOString())
+    .lt('created_at', to.toISOString())
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(rowToConfession)
+}
+
+/** 소비 기록 전부 — 백업용. 서버는 한 번에 1,000건까지라 나눠 읽는다 (2026-11-19) */
+export async function fetchAllConfessions(householdId: string): Promise<Confession[]> {
+  const out: Confession[] = []
+  const page = 1000
+  for (let from = 0; ; from += page) {
+    const { data, error } = await supabase
+      .from('confessions')
+      .select('*')
+      .eq('household_id', householdId)
+      .order('created_at', { ascending: true })
+      .range(from, from + page - 1)
+    if (error) throw error
+    out.push(...(data ?? []).map(rowToConfession))
+    if (!data || data.length < page) return out
+  }
+}
+
+function rowToConfession(r: any): Confession {
+  return {
     id: r.id,
     memberNo: r.member_no as 1 | 2,
     category: r.category,
@@ -369,7 +423,7 @@ export async function fetchConfessions(householdId: string): Promise<Confession[
     childKeep: r.child ? r.child_keep !== false : undefined,
     gift: r.gift === true ? true : undefined,
     createdAt: r.created_at,
-  }))
+  }
 }
 
 /**
@@ -512,6 +566,16 @@ export async function sendFeedback(input: {
   if (error) throw error
 }
 
+/** 로그아웃 — 이 폰으로 그 사람 알림이 더 가지 않게 토큰부터 지운다(웹·플러그인 없는 앱은 아무것도 안 함). 모든 로그아웃은 이걸 쓴다 */
+export async function signOutEverywhere() {
+  try {
+    await forgetPushToken()
+  } catch (err) {
+    console.warn('[push] 로그아웃 전 토큰 지우기', err)
+  }
+  await supabase.auth.signOut()
+}
+
 /** 회원 탈퇴: 내 가구·모든 데이터 삭제 후 로그아웃 (RPC delete_my_account) */
 export async function deleteMyAccount() {
   const { error } = await supabase.rpc('delete_my_account')
@@ -538,7 +602,12 @@ export async function clearHouseholdRecords(householdId: string) {
 
 /** JSON 가져오기: 기존 기록을 지우고 통째로 교체 */
 export async function replaceAllData(householdId: string, data: AppData) {
+  // 옛 백업(소비 기록 없음)이면 서버의 소비 기록을 남겨 둔다 — 지우면 되살릴 길이 없다 (2026-11-19 점검)
+  const keepConfessions = data.confessions ? null : await fetchAllConfessions(householdId)
   await clearHouseholdRecords(householdId)
+  const confessions = data.confessions ?? keepConfessions ?? []
+  for (let i = 0; i < confessions.length; i += 200)
+    await Promise.all(confessions.slice(i, i + 200).map((c) => insertConfession(householdId, c)))
   await Promise.all([
     pushProfile(householdId, data.profile),
     pushCategories(householdId, data.categories),

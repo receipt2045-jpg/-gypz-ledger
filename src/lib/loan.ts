@@ -30,6 +30,24 @@ export interface LoanInfo {
   /** 체증식 — 이번 달 갚는 돈(원리금)과 매달 늘어나는 금액. 없으면 남은 원금으로 다시 잡는다 */
   gradPayment?: number
   gradStep?: number
+  /** 처음 빌린 돈으로 적었으면 그 값 — 다시 고칠 때 칸을 채운다 (2026-11-24) */
+  start?: LoanStart
+}
+
+/**
+ * 처음 빌린 돈으로 적기 (2026-11-22 의견: "잔액을 넣으면 매달 갚는 돈이 적게 나오고, 원금을 넣어야 맞게 나와요.
+ * 갚은 돈이 자산에 섞여 정확한 자산을 알기 어려워요. 원금·개월 수로 월상환액을 계산하고 기상환액을 적게 해 주세요").
+ * 남은 돈에 처음 기간을 넣으면 매달 갚는 돈이 적게 나왔다 — 남은 돈·남은 기간을 사람이 알기 어렵다.
+ */
+export interface LoanStart {
+  /** 처음 빌린 돈 */
+  principal: number
+  /** 처음 정한 전체 기간(개월) */
+  totalMonths: number
+  /** 대출 받은 달 'YYYY-MM' — 다음 달 갚는 날부터 갚기 시작 */
+  startYm: string
+  /** 정해진 것 말고 미리 더 갚은 돈(중도상환) */
+  prepaid?: number
 }
 
 export interface LoanPayment {
@@ -128,6 +146,44 @@ function nextMonth(loan: LoanInfo, balanceAfter: number): LoanInfo {
   return plan
     ? { ...loan, months, gradPayment: plan.first, gradStep: plan.step }
     : { ...loan, months, gradPayment: loan.gradPayment! + loan.gradStep! }
+}
+
+/**
+ * 처음 빌린 돈·전체 기간·대출 받은 달로 지금 남은 돈과 남은 기간을 계산한다.
+ * 받은 달 다음 갚는 날부터 오늘까지 정해진 대로 갚았다고 보고, 미리 더 갚은 돈은 남은 돈에서 뺀다.
+ */
+export function loanFromStart(
+  s: LoanStart,
+  base: Pick<LoanInfo, 'rate' | 'payDay' | 'method'>,
+  today: Date,
+): { balance: number; loan: LoanInfo } {
+  let balance = s.principal
+  const plan = (b: number, n: number) => {
+    const p = graduatedPlan(b, base.rate, Math.max(1, n))
+    return { gradPayment: p.first, gradStep: p.step }
+  }
+  let cur: LoanInfo = {
+    ...base,
+    months: Math.max(0, Math.round(s.totalMonths)),
+    asOf: '',
+    ...(base.method === 'graduated' ? plan(s.principal, s.totalMonths) : {}),
+  }
+  const [y, m] = s.startYm.split('-').map(Number)
+  const from = dayString(payDateIn(y, m - 1, base.payDay))
+  const paid = payDatesSince(from, today, base.payDay).length
+  for (let i = 0; i < paid; i++) {
+    if (balance <= 0 || cur.months <= 0) break
+    balance -= monthlyPayment(balance, cur).principal
+    cur = nextMonth(cur, balance)
+  }
+  const prepaid = Math.min(Math.max(0, balance), Math.max(0, s.prepaid ?? 0))
+  if (prepaid > 0) {
+    balance -= prepaid
+    // 미리 갚으면 남은 기간은 그대로, 매달 갚는 돈이 줄어든다 — 체증식은 남은 돈으로 다시 잡는다
+    if (cur.method === 'graduated' && cur.months > 0) cur = { ...cur, ...plan(balance, cur.months) }
+  }
+  balance = Math.max(0, Math.round(balance))
+  return { balance, loan: { ...cur, months: balance > 0 ? cur.months : 0, asOf: dayString(today) } }
 }
 
 /** 지난 갚는 날만큼 원금을 줄인 항목. 바뀐 게 없으면 null */

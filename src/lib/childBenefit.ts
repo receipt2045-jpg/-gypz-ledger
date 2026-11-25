@@ -58,6 +58,11 @@ export interface BenefitInput {
   voucher: boolean
   /** 어린이집(유치원)에 다니나 */
   daycare: boolean
+  /**
+   * 몇 개월부터 다니나 (0 = 태어나서부터, 12 = 돌부터, 24 = 두 돌부터).
+   * 2026-11-19 점검: '다닐 거예요'가 태어난 달부터 적용돼 돌 뒤에 보낼 집도 0세 부모급여가 41.6만으로 나왔다.
+   */
+  daycareFrom?: number
 }
 
 export interface BenefitMonth {
@@ -144,18 +149,19 @@ export function computeBenefit(input: BenefitInput, now: Date = new Date()): Ben
   for (let i = 0; i < 14 * 12; i++) {
     const age = (y - by) * 12 + (m - bm)
     if (age >= 0) {
+      const inDaycare = input.daycare && age >= (input.daycareFrom ?? 0)
       const parentPay =
         age < 12
-          ? input.daycare
+          ? inDaycare
             ? BENEFIT_RULES.parentPayDaycare0
             : BENEFIT_RULES.parentPay0
           : age < 24
-            ? input.daycare
+            ? inDaycare
               ? BENEFIT_RULES.parentPayDaycare1
               : BENEFIT_RULES.parentPay1
             : 0
       const homeCare =
-        !input.daycare && age >= 24 && age < BENEFIT_RULES.homeCareUntil
+        !inDaycare && age >= 24 && age < BENEFIT_RULES.homeCareUntil
           ? BENEFIT_RULES.homeCare
           : 0
       const allowance = allowanceEligible(y, by, age) ? allowanceMonthly : 0

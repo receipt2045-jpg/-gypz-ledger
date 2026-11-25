@@ -8,7 +8,8 @@ describe('우리집 한 달 시작일 (2026-10-07 제보: 급여일 15일 기준
   it('기본(1일)은 예전과 같다', () => {
     expect(ymOfDate(new Date(2026, 9, 1))).toBe('2026-10')
     expect(ymOfDate(new Date(2026, 9, 31))).toBe('2026-10')
-    expect(periodLabel('2026-10')).toBeNull()
+    expect(periodLabel('2026-10')).toBe('10월 1일 ~ 10월 31일')
+    expect(periodLabel('2026-02')).toBe('2월 1일 ~ 2월 28일')
   })
 
   it('15일 시작이면 14일까지는 앞 달, 15일부터 그 달', () => {
@@ -33,7 +34,7 @@ describe('우리집 한 달 시작일 (2026-10-07 제보: 급여일 15일 기준
 
   it('1~28일만 — 그 밖은 1일로', () => {
     setMonthStartDay(31)
-    expect(periodLabel('2026-10')).toBeNull()
+    expect(periodLabel('2026-10')).toBe('10월 1일 ~ 10월 31일')
   })
 })
 

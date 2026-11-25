@@ -2,7 +2,9 @@
 // 단톡·인스타로 나눈 자료를 한곳에 모은다. 새 자료 = 페이지 하나 + 여기 한 줄.
 // 이 목록 하나로 공개 목록(/share), 돈 공부 탭, 각 자료 맨 끝 '다른 자료'가 같이 바뀐다.
 
-export type ShareCategory = '재테크' | '육아' | '내집마련' | '집밥'
+// 2026-11-21 자료가 늘어 '짠테크'를 나눴다 — 쿠팡 돌려받기·AI 설문처럼 아끼고 버는 자료
+// 2026-11-26 집밥 플래너(/recipes)로 '집밥'을 더했다
+export type ShareCategory = '내집마련' | '육아' | '짠테크' | '재테크' | '집밥'
 
 export interface ShareItem {
   slug: string
@@ -20,9 +22,70 @@ export interface ShareItem {
   tint: string
 }
 
-export const SHARE_CATEGORIES: ShareCategory[] = ['재테크', '육아', '내집마련', '집밥']
+import { MONEYTOON_SHARES } from './moneytoon'
+
+export const SHARE_CATEGORIES: ShareCategory[] = ['내집마련', '육아', '짠테크', '재테크', '집밥']
+
+/** 주소의 ?c= 값 → 분류 (모르는 값이면 전체) */
+export const parseShareCategory = (v: string | null): ShareCategory | null =>
+  SHARE_CATEGORIES.find((c) => c === v) ?? null
 
 export const SHARES: ShareItem[] = [
+  {
+    slug: 'toothpaste',
+    path: '/toothpaste',
+    title: '무불소 아기치약 10종, 성분·뚜껑·가격 비교',
+    sub: '어린이집에 보낼 치약 10종을 10g당 가격으로 비교하고, 양치 파우치 3종까지 정리했어요',
+    category: '육아',
+    date: '2026-11-21',
+    minutes: 5,
+    emoji: '🪥',
+    tint: 'bg-cyan-50',
+  },
+  {
+    slug: 'values',
+    path: '/values',
+    title: '부부 재테크 가치관 체크리스트 50',
+    sub: '아내·남편이 각자 1~5점 매기면 궁합 점수와 생각이 먼 것을 보여 줘요 — 폰이 따로면 링크로 합쳐서',
+    category: '재테크',
+    date: '2026-11-19',
+    minutes: 10,
+    emoji: '💑',
+    tint: 'bg-pink-50',
+  },
+  {
+    slug: 'survey',
+    path: '/survey',
+    title: '커피값, AI 비서가 벌어와요',
+    sub: '기프티콘 주는 설문을 하루 2번 AI가 찾아서 대신 응모해요 — 명령어 복사해서 그대로 쓰기',
+    category: '짠테크',
+    date: '2026-11-19',
+    minutes: 3,
+    emoji: '☕',
+    tint: 'bg-amber-50',
+  },
+  {
+    slug: 'cofix',
+    path: '/cofix',
+    title: '코픽스 오르면, 우리집 이자는 얼마 더?',
+    sub: '남은 대출금·금리만 넣으면 다음 금리변경일부터 한 달에 더 내는 돈을 계산해요',
+    category: '내집마련',
+    date: '2026-11-17',
+    minutes: 2,
+    emoji: '📈',
+    tint: 'bg-blue-50',
+  },
+  {
+    slug: 'coupang',
+    path: '/coupang',
+    title: '쿠팡에서 쓴 돈, 돌려받는 3가지',
+    sub: '최저가 알림 → 기프티콘 → 결제금액 2% 현금까지, 순서대로 정리했어요',
+    category: '짠테크',
+    date: '2026-11-09',
+    minutes: 3,
+    emoji: '🛒',
+    tint: 'bg-red-50',
+  },
   {
     slug: 'recipes',
     path: '/recipes',
@@ -100,6 +163,8 @@ export const SHARES: ShareItem[] = [
     emoji: '🍼',
     tint: 'bg-pink-50',
   },
+  // 머니툰 자료(src/lib/moneytoon/*.json)는 파일만 더하면 저절로 들어온다
+  ...MONEYTOON_SHARES,
 ]
 
 /** 최신순 */

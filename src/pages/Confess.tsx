@@ -17,6 +17,7 @@ import {
   Gift,
   HeartPulse,
   Home,
+  ImagePlus,
   Keyboard,
   Mic,
   MonitorPlay,
@@ -37,6 +38,13 @@ import {
 import WeeklyCostCard from '../components/WeeklyCostCard'
 import MonthSpendCard from '../components/MonthSpendCard'
 import RecoCard from '../components/RecoCard'
+import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
+import EditRow, { NOTE_MAX } from '../components/ConfessEditRow'
+import ConfessTable from '../components/ConfessTable'
+import type { FilterState } from '../components/ExcelFilter'
+import { captureToDrafts, readSpendCapture } from '../lib/spendCapture'
+import { CaptureError } from '../lib/stockDb'
+import { noSpendDays } from '../lib/noSpend'
 import { pickConfessReco, type RecoCard as Reco } from '../lib/reco'
 import { resolveLedger } from '../lib/carryover'
 import { useLedgerStore } from '../lib/store'
@@ -46,6 +54,8 @@ import { memberStyle } from '../lib/memberColors'
 import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
 import { GROUP_LABEL, NO_SPEND, visibleCategories } from '../lib/constants'
 import type { CategoryGroup, Confession } from '../types'
+import { NativeSpeech, type SpeechRecognitionLike } from '../lib/nativeSpeech'
+import { isNative } from '../lib/native'
 
 // 카테고리 아이콘 매핑 (없으면 Coins)
 const ICONS: Record<string, typeof Coins> = {
@@ -85,6 +95,7 @@ const QUICK_CHIPS = [1_000, 5_000, 10_000, 50_000]
 // iOS 홈화면 PWA에선 Web Speech API가 동작하지 않으므로 마이크 버튼을 숨긴다.
 // (그 경우에도 키보드의 딕테이션 키로 같은 경험 가능)
 function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
+  if (isNative()) return NativeSpeech
   const w = window as unknown as Record<string, unknown>
   const ctor = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as
     (new () => SpeechRecognitionLike) | undefined
@@ -97,21 +108,16 @@ function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   return ctor
 }
 
-interface SpeechRecognitionLike {
-  lang: string
-  continuous: boolean
-  interimResults: boolean
-  onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
-  onend: (() => void) | null
-  onerror: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-
 /** 확인 화면에서 다루는 항목 (파싱 결과 + 수정 추적) */
 interface DraftEntry extends ParsedEntry {
   key: number
   origCategory: string
+  /** 줄글에서 뽑힌 말 — 메모를 고쳐도 별칭 학습은 이걸로 한다 */
+  origNote?: string
+  /** 캡처로 읽은 건 — 그 건의 날짜 (없으면 고른 날짜) */
+  date?: string
+  /** 캡처가 흐려서 다시 봐야 하는 건 */
+  unsure?: boolean
 }
 
 /**
@@ -136,6 +142,8 @@ export default function Confess() {
     removeConfession,
     updateConfession,
     learnAliases,
+    householdId,
+    loadOlderConfessions,
   } = useLedgerStore()
   // 아이 없는 집엔 아동수당·용돈 수입 항목을 숨긴다
   const categories = useMemo(
@@ -151,6 +159,10 @@ export default function Confess() {
   const [parseMsg, setParseMsg] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<DraftEntry[] | null>(null)
   const [skipped, setSkipped] = useState<string[]>([])
+  // 캡처로 적기 (2026-11-24) — 카드·은행 앱 캡처를 읽어 확인 화면으로
+  const [capturing, setCapturing] = useState(false)
+  const [dupSkipped, setDupSkipped] = useState<string[]>([])
+  const fileRef = useRef<HTMLInputElement>(null)
   const [listening, setListening] = useState(false)
   const recRef = useRef<SpeechRecognitionLike | null>(null)
   const SR = useMemo(speechRecognitionCtor, [])
@@ -214,9 +226,27 @@ export default function Confess() {
   // 제보(9/15·9/16, 3건): "9월 1일 소비를 아무리 입력해도 저장이 안 돼요", "버튼으로 오늘 기록 안 돼요".
   // 저장은 됐는데 안 보였다. 9월 15일 오후엔 9월 1일 낮 12시 기록이 '최근 14일' 밖이라
   // 목록에서 빠졌다. 고른 날짜의 기록은 기간과 상관없이 항상 보여준다.
+  //
+  // 2026-11-17 의견: "과거 기록을 일주일 단위로만 볼 수 있어 불편해요", "이전에 입력해둔 소비기록이 사라져요".
+  // 처음엔 14일만, '지난 기록 더 보기'로 30일씩 더 — 앱에 없는 앞선 기록은 서버에서 더 읽어 온다.
+  const [days, setDays] = useState(14)
+  // 서버에서 30일씩 두 번 연달아 읽은 게 없으면 더 앞선 기록은 없다고 보고 버튼을 거둔다 (2026-11-19 점검:
+  // 로그인한 집은 더 볼 게 없어도 버튼이 끝없이 떴다)
+  const [emptyLoads, setEmptyLoads] = useState(0)
+  const showMore = () => {
+    const next = days + 30
+    setDays(next)
+    const until = new Date()
+    until.setHours(0, 0, 0, 0)
+    until.setDate(until.getDate() - next)
+    void loadOlderConfessions(until).then((n) => {
+      if (n !== null) setEmptyLoads((e) => (n === 0 ? e + 1 : 0))
+    })
+  }
   const recent = useMemo(() => {
     const since = new Date()
-    since.setDate(since.getDate() - 14)
+    since.setHours(0, 0, 0, 0)
+    since.setDate(since.getDate() - days)
     return confessions
       .filter(
         (c) =>
@@ -224,10 +254,21 @@ export default function Confess() {
           new Date(c.createdAt).toLocaleDateString('sv-SE') === logDate,
       )
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  }, [confessions, logDate])
+  }, [confessions, logDate, days])
+  // 더 볼 게 있는지 — 앱에 더 앞선 기록이 있거나, 서버에서 더 읽을 수 있으면
+  const sinceLabel = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() - days)
+    return `${d.getMonth() + 1}월 ${d.getDate()}일`
+  })()
+  const hasOlder =
+    (!!householdId && emptyLoads < 2) ||
+    confessions.some((c) => new Date(c.createdAt).getTime() < Date.now() - days * 86_400_000)
 
   // 고치는 중인 기록 — 한 번에 하나만
   const [editing, setEditing] = useState<string | null>(null)
+  // 우리집 기록 표 거르기 — 엑셀처럼 칸 이름 옆 ▾ (2026-11-25)
+  const [recF, setRecF] = useState<FilterState>({})
 
   /** '9월 1일' — 지난 날짜로 적는 중임을 알릴 때 */
   const logDateLabel = `${Number(logDate.slice(5, 7))}월 ${Number(logDate.slice(8, 10))}일`
@@ -281,15 +322,136 @@ export default function Confess() {
     { title: '수입 · 들어온 돈', kind: 'income', cats: categories.income },
   ]
 
+  // 기록 한 줄 — 누르면 고치기, 휴지통은 묻고 지우기 (목록·달력 같이 쓴다)
+  const renderRow = (c: Confession) =>
+    editing === c.id ? (
+      <EditRow
+        key={c.id}
+        c={c}
+        categories={categories}
+        memberNames={memberNames}
+        onSave={(patch) => {
+          updateConfession(c.id, patch)
+          setEditing(null)
+        }}
+        onCancel={() => setEditing(null)}
+      />
+    ) : (
+      <div key={c.id} className="flex items-center gap-2.5 py-2.5">
+        <button
+          onClick={() => setEditing(c.id)}
+          aria-label={`${c.category} 기록 고치기`}
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left active:opacity-60"
+        >
+          <span
+            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+              c.child
+                ? 'bg-amber-50 text-amber-700'
+                : c.shared
+                  ? 'bg-line text-sub'
+                  : memberStyle(c.memberNo, profile).badge
+            }`}
+          >
+            {c.child ? `🧒 ${c.child}` : c.shared ? '공동' : memberNames[c.memberNo - 1]}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[14px] text-ink">{c.category}</span>
+            {c.note && (
+              <span className="mt-0.5 block whitespace-pre-wrap break-words text-[12.5px] leading-snug text-sub">
+                {c.note}
+              </span>
+            )}
+          </span>
+          <span
+            className={`tnum shrink-0 text-[14px] font-bold ${
+              c.kind === 'income' ? 'text-brand' : 'text-ink'
+            }`}
+          >
+            {c.kind === 'income' ? '+' : ''}
+            {formatWon(c.amount)}
+          </span>
+        </button>
+        {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
+        <button
+          onClick={() => {
+            if (window.confirm(`${c.category} ${formatWon(c.amount)} 기록을 지울까요?`))
+              removeConfession(c.id)
+          }}
+          aria-label="기록 삭제"
+          className="-m-2 shrink-0 p-2 text-cap active:text-danger"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+    )
+
+  // ── 달력으로 보기 (2026-11-24 결영 요청: "지출 내역 달력으로도 볼 수 있으면") ──
+  const [confView, setConfViewState] = useState<'list' | 'calendar'>(() => {
+    try {
+      return localStorage.getItem('moabuli.confess.view') === 'calendar' ? 'calendar' : 'list'
+    } catch {
+      return 'list'
+    }
+  })
+  const setConfView = (v: 'list' | 'calendar') => {
+    setConfViewState(v)
+    try {
+      localStorage.setItem('moabuli.confess.view', v)
+    } catch {
+      /* 기억 못 해도 그대로 */
+    }
+  }
+  const [calYm, setCalYm] = useState(today.slice(0, 7))
+  const [calDay, setCalDay] = useState<string | null>(today)
+  // 지난달로 넘기면 앱에 없는 그 달 기록을 서버에서 읽어 온다
+  useEffect(() => {
+    if (confView !== 'calendar') return
+    const [y, m] = calYm.split('-').map(Number)
+    void loadOlderConfessions(new Date(y, m - 1, 1))
+  }, [confView, calYm, loadOlderConfessions])
+  const dayOf = (c: Confession) => new Date(c.createdAt).toLocaleDateString('sv-SE')
+  const calMonth = useMemo(
+    () => confessions.filter((c) => dayOf(c).startsWith(calYm)),
+    [confessions, calYm],
+  )
+  // 나간 돈 = 변동·고정 지출, 들어온 돈 = 수입. 저축·투자는 칸에 안 센다
+  const calMarks = useMemo(() => {
+    const m: Record<string, DayMark> = {}
+    for (const c of calMonth) {
+      if (c.kind !== 'income' && c.kind !== 'variable' && c.kind !== 'fixed') continue
+      const d = (m[dayOf(c)] ??= {})
+      if (c.kind === 'income') d.plus = (d.plus ?? 0) + c.amount
+      else d.minus = (d.minus ?? 0) + c.amount
+    }
+    for (const day of noSpendDays(calYm, calMonth, confessions, today)) (m[day] ??= {}).heart = true
+    return m
+  }, [calMonth, calYm, confessions, today])
+  const calOut = Object.values(calMarks).reduce((t, d) => t + (d.minus ?? 0), 0)
+  const calIn = Object.values(calMarks).reduce((t, d) => t + (d.plus ?? 0), 0)
+  const calDayIn = calDay && calDay.startsWith(calYm) ? calDay : null
+  const calDayList = calDayIn
+    ? calMonth
+        .filter((c) => dayOf(c) === calDayIn)
+        .sort((x, y) => (x.createdAt < y.createdAt ? 1 : -1))
+    : []
+
   // ── 저장 (양쪽 흐름 공통) ───────────────────
   const finishSave = (
-    entries: { category: string; kind: CategoryGroup; amount: number; note?: string }[],
+    entries: {
+      category: string
+      kind: CategoryGroup
+      amount: number
+      note?: string
+      date?: string
+    }[],
   ) => {
     // 지난 날짜를 골랐으면 그 날 낮 12시로 — 시간대가 밀려 하루 어긋나는 걸 막는다
-    const createdAt =
-      logDate === today ? new Date().toISOString() : new Date(`${logDate}T12:00:00`).toISOString()
+    // 캡처로 읽은 건은 그 건의 날짜로
+    const createdAtOf = (day: string) =>
+      day === today ? new Date().toISOString() : new Date(`${day}T12:00:00`).toISOString()
     let last = null as ReturnType<typeof addConfession> | null
     for (const e of entries) {
+      const createdAt = createdAtOf(e.date ?? logDate)
       last = addConfession({
         category: e.category,
         kind: e.kind,
@@ -350,7 +512,49 @@ export default function Confess() {
     }
     setParseMsg(null)
     setSkipped(r.skipped)
-    setDrafts(r.entries.map((e, i) => ({ ...e, key: i, origCategory: e.category })))
+    setDrafts(
+      r.entries.map((e, i) => ({ ...e, key: i, origCategory: e.category, origNote: e.note })),
+    )
+  }
+
+  // ── 캡처: 읽기 → 확인 단계로 (2026-11-24) ──────
+  const runCapture = async (file: File) => {
+    setCapturing(true)
+    setParseMsg(null)
+    try {
+      const items = await readSpendCapture(file, categories, today)
+      const r = captureToDrafts(items, categories, aliases, confessions, logDate, today)
+      if (r.drafts.length === 0) {
+        setParseMsg(
+          r.dup.length
+            ? '캡처에 있는 건 이미 다 적혀 있어요'
+            : '캡처에서 결제·입금 내역을 못 찾았어요. 금액이 보이게 다시 캡처해 주세요',
+        )
+        return
+      }
+      setSkipped([])
+      setDupSkipped(r.dup)
+      setDrafts(
+        r.drafts.map((e, i) => ({
+          ...e,
+          key: i,
+          origCategory: e.category,
+          origNote: e.note,
+        })),
+      )
+    } catch (err) {
+      const reason = err instanceof CaptureError ? err.reason : 'failed'
+      setParseMsg(
+        reason === 'login'
+          ? '캡처로 적기는 로그인하면 쓸 수 있어요'
+          : reason === 'limit'
+            ? '오늘은 캡처를 많이 읽었어요. 내일 다시 해 주세요'
+            : '캡처를 읽지 못했어요. 잠시 뒤 다시 해 주세요',
+      )
+    } finally {
+      setCapturing(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
   }
 
   // ── 줄글: 확인 → 저장 ───────────────────────
@@ -359,12 +563,12 @@ export default function Confess() {
     // 카테고리를 고쳤거나 매칭에 실패했던 항목은 별칭으로 학습 (다음부턴 자동)
     const patch: Record<string, string> = {}
     for (const d of drafts) {
-      const word = d.note?.split(' ')[0]
+      const word = d.origNote?.split(' ')[0]
       if (!word || word.length < 2) continue
       if (d.category !== d.origCategory || !d.matched) patch[word] = d.category
     }
     if (Object.keys(patch).length) learnAliases(patch)
-    finishSave(drafts)
+    finishSave(drafts.map((d) => ({ ...d, note: d.note?.trim() || undefined })))
   }
 
   const toggleMic = () => {
@@ -398,6 +602,7 @@ export default function Confess() {
     setDraft('')
     setDrafts(null)
     setSkipped([])
+    setDupSkipped([])
     setParseMsg(null)
   }
 
@@ -534,7 +739,7 @@ export default function Confess() {
         <Top
           onBack={() => setDrafts(null)}
           title="이렇게 기록할까요?"
-          subtitle="카테고리와 금액을 눌러 고칠 수 있어요"
+          subtitle="종류·금액·메모를 눌러 고칠 수 있어요"
         />
         {pastDateBanner}
         <div className="flex-1 space-y-3 px-5 pb-10 pt-1">
@@ -570,7 +775,6 @@ export default function Confess() {
                         </optgroup>
                       ))}
                     </select>
-                    {d.note && <p className="truncate text-[12px] text-cap">{d.note}</p>}
                   </div>
                   <input
                     inputMode="numeric"
@@ -595,15 +799,54 @@ export default function Confess() {
                     <Trash2 size={17} />
                   </button>
                 </div>
+                {d.date !== undefined && (
+                  <input
+                    type="date"
+                    value={d.date}
+                    max={today}
+                    onChange={(e) =>
+                      setDrafts((prev) =>
+                        prev!.map((x) =>
+                          x.key === d.key ? { ...x, date: e.target.value || logDate } : x,
+                        ),
+                      )
+                    }
+                    aria-label={`${d.category} 날짜`}
+                    className="tnum mt-2 w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] text-ink outline-none focus:border-brand"
+                  />
+                )}
+                <input
+                  value={d.note ?? ''}
+                  onChange={(e) =>
+                    setDrafts((prev) =>
+                      prev!.map((x) => (x.key === d.key ? { ...x, note: e.target.value } : x)),
+                    )
+                  }
+                  maxLength={NOTE_MAX}
+                  placeholder="메모 (선택) 예: 친구 생일 선물"
+                  aria-label={`${d.category} 메모`}
+                  className="mt-2 w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] text-ink outline-none placeholder:text-cap focus:border-brand"
+                />
+                {d.unsure && (
+                  <p className="mt-1.5 text-[12px] text-amber-600">
+                    캡처가 흐려서 금액·날짜를 한 번 더 봐 주세요
+                  </p>
+                )}
                 {!d.matched && (
                   <p className="mt-1.5 text-[12px] text-amber-600">
-                    어디에 쓴 건지 몰라서 기타로 두었어요. 고쳐주시면 다음부턴 기억할게요.
+                    어디에 쓴 건지 몰라서 우선 '{d.category}'에 두었어요. 맞는 종류로 고쳐 주시면
+                    다음부턴 기억할게요.
                   </p>
                 )}
               </div>
             )
           })}
 
+          {dupSkipped.length > 0 && (
+            <p className="px-1 text-[12px] text-cap">
+              이미 적혀 있어서 뺀 것: {dupSkipped.join(' / ')}
+            </p>
+          )}
           {skipped.length > 0 && (
             <p className="px-1 text-[12px] text-cap">
               금액이 없어 건너뛴 부분: {skipped.join(' / ')}
@@ -644,8 +887,9 @@ export default function Confess() {
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            maxLength={40}
-            placeholder="한 마디 남기기 (선택)"
+            maxLength={NOTE_MAX}
+            placeholder="메모 남기기 (선택)"
+            aria-label="메모"
             className="mb-3 w-full rounded-btn border border-line bg-white px-4 py-3 text-center text-[14px] text-ink outline-none focus:border-brand placeholder:text-cap"
           />
 
@@ -826,13 +1070,32 @@ export default function Confess() {
             placeholder={'"점심 9천원, 커피 5,500원"\n이라고 말해보세요'}
             className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none placeholder:text-cap"
           />
-          <div className="mt-1 flex items-center justify-between">
+          <div className="mt-1 flex items-center gap-4">
             <button
               onClick={() => setMode('picker')}
               className="flex items-center gap-1.5 text-[13px] font-bold text-sub active:text-ink"
             >
               <Keyboard size={15} /> 버튼으로 고르기
             </button>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={capturing}
+              className="flex items-center gap-1.5 text-[13px] font-bold text-sub active:text-ink disabled:opacity-50"
+            >
+              <ImagePlus size={15} /> {capturing ? '읽는 중…' : '캡처로 적기'}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              aria-label="캡처 사진 고르기"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) void runCapture(f)
+              }}
+            />
+            <span className="flex-1" />
             {SR && (
               <button
                 onClick={toggleMic}
@@ -852,6 +1115,11 @@ export default function Confess() {
         {listening && (
           <p className="text-center text-[13px] font-bold text-red-500">
             듣고 있어요… 말이 끝나면 자동으로 받아 적어요
+          </p>
+        )}
+        {capturing && (
+          <p className="text-center text-[13px] font-bold text-brand">
+            캡처를 읽고 있어요… 15초쯤 걸려요
           </p>
         )}
         {parseMsg && <p className="px-1 text-[13px] font-bold text-amber-600">{parseMsg}</p>}
@@ -875,81 +1143,117 @@ export default function Confess() {
           </button>
         )}
 
-        {/* 내가 쓴 기록 (최근 14일) — 잘못 쓴 건 여기서 바로 지운다 */}
-        {recentByDate.length > 0 && (
+        {/* 우리집 기록 (처음엔 최근 14일, 더 보기로 30일씩) — 잘못 쓴 건 여기서 바로 고치거나 지운다 */}
+        {/* 최근 14일에 기록이 없어도 '지난 기록 더 보기'는 보여야 한다 (2026-11-19 점검) */}
+        {(recentByDate.length > 0 || hasOlder || confView === 'calendar') && (
           <div className="rounded-card bg-card px-4 py-3.5 shadow-card">
-            <p className="mb-2 text-[13px] font-bold text-cap">
-              우리집 기록 · 눌러서 고치거나 지울 수 있어요
-            </p>
-            <div className="space-y-3">
-              {recentByDate.map(([date, list]) => (
-                <div key={date}>
-                  <p className="tnum text-[12px] font-bold text-sub">
-                    {date === today ? '오늘' : date.slice(5).replace('-', '월 ') + '일'}
-                  </p>
-                  <div className="divide-y divide-line/70">
-                    {list.map((c) =>
-                      editing === c.id ? (
-                        <EditRow
-                          key={c.id}
-                          c={c}
-                          categories={categories}
-                          memberNames={memberNames}
-                          onSave={(patch) => {
-                            updateConfession(c.id, patch)
-                            setEditing(null)
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="min-w-0 text-[13px] font-bold text-cap">
+                우리집 기록 <span className="font-medium">· 눌러서 고쳐요</span>
+              </p>
+              <div className="flex shrink-0 gap-0.5 rounded-full bg-bg p-0.5" role="tablist">
+                {(['list', 'calendar'] as const).map((v) => (
+                  <button
+                    key={v}
+                    role="tab"
+                    aria-selected={confView === v}
+                    onClick={() => setConfView(v)}
+                    className={`rounded-full px-3 py-1 text-[12px] font-bold ${
+                      confView === v ? 'bg-white text-ink shadow-card' : 'text-sub'
+                    }`}
+                  >
+                    {v === 'list' ? '목록' : '달력'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {confView === 'calendar' ? (
+              <div>
+                <p className="tnum mb-2 text-[12.5px] text-sub">
+                  {Number(calYm.slice(5, 7))}월 쓴 돈{' '}
+                  <b className="text-ink">{formatWon(calOut)}</b>
+                  {calIn > 0 && (
+                    <>
+                      {' · '}들어온 돈 <b className="text-brand">{formatWon(calIn)}</b>
+                    </>
+                  )}
+                </p>
+                <MonthCalendar
+                  ym={calYm}
+                  marks={calMarks}
+                  selected={calDayIn}
+                  onPick={setCalDay}
+                  today={today}
+                  onMonth={(v) => {
+                    setCalYm(v)
+                    setCalDay(null)
+                  }}
+                />
+                <p className="mt-1.5 text-[11.5px] text-cap">
+                  − 쓴 돈(변동·고정) · <span className="text-brand">+</span> 들어온 돈 ·{' '}
+                  <span className="text-rose-500">♥</span> 무지출 · 저축·투자는 빼고 셌어요
+                </p>
+                {calDayIn && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[12.5px] font-bold text-sub">
+                        {Number(calDayIn.slice(5, 7))}월 {Number(calDayIn.slice(8, 10))}일 기록
+                      </p>
+                      {calDayIn <= today && (
+                        <button
+                          onClick={() => {
+                            setLogDate(calDayIn)
+                            try {
+                              window.scrollTo({ top: 0, behavior: 'smooth' })
+                            } catch {
+                              /* 못 올려도 그대로 */
+                            }
                           }}
-                          onCancel={() => setEditing(null)}
-                        />
-                      ) : (
-                        <div key={c.id} className="flex items-center gap-2.5 py-2.5">
-                          <button
-                            onClick={() => setEditing(c.id)}
-                            aria-label={`${c.category} 기록 고치기`}
-                            className="flex min-w-0 flex-1 items-center gap-2.5 text-left active:opacity-60"
-                          >
-                            <span
-                              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-                                c.child
-                                  ? 'bg-amber-50 text-amber-700'
-                                  : c.shared
-                                    ? 'bg-line text-sub'
-                                    : memberStyle(c.memberNo, profile).badge
-                              }`}
-                            >
-                              {c.child
-                                ? `🧒 ${c.child}`
-                                : c.shared
-                                  ? '공동'
-                                  : memberNames[c.memberNo - 1]}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
-                              {c.category}
-                              {c.note && <span className="text-cap"> · {c.note}</span>}
-                            </span>
-                            <span
-                              className={`tnum shrink-0 text-[14px] font-bold ${
-                                c.kind === 'income' ? 'text-brand' : 'text-ink'
-                              }`}
-                            >
-                              {c.kind === 'income' ? '+' : ''}
-                              {formatWon(c.amount)}
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => removeConfession(c.id)}
-                            aria-label="기록 삭제"
-                            className="shrink-0 text-cap active:text-danger"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      ),
+                          className="shrink-0 rounded-full bg-bg px-2.5 py-1 text-[12px] font-bold text-sub active:bg-line"
+                        >
+                          이 날로 적기
+                        </button>
+                      )}
+                    </div>
+                    {calDayList.length === 0 ? (
+                      <p className="py-2 text-[13px] text-sub">이 날은 기록이 없어요</p>
+                    ) : (
+                      <div className="divide-y divide-line/70">{calDayList.map(renderRow)}</div>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {recentByDate.length === 0 && (
+                  <p className="py-2 text-[13px] text-sub">{sinceLabel}부터는 기록이 없어요</p>
+                )}
+                {/* 엑셀처럼 표로 (2026-11-25 결영 요청: "여기도") — 날짜는 칸으로 */}
+                {recent.length > 0 && (
+                  <ConfessTable
+                    rows={recent}
+                    filter={recF}
+                    onFilter={setRecF}
+                    today={today}
+                    categories={categories}
+                    memberNames={memberNames}
+                    profile={profile}
+                    editing={editing}
+                    onEdit={setEditing}
+                    onUpdate={updateConfession}
+                    onRemove={removeConfession}
+                  />
+                )}
+                {hasOlder && (
+                  <button
+                    onClick={showMore}
+                    className="mt-3 w-full rounded-btn bg-bg py-2.5 text-[13px] font-bold text-sub active:bg-line"
+                  >
+                    지난 기록 더 보기 · 지금 {sinceLabel}부터
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -967,177 +1271,6 @@ export default function Confess() {
 }
 
 // ── 레이아웃 헬퍼 ─────────────────────────────
-/**
- * 기록 고치기 — 금액·항목·메모.
- * 제보 4건(8/9, 8/11×2, 9/9): "잘못 썼을 때 삭제하고 다시 작성하는 게 번거로워요".
- * 누가 썼는지·날짜는 여기서 안 바꾼다 — 그건 지우고 다시 적는 편이 헷갈리지 않는다.
- */
-function EditRow({
-  c,
-  categories,
-  memberNames,
-  onSave,
-  onCancel,
-}: {
-  c: Confession
-  categories: Record<CategoryGroup, string[]>
-  memberNames: [string, string]
-  onSave: (patch: {
-    amount: number
-    category: string
-    kind: CategoryGroup
-    note?: string
-    createdAt?: string
-    memberNo: 1 | 2
-    shared?: boolean
-    cardOwner?: 1 | 2
-    cash?: boolean
-  }) => void
-  onCancel: () => void
-}) {
-  const [amount, setAmount] = useState(c.amount)
-  const [pick, setPick] = useState(`${c.kind}:${c.category}`)
-  const [note, setNote] = useState(c.note ?? '')
-  // 날짜도 고친다 (2026-10-21 의견: "가계부 내역 수정할 때 날짜도 수정할 수 있으면 좋겠습니다")
-  const origDate = new Date(c.createdAt).toLocaleDateString('sv-SE')
-  const [date, setDate] = useState(origDate)
-  const today = new Date().toLocaleDateString('sv-SE')
-  const groups: CategoryGroup[] = ['variable', 'fixed', 'income', 'saving', 'investment']
-  // 누가 썼는지·어떻게 냈는지 (2026-10-27 의견: "공동 생활비인데 아내로 눌러서 쓰고 나면 다시 공동으로 바꿀 수 있나요?")
-  // 공동은 memberNo(적은 사람)를 그대로 두고 표시만 — 새로 적을 때와 같은 규칙
-  const [who, setWho] = useState<1 | 2 | 'shared'>(c.shared ? 'shared' : c.memberNo)
-  const [paid, setPaid] = useState<1 | 2 | 'cash' | null>(c.cash ? 'cash' : (c.cardOwner ?? null))
-  const kind = pick.slice(0, pick.indexOf(':')) as CategoryGroup
-  const isSpend = kind === 'variable' || kind === 'fixed'
-
-  const save = () => {
-    const i = pick.indexOf(':')
-    onSave({
-      memberNo: who === 'shared' ? c.memberNo : who,
-      shared: who === 'shared' ? true : undefined,
-      // 카드값이 아닌 것(저축·투자·수입)에는 카드 주인을 남기지 않는다
-      cardOwner: isSpend && paid !== null && paid !== 'cash' ? paid : undefined,
-      cash: isSpend && paid === 'cash' ? true : undefined,
-      kind: pick.slice(0, i) as CategoryGroup,
-      category: pick.slice(i + 1),
-      amount,
-      note: note.trim() || undefined,
-      // 바꾼 날은 그 날 낮 12시로 — 새로 적을 때와 같은 규칙 (시간대가 밀려 하루 어긋나지 않게)
-      ...(date && date !== origDate
-        ? { createdAt: new Date(`${date}T12:00:00`).toISOString() }
-        : {}),
-    })
-  }
-
-  return (
-    <div className="space-y-2 rounded-btn bg-bg px-3 py-3">
-      <div className="flex items-center gap-2">
-        <select
-          value={pick}
-          onChange={(e) => setPick(e.target.value)}
-          aria-label="항목"
-          className="min-w-0 flex-1 rounded-btn border border-line bg-white px-2 py-1.5 text-[14px] font-bold text-ink outline-none focus:border-brand"
-        >
-          {groups.map((g) => (
-            <optgroup key={g} label={GROUP_LABEL[g]}>
-              {/* 지금 항목이 카테고리 목록에서 빠졌어도(지운 카테고리) 고르던 값은 남긴다 */}
-              {(g === c.kind && !categories[g].includes(c.category)
-                ? [c.category, ...categories[g]]
-                : categories[g]
-              ).map((cat) => (
-                <option key={`${g}:${cat}`} value={`${g}:${cat}`}>
-                  {cat}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        <input
-          inputMode="numeric"
-          aria-label="금액"
-          value={formatComma(amount)}
-          onChange={(e) =>
-            setAmount(Math.min(Number(e.target.value.replace(/[^\d]/g, '')) || 0, 999_999_999))
-          }
-          className="tnum w-28 shrink-0 rounded-btn border border-line bg-white px-2 py-1.5 text-right text-[15px] font-bold text-ink outline-none focus:border-brand"
-        />
-        <span className="text-[13px] text-sub">원</span>
-      </div>
-      <div className="flex items-center gap-2 text-[13px] text-sub">
-        <span className="w-[52px] shrink-0">누가</span>
-        <div className="flex flex-1 gap-1.5">
-          {([1, 2, 'shared'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setWho(m)}
-              aria-label={`누가 쓴 돈: ${m === 'shared' ? '공동' : memberNames[m - 1]}`}
-              aria-pressed={who === m}
-              className={`min-w-0 flex-1 truncate rounded-btn py-1.5 text-[12.5px] font-bold ${
-                who === m ? 'bg-brand text-white' : 'bg-white text-sub'
-              }`}
-            >
-              {m === 'shared' ? '공동' : memberNames[m - 1]}
-            </button>
-          ))}
-        </div>
-      </div>
-      {isSpend && (
-        <div className="flex items-center gap-2 text-[13px] text-sub">
-          <span className="w-[52px] shrink-0">어떻게</span>
-          <div className="flex flex-1 gap-1.5">
-            {([1, 2, 'cash'] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setPaid(paid === m ? null : m)}
-                aria-label={`어떻게 냈나: ${m === 'cash' ? '현금' : `${memberNames[m - 1]} 카드`}`}
-                aria-pressed={paid === m}
-                className={`min-w-0 flex-1 truncate rounded-btn py-1.5 text-[12.5px] font-bold ${
-                  paid === m ? 'bg-ink text-white' : 'bg-white text-sub'
-                }`}
-              >
-                {m === 'cash' ? '현금' : `${memberNames[m - 1]} 카드`}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <label className="flex items-center gap-2 text-[13px] text-sub">
-        <span className="shrink-0">날짜</span>
-        <input
-          type="date"
-          value={date}
-          max={today}
-          onChange={(e) => setDate(e.target.value)}
-          aria-label="날짜"
-          className="tnum min-w-0 flex-1 rounded-btn border border-line bg-white px-2 py-1.5 text-[13px] font-bold text-ink outline-none focus:border-brand"
-        />
-      </label>
-      <input
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="메모 (선택)"
-        aria-label="메모"
-        maxLength={40}
-        className="w-full rounded-btn border border-line bg-white px-3 py-1.5 text-[13px] text-ink outline-none focus:border-brand placeholder:text-cap"
-      />
-      <div className="flex gap-2">
-        <button
-          onClick={onCancel}
-          className="h-9 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub active:bg-line"
-        >
-          그대로 두기
-        </button>
-        <button
-          onClick={save}
-          className="h-9 flex-1 rounded-btn bg-brand text-[13px] font-bold text-white active:bg-brand-dark"
-        >
-          고치기
-        </button>
-      </div>
-    </div>
-  )
-}
-
 function Frame({ children }: { children: React.ReactNode }) {
   // PC: 왼쪽 메뉴 + 가운데 720px (2026-10-06)
   return (

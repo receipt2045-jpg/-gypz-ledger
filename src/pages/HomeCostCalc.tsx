@@ -75,7 +75,8 @@ export default function HomeCostCalc() {
   const set = (patch: Partial<HomeCostInput>) => setInput((v) => ({ ...v, ...patch }))
   const [more, setMore] = useState(false)
   const r = computeHomeCost(input)
-  const need = input.price - input.loan + r.total
+  // 대출이 집값보다 크면 '필요한 우리 돈 −1억'으로 나왔다 — 대출은 집값까지만 (2026-11-19 점검)
+  const need = Math.max(0, input.price - input.loan) + r.total
 
   return (
     <CalcShell
@@ -169,6 +170,9 @@ export default function HomeCostCalc() {
         <CalcRow label="주택담보대출" auto={house?.loan ? '로드맵' : undefined}>
           <AmountInput value={input.loan} onChange={(n) => set({ loan: n })} />
         </CalcRow>
+        {input.price > 0 && input.loan > input.price && (
+          <p className="text-[12px] text-danger">대출이 집값보다 커요. 금액을 다시 봐 주세요.</p>
+        )}
         <button
           type="button"
           onClick={() => setMore((v) => !v)}
@@ -212,8 +216,9 @@ export default function HomeCostCalc() {
         <p className="text-[12.5px] text-cap">잔금날 집값 말고 더 나가는 돈</p>
         <p className="tnum text-[26px] font-extrabold text-ink">약 {short(r.total)}원</p>
         <p className="tnum text-[12.5px] text-sub">
-          {formatComma(r.total)}원 · 집값의{' '}
-          {((r.total / Math.max(1, input.price)) * 100).toFixed(2)}%
+          {formatComma(r.total)}원
+          {/* 집값 칸을 비우면 '집값의 27500000%'로 나왔다 (2026-11-19 점검) */}
+          {input.price > 0 && ` · 집값의 ${((r.total / input.price) * 100).toFixed(2)}%`}
         </p>
         <div className="mt-3 space-y-3">
           {r.groups.map((g) => (

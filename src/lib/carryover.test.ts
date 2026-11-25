@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  assetEditYm,
+  openingYm,
+  displayYm,
   effectiveAmount,
   deriveAssetsFromPrevious,
   deriveItemsFromPrevious,
@@ -8,6 +11,7 @@ import {
   resolveSnapshot,
 } from './carryover'
 import type { AssetItem, BudgetItem } from '../types'
+import { currentYm, shiftYm } from './format'
 
 const item = (
   id: string,
@@ -142,8 +146,17 @@ describe('deriveAssetsFromPrevious — 이름이 같아도 id가 안 겹친다',
 
 describe('resolveSnapshot — 이미 불어난 데이터 정리', () => {
   it('id가 겹친 항목은 읽을 때 하나만 남는다', () => {
-    const dup = { id: 'same', kind: 'asset', group: 'stock', name: '미국주식', amount: 13_600_000 } as AssetItem
-    const snap = resolveSnapshot([{ ym: '2026-08', items: [dup, { ...dup }, { ...dup }] }], '2026-08')
+    const dup = {
+      id: 'same',
+      kind: 'asset',
+      group: 'stock',
+      name: '미국주식',
+      amount: 13_600_000,
+    } as AssetItem
+    const snap = resolveSnapshot(
+      [{ ym: '2026-08', items: [dup, { ...dup }, { ...dup }] }],
+      '2026-08',
+    )
     expect(snap.items).toHaveLength(1)
   })
 })
@@ -163,5 +176,54 @@ describe('effectiveAmount — 정산한 사람 것은 실제값으로 (제보 20
 
   it('결산 전이고 실제값이 없으면 계획값 — 아직 정산 안 한 사람 것', () => {
     expect(effectiveAmount(it0(400_000, 0), false)).toBe(400_000)
+  })
+})
+
+describe('displayYm', () => {
+  it('스냅샷이 없으면 이번 달', () => {
+    expect(displayYm([])).toBe(currentYm())
+  })
+  it('가장 늦은 스냅샷이 이번 달보다 뒤면 그 달', () => {
+    const later = shiftYm(currentYm(), 2)
+    expect(displayYm([{ ym: later, items: [] }])).toBe(later)
+  })
+  it('가장 늦은 스냅샷이 이번 달보다 앞이면 이번 달', () => {
+    expect(displayYm([{ ym: shiftYm(currentYm(), -3), items: [] }])).toBe(currentYm())
+  })
+})
+
+describe('assetEditYm — 자산 등록이 고칠 달 (2026-11-17)', () => {
+  const now = currentYm()
+  const prevYm = shiftYm(now, -1)
+  const open = [{ ym: prevYm, items: [], closed: false, settledMembers: [] }]
+  const snap = (ym: string) => ({ ym, items: [] })
+
+  it('보통은 정산할 달 — 이번 달은 거기서 이어 온다', () => {
+    expect(assetEditYm(open, [snap(prevYm)])).toBe(prevYm)
+  })
+
+  it('이번 달이 따로 저장돼 있으면(대출 자동 상환·아이 통장) 자산 탭이 보여 주는 이번 달을', () => {
+    expect(assetEditYm(open, [snap(prevYm), snap(now)])).toBe(now)
+  })
+})
+
+describe('openingYm — 가계부를 열 때 처음 보이는 달 (2026-11-17)', () => {
+  const now = '2026-11'
+  it('정산 안 한 지난달이 있으면 그 달', () => {
+    expect(openingYm([{ ym: '2026-10', items: [], closed: false }], now)).toBe('2026-10')
+  })
+  it('다음 달 예산을 미리 세웠어도 이번 달부터', () => {
+    expect(
+      openingYm(
+        [
+          { ym: '2026-11', items: [], closed: false },
+          { ym: '2026-12', items: [], closed: false },
+        ],
+        now,
+      ),
+    ).toBe('2026-11')
+  })
+  it('이번 달을 일찍 정산해도 이번 달', () => {
+    expect(openingYm([{ ym: '2026-11', items: [], closed: true }], now)).toBe('2026-11')
   })
 })

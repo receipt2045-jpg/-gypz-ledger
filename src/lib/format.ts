@@ -110,9 +110,10 @@ export function ymOfDay(day: string): string {
 }
 
 /** 이 달의 기간 글자 — 시작일이 1일이면 null (예전과 같아 따로 안 보여준다) */
-export function periodLabel(ym: string): string | null {
-  if (monthStartDay === 1) return null
+export function periodLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
+  // 1일 시작도 기간을 보여 준다 (2026-11-21 의견: "며칠부터 며칠까지인지 안 떠요 — 12.1~12.31처럼")
+  if (monthStartDay === 1) return `${m}월 1일 ~ ${m}월 ${new Date(y, m, 0).getDate()}일`
   const end = new Date(y, m, monthStartDay - 1) // 다음 달 (시작일 - 1)일
   return `${m}월 ${monthStartDay}일 ~ ${end.getMonth() + 1}월 ${end.getDate()}일`
 }

@@ -82,7 +82,9 @@ export default function Budget() {
       loanLedgerAmounts(resolveSnapshot(snapshots, ofYm).items, profile.member2Name),
       (m, amount) => ({ ...emptyItem('fixed', LOAN_CATEGORY, m), planned: amount, actual: amount }),
     )
-    return { items, con: ledger.contributions ?? NO_CONTRIBUTIONS }
+    // 잠깐 있던 '받아요'(2026-11-24, 되돌림)로 음수가 저장됐으면 0으로 읽는다
+    const c = ledger.contributions ?? NO_CONTRIBUTIONS
+    return { items, con: { 1: Math.max(0, c[1]), 2: Math.max(0, c[2]) } }
   }
   const [baseline, setBaseline] = useState(() => load(ym))
   const [items, setItems] = useState<BudgetItem[]>(baseline.items)

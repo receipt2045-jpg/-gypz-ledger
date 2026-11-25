@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 알림 줄 아이콘 — 모아불리 '부부 동전 코'(public/favicon.svg)를 흰색 한 가지로 (2026-11-04) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M9.5,50a23.5,23.5 0,1 0,47 0a23.5,23.5 0,1 0,-47 0Z M14.5,50a18.5,18.5 0,1 0,37 0a18.5,18.5 0,1 0,-37 0Z M24.8,50a3.2,5.6 0,1 0,6.4 0a3.2,5.6 0,1 0,-6.4 0Z M34.8,50a3.2,5.6 0,1 0,6.4 0a3.2,5.6 0,1 0,-6.4 0Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M43.5,50a23.5,23.5 0,1 0,47 0a23.5,23.5 0,1 0,-47 0Z M58.8,50a3.2,5.6 0,1 0,6.4 0a3.2,5.6 0,1 0,-6.4 0Z M68.8,50a3.2,5.6 0,1 0,6.4 0a3.2,5.6 0,1 0,-6.4 0Z" />
+</vector>

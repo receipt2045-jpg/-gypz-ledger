@@ -68,6 +68,26 @@ def gold_card() -> Image.Image:
     return titled_card("금테크 정리", "수수료 적게 금 사는 법")
 
 
+def coupang_card() -> Image.Image:
+    return titled_card("쿠팡 꿀팁", "쓴 돈 돌려받는 3가지")
+
+
+def cofix_card() -> Image.Image:
+    return titled_card("이자 계산표", "코픽스 오르면 얼마 더?")
+
+
+def survey_card() -> Image.Image:
+    return titled_card("커피값 앱테크", "AI 비서가 설문 대신 응모")
+
+
+def values_card() -> Image.Image:
+    return titled_card("가치관 체크리스트", "부부가 각자 1~5점, 50가지")
+
+
+def toothpaste_card() -> Image.Image:
+    return titled_card("아기치약 10종 비교", "무불소 · 어린이집 양치 파우치")
+
+
 def recipes_card() -> Image.Image:
     return titled_card("집밥 레시피", "한 끼 얼마 · 영양소까지")
 
@@ -95,6 +115,11 @@ def main():
     app_card().save(PUBLIC / "og-image.png", optimize=True)
     news_card().save(PUBLIC / "og-news.png", optimize=True)
     gold_card().save(PUBLIC / "og-gold.png", optimize=True)
+    coupang_card().save(PUBLIC / "og-coupang.png", optimize=True)
+    cofix_card().save(PUBLIC / "og-cofix.png", optimize=True)
+    survey_card().save(PUBLIC / "og-survey.png", optimize=True)
+    values_card().save(PUBLIC / "og-values.png", optimize=True)
+    toothpaste_card().save(PUBLIC / "og-toothpaste.png", optimize=True)
     recipes_card().save(PUBLIC / "og-recipes.png", optimize=True)
     print("og images written")
 

@@ -5,6 +5,7 @@ import { useLedgerStore } from '../lib/store'
 import { deleteGiftReport, fetchChildRecords, fetchGiftReports, insertGiftReport } from '../lib/db'
 import {
   GIFT_LIMIT_MINOR,
+  addToChildAccount,
   GIFT_REPORT_KIND_LABEL,
   giftReportStatus,
   summarizeChild,
@@ -14,7 +15,7 @@ import {
 } from '../lib/childMoney'
 import { abbreviateKRW, formatComma, formatWon } from '../lib/format'
 import { GIFT_INCOME, SUPPORT_INCOME } from '../lib/constants'
-import { genId } from '../lib/carryover'
+import { displayYm, genId, resolveSnapshot } from '../lib/carryover'
 import { BENEFIT_RULES } from '../lib/childBenefit'
 import {
   RECURRING_DEFAULT_AMOUNT,
@@ -24,7 +25,9 @@ import {
   lastDueYm,
   nextPay,
 } from '../lib/childRecurring'
-import type { ChildRecurring } from '../types'
+import type { ChildRecurring, Confession } from '../types'
+import Toggle from './Toggle'
+import SheetTable, { md } from './SheetTable'
 
 /**
  * 자산 탭 — 아이 통장 (2026-10-27).
@@ -34,23 +37,57 @@ import type { ChildRecurring } from '../types'
  */
 export default function ChildMoneyCard({ childAssets }: { childAssets: Record<string, number> }) {
   const navigate = useNavigate()
-  const { householdId, confessions, profile, removeConfession } = useLedgerStore()
+  const { householdId, confessions, profile, removeConfession, updateConfession } = useLedgerStore()
   const children = profile.childNames ?? []
   const [records, setRecords] = useState<ChildRecord[] | null>(null)
   const [writing, setWriting] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
   const [reports, setReports] = useState<GiftReport[]>([])
+
+  // 아이 기록이 바뀐 걸 알아보는 표시 — 개수만 보면 고친 것(금액·증여)을 놓친다
+  const sig = useMemo(
+    () =>
+      confessions
+        .filter((c) => c.child)
+        .map(
+          (c) =>
+            `${c.id}:${c.amount}:${c.category}:${c.gift ? 1 : 0}:${c.childKeep === false ? 0 : 1}:${c.createdAt}`,
+        )
+        .join('|'),
+    [confessions],
+  )
 
   useEffect(() => {
     let live = true
     if (!householdId || children.length === 0) return
     fetchChildRecords(householdId)
-      .then((r) => live && setRecords(r))
+      .then((r) => {
+        if (!live) return
+        // 서버 저장은 뒤에서 따로 가니, 앱에 있는 같은 id 기록의 값을 덮어 바로 맞춘다
+        const local = new Map(confessions.map((c) => [c.id, c]))
+        setRecords(
+          r.map((rec) => {
+            const c = rec.id ? local.get(rec.id) : undefined
+            return c
+              ? {
+                  ...rec,
+                  amount: c.amount,
+                  category: c.category,
+                  gift: !!c.gift,
+                  childKeep: c.childKeep !== false,
+                  createdAt: c.createdAt,
+                }
+              : rec
+          }),
+        )
+      })
       .catch(() => live && setRecords(null))
     return () => {
       live = false
     }
     // 아이 이름이 바뀌거나 새 기록이 생기면 다시 읽는다
-  }, [householdId, children.length, confessions.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- confessions는 sig로 바뀜을 알아본다
+  }, [householdId, children.length, sig])
 
   // 서버에서 못 읽으면(둘러보기 등) 앱에 있는 최근 기록으로
   const all: ChildRecord[] = useMemo(
@@ -93,6 +130,14 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
   }
 
   if (children.length === 0) return null
+  const dayOfRec = (c: Confession) => new Date(c.createdAt).toLocaleDateString('sv-SE')
+  // 표의 '표시' 칸 — 자동(매달 저절로) · 증여 · 살림에(아이 통장에 안 남긴 돈)
+  const tagsOf = (c: Confession) =>
+    [
+      isRecurringRecord(c.id, c.createdAt, profile.childRecurring ?? []) ? '자동' : '',
+      c.gift ? '증여' : '',
+      c.childKeep === false ? '살림에' : '',
+    ].filter(Boolean)
 
   return (
     <section aria-label="아이 통장" className="space-y-2.5">
@@ -170,44 +215,80 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
             >
               부모급여·아동수당 앞으로 몇 달 더 받을까 <ChevronRight size={13} />
             </button>
-            {/* 최근 기록 (앱에 있는 최근 62일) — 잘못 적은 건 여기서 지운다 */}
+            {/* {name} 통장 기록 (앱에 있는 최근 62일) — 엑셀처럼 표로 (2026-11-25 결영 요청).
+                예전엔 최근 4건만 줄로 보였다. 줄 어디를 눌러도 고치기 (2026-11-17 의견) */}
             {confessions.some((c) => c.child === name) && (
-              <div className="mt-2.5 divide-y divide-line/70">
-                {confessions
-                  .filter((c) => c.child === name)
-                  .slice(0, 4)
-                  .map((c) => (
-                    <div key={c.id} className="flex items-center gap-2 py-2 text-[13px]">
-                      <span className="tnum shrink-0 text-[11.5px] text-cap">
-                        {new Date(c.createdAt).getMonth() + 1}/{new Date(c.createdAt).getDate()}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-ink">
-                        {c.category}
-                        {c.note && <span className="text-cap"> · {c.note}</span>}
-                        {isRecurringRecord(c.id, c.createdAt, profile.childRecurring ?? []) && (
-                          <span className="ml-1 rounded bg-brand/10 px-1 text-[10.5px] font-bold text-brand">
-                            자동
-                          </span>
-                        )}
-                        {c.gift && (
-                          <span className="ml-1 text-[11px] font-bold text-amber-600">증여</span>
-                        )}
-                        {c.childKeep === false && (
-                          <span className="ml-1 text-[11px] font-bold text-sub">살림에</span>
-                        )}
-                      </span>
-                      <span className="tnum shrink-0 font-bold text-brand">
-                        +{formatWon(c.amount)}
-                      </span>
-                      <button
-                        onClick={() => removeConfession(c.id)}
-                        aria-label="기록 지우기"
-                        className="shrink-0 text-cap active:text-danger"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
+              <div className="mt-3">
+                <p className="mb-1.5 text-[12.5px] font-bold text-sub">{name} 통장 기록</p>
+                <SheetTable
+                  rows={confessions.filter((c) => c.child === name)}
+                  rowKey={(c) => c.id}
+                  bleed="-mx-4 px-4"
+                  minWidth={480}
+                  cols={[
+                    {
+                      key: 'date',
+                      label: '날짜',
+                      width: 62,
+                      align: 'center',
+                      cell: (c) => md(dayOfRec(c)),
+                      tone: () => 'text-sub tnum',
+                      filter: { get: dayOfRec, label: md },
+                    },
+                    {
+                      key: 'category',
+                      label: '종류',
+                      width: 104,
+                      cell: (c) => c.category,
+                      filter: { get: (c) => c.category },
+                    },
+                    {
+                      key: 'note',
+                      label: '메모',
+                      cell: (c) => c.note ?? '',
+                      tone: () => 'text-sub',
+                      filter: { get: (c) => c.note ?? '', text: true },
+                    },
+                    {
+                      key: 'tag',
+                      label: '표시',
+                      width: 76,
+                      align: 'center',
+                      cell: (c) => tagsOf(c).join('·'),
+                      tone: () => 'text-[11.5px] font-bold text-amber-700',
+                      filter: { get: (c) => tagsOf(c).join('·'), label: (v) => v || '(없음)' },
+                    },
+                    {
+                      key: 'amount',
+                      label: '금액',
+                      width: 92,
+                      align: 'right',
+                      cell: (c) => `+${c.amount.toLocaleString('ko-KR')}`,
+                      tone: () => 'font-bold text-brand tnum',
+                    },
+                  ]}
+                  onRowClick={(c) => setEditing(c.id)}
+                  rowLabel={(c) => `${c.category} 기록 고치기`}
+                  editingKey={editing}
+                  renderEdit={(c) => (
+                    <ChildRecordEdit
+                      c={c}
+                      onSave={(patch) => {
+                        updateConfession(c.id, patch)
+                        setEditing(null)
+                      }}
+                      onCancel={() => setEditing(null)}
+                    />
+                  )}
+                  onRemove={(c) => removeConfession(c.id)}
+                  removeConfirm={(c) => `${c.category} ${formatWon(c.amount)} 기록을 지울까요?`}
+                  removeLabel="기록 지우기"
+                  summary={(rows) => (
+                    <b className="text-brand">
+                      +{formatWon(rows.reduce((a, c) => a + c.amount, 0))}
+                    </b>
+                  )}
+                />
               </div>
             )}
           </div>
@@ -219,7 +300,8 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
 
 /** 아이 앞으로 들어온 돈 적기 — 아동수당·지원금 / 용돈·선물. 지원금은 '매달 들어와요'로 자동 기록을 걸 수 있다 */
 function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void }) {
-  const { addConfession, profile, updateProfile, runChildRecurring } = useLedgerStore()
+  const { addConfession, profile, updateProfile, runChildRecurring, snapshots, saveSnapshot } =
+    useLedgerStore()
   const today = new Date().toLocaleDateString('sv-SE')
   const thisYm = today.slice(0, 7)
   // 아이 카드에선 항목 목록과 상관없이 늘 두 가지 — 아이를 막 등록한 집도 바로 적게
@@ -229,6 +311,8 @@ function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void })
   const [date, setDate] = useState(today)
   const [note, setNote] = useState('')
   const [keep, setKeep] = useState(true)
+  // 통장에 모은 돈을 적은 뒤, 아이 자산(통장 금액)에도 더할지 묻는 단계 (2026-11-05)
+  const [offerAmount, setOfferAmount] = useState<number | null>(null)
   // 용돈·선물은 보통 부모·조부모가 준 돈 — 기본으로 증여에 센다.
   // 아동수당도 아이 통장으로 받았으면 체크해서 넣을 수 있다 (2026-10-27 결영이네 의견)
   const [gift, setGift] = useState(false)
@@ -298,7 +382,41 @@ function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void })
       childKeep: keep,
       gift: keep && effectiveGift ? true : undefined,
     })
+    if (keep) setOfferAmount(amount)
+    else onDone()
+  }
+
+  const addToAsset = () => {
+    if (offerAmount === null) return
+    const ym = displayYm(snapshots)
+    const base = resolveSnapshot(snapshots, ym)
+    saveSnapshot({ ...base, ym, items: addToChildAccount(base.items, name, offerAmount) })
     onDone()
+  }
+
+  if (offerAmount !== null) {
+    return (
+      <div className="mt-3 space-y-2.5 rounded-btn bg-amber-50/60 px-3 py-3">
+        <p className="text-[13.5px] font-bold text-ink">{name} 통장 금액에도 더할까요?</p>
+        <p className="text-[12px] text-sub">
+          자산 화면의 통장 금액이 {abbreviateKRW(offerAmount)} 늘어요.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={onDone}
+            className="h-10 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub"
+          >
+            아니요
+          </button>
+          <button
+            onClick={addToAsset}
+            className="h-10 flex-[2] rounded-btn bg-amber-500 text-[13.5px] font-bold text-white"
+          >
+            더하기
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -318,25 +436,24 @@ function ChildIncomeForm({ name, onDone }: { name: string; onDone: () => void })
         ))}
       </div>
       {category === SUPPORT_INCOME && (
-        <label className="flex items-center justify-between rounded-btn bg-white px-3 py-2.5">
-          <span className="text-[13px] font-bold text-ink">
+        <div className="flex items-center justify-between rounded-btn bg-white px-3 py-2.5">
+          <label htmlFor="child-repeat-toggle" className="text-[13px] font-bold text-ink">
             매달 들어와요
             <span className="block text-[11px] font-normal text-cap">
               한 번 정하면 다음 달부터 알아서 적어요
             </span>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            aria-label="매달 들어와요"
+          </label>
+          <Toggle
+            id="child-repeat-toggle"
+            color="amber"
+            label="매달 들어와요"
             checked={repeat}
-            onChange={(e) => {
-              setRepeat(e.target.checked)
-              if (e.target.checked && amount === 0) setAmount(RECURRING_DEFAULT_AMOUNT[rKind])
+            onChange={(v) => {
+              setRepeat(v)
+              if (v && amount === 0) setAmount(RECURRING_DEFAULT_AMOUNT[rKind])
             }}
-            className="h-5 w-5 accent-amber-500"
           />
-        </label>
+        </div>
       )}
       {isRepeat && (
         <div className="flex gap-1.5">
@@ -566,7 +683,18 @@ function RecurringList({ name }: { name: string }) {
           const ended = !next
           return (
             <li key={r.id} className="py-2">
-              <div className="flex items-baseline justify-between gap-2 text-[13px]">
+              {/* 이름·금액 줄을 눌러도 금액 고치기 (2026-11-17 의견) */}
+              <div
+                onClick={
+                  ended || editing === r.id
+                    ? undefined
+                    : () => {
+                        setDraft(r.amount)
+                        setEditing(r.id)
+                      }
+                }
+                className={`flex items-baseline justify-between gap-2 text-[13px] ${ended ? '' : 'cursor-pointer'}`}
+              >
                 <span className="min-w-0 truncate font-bold text-ink">
                   {r.label}
                   <span className="ml-1 font-normal text-cap">매달 {r.day}일</span>
@@ -837,6 +965,123 @@ function GiftReportForm({
           className="h-9 flex-[2] rounded-btn bg-ink text-[13px] font-bold text-white disabled:opacity-40"
         >
           신고 기록 남기기
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** 최근 기록 한 줄 고치기 — 들어온 돈 적기와 같은 항목·규칙 (증여 체크는 통장에 모을 때만) */
+function ChildRecordEdit({
+  c,
+  onSave,
+  onCancel,
+}: {
+  c: Confession
+  onSave: (
+    patch: Pick<Confession, 'category' | 'amount' | 'note' | 'createdAt' | 'childKeep' | 'gift'>,
+  ) => void
+  onCancel: () => void
+}) {
+  const [category, setCategory] = useState(c.category)
+  const [amount, setAmount] = useState(c.amount)
+  const origDate = new Date(c.createdAt).toLocaleDateString('sv-SE')
+  const [date, setDate] = useState(origDate)
+  const [note, setNote] = useState(c.note ?? '')
+  const [keep, setKeep] = useState(c.childKeep !== false)
+  const [gift, setGift] = useState(!!c.gift)
+  const today = new Date().toLocaleDateString('sv-SE')
+
+  const save = () => {
+    if (amount <= 0) return
+    onSave({
+      category,
+      amount,
+      note: note.trim() || undefined,
+      // 날짜를 안 건드렸으면 원래 시각 그대로
+      createdAt: date === origDate ? c.createdAt : new Date(`${date}T12:00:00`).toISOString(),
+      childKeep: keep,
+      gift: keep && gift ? true : undefined,
+    })
+  }
+
+  return (
+    <div className="space-y-2 rounded-btn bg-amber-50/60 px-3 py-3">
+      <div className="flex gap-1.5">
+        {[SUPPORT_INCOME, GIFT_INCOME].map((k) => (
+          <button
+            key={k}
+            onClick={() => setCategory(k)}
+            aria-pressed={category === k}
+            className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[12.5px] font-bold ${
+              category === k ? 'bg-amber-500 text-white' : 'bg-white text-sub'
+            }`}
+          >
+            {k}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          inputMode="numeric"
+          aria-label="고칠 금액"
+          value={amount ? formatComma(amount) : ''}
+          onChange={(e) =>
+            setAmount(Math.min(Number(e.target.value.replace(/\D/g, '')) || 0, 999_999_999))
+          }
+          className="tnum min-w-0 flex-1 rounded-btn border border-line bg-white px-3 py-2 text-right text-[15px] font-bold text-ink outline-none focus:border-amber-500"
+        />
+        <span className="text-[13px] text-sub">원</span>
+        <input
+          type="date"
+          value={date}
+          max={today}
+          onChange={(e) => setDate(e.target.value || origDate)}
+          aria-label="고칠 날짜"
+          className="tnum w-[132px] shrink-0 rounded-btn border border-line bg-white px-2 py-2 text-[12.5px] text-ink outline-none"
+        />
+      </div>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="메모 (선택)"
+        aria-label="고칠 메모"
+        maxLength={30}
+        className="w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none placeholder:text-cap"
+      />
+      <label className="flex items-center gap-2 text-[12.5px] text-sub">
+        <input
+          type="checkbox"
+          checked={keep}
+          onChange={(e) => setKeep(e.target.checked)}
+          className="h-4 w-4 accent-amber-500"
+        />
+        아이 통장에 모아요
+      </label>
+      {keep && (
+        <label className="flex items-center gap-2 text-[12.5px] text-sub">
+          <input
+            type="checkbox"
+            checked={gift}
+            onChange={(e) => setGift(e.target.checked)}
+            className="h-4 w-4 accent-amber-500"
+          />
+          증여 기록에 더해요
+        </label>
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="h-10 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub"
+        >
+          취소
+        </button>
+        <button
+          onClick={save}
+          disabled={amount <= 0}
+          className="h-10 flex-[2] rounded-btn bg-amber-500 text-[13.5px] font-bold text-white disabled:opacity-40"
+        >
+          저장
         </button>
       </div>
     </div>

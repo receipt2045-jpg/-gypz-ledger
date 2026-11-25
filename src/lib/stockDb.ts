@@ -115,8 +115,15 @@ function patchRow(p: StockPatch) {
   }
 }
 
-const sameStock = (a: Pick<Stock, 'name' | 'market'>, b: Pick<Stock, 'name' | 'market'>) =>
-  a.market === b.market && a.name.replace(/\s+/g, '') === b.name.replace(/\s+/g, '')
+// 같은 종목이라도 주인(남편·아내·함께)이 다르면 일지가 따로다.
+// 2026-11-16 제보: 남편이 넣은 종목을 아내가 넣으면 남편 일지로 들어가 "기록이 안 돼요"로 보였다.
+export const sameStock = (
+  a: Pick<Stock, 'name' | 'market' | 'owner'>,
+  b: Pick<Stock, 'name' | 'market' | 'owner'>,
+) =>
+  a.owner === b.owner &&
+  a.market === b.market &&
+  a.name.replace(/\s+/g, '') === b.name.replace(/\s+/g, '')
 
 export function remoteStocks(householdId: string, memberNo: 1 | 2): StockApi {
   return {
@@ -316,7 +323,7 @@ export async function shrinkImage(file: Blob, max = 1600, quality = 0.85): Promi
   )
 }
 
-const toBase64 = (blob: Blob) =>
+export const toBase64 = (blob: Blob) =>
   new Promise<string>((resolve, reject) => {
     const r = new FileReader()
     r.onload = () => resolve(String(r.result).split(',')[1] ?? '')

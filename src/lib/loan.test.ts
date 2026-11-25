@@ -175,3 +175,45 @@ describe('체증식 (2026-10-07)', () => {
     expect(after.amount).toBeLessThan(300_000_000)
   })
 })
+
+describe('처음 빌린 돈으로 적기 (2026-11-22 의견)', () => {
+  const base = { rate: 4, payDay: 25, method: 'annuity' as const }
+  const today = new Date(2026, 10, 24) // 2026-11-24
+
+  it('3억·30년·2년 전에 받았으면 — 남은 기간 28년, 매달 갚는 돈은 처음과 같다', async () => {
+    const { loanFromStart, monthlyPayment } = await import('./loan')
+    const first = monthlyPayment(300_000_000, { ...base, months: 360, asOf: '' }).payment
+    // 2024-11 받음 → 2024-12-25부터 2026-10-25까지 23번 갚음 (11-25는 아직)
+    const r = loanFromStart(
+      { principal: 300_000_000, totalMonths: 360, startYm: '2024-11' },
+      base,
+      today,
+    )
+    expect(r.loan.months).toBe(360 - 23)
+    expect(r.balance).toBeLessThan(300_000_000)
+    expect(Math.abs(monthlyPayment(r.balance, r.loan).payment - first)).toBeLessThan(50)
+  })
+
+  it('미리 더 갚은 돈만큼 남은 돈이 줄고 매달 갚는 돈도 줄어든다', async () => {
+    const { loanFromStart, monthlyPayment } = await import('./loan')
+    const s = { principal: 100_000_000, totalMonths: 120, startYm: '2025-11' }
+    const a = loanFromStart(s, base, today)
+    const b = loanFromStart({ ...s, prepaid: 10_000_000 }, base, today)
+    expect(a.balance - b.balance).toBe(10_000_000)
+    expect(b.loan.months).toBe(a.loan.months)
+    expect(monthlyPayment(b.balance, b.loan).payment).toBeLessThan(
+      monthlyPayment(a.balance, a.loan).payment,
+    )
+  })
+
+  it('기간이 다 지났으면 남은 돈 0', async () => {
+    const { loanFromStart } = await import('./loan')
+    const r = loanFromStart(
+      { principal: 1_200_000, totalMonths: 12, startYm: '2024-01' },
+      base,
+      today,
+    )
+    expect(r.balance).toBe(0)
+    expect(r.loan.months).toBe(0)
+  })
+})

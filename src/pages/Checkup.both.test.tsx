@@ -1,9 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import Checkup from './Checkup'
 import { renderScreen, savedItems, seedStore, TEST_YM } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
 import type { BudgetItem, MonthlyLedger } from '../types'
+
+// 금액이 든 항목은 지우기 전에 묻는다 (2026-11-19) — 여기선 '예'로 답한다
+beforeEach(() => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+})
 
 const item = (
   id: string,
@@ -140,5 +145,116 @@ describe('둘 다 입력 — 누구 항목인지 알아보게', () => {
     // 남편 수입 항목이 하나 늘었다 (원래 1개 → 2개)
     const rows = screen.getAllByLabelText('삭제')
     expect(rows).toHaveLength(3)
+  })
+})
+
+describe('정산 — 지운 항목이 되살아나지 않게 (2026-11-17 제보)', () => {
+  it('둘 다 입력에서 배우자 항목을 지우면 바로 저장에서도 빠진다', async () => {
+    const { user } = openCheckup()
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    // 나는 아내(2번) — 수입 스텝 첫 줄인 배우자(남편) 주수입을 지운다
+    await user.click(screen.getAllByLabelText('삭제')[0])
+    await new Promise((r) => setTimeout(r, 0))
+    const ids = savedItems().map((it) => it.id)
+    expect(ids).not.toContain('h-inc')
+    expect(ids).toContain('w-inc')
+  })
+
+  it('둘 다 입력에서 새로 만든 항목도 지우면 저장에 안 남는다', async () => {
+    const { user } = openCheckup()
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    await user.click(screen.getByRole('button', { name: /항목 추가/ }))
+    await user.click(screen.getByRole('button', { name: '추가' }))
+    expect(screen.getAllByLabelText('삭제')).toHaveLength(3)
+    await user.click(screen.getAllByLabelText('삭제')[2])
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.getAllByLabelText('삭제')).toHaveLength(2)
+    expect(savedItems().filter((it) => it.group === 'income')).toHaveLength(2)
+  })
+})
+
+describe('정산 — 둘 다 입력할 때 배우자 소비 기록도 제안 (2026-11-19 점검)', () => {
+  const conf = (id: string, memberNo: 1 | 2, category: string, amount: number) => ({
+    id,
+    memberNo,
+    kind: 'income' as const,
+    category,
+    amount,
+    createdAt: `${TEST_YM}-05T12:00:00.000Z`,
+  })
+
+  it('나(아내)와 배우자(남편)의 빠진 기록이 둘 다 나오고, 각자 이름으로 들어간다', async () => {
+    seedStore({
+      ledgers: [ledger(bothItems)],
+      confessions: [conf('c1', 1, '부수입', 50_000), conf('c2', 2, '부수입', 30_000)],
+    })
+    const { user } = renderScreen(<Checkup />)
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+
+    expect(screen.getByText(/기록한 항목 2개가 아직 없어요/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /2개 모두 넣기/ }))
+    expect(screen.getAllByLabelText('삭제')).toHaveLength(4)
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: /정산 완료하기/ }))
+    const side = savedItems()
+      .filter((it) => it.category === '부수입')
+      .map((it) => [it.member, it.actual])
+      .sort()
+    expect(side).toEqual([
+      [1, 50_000],
+      [2, 30_000],
+    ])
+  })
+
+  it('한 사람만 고르면 내 기록만 제안한다 (기존 동작)', async () => {
+    seedStore({
+      ledgers: [ledger(bothItems)],
+      confessions: [conf('c1', 1, '부수입', 50_000), conf('c2', 2, '부수입', 30_000)],
+    })
+    const { user } = renderScreen(<Checkup />)
+    await user.click(screen.getByRole('button', { name: /아내/ }))
+    expect(screen.getByText(/기록한 항목 1개가 아직 없어요/)).toBeInTheDocument()
+  })
+})
+
+describe('정산 — 변동지출은 예산이 아니라 기록으로 채운다 (2026-11-19 점검)', () => {
+  // 정산 전 달 — 변동지출은 아직 실제값이 없다
+  const unsettled = bothItems.map((it) => (it.id === 'w-var' ? { ...it, actual: 0 } : it))
+
+  it('기록이 없으면 0원으로 두고 그대로 끝내도 예산이 실제로 남지 않는다', async () => {
+    const { user } = openCheckup(unsettled)
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    // 식비 예산 50만원은 흐린 글씨로만
+    expect(screen.getByPlaceholderText('예산 500,000')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /정산 완료하기/ }))
+    expect(savedItems().find((it) => it.id === 'w-var')?.actual).toBe(0)
+    // 수입·고정비는 계획값 그대로
+    expect(savedItems().find((it) => it.id === 'h-inc')?.actual).toBe(4_000_000)
+  })
+
+  it('소비 기록이 있으면 그 합계로 채운다', async () => {
+    seedStore({
+      ledgers: [ledger(unsettled)],
+      confessions: [
+        {
+          id: 'c1',
+          memberNo: 2,
+          kind: 'variable',
+          category: '식비',
+          amount: 123_000,
+          createdAt: `${TEST_YM}-05T12:00:00.000Z`,
+        },
+      ],
+    })
+    const { user } = renderScreen(<Checkup />)
+    await user.click(screen.getByRole('button', { name: /둘 다 제가 입력할게요/ }))
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: '다음' }))
+    await user.click(screen.getByRole('button', { name: /정산 완료하기/ }))
+    expect(savedItems().find((it) => it.id === 'w-var')?.actual).toBe(123_000)
   })
 })

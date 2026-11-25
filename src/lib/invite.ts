@@ -1,3 +1,5 @@
+import { shareText } from './native'
+
 /**
  * 배우자 초대 — 코드를 '찾아서 옮겨 적는' 일을 없앤다.
  *
@@ -34,24 +36,7 @@ export function inviteMessage(code: string): string {
  * 모바일은 카톡으로 바로 보낼 수 있고, PC는 붙여넣기용으로 복사된다.
  */
 export async function shareInvite(code: string): Promise<'shared' | 'copied' | 'failed'> {
-  const text = inviteMessage(code)
-
-  if (navigator.share) {
-    try {
-      await navigator.share({ text })
-      return 'shared'
-    } catch (err) {
-      // 사용자가 공유 시트를 닫은 것 — 복사로 내려가지 않고 조용히 끝낸다
-      if (err instanceof DOMException && err.name === 'AbortError') return 'shared'
-    }
-  }
-
-  try {
-    await navigator.clipboard.writeText(text)
-    return 'copied'
-  } catch {
-    return 'failed'
-  }
+  return shareText({ text: inviteMessage(code) })
 }
 
 // ── 초대 링크로 들어온 사람 ────────────────────

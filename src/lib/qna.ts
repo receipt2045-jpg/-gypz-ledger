@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { genId } from './carryover'
+import { shareText } from './native'
 
 /**
  * 결영이네에게 텔레그램으로 알린다 (2026-10-21, supabase/functions/notify-staff).
@@ -224,20 +225,7 @@ export async function shareLink(
   url: string,
   text: string,
 ): Promise<'shared' | 'copied' | 'failed'> {
-  if (navigator.share) {
-    try {
-      await navigator.share({ text, url })
-      return 'shared'
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return 'shared'
-    }
-  }
-  try {
-    await navigator.clipboard.writeText(`${text}\n${url}`)
-    return 'copied'
-  } catch {
-    return 'failed'
-  }
+  return shareText({ text, url })
 }
 
 // ── 1:1 상담 신청 ──────────────────────────────

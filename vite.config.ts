@@ -1,5 +1,5 @@
 // 테스트 설정은 vitest.config.ts에 따로 있다 (여기 두면 rollup 타입과 충돌한다)
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -34,12 +34,60 @@ const OG_PAGES: OgPage[] = [
     image: 'https://moabuli.com/og-gold.png?v=1',
   },
   {
+    dir: 'coupang',
+    title: '결영이네 쿠팡 꿀팁',
+    description: '쿠팡에서 쓴 돈, 돌려받는 3가지. 최저가 알림부터 결제금액 2% 현금까지 정리했어요.',
+    image: 'https://moabuli.com/og-coupang.png?v=1',
+  },
+  {
+    dir: 'values',
+    title: '결영이네 · 부부 재테크 가치관 체크리스트 50',
+    description: '아내·남편이 각자 1~5점 매기고, 우리 부부 궁합과 생각이 먼 것부터 확인해 보세요. 소비·저축·통장·부수입·투자·대출까지 50가지.',
+    image: 'https://moabuli.com/og-values.png?v=2',
+  },
+  {
+    dir: 'survey',
+    title: '결영이네 앱테크 · 커피값, AI 비서가 벌어와요',
+    description: '기프티콘 주는 설문을 하루 2번 AI가 찾아서 대신 응모해요. 결영이네가 실제로 쓰는 명령어를 그대로 복사해 가세요.',
+    image: 'https://moabuli.com/og-survey.png?v=1',
+  },
+  {
+    dir: 'cofix',
+    title: '코픽스 오르면, 우리집 이자는 얼마 더?',
+    description: '남은 대출금과 금리만 넣으면 다음 금리변경일부터 한 달에 더 내는 이자를 바로 계산해요.',
+    image: 'https://moabuli.com/og-cofix.png?v=1',
+  },
+  {
+    dir: 'toothpaste',
+    title: '결영이네 · 무불소 아기치약 10종 비교',
+    description: '어린이집에 보낼 치약 10종을 성분·뚜껑·10g당 가격으로 비교했어요. 어린이집 양치 파우치 3종과 비교표 PDF까지.',
+    image: 'https://moabuli.com/og-toothpaste.png?v=1',
+  },
+  {
     dir: 'recipes',
     title: '결영이네 집밥 레시피',
     description: '집에 있는 재료로 레시피를 고르면, 더 살 재료와 영양소까지 알려 줘요.',
     image: 'https://moabuli.com/og-recipes.png?v=1',
   },
 ]
+
+// 머니툰 자료(src/lib/moneytoon/*.json, 2026-11-19) — 파일마다 moabuli.com/money/<slug> 미리보기를 저절로
+const MT_DIR = join(process.cwd(), 'src/lib/moneytoon')
+for (const f of existsSync(MT_DIR) ? readdirSync(MT_DIR).filter((x) => x.endsWith('.json')) : []) {
+  const m = JSON.parse(readFileSync(join(MT_DIR, f), 'utf-8'))
+  OG_PAGES.push({
+    dir: `money/${m.slug}`,
+    title: `${m.title} · 머니그랩 호랑이 눈높이 재테크`,
+    description: m.description,
+    image: 'https://moabuli.com/og-moneytoon.png?v=1',
+  })
+}
+OG_PAGES.push({
+  dir: 'money',
+  title: '머니툰 자료 · 머니그랩 호랑이 눈높이 재테크',
+  description: '인스타툰에서 약속한 정리본을 모아 뒀어요.',
+  image: 'https://moabuli.com/og-moneytoon.png?v=1',
+})
 
 function ogHtml(html: string, page: OgPage): string {
   const url = `https://moabuli.com/${page.dir}`

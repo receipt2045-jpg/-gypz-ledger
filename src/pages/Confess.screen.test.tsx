@@ -88,12 +88,36 @@ describe('고백 페이지 — 우리집 기록 보기·삭제', () => {
           category: '식비',
           kind: 'variable',
           amount: 9_000,
+          note: '예전 장보기',
           createdAt: daysAgo(20).toISOString(),
         },
       ],
     })
     renderScreen(<Confess />)
-    expect(screen.queryByText(/우리집 기록/)).not.toBeInTheDocument()
+    // 금액으로 찾으면 20일 전이 이번 달일 때 '이번 달 쓴 돈' 카드에 걸린다(11/21에 실패) — 메모로 목록만 본다
+    expect(screen.queryByText(/예전 장보기/)).not.toBeInTheDocument()
+    // 최근 14일이 비어도 '지난 기록 더 보기'는 보인다 (2026-11-19 점검)
+    expect(screen.getByText(/부터는 기록이 없어요/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /지난 기록 더 보기/ })).toBeInTheDocument()
+  })
+
+  it('더 보기를 누르면 그 앞 기록이 나온다', async () => {
+    seedStore({
+      memberNo: 2,
+      confessions: [
+        {
+          id: 'old',
+          memberNo: 2,
+          category: '식비',
+          kind: 'variable',
+          amount: 9_000,
+          createdAt: daysAgo(20).toISOString(),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByRole('button', { name: /지난 기록 더 보기/ }))
+    expect(screen.getAllByText('9,000원').length).toBeGreaterThan(0)
   })
 })
 
@@ -428,5 +452,121 @@ describe('고백 페이지 — 현금 · 날짜 고치기', () => {
     saved = useLedgerStore.getState().confessions[0]
     expect(saved.shared).toBeUndefined()
     expect(saved.memberNo).toBe(1)
+  })
+})
+
+describe('지난 기록 더 보기 (2026-11-17 의견: "과거 기록을 일주일 단위로만 볼 수 있어요")', () => {
+  it('처음엔 최근 14일, 더 보기를 누르면 그 앞 기록도 보인다', async () => {
+    const daysAgo = (n: number) => {
+      const d = new Date()
+      d.setDate(d.getDate() - n)
+      d.setHours(12, 0, 0, 0)
+      return d.toISOString()
+    }
+    seedStore({
+      memberNo: 1,
+      confessions: [
+        {
+          id: 'r',
+          memberNo: 1,
+          kind: 'variable',
+          category: '식비',
+          amount: 1000,
+          note: '요즘',
+          createdAt: daysAgo(2),
+        },
+        {
+          id: 'o',
+          memberNo: 1,
+          kind: 'variable',
+          category: '식비',
+          amount: 2000,
+          note: '예전',
+          createdAt: daysAgo(25),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
+    expect(screen.getByText(/요즘/)).toBeInTheDocument()
+    expect(screen.queryByText(/예전/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /지난 기록 더 보기/ }))
+    expect(screen.getByText(/예전/)).toBeInTheDocument()
+  })
+})
+
+describe('고백 페이지 — 달력으로 보기 (2026-11-24)', () => {
+  it('달력 칸에 그날 쓴 돈이 나오고, 날짜를 누르면 그날 기록을 고칠 수 있다', async () => {
+    seedStore({
+      memberNo: 1,
+      confessions: [
+        {
+          id: 'k1',
+          memberNo: 1,
+          category: '식비',
+          kind: 'variable',
+          amount: 12_000,
+          note: '저녁',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'k2',
+          memberNo: 1,
+          category: '적금',
+          kind: 'saving',
+          amount: 500_000,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+    const { user } = renderScreen(<Confess />)
+    await user.click(screen.getByRole('tab', { name: '달력' }))
+    const now = new Date()
+    // 저축은 쓴 돈에 안 센다
+    expect(
+      screen.getByRole('button', {
+        name: `${now.getMonth() + 1}월 ${now.getDate()}일 나간 돈 12,000원`,
+      }),
+    ).toBeInTheDocument()
+    // 처음엔 오늘이 골라져 있어 오늘 기록이 보인다
+    expect(screen.getByText(/저녁/)).toBeInTheDocument()
+    expect(screen.getAllByLabelText('기록 삭제')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: '지난달 달력' }))
+    expect(screen.queryByLabelText('기록 삭제')).toBeNull()
+    localStorage.removeItem('moabuli.confess.view')
+  })
+})
+
+describe('기록마다 메모 (2026-11-24, 11-13 의견)', () => {
+  it('줄글로 적을 때 확인 화면에서 메모를 고쳐 남기고, 목록에 메모가 다 보인다', async () => {
+    seedStore({ memberNo: 1, confessions: [] })
+    const { user } = renderScreen(<Confess />)
+    await user.type(screen.getByPlaceholderText(/이라고 말해보세요/), '점심 9000원')
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+    const memo = screen.getByLabelText(/메모$/)
+    await user.clear(memo)
+    await user.type(memo, '팀 점심, 다음 달에 돌려받기로 함')
+    await user.click(screen.getByRole('button', { name: '1건 기록하기' }))
+    const saved = useLedgerStore.getState().confessions[0]
+    expect(saved.note).toBe('팀 점심, 다음 달에 돌려받기로 함')
+  })
+
+  it('목록에서 긴 메모도 잘리지 않고 둘째 줄에 보인다', () => {
+    const long = '친구 결혼 축의금 — 우리 결혼 때 10만 원 받아서 같은 금액으로'
+    seedStore({
+      memberNo: 1,
+      confessions: [
+        {
+          id: 'n1',
+          memberNo: 1,
+          category: '경조사',
+          kind: 'variable',
+          amount: 100_000,
+          note: long,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+    renderScreen(<Confess />)
+    expect(screen.getByText(long)).toBeInTheDocument()
   })
 })

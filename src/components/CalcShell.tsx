@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useNumberText } from '../lib/useNumberText'
 import ShareMore from './ShareMore'
 
 /** 원팀프로젝트 — 상담 창구가 열리기 전까지 계산기 아래 '결영이네와 같이'가 여기로 간다 */
@@ -102,16 +103,14 @@ export function NumField({
   decimal?: boolean
   label: string
 }) {
+  const { text, change } = useNumberText(value, onChange, { decimal: !!decimal })
   return (
     <span className="ml-auto flex w-[140px] items-center gap-1 rounded-btn border border-line bg-white px-3 focus-within:border-brand">
       <input
         aria-label={label}
         inputMode={decimal ? 'decimal' : 'numeric'}
-        value={Number.isFinite(value) ? String(value) : ''}
-        onChange={(e) => {
-          const raw = e.target.value.replace(decimal ? /[^\d.]/g : /\D/g, '')
-          onChange(raw === '' ? 0 : Number(raw))
-        }}
+        value={text}
+        onChange={(e) => change(e.target.value)}
         className="tnum min-w-0 w-full bg-transparent py-2 text-right text-[15px] font-semibold text-ink outline-none"
       />
       <span className="shrink-0 text-[13px] text-sub">{unit}</span>

@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import ChildMoneyCard from './ChildMoneyCard'
 import { renderScreen, seedStore } from '../test/renderScreen'
 import { useLedgerStore } from '../lib/store'
 import { addMonths, lastDueYm } from '../lib/childRecurring'
+import { currentYm } from '../lib/format'
 
 function open() {
   seedStore({ memberNo: 1, confessions: [] })
@@ -16,6 +17,14 @@ function open() {
   }))
   return renderScreen(<ChildMoneyCard childAssets={{}} />)
 }
+
+const fetched = vi.hoisted(() => ({ records: [] as unknown[] }))
+vi.mock('../lib/db', async (orig) => ({
+  ...(await orig<typeof import('../lib/db')>()),
+  fetchChildRecords: async () => fetched.records,
+  fetchGiftReports: async () => [],
+  insertConfession: async () => undefined,
+}))
 
 describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', () => {
   it('아동수당 — 기본은 증여 아님, 아이 통장으로 받았으면 체크해서 증여에 넣는다', async () => {
@@ -92,5 +101,158 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
     expect(useLedgerStore.getState().confessions.filter((c) => c.note === '아동수당')).toHaveLength(
       2,
     )
+  })
+
+  describe('통장에 모아요 — 아이 자산에도 더할지 묻기 (2026-11-05)', () => {
+    async function saveGift(user: ReturnType<typeof open>['user'], keepIt = true) {
+      await user.click(screen.getByRole('button', { name: /찰떡이 앞으로 들어온 돈 적기/ }))
+      await user.click(screen.getByRole('button', { name: '용돈·선물' }))
+      await user.type(screen.getByLabelText('들어온 금액'), '100000')
+      if (!keepIt) await user.click(screen.getByRole('button', { name: '살림에 보태요' }))
+      await user.click(screen.getByRole('button', { name: '적기' }))
+    }
+
+    it('[더하기] — 이번 달 스냅샷의 아이 통장 금액이 늘어난다', async () => {
+      const { user } = open()
+      useLedgerStore.setState({
+        snapshots: [
+          {
+            ym: currentYm(),
+            items: [
+              {
+                id: 'k1',
+                kind: 'asset',
+                group: 'cash',
+                name: '찰떡이 통장',
+                amount: 50_000,
+                owner: '찰떡이',
+              },
+            ],
+          },
+        ],
+      })
+      await saveGift(user)
+      expect(screen.getByText('찰떡이 통장 금액에도 더할까요?')).toBeInTheDocument()
+      expect(screen.getByText('자산 화면의 통장 금액이 10만원 늘어요.')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: '더하기' }))
+      const snap = useLedgerStore.getState().snapshots.find((s) => s.ym === currentYm())
+      expect(snap?.items.find((i) => i.id === 'k1')?.amount).toBe(150_000)
+      expect(screen.queryByText('찰떡이 통장 금액에도 더할까요?')).not.toBeInTheDocument()
+    })
+
+    it('[더하기] — 아이 통장 항목이 없으면 새로 만든다', async () => {
+      const { user } = open()
+      await saveGift(user)
+      await user.click(screen.getByRole('button', { name: '더하기' }))
+      const snap = useLedgerStore.getState().snapshots.find((s) => s.ym === currentYm())
+      expect(snap?.items).toHaveLength(1)
+      expect(snap?.items[0]).toMatchObject({
+        name: '찰떡이 통장',
+        amount: 100_000,
+        owner: '찰떡이',
+        group: 'cash',
+        kind: 'asset',
+      })
+    })
+
+    it('[아니요] — 스냅샷은 그대로', async () => {
+      const { user } = open()
+      await saveGift(user)
+      await user.click(screen.getByRole('button', { name: '아니요' }))
+      expect(useLedgerStore.getState().snapshots).toHaveLength(0)
+      expect(useLedgerStore.getState().confessions).toHaveLength(1)
+    })
+
+    it('살림에 보태면 묻지 않는다', async () => {
+      const { user } = open()
+      await saveGift(user, false)
+      expect(screen.queryByText('찰떡이 통장 금액에도 더할까요?')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('최근 기록 고치기', () => {
+    const seed = () => {
+      const r = open()
+      useLedgerStore.setState({
+        confessions: [
+          {
+            id: 'c1',
+            category: '용돈·선물',
+            kind: 'income',
+            amount: 50_000,
+            createdAt: new Date().toISOString(),
+            child: '찰떡이',
+            childKeep: true,
+          } as never,
+        ],
+      })
+      return r
+    }
+
+    it('금액과 증여 체크를 고쳐 저장한다', async () => {
+      const { user } = seed()
+      await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
+      const amt = screen.getByLabelText('고칠 금액')
+      await user.clear(amt)
+      await user.type(amt, '70000')
+      await user.click(screen.getByRole('checkbox', { name: '증여 기록에 더해요' }))
+      await user.click(screen.getByRole('button', { name: '저장' }))
+      const c = useLedgerStore.getState().confessions.find((x) => x.id === 'c1')
+      expect(c).toMatchObject({ amount: 70_000, gift: true })
+    })
+
+    it('연필이 아니라 줄 아무 데나 눌러도 고치기가 열린다 (2026-11-17)', async () => {
+      const { user } = seed()
+      await user.click(await screen.findByText('+50,000')) // 표의 금액 칸 (2026-11-25 엑셀 표)
+      expect(screen.getByLabelText('고칠 금액')).toBeInTheDocument()
+    })
+
+    it('취소하면 그대로', async () => {
+      const { user } = seed()
+      await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
+      const amt = screen.getByLabelText('고칠 금액')
+      await user.clear(amt)
+      await user.type(amt, '1')
+      await user.click(screen.getByRole('button', { name: '취소' }))
+      expect(useLedgerStore.getState().confessions[0].amount).toBe(50_000)
+      expect(screen.queryByLabelText('고칠 금액')).not.toBeInTheDocument()
+    })
+  })
+
+  it('고친 금액이 서버가 돌려준 옛 값보다 먼저 합계에 반영된다', async () => {
+    const thisYear = new Date().toISOString()
+    fetched.records = [
+      {
+        id: 'c1',
+        child: '찰떡이',
+        category: '용돈·선물',
+        amount: 50_000,
+        childKeep: true,
+        gift: false,
+        createdAt: thisYear,
+      },
+    ]
+    const { user } = open()
+    useLedgerStore.setState({
+      householdId: 'h1',
+      confessions: [
+        {
+          id: 'c1',
+          category: '용돈·선물',
+          kind: 'income',
+          amount: 50_000,
+          createdAt: thisYear,
+          child: '찰떡이',
+          childKeep: true,
+        } as never,
+      ],
+    })
+    expect(await screen.findByText('+5만원')).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
+    const amt = screen.getByLabelText('고칠 금액')
+    await user.clear(amt)
+    await user.type(amt, '70000')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    expect(await screen.findByText('+7만원')).toBeInTheDocument()
   })
 })
