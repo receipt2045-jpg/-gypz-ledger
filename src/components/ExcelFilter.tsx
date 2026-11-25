@@ -123,13 +123,32 @@ function FilterPop({
     window.addEventListener('keydown', esc)
     return () => window.removeEventListener('keydown', esc)
   }, [onClose])
+  // 스크롤·화면 크기가 바뀌면 ▾ 버튼을 따라 다시 그린다
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const re = () => setTick((t) => t + 1)
+    window.addEventListener('scroll', re, true)
+    window.addEventListener('resize', re)
+    return () => {
+      window.removeEventListener('scroll', re, true)
+      window.removeEventListener('resize', re)
+    }
+  }, [])
 
+  // ▾ 버튼 바로 아래 — 아래 자리가 모자라면 바로 위에 붙인다.
+  // (2026-11-25 결영 캡처: 창 높이를 어림잡아 위로 띄웠더니 버튼과 멀리 떨어져 떴다 →
+  //  위로 띄울 땐 bottom 기준으로 붙이고, 높이는 남은 자리만큼만)
   const r = anchor.getBoundingClientRect()
   const vw = window.innerWidth
-  const vh = window.visualViewport?.height ?? window.innerHeight
+  const vh = window.innerHeight
   const W = Math.min(260, vw - 16)
-  const H = opts ? 330 : 150
-  const top = r.bottom + 4 + H <= vh ? r.bottom + 4 : Math.max(8, r.top - 4 - H)
+  const spaceBelow = vh - r.bottom - 12
+  const spaceAbove = r.top - 12
+  const want = opts ? Math.min(330, 150 + (opts.length + 1) * 30) : 140
+  const below = spaceBelow >= want || spaceBelow >= spaceAbove
+  const pos = below
+    ? { top: r.bottom + 4, maxHeight: Math.max(160, spaceBelow) }
+    : { bottom: vh - r.top + 4, maxHeight: Math.max(160, spaceAbove) }
   const left = Math.max(8, Math.min(r.left, vw - W - 8))
 
   const q = search.trim().toLowerCase()
@@ -167,8 +186,8 @@ function FilterPop({
       <div
         role="dialog"
         aria-label={`${col.label} 거르기 창`}
-        style={{ position: 'fixed', top, left, width: W }}
-        className="z-50 rounded-btn border border-line bg-white p-2.5 text-[13px] shadow-card"
+        style={{ position: 'fixed', left, width: W, ...pos }}
+        className="z-50 overflow-y-auto rounded-btn border border-line bg-white p-2.5 text-[13px] shadow-card"
       >
         <p className="mb-1.5 text-[12px] font-bold text-sub">{col.label}</p>
         {opts ? (

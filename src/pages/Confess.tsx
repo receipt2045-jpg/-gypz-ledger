@@ -40,6 +40,8 @@ import MonthSpendCard from '../components/MonthSpendCard'
 import RecoCard from '../components/RecoCard'
 import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
 import EditRow, { NOTE_MAX } from '../components/ConfessEditRow'
+import ConfessTable from '../components/ConfessTable'
+import type { FilterState } from '../components/ExcelFilter'
 import { captureToDrafts, readSpendCapture } from '../lib/spendCapture'
 import { CaptureError } from '../lib/stockDb'
 import { noSpendDays } from '../lib/noSpend'
@@ -265,6 +267,8 @@ export default function Confess() {
 
   // 고치는 중인 기록 — 한 번에 하나만
   const [editing, setEditing] = useState<string | null>(null)
+  // 우리집 기록 표 거르기 — 엑셀처럼 칸 이름 옆 ▾ (2026-11-25)
+  const [recF, setRecF] = useState<FilterState>({})
 
   /** '9월 1일' — 지난 날짜로 적는 중임을 알릴 때 */
   const logDateLabel = `${Number(logDate.slice(5, 7))}월 ${Number(logDate.slice(8, 10))}일`
@@ -1224,16 +1228,22 @@ export default function Confess() {
                 {recentByDate.length === 0 && (
                   <p className="py-2 text-[13px] text-sub">{sinceLabel}부터는 기록이 없어요</p>
                 )}
-                <div className="space-y-3">
-                  {recentByDate.map(([date, list]) => (
-                    <div key={date}>
-                      <p className="tnum text-[12px] font-bold text-sub">
-                        {date === today ? '오늘' : date.slice(5).replace('-', '월 ') + '일'}
-                      </p>
-                      <div className="divide-y divide-line/70">{list.map(renderRow)}</div>
-                    </div>
-                  ))}
-                </div>
+                {/* 엑셀처럼 표로 (2026-11-25 결영 요청: "여기도") — 날짜는 칸으로 */}
+                {recent.length > 0 && (
+                  <ConfessTable
+                    rows={recent}
+                    filter={recF}
+                    onFilter={setRecF}
+                    today={today}
+                    categories={categories}
+                    memberNames={memberNames}
+                    profile={profile}
+                    editing={editing}
+                    onEdit={setEditing}
+                    onUpdate={updateConfession}
+                    onRemove={removeConfession}
+                  />
+                )}
                 {hasOlder && (
                   <button
                     onClick={showMore}

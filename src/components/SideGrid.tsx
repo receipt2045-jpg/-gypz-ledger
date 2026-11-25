@@ -256,14 +256,14 @@ export default function SideGrid({
   return (
     <div onPaste={(e) => void onPaste(e)}>
       <div className="no-scrollbar -mx-5 overflow-x-auto px-5">
-        <table ref={tableRef} className="w-full min-w-[560px] table-fixed border-collapse">
+        <table ref={tableRef} className="w-full min-w-[640px] table-fixed border-collapse">
           <colgroup>
-            <col className="w-[60px]" />
-            <col className="w-[64px]" />
+            <col className="w-[72px]" />
+            <col className="w-[78px]" />
             <col className="w-[108px]" />
             <col className="w-[92px]" />
-            <col className="w-[56px]" />
-            <col className="w-[44px]" />
+            <col className="w-[76px]" />
+            <col className="w-[68px]" />
             <col />
             <col className="w-[32px]" />
           </colgroup>
