@@ -1201,16 +1201,34 @@ export function mealCost(r: Recipe, people: number, prices: UnitPrices): MealCos
 export function amountText(id: string, amount: number): string {
   const ing = INGREDIENTS[id]
   if (!ing) return `${Math.round(amount)}`
-  if (id === 'rice') return `${fraction(amount / RICE_BOWL.rawG)}공기 (쌀 ${Math.round(amount)}g)`
+  if (id === 'rice') return `${pieces(amount / RICE_BOWL.rawG, '공기')} (쌀 ${tidy(amount)}g)`
   if (ing.spoon) {
     const sp = Math.round((amount / ing.spoon) * 2) / 2
     return sp >= 0.5 ? `${trim(sp)}큰술` : '약간'
   }
-  if (ing.unit === '개' && !ing.piece) return `${trim(Math.round(amount * 2) / 2)}개`
-  if (ing.piece && ing.unit === '개') return `${fraction(amount)}${ing.piece.word}`
-  const g = `${Math.round(amount)}${ing.unit}`
-  if (!ing.piece) return g
-  return `${g} (${fraction(amount / ing.piece.g)}${ing.piece.word})`
+  // 한 개·한 모·한 대로 세는 재료는 g 없이 "두부 반모", "대파 1/2대"처럼 (11-26 결영)
+  if (ing.piece) return pieces(ing.unit === '개' ? amount : amount / ing.piece.g, ing.piece.word)
+  // 달걀처럼 개로만 세는 것 — 1개가 넘으면 반올림해 딱 떨어지게
+  if (ing.unit === '개') return amount < 1 ? pieces(amount, '개') : `${Math.max(1, Math.round(amount))}개`
+  return `${tidy(amount)}${ing.unit}`
+}
+
+/** 281g → 280g, 37g → 40g, 12g → 10g — 저울 없이도 맞출 만하게 */
+function tidy(x: number): number {
+  if (x < 20) return Math.max(5, Math.round(x / 5) * 5)
+  return Math.round(x / 10) * 10
+}
+
+/** 0.5 → 반모 · 1/2대, 1.5 → 1모 반, 0.25 → 1/4개 */
+function pieces(x: number, word: string): string {
+  const q = Math.max(0.25, Math.round(x * 4) / 4)
+  const whole = Math.floor(q)
+  const rest = q - whole
+  if (rest === 0.5) {
+    if (!whole) return word === '대' ? `1/2${word}` : `반${word}`
+    return `${whole}${word} 반`
+  }
+  return `${fraction(q)}${word}`
 }
 
 const trim = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ''))

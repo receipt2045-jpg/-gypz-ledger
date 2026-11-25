@@ -10,7 +10,6 @@ import {
   MAIN_INGREDIENTS,
   PANTRY,
   RECIPES,
-  SERVING_OPTIONS,
   amountText,
   ingredientsFor,
   mealNutrition,
@@ -30,6 +29,7 @@ import { usePlanner } from './recipes/usePlanner'
 import { Dish, KidTag, RoleTag, Tabs } from './recipes/ui'
 import { MoreRecipes } from './recipes/MoreRecipes'
 import { dishPerPerson } from '../lib/nutrition'
+import { portionsOf } from '../lib/mealPlan'
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`
 /** 12,520 → "1만 2,500원" — 큰 숫자는 백 원 단위로 */
@@ -59,7 +59,6 @@ const CHIP_NAME: Record<string, string> = {
 
 // ── 이 폰에 기억해 두기 — 장 보러 가서 다시 열어도 그대로 ──
 const KEY = {
-  people: 'moabuli.recipes.people',
   owned: 'moabuli.recipes.owned',
   cart: 'moabuli.recipes.cart',
 }
@@ -102,9 +101,6 @@ const isStrings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x ==
  */
 export default function Recipes() {
   const { slug } = useParams()
-  const [people, setPeople] = useSaved<number>(KEY.people, 4, (v) =>
-    (SERVING_OPTIONS as readonly unknown[]).includes(v),
-  )
   const [owned, setOwned] = useSaved<string[]>(KEY.owned, [], isStrings)
   const [cart, setCart] = useSaved<string[]>(KEY.cart, [], isStrings)
   const toggleCart = (s: string) =>
@@ -121,6 +117,9 @@ export default function Recipes() {
   const recipe = page ? recipeBySlug(page) : undefined
   const reel = page?.startsWith('reel-') ? reelById(page.slice(5)) : undefined
   const planner = usePlanner()
+  // 양은 우리집 기준대로 — 어른 1명 1인분, 아이 1명 반 인분 (11-26 결영: 인원 고르기는 안 보여도 됨)
+  const people = portionsOf(planner.settings)
+  const household = `어른 ${planner.settings.adults}${planner.settings.kids ? ` · 아이 ${planner.settings.kids}` : ''}`
 
   return (
     <div className="flex min-h-screen justify-center bg-white break-keep">
@@ -141,14 +140,14 @@ export default function Recipes() {
             toggleCart={toggleCart}
             owned={owned}
             people={people}
-            setPeople={setPeople}
+            household={household}
             packs={planner.packs}
           />
         ) : recipe ? (
           <Detail
             recipe={recipe}
             people={people}
-            setPeople={setPeople}
+            household={household}
             inCart={cart.includes(recipe.slug)}
             toggleCart={() => toggleCart(recipe.slug)}
             owned={owned}
@@ -159,7 +158,7 @@ export default function Recipes() {
             owned={owned}
             setOwned={setOwned}
             people={people}
-            setPeople={setPeople}
+            household={household}
             cart={cart}
             toggleCart={toggleCart}
           />
@@ -184,23 +183,21 @@ function OneTeamCardLink() {
   return <OneTeamCard onStory={() => navigate('/story')} />
 }
 
-/** 2인 · 3인 · 4인 — 작은 알약 */
-function People({ people, setPeople }: { people: number; setPeople: (n: number) => void }) {
+/** 우리집 기준 인분 — 누르면 기준 바꾸기 */
+function People({ people, household }: { people: number; household: string }) {
+  const navigate = useNavigate()
   return (
-    <div className="flex gap-1.5" role="group" aria-label="몇 명이 먹나요">
-      {SERVING_OPTIONS.map((n) => (
-        <button
-          key={n}
-          onClick={() => setPeople(n)}
-          aria-pressed={people === n}
-          className={`rounded-full px-3.5 py-1.5 text-[14px] font-bold ${
-            people === n ? 'bg-ink text-white' : 'bg-bg text-sub'
-          }`}
-        >
-          {n}인
-        </button>
-      ))}
-    </div>
+    <button
+      onClick={() => {
+        navigate('/recipes/setup')
+        window.scrollTo(0, 0)
+      }}
+      className="shrink-0 rounded-full bg-bg px-3 py-1.5 text-right text-[13px] font-bold text-ink"
+      aria-label="우리집 기준 바꾸기"
+    >
+      우리집 {people}인분
+      <span className="block text-[11px] font-normal text-cap">{household}</span>
+    </button>
   )
 }
 
@@ -216,14 +213,14 @@ function Pick({
   owned,
   setOwned,
   people,
-  setPeople,
+  household,
   cart,
   toggleCart,
 }: {
   owned: string[]
   setOwned: (v: string[]) => void
   people: number
-  setPeople: (n: number) => void
+  household: string
   cart: string[]
   toggleCart: (s: string) => void
 }) {
@@ -267,7 +264,7 @@ function Pick({
         <span className="text-[14px] text-sub">
           레시피 <b className="text-ink">{list.length}</b>개
         </span>
-        <People people={people} setPeople={setPeople} />
+        <People people={people} household={household} />
       </div>
 
       <ul className="mt-4 space-y-6">
@@ -368,14 +365,14 @@ function Cart({
   toggleCart,
   owned,
   people,
-  setPeople,
+  household,
   packs,
 }: {
   cart: string[]
   toggleCart: (s: string) => void
   owned: string[]
   people: number
-  setPeople: (n: number) => void
+  household: string
   packs: Record<string, Pack>
 }) {
   const navigate = useNavigate()
@@ -409,7 +406,7 @@ function Cart({
       <h1 className="mt-4 text-[24px] font-extrabold text-ink">장보기 목록</h1>
       <div className="mt-1 flex items-center justify-between">
         <span className="text-[15px] text-sub">{recipes.length}끼 · 인원</span>
-        <People people={people} setPeople={setPeople} />
+        <People people={people} household={household} />
       </div>
 
       {/* 합계 — 장 한 번에 실제로 내는 돈 */}
@@ -532,7 +529,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
 function Detail({
   recipe: r,
   people,
-  setPeople,
+  household,
   inCart,
   toggleCart,
   owned,
@@ -540,7 +537,7 @@ function Detail({
 }: {
   recipe: Recipe
   people: number
-  setPeople: (n: number) => void
+  household: string
   inCart: boolean
   toggleCart: () => void
   owned: string[]
@@ -598,7 +595,7 @@ function Detail({
               {extra.toBuy.map((i) => INGREDIENTS[i.id]?.name).join('·') || '더 살 것 없어요'}
             </p>
           </div>
-          <People people={people} setPeople={setPeople} />
+          <People people={people} household={household} />
         </div>
 
         {/* 식약처 값이 없는 레시피는 재료로 어림한 열량·단백질 두 칸 */}

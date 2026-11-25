@@ -86,9 +86,14 @@ describe('집밥 레시피 (2026-11-01)', () => {
 
   it('양 읽기 — 양념은 큰술, 채소는 개, 밥은 공기', () => {
     expect(amountText('gochujang', 36)).toBe('2큰술')
-    expect(amountText('tofu', 150)).toBe('150g (1/2모)')
-    expect(amountText('zucchini', 0.5)).toBe('1/2개')
+    expect(amountText('tofu', 150)).toBe('반모')
+    expect(amountText('tofu', 281)).toBe('1모')
+    expect(amountText('greenOnion', 50)).toBe('1/2대')
+    expect(amountText('onion', 300)).toBe('1개 반')
+    expect(amountText('pork', 281)).toBe('280g')
+    expect(amountText('zucchini', 0.5)).toBe('반개')
     expect(amountText('egg', 4)).toBe('4개')
     expect(amountText('rice', 180)).toBe('2공기 (쌀 180g)')
+    expect(amountText('rice', 225)).toBe('2공기 반 (쌀 230g)')
   })
 })
