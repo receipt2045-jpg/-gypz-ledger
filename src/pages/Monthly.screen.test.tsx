@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import Monthly from './Monthly'
 import Yearly from './Yearly'
 import { renderScreen, seedStore, TEST_YM } from '../test/renderScreen'
@@ -301,6 +301,23 @@ describe('가계부 탭 — 고백 내역 삭제', () => {
     expect([c2.amount, c2.note]).toEqual([6_000, '설빙'])
     expect(useLedgerStore.getState().confessions).toHaveLength(2)
     expect(screen.queryByLabelText('금액')).toBeNull() // 다 고치면 접힌다
+  })
+
+  it('소비 기록 엑셀처럼 거르기 — 누가 ▾에서 한 사람만 (2026-11-25)', async () => {
+    seedConfessions()
+    const { user } = renderScreen(<Monthly />)
+    await user.click(screen.getByRole('tab', { name: '목록' }))
+    localStorage.removeItem('moabuli.monthly.logView')
+    expect(screen.getAllByLabelText('기록 삭제')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: '종류 거르기' }))
+    const pop = screen.getByRole('dialog', { name: '종류 거르기 창' })
+    await user.click(within(pop).getByRole('checkbox', { name: '식비' }))
+    await user.click(within(pop).getByRole('button', { name: '확인' }))
+    expect(screen.getAllByLabelText('기록 삭제')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: '카페/간식 기록 고치기' })).toBeInTheDocument()
+    expect(screen.getByText(/고른 기록/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '필터 모두 지우기' }))
+    expect(screen.getAllByLabelText('기록 삭제')).toHaveLength(2)
   })
 
   it('데이터 초기화는 고백까지 지운다', () => {

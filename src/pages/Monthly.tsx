@@ -16,6 +16,14 @@ import { openingYm, resolveLedger } from '../lib/carryover'
 import { currentYm, formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER, NO_SPEND, visibleCategories } from '../lib/constants'
 import EditRow from '../components/ConfessEditRow'
+import {
+  FilterStrip,
+  isFilterOn,
+  optionsOf,
+  passes,
+  type FilterColumn,
+  type FilterState,
+} from '../components/ExcelFilter'
 import { confessSums, monthConfessions } from '../lib/confessLedger'
 import { noSpendDays } from '../lib/noSpend'
 import { memberStyle } from '../lib/memberColors'
@@ -106,23 +114,68 @@ export default function Monthly() {
   }
   const [logDay, setLogDay] = useState<string | null>(todayKey)
   const dayKey = (c: { createdAt: string }) => new Date(c.createdAt).toLocaleDateString('sv-SE')
+  // ── 소비 기록 거르기 (2026-11-25 결영 요청: "가계부 탭 소비 기록에도 필터 넣어줘") ──
+  // 2026-11-25 "필터는 엑셀처럼 보이게" — 날짜·구분·종류·누가·메모 칸 이름 옆 ▾. 달력 표시와 목록이 같이 걸러진다
+  const [logF, setLogF] = useState<FilterState>({})
+  const logGet: Record<string, (c: (typeof monthLog)[number]) => string> = {
+    date: (c) => dayKey(c),
+    kind: (c) => c.kind,
+    category: (c) => c.category,
+    who: (c) => (c.shared ? 'shared' : String(c.memberNo)),
+    note: (c) => c.note ?? '',
+  }
+  const logCols: FilterColumn[] = [
+    {
+      key: 'date',
+      label: '날짜',
+      options: optionsOf(
+        monthLog,
+        logGet.date,
+        (d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`,
+      ),
+    },
+    {
+      key: 'kind',
+      label: '구분',
+      options: optionsOf(monthLog, logGet.kind, (k) => GROUP_LABEL[k as CategoryGroup] ?? k),
+    },
+    { key: 'category', label: '종류', options: optionsOf(monthLog, logGet.category, (c) => c) },
+    {
+      key: 'who',
+      label: '누가',
+      options: optionsOf(monthLog, logGet.who, (w) =>
+        w === 'shared' ? '공동' : memberNames[Number(w) - 1],
+      ),
+    },
+    { key: 'note', label: '메모' },
+  ]
+  const logFiltering = isFilterOn(logF)
+  const filteredLog = monthLog.filter((c) => passes(logF, logGet, c))
+  const filteredOut = filteredLog
+    .filter((c) => c.kind !== 'income')
+    .reduce((a, c) => a + c.amount, 0)
+  const filteredIn = filteredLog
+    .filter((c) => c.kind === 'income')
+    .reduce((a, c) => a + c.amount, 0)
   // 위 합계와 같은 기준 — 수입이 아닌 건 쓴 돈(−), 수입은 들어온 돈(+)
   const logMarks: Record<string, DayMark> = {}
-  for (const c of monthLog) {
+  for (const c of filteredLog) {
     if (c.category === NO_SPEND) continue
     const d = (logMarks[dayKey(c)] ??= {})
     if (c.kind === 'income') d.plus = (d.plus ?? 0) + c.amount
     else d.minus = (d.minus ?? 0) + c.amount
   }
-  for (const day of noSpendDays(ym, monthLog, confessions, todayKey))
-    (logMarks[day] ??= {}).heart = true
+  // 무지출 하트는 거르지 않을 때만 — 거른 달력에선 헷갈린다
+  if (!logFiltering)
+    for (const day of noSpendDays(ym, monthLog, confessions, todayKey))
+      (logMarks[day] ??= {}).heart = true
   const logDayIn = logDay && logDay.startsWith(ym) ? logDay : null
   const shownLog =
     logView === 'calendar'
       ? logDayIn
-        ? monthLog.filter((c) => dayKey(c) === logDayIn)
+        ? filteredLog.filter((c) => dayKey(c) === logDayIn)
         : []
-      : monthLog
+      : filteredLog
 
   // 비정기 지출 — 보는 달 것만 목록에, 합계는 올해 누적 (연간비 감각 유지)
   const monthOccasions = occasions.filter((o) => ymOfDay(o.date) === ym)
@@ -390,6 +443,35 @@ export default function Monthly() {
               </div>
               {/* 남편 · 아내 · 공동 나눠 보기 — 공동 기록이 하나라도 있는 달만 */}
               {monthLog.some((c) => c.shared) && <div className="mt-2.5">{personSplit}</div>}
+              {/* 엑셀처럼 거르기 — 칸 이름 옆 ▾ (2026-11-25) */}
+              {monthLog.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <FilterStrip cols={logCols} state={logF} onChange={setLogF} />
+                  {logFiltering && (
+                    <p className="tnum rounded-btn bg-bg px-3 py-2 text-[12.5px] text-sub">
+                      고른 기록 <b className="text-ink">{filteredLog.length}건</b>
+                      {filteredOut > 0 && (
+                        <>
+                          {' '}
+                          · 쓴 돈 <b className="text-ink">{formatWon(filteredOut)}</b>
+                        </>
+                      )}
+                      {filteredIn > 0 && (
+                        <>
+                          {' '}
+                          · 들어온 돈 <b className="text-brand">{formatWon(filteredIn)}</b>
+                        </>
+                      )}
+                      <button
+                        onClick={() => setLogF({})}
+                        className="float-right text-[12px] font-bold text-brand active:opacity-70"
+                      >
+                        필터 모두 지우기
+                      </button>
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="mt-3 space-y-2">
                 {logView === 'calendar' && (
                   <div className="pb-1">
@@ -416,6 +498,9 @@ export default function Monthly() {
                 )}
                 {logView === 'list' && monthLog.length === 0 && (
                   <p className="py-1 text-[13px] text-sub">{label}엔 아직 소비 기록이 없어요</p>
+                )}
+                {logView === 'list' && monthLog.length > 0 && filteredLog.length === 0 && (
+                  <p className="py-1 text-[13px] text-sub">고른 조건에 맞는 기록이 없어요</p>
                 )}
                 {shownLog.map(logRow)}
               </div>

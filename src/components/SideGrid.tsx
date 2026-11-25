@@ -6,6 +6,7 @@ import {
   parsePastedRows,
   SIDE_CATEGORIES,
   SIDE_KINDS,
+  SIDE_KIND_LABEL,
   type SideIncome,
   type SideKind,
 } from '../lib/sideIncome'
@@ -94,7 +95,10 @@ export default function SideGrid({
   onRemove,
   labelPrefix = '',
   showHint = true,
+  renderHead,
 }: {
+  /** 머리줄 칸 — 엑셀처럼 ▾ 거르기를 넣을 때 */
+  renderHead?: (h: string) => React.ReactNode
   /** 표가 둘(수입·지출)일 때 칸 이름 앞에 붙인다 — '수입 1번째 줄 금액' */
   labelPrefix?: string
   /** 아래 안내 글 — 표가 둘이면 마지막 표에만 */
@@ -270,7 +274,7 @@ export default function SideGrid({
                   key={i}
                   className="border-b border-r border-line/80 px-2 py-1.5 last:border-r-0"
                 >
-                  {h}
+                  {renderHead && h ? renderHead(h) : h}
                 </th>
               ))}
             </tr>
@@ -319,9 +323,9 @@ export default function SideGrid({
                       onChange={(e) => patch(r.key, { kind: e.target.value as SideKind })}
                       className={`${input} appearance-none px-0 text-center font-semibold ${r.kind === 'cash' ? 'text-emerald-700' : r.kind === 'saved' ? 'text-brand' : 'text-rose-600'}`}
                     >
-                      <option value="cash">번 돈</option>
-                      <option value="saved">아낀 돈</option>
-                      <option value="spent">쓴 돈</option>
+                      <option value="cash">{SIDE_KIND_LABEL.cash}</option>
+                      <option value="saved">{SIDE_KIND_LABEL.saved}</option>
+                      <option value="spent">{SIDE_KIND_LABEL.spent}</option>
                     </select>
                   </td>
                   <td className={cell}>

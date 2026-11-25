@@ -60,10 +60,10 @@ describe('부수입 가계부 (2026-11-19)', () => {
     const { user } = open()
     await screen.findByText('473,000원')
     await user.click(screen.getByRole('button', { name: /부수입 적기/ }))
-    await user.click(screen.getByRole('tab', { name: '아낀 돈' }))
+    await user.click(screen.getByRole('tab', { name: '절약액' }))
     await user.type(screen.getByLabelText(/얼마짜리였나요/), '60000')
     await user.type(screen.getByLabelText(/내가 낸 돈/), '10000')
-    expect(screen.getByText('아낀 돈 50,000원으로 적어요')).toBeInTheDocument()
+    expect(screen.getByText('절약액 50,000원으로 적어요')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '적기' }))
     expect(await screen.findByText('523,000원')).toBeInTheDocument()
   })
@@ -114,7 +114,7 @@ describe('부수입 가계부 (2026-11-19)', () => {
     await screen.findByText('473,000원')
     await user.click(screen.getByRole('button', { name: `${month} 부수입 정산하기` }))
     await user.type(screen.getByLabelText(/토스 비상금에 보낼 돈/), '300000')
-    expect(screen.getByText('번 돈보다 90,000원 많아요')).toBeInTheDocument()
+    expect(screen.getByText('부수입보다 90,000원 많아요')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: `${month} 부수입 마감` })).toBeDisabled()
   })
 })
@@ -198,7 +198,7 @@ describe('부수입 쓴 돈 (2026-11-23)', () => {
     await user.type(screen.getByLabelText(`수입 ${n}번째 줄 금액`), '3000{Enter}')
     // 210,000 − 3,000
     expect(await screen.findByText('207,000원')).toBeInTheDocument()
-    expect(screen.getByText(/번 돈 − 쓴 돈 = 남은 돈/)).toBeInTheDocument()
+    expect(screen.getByText(/부수입 − 지출 = 남은 돈/)).toBeInTheDocument()
     // 이번 달 부수입 = 번 돈 + 아낀 돈 − 쓴 돈
     expect(screen.getByText('470,000원')).toBeInTheDocument()
   })
@@ -266,29 +266,32 @@ describe('수입·지출로 나눠 보기·거르기 (2026-11-25)', () => {
     expect(screen.getByText('470,000원')).toBeInTheDocument()
   })
 
-  it('수입·지출·누가·찾기로 거른다', async () => {
+  it('엑셀처럼 거르기 — 칸 이름 옆 ▾, 체크한 값만 남는다 (2026-11-25)', async () => {
     const { user } = open()
     await screen.findByText('473,000원')
-    const all = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
-    // 지출만 — 수입 표는 안 보인다
-    await user.click(screen.getByRole('button', { name: '지출', pressed: false }))
-    expect(screen.queryAllByLabelText(/^수입 \d+번째 줄 금액/)).toHaveLength(0)
-    expect(screen.getByLabelText('지출 1번째 줄 금액')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '거르기 끄기' }))
-    // 메모·종류 찾기
-    await user.type(screen.getByLabelText('종류·메모 찾기'), '앱테크')
-    expect(screen.getAllByLabelText(/^수입 \d+번째 줄 금액/)).toHaveLength(2)
-    await user.click(screen.getByRole('button', { name: '찾는 말 지우기' }))
-    expect(screen.getAllByLabelText(/^수입 \d+번째 줄 금액/)).toHaveLength(all)
-    // 누가 — 둘로 나뉜다
-    await user.selectOptions(screen.getByLabelText('누가 거르기'), '1')
-    const one = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
-    await user.selectOptions(screen.getByLabelText('누가 거르기'), '2')
-    const two = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
-    await user.selectOptions(screen.getByLabelText('누가 거르기'), 'shared')
-    const sh = screen.getAllByLabelText(/^수입 \d+번째 줄 금액/).length
-    // 빈 줄은 표마다 하나씩
-    expect(one - 1 + (two - 1) + (sh - 1)).toBe(all - 1)
+    const rows = () => screen.queryAllByLabelText(/^수입 \d+번째 줄 금액/).length
+    const all = rows()
+    // 구분 ▾ → 부수입만 (절약액 끄기)
+    await user.click(screen.getAllByRole('button', { name: '구분 거르기' })[0])
+    const pop = screen.getByRole('dialog', { name: '구분 거르기 창' })
+    await user.click(within(pop).getByRole('checkbox', { name: '절약액' }))
+    await user.click(within(pop).getByRole('button', { name: '확인' }))
+    // 예시: 이번 달 부수입(번 돈) 4건 + 빈 줄
+    expect(rows()).toBeLessThan(all)
+    expect(screen.getByText(/필터 걸림/)).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: '구분 거르기' })[0])
+    const pop2 = screen.getByRole('dialog', { name: '구분 거르기 창' })
+    // 하나라도 빠져 있으면 모두 선택, 한 번 더 누르면 모두 끄기 — 아무것도 없으면 확인을 못 누른다
+    await user.click(within(pop2).getByRole('checkbox', { name: '(모두 선택)' }))
+    await user.click(within(pop2).getByRole('checkbox', { name: '(모두 선택)' }))
+    expect(within(pop2).getByRole('button', { name: '확인' })).toBeDisabled()
+    await user.click(within(pop2).getByRole('button', { name: '취소' }))
+    // 메모 ▾ → 글자로 찾기
+    await user.click(screen.getByRole('button', { name: '필터 모두 지우기' }))
+    expect(rows()).toBe(all)
+    await user.click(screen.getAllByRole('button', { name: '메모 거르기' })[0])
+    await user.type(screen.getByLabelText('메모 찾는 말'), '캐시워크{Enter}')
+    expect(rows()).toBe(2) // 캐시워크 출금 1건 + 빈 줄
   })
 })
 
@@ -347,9 +350,9 @@ describe('부수입 달력·번 돈 꺾은선 (2026-11-24)', () => {
   it('최근 6개월 번 돈을 꺾은선으로, 달을 누르면 그 달로 간다', async () => {
     const { user } = open()
     await screen.findByText('473,000원')
-    expect(screen.getByText(`${currentYm().slice(0, 4)}년 번 돈`)).toBeInTheDocument()
+    expect(screen.getByText(`${currentYm().slice(0, 4)}년 부수입`)).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /최근 6개월 부수입/ })).toHaveAccessibleName(
-      /번 돈 210,000원$/,
+      /부수입 210,000원$/,
     )
     const prevLabel = `${Number(shiftYm(currentYm(), -1).slice(5, 7))}월`
     await user.click(screen.getByRole('button', { name: `${prevLabel} 부수입 보기` }))

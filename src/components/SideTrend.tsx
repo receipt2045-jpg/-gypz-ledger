@@ -62,26 +62,26 @@ export default function SideTrend({
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-cap">{current.slice(0, 4)}년 번 돈</p>
+          <p className="text-[13px] font-medium text-cap">{current.slice(0, 4)}년 부수입</p>
           <p className="tnum mt-0.5 text-[24px] font-extrabold leading-tight text-emerald-600">
             {formatWon(yearCash)}
           </p>
           <p className="tnum mt-1 text-[12.5px] text-sub">
-            {label(current)} 번 돈 <b className="text-ink">{formatWon(monthCash)}</b>
+            {label(current)} 부수입 <b className="text-ink">{formatWon(monthCash)}</b>
             {monthSpent > 0 && (
               <>
-                {' · '}쓴 돈 <b className="text-rose-600">{formatWon(monthSpent)}</b>
+                {' · '}지출 <b className="text-rose-600">{formatWon(monthSpent)}</b>
               </>
             )}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-0.5 pt-0.5 text-[11.5px] font-semibold text-sub">
           <span className="flex items-center gap-1">
-            <i className="inline-block h-[3px] w-3 rounded-full bg-emerald-500" /> 번 돈
+            <i className="inline-block h-[3px] w-3 rounded-full bg-emerald-500" /> 부수입
           </span>
           {hasSpent && (
             <span className="flex items-center gap-1">
-              <i className="inline-block h-[3px] w-3 rounded-full bg-rose-400" /> 쓴 돈
+              <i className="inline-block h-[3px] w-3 rounded-full bg-rose-400" /> 지출
             </span>
           )}
         </div>
@@ -96,8 +96,8 @@ export default function SideTrend({
           aria-label={`최근 ${points.length}개월 부수입 ${points
             .map(
               (p) =>
-                `${label(p.ym)} 번 돈 ${p.cash.toLocaleString()}원${
-                  p.spent ? ` 쓴 돈 ${p.spent.toLocaleString()}원` : ''
+                `${label(p.ym)} 부수입 ${p.cash.toLocaleString()}원${
+                  p.spent ? ` 지출 ${p.spent.toLocaleString()}원` : ''
                 }`,
             )
             .join(', ')}`}

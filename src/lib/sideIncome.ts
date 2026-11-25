@@ -16,9 +16,10 @@ export type SideKind = 'cash' | 'saved' | 'spent'
 export const SIDE_KINDS: SideKind[] = ['cash', 'saved', 'spent']
 
 export const SIDE_KIND_LABEL: Record<SideKind, string> = {
-  cash: '번 돈',
-  saved: '아낀 돈',
-  spent: '쓴 돈',
+  // 2026-11-25 결영 요청: "부수입(번 돈) / 절약액(아낀 돈) / 지출(쓴 돈) 이 단어로 바꾸자"
+  cash: '부수입',
+  saved: '절약액',
+  spent: '지출',
 }
 
 export const SIDE_CATEGORIES: Record<SideKind, string[]> = {
@@ -355,11 +356,11 @@ export function parsePastedRows(
           continue
         }
       }
-      if (!kind && /^(들어온\s*돈|들어옴|수입|번\s*돈|현금)$/.test(c)) {
+      if (!kind && /^(들어온\s*돈|들어옴|수입|부수입|번\s*돈|현금)$/.test(c)) {
         kind = 'cash'
         continue
       }
-      if (!kind && /^(아낀\s*돈|아낌|절약)$/.test(c)) {
+      if (!kind && /^(아낀\s*돈|아낌|절약|절약액)$/.test(c)) {
         kind = 'saved'
         continue
       }

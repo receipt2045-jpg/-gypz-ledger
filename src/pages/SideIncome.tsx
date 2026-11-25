@@ -1,18 +1,18 @@
 import { useMemo, useRef, useState } from 'react'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-  X,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import AmountInput from '../components/AmountInput'
 import PcColumns from '../components/PcColumns'
 import SideGrid from '../components/SideGrid'
+import CategoryChips from '../components/CategoryChips'
+import {
+  FilterHead,
+  FilterStrip,
+  isFilterOn,
+  optionsOf,
+  passes,
+  type FilterColumn,
+  type FilterState,
+} from '../components/ExcelFilter'
 import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
 import SideTrend from '../components/SideTrend'
 import { useLedgerStore } from '../lib/store'
@@ -51,11 +51,11 @@ const SPENT = 'text-rose-600'
 /** 구분마다 글자색 */
 const TONE = { cash: CASH, saved: SAVE, spent: SPENT } as const
 
-/** 수입(번 돈·아낀 돈) / 지출(쓴 돈) — 2026-11-25 결영 요청: "수입 지출로 나눠주고 필터 기능 넣어줘" */
+/** 수입(부수입·절약액) / 지출 — 2026-11-25 결영 요청: "수입 지출로 나눠주고 필터 기능 넣어줘" */
 type Flow = 'in' | 'out'
 const flowOf = (k: SideKind): Flow => (k === 'spent' ? 'out' : 'in')
 const FLOW_LABEL: Record<Flow, string> = { in: '수입', out: '지출' }
-const FLOW_SUB: Record<Flow, string> = { in: '번 돈·아낀 돈', out: '쓴 돈' }
+const FLOW_SUB: Record<Flow, string> = { in: '부수입·절약액', out: '부수입 때문에 나간 돈' }
 
 /**
  * 부수입 가계부 (2026-11-19) — 하단 '부수입' 탭.
@@ -101,34 +101,62 @@ export default function SideIncome() {
           ? 1
           : -1,
     )
-  // 거르기 (2026-11-25) — 수입·지출 / 누가 / 종류·메모 찾기
-  const [flow, setFlow] = useState<'all' | Flow>('all')
-  const [whoF, setWhoF] = useState<'all' | 1 | 2 | 'shared'>('all')
-  const [q, setQ] = useState('')
-  const query = q.trim().toLowerCase()
-  const filtering = flow !== 'all' || whoF !== 'all' || query !== ''
-  const filtered = monthAll.filter(
-    (e) =>
-      (flow === 'all' || flowOf(e.kind) === flow) &&
-      (whoF === 'all' || (whoF === 'shared' ? !!e.shared : !e.shared && e.memberNo === whoF)) &&
-      (!query || `${e.category} ${e.note ?? ''}`.toLowerCase().includes(query)),
-  )
+  // 엑셀처럼 거르기 (2026-11-25 결영 요청: "필터는 엑셀처럼 보이게") — 칸 이름 옆 ▾
+  const [colF, setColF] = useState<FilterState>({})
+  const sideGet: Record<string, (e: SideEntry) => string> = {
+    date: (e) => e.earnedOn,
+    kind: (e) => e.kind,
+    category: (e) => e.category,
+    who: (e) => (e.shared ? 'shared' : String(e.memberNo)),
+    repeat: (e) => (e.repeat ? 'y' : 'n'),
+    note: (e) => e.note ?? '',
+  }
+  const sideCols: FilterColumn[] = [
+    {
+      key: 'date',
+      label: '날짜',
+      options: optionsOf(
+        monthAll,
+        sideGet.date,
+        (d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`,
+      ),
+    },
+    {
+      key: 'kind',
+      label: '구분',
+      options: optionsOf(monthAll, sideGet.kind, (k) => SIDE_KIND_LABEL[k as SideKind]),
+    },
+    { key: 'category', label: '종류', options: optionsOf(monthAll, sideGet.category, (c) => c) },
+    {
+      key: 'who',
+      label: '누가',
+      options: optionsOf(monthAll, sideGet.who, (w) =>
+        w === 'shared' ? '공동' : names[Number(w) - 1],
+      ),
+    },
+    {
+      key: 'repeat',
+      label: '매달',
+      options: optionsOf(monthAll, sideGet.repeat, (v) => (v === 'y' ? '매달' : '한 번')),
+    },
+    { key: 'note', label: '메모' },
+  ]
+  const colByLabel = Object.fromEntries(sideCols.map((c) => [c.label, c]))
+  const filtering = isFilterOn(colF)
+  const filtered = monthAll.filter((e) => passes(colF, sideGet, e))
+  // 구분 칸에서 고른 것 — 수입·지출 표와 종류 칩도 그쪽만
+  const kindF = colF.kind instanceof Set ? colF.kind : null
+  const kindOn = (k: SideKind) => !kindF || kindF.has(k)
   // 종류 하나만 보기 (2026-11-23 결영 요청: "카테고리 선택하면 그것만 총액") — '구분|종류'
   const [cat, setCat] = useState<string | null>(null)
   const catKey = (e: { kind: SideKind; category: string }) => `${e.kind}|${e.category}`
   const month = cat ? filtered.filter((e) => catKey(e) === cat) : filtered
-  // 이 달에 있는 종류 — 금액 큰 순 (수입·지출을 골랐으면 그쪽 종류만)
-  const monthCats = SIDE_KINDS.filter((k) => flow === 'all' || flowOf(k) === flow)
+  // 이 달에 있는 종류 — 금액 큰 순 (구분을 걸렀으면 그쪽 종류만)
+  const monthCats = SIDE_KINDS.filter(kindOn)
     .flatMap((k) => s.byCategory[k].map((c) => ({ key: `${k}|${c.category}`, kind: k, ...c })))
     .sort((a, b) => b.amount - a.amount)
-  const pickFlow = (f: 'all' | Flow) => {
-    setFlow(f)
-    if (f !== 'all' && cat && flowOf(cat.split('|')[0] as SideKind) !== f) setCat(null)
-  }
   const clearFilters = () => {
-    setFlow('all')
-    setWhoF('all')
-    setQ('')
+    setColF({})
     setCat(null)
   }
   const picked = cat
@@ -204,25 +232,27 @@ export default function SideIncome() {
 
   const summary = (
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
-      <p className="text-[13px] font-medium text-cap">{formatYmKorean(ym)} 부수입</p>
+      <p className="text-[13px] font-medium text-cap">
+        {formatYmKorean(ym)} 합계 <span className="text-[11.5px]">부수입 + 절약액 − 지출</span>
+      </p>
       <p className="tnum mt-0.5 text-[28px] font-extrabold tracking-tight text-ink">
         {formatWon(s.total)}
       </p>
       <div className="mt-3 grid grid-cols-3 gap-1.5">
         <div className="rounded-btn bg-emerald-50 px-2.5 py-2.5">
-          <p className="text-[12px] font-bold text-emerald-700">번 돈</p>
+          <p className="text-[12px] font-bold text-emerald-700">부수입</p>
           <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-emerald-700">
             {formatWon(s.cash)}
           </p>
         </div>
         <div className="rounded-btn bg-brand/10 px-2.5 py-2.5">
-          <p className="text-[12px] font-bold text-brand">아낀 돈</p>
+          <p className="text-[12px] font-bold text-brand">절약액</p>
           <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-brand">
             {formatWon(s.saved)}
           </p>
         </div>
         <div className="rounded-btn bg-rose-50 px-2.5 py-2.5">
-          <p className="text-[12px] font-bold text-rose-600">쓴 돈</p>
+          <p className="text-[12px] font-bold text-rose-600">지출</p>
           <p className="tnum whitespace-nowrap text-[14px] font-extrabold tracking-tight text-rose-600">
             {formatWon(s.spent)}
           </p>
@@ -230,7 +260,7 @@ export default function SideIncome() {
       </div>
       {s.spent > 0 && (
         <p className="tnum mt-2 text-[12.5px] text-sub">
-          번 돈 − 쓴 돈 = 남은 돈{' '}
+          부수입 − 지출 = 남은 돈{' '}
           <b className={s.net < 0 ? 'text-danger' : 'text-ink'}>{formatWon(s.net)}</b>
         </p>
       )}
@@ -261,12 +291,12 @@ export default function SideIncome() {
         </div>
       )}
       <p className="mt-3 border-t border-line pt-2.5 text-[12px] text-cap">
-        올해 번 돈 <b className="tnum text-sub">{formatWon(year.cash)}</b> · 아낀 돈{' '}
+        올해 부수입 <b className="tnum text-sub">{formatWon(year.cash)}</b> · 절약액{' '}
         <b className="tnum text-sub">{formatWon(year.saved)}</b>
         {year.spent > 0 && (
           <>
             {' '}
-            · 쓴 돈 <b className="tnum text-sub">{formatWon(year.spent)}</b>
+            · 지출 <b className="tnum text-sub">{formatWon(year.spent)}</b>
           </>
         )}
       </p>
@@ -456,7 +486,9 @@ export default function SideIncome() {
 
   // 수입·지출 칸 — 거르기·고른 종류에 맞는 쪽만
   const groups = (['in', 'out'] as const).filter(
-    (g) => (flow === 'all' || flow === g) && (!picked || flowOf(picked.kind) === g),
+    (g) =>
+      SIDE_KINDS.some((k) => flowOf(k) === g && kindOn(k)) &&
+      (!picked || flowOf(picked.kind) === g),
   )
   const groupHead = (g: Flow, list: SideEntry[]) => {
     const part = list.filter((e) => flowOf(e.kind) === g)
@@ -507,89 +539,37 @@ export default function SideIncome() {
         </div>
       </div>
       {fileBar}
-      {/* 거르기 — 수입·지출 / 누가 / 종류·메모 찾기 (2026-11-25) */}
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <div
-          className="flex shrink-0 gap-0.5 rounded-full bg-bg p-0.5"
-          role="group"
-          aria-label="수입·지출 거르기"
-        >
-          {(['all', 'in', 'out'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => pickFlow(f)}
-              aria-pressed={flow === f}
-              className={`rounded-full px-3 py-1 text-[12px] font-bold ${
-                flow === f
-                  ? 'bg-white text-ink shadow-card'
-                  : f === 'in'
-                    ? CASH
-                    : f === 'out'
-                      ? SPENT
-                      : 'text-sub'
-              }`}
-            >
-              {f === 'all' ? '전체' : FLOW_LABEL[f]}
-            </button>
-          ))}
-        </div>
-        <select
-          aria-label="누가 거르기"
-          value={String(whoF)}
-          onChange={(e) => {
-            const v = e.target.value
-            setWhoF(v === 'all' || v === 'shared' ? v : (Number(v) as 1 | 2))
-          }}
-          className={`shrink-0 rounded-full bg-bg px-3 py-1.5 text-[12px] font-bold outline-none ${
-            whoF === 'all' ? 'text-sub' : 'text-ink'
-          }`}
-        >
-          <option value="all">누가: 모두</option>
-          <option value="1">{names[0]}</option>
-          <option value="2">{names[1]}</option>
-          <option value="shared">공동</option>
-        </select>
-        <label className="flex min-w-[150px] flex-1 items-center gap-1.5 rounded-full bg-bg px-3 py-1.5">
-          <Search size={13} className="shrink-0 text-cap" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="종류·메모 찾기"
-            aria-label="종류·메모 찾기"
-            className="min-w-0 flex-1 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-cap"
+      {/* 표가 아닌 보기(목록·달력)에선 엑셀 머리줄처럼 거르기 줄 (2026-11-25) */}
+      {view !== 'grid' && monthAll.length > 0 && (
+        <div className="mb-2">
+          <FilterStrip
+            cols={sideCols.filter((c) => c.key !== 'date' && c.key !== 'repeat')}
+            state={colF}
+            onChange={setColF}
           />
-          {q && (
-            <button onClick={() => setQ('')} aria-label="찾는 말 지우기" className="text-cap">
-              <X size={13} />
-            </button>
-          )}
-        </label>
-        {filtering && (
+        </div>
+      )}
+      {filtering && (
+        <p className="tnum mb-2 flex items-center gap-2 rounded-btn bg-brand/5 px-3 py-2 text-[12.5px] text-sub">
+          <span className="min-w-0 flex-1">
+            필터 걸림 · <b className="text-ink">{filtered.length}건</b>
+          </span>
           <button
             onClick={clearFilters}
-            className="shrink-0 text-[12px] font-bold text-sub active:text-ink"
+            className="shrink-0 text-[12px] font-bold text-brand active:opacity-70"
           >
-            거르기 끄기
+            필터 모두 지우기
           </button>
-        )}
-      </div>
+        </p>
+      )}
       {/* 종류 하나만 보기 — 고르면 그 종류 합계와 그 기록만 */}
       {monthCats.length > 1 && (
-        <div className="no-scrollbar -mx-5 mb-2 flex gap-1.5 overflow-x-auto px-5 pb-0.5">
-          {[null, ...monthCats].map((c) => (
-            <button
-              key={c?.key ?? 'all'}
-              onClick={() => pickCat(c && cat !== c.key ? c.key : null)}
-              aria-pressed={cat === (c?.key ?? null)}
-              className={`shrink-0 rounded-full px-3 py-1 text-[12.5px] font-bold ${
-                cat === (c?.key ?? null)
-                  ? 'bg-ink text-white'
-                  : `bg-bg active:bg-line ${c ? TONE[c.kind] : 'text-sub'}`
-              }`}
-            >
-              {c ? c.category : '모든 종류'}
-            </button>
-          ))}
+        <div className="mb-2">
+          <CategoryChips
+            cats={monthCats.map((c) => ({ key: c.key, label: c.category, tone: TONE[c.kind] }))}
+            picked={cat}
+            onPick={pickCat}
+          />
         </div>
       )}
       {picked && (
@@ -679,6 +659,17 @@ export default function SideIncome() {
               <SideGrid
                 ym={ym}
                 labelPrefix={`${FLOW_LABEL[g]} `}
+                renderHead={(h) =>
+                  colByLabel[h] ? (
+                    <FilterHead
+                      col={colByLabel[h]}
+                      value={colF[colByLabel[h].key]}
+                      onChange={(v) => setColF((p) => ({ ...p, [colByLabel[h].key]: v }))}
+                    />
+                  ) : (
+                    h
+                  )
+                }
                 showHint={gi === groups.length - 1}
                 preset={
                   picked
@@ -710,8 +701,8 @@ export default function SideIncome() {
                 plusFirst
               />
               <p className="mt-1.5 text-[11.5px] text-cap">
-                <span className={`font-bold ${CASH}`}>+</span> 번 돈·아낀 돈{'  '}
-                <span className={`font-bold ${SPENT}`}>−</span> 쓴 돈
+                <span className={`font-bold ${CASH}`}>+</span> 부수입·절약액{'  '}
+                <span className={`font-bold ${SPENT}`}>−</span> 지출
               </p>
               {calDayIn && (
                 <p className="mt-3 text-[12.5px] font-bold text-sub">
@@ -726,7 +717,7 @@ export default function SideIncome() {
                 ? '고른 조건에 맞는 기록이 없어요'
                 : view === 'calendar'
                   ? '이 날은 기록이 없어요'
-                  : '앱테크로 번 돈, 체험단으로 아낀 돈을 적어 보세요'}
+                  : '앱테크 부수입, 체험단 절약액을 적어 보세요'}
             </p>
           ) : (
             groups.map((g) => {
@@ -997,7 +988,7 @@ function SideForm({
           ? '통장에 실제로 들어온 돈 — 정산 때 어디로 보낼지 정해요'
           : kind === 'saved'
             ? '체험단·포인트처럼 안 나간 돈 — 기록으로 모아요'
-            : '부수입 때문에 나간 돈 — 번 돈에서 빼서 남은 돈을 보여 줘요'}
+            : '부수입 때문에 나간 돈 — 부수입에서 빼서 남은 돈을 보여 줘요'}
       </p>
 
       <div>
@@ -1054,7 +1045,7 @@ function SideForm({
           </label>
           {price > 0 && (
             <p className="rounded-btn bg-brand/10 px-3 py-2 text-[13px] font-bold text-brand">
-              아낀 돈 {formatWon(value)}으로 적어요
+              절약액 {formatWon(value)}으로 적어요
             </p>
           )}
         </>
@@ -1201,8 +1192,8 @@ function SettleCard({
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
       <p className="text-[15px] font-bold text-ink">{label} 부수입 정산</p>
       <p className="mt-0.5 text-[13px] text-sub">
-        {label}에 번 돈(쓴 돈 빼고) <b className="tnum text-emerald-600">{formatWon(cash)}</b>,
-        어디로 보낼까요
+        {label} 부수입(지출 빼고) <b className="tnum text-emerald-600">{formatWon(cash)}</b>, 어디로
+        보낼까요
       </p>
       <div className="mt-2 divide-y divide-line/70">
         {accounts.map((a) =>
@@ -1218,7 +1209,7 @@ function SettleCard({
       <p
         className={`tnum mt-2 text-right text-[13px] font-bold ${left < 0 ? 'text-danger' : 'text-sub'}`}
       >
-        {left < 0 ? `번 돈보다 ${formatWon(-left)} 많아요` : `안 보낸 돈 ${formatWon(left)}`}
+        {left < 0 ? `부수입보다 ${formatWon(-left)} 많아요` : `안 보낸 돈 ${formatWon(left)}`}
       </p>
       <div className="mt-3 flex gap-2">
         <button
