@@ -13,7 +13,7 @@ import {
 
 /**
  * 결영이네 집밥 플래너 (2026-11-26).
- * 우리집 식비 기준(한 주·한 번 장볼 때·간격·배달 날·고기·못 먹는 재료)으로
+ * 우리집 식비 기준(한 주·한 번 장볼 때·간격·외식 날·고기·못 먹는 재료)으로
  * 일주일 식단을 짜고, 장보기 한 번 = 사흘 한 상(메인 1 + 서브 1 + 국 1)으로 묶는다.
  * 반찬은 그날 다 먹는다 — 양은 딱 식구 수만큼, 쌓아 두고 돌려 먹지 않는다.
  */
@@ -23,15 +23,15 @@ export interface MealSettings {
   adults: number
   /** 아이 몇 명 — 아이 1명은 어른 반 인분으로 셈하고, 있으면 매운 메뉴를 뺀다 */
   kids: number
-  /** 한 주 집밥(장보기) 돈 — 배달은 따로 */
+  /** 한 주 집밥(장보기) 돈 — 외식은 따로 */
   weekBudget: number
   /** 한 번 장볼 때 넘지 않을 돈 */
   tripBudget: number
   /** 며칠에 한 번 장 보나 — 7이면 일주일에 한 번 */
   interval: 2 | 3 | 7
-  /** 배달 먹는 날 — 0=월 … 6=일 */
+  /** 외식하는 날 — 0=월 … 6=일 */
   deliveryDays: number[]
-  /** 배달 한 번 얼마 */
+  /** 외식 한 번 얼마 */
   deliveryCost: number
   /** 메인에 쓸 고기·생선 */
   proteins: Protein[]
@@ -110,7 +110,7 @@ export const inSeason = (r: Recipe, month: number) => !!r.months?.includes(month
 
 // ── 장보기 묶음 ──
 
-/** 장보기 한 번이 맡는 요일들 — 배달 날을 빼고 간격만큼씩 묶는다 */
+/** 장보기 한 번이 맡는 요일들 — 외식 날을 빼고 간격만큼씩 묶는다 */
 export function tripDays(s: MealSettings): number[][] {
   const cook = [0, 1, 2, 3, 4, 5, 6].filter((d) => !s.deliveryDays.includes(d))
   const size = s.interval === 7 ? 7 : s.interval
@@ -125,7 +125,7 @@ export interface Meal {
   sub: string
   soup: string
 }
-/** 요일별 한 상 — 배달 날은 null */
+/** 요일별 한 상 — 외식 날은 null */
 export type WeekPlan = (Meal | null)[]
 
 /** 실제 쿠팡 값(표)이 있으면 그것, 없으면 예상 봉지값 */

@@ -38,7 +38,7 @@ describe('집밥 플래너 (2026-11-26)', () => {
     }
   })
 
-  it('배달 일요일 + 3일 간격 → 월화수 / 목금토', () => {
+  it('외식 일요일 + 3일 간격 → 월화수 / 목금토', () => {
     expect(tripDays(S)).toEqual([
       [0, 1, 2],
       [3, 4, 5],
@@ -47,7 +47,7 @@ describe('집밥 플래너 (2026-11-26)', () => {
     expect(tripDays({ ...S, interval: 2, deliveryDays: [4] })).toEqual([[0, 1], [2, 3], [5, 6]])
   })
 
-  it('한 상은 메인·서브·국, 일주일 안에서 같은 반찬이 겹치지 않고, 배달 날은 비운다', () => {
+  it('한 상은 메인·서브·국, 일주일 안에서 같은 반찬이 겹치지 않고, 외식 날은 비운다', () => {
     const plan = makeWeekPlan(S, 11, '2026-11-23#0')
     expect(plan[6]).toBeNull()
     const all = plan.flatMap((m) => (m ? [m.main, m.sub, m.soup].filter(Boolean) : []))
@@ -116,7 +116,7 @@ describe('집밥 플래너 (2026-11-26)', () => {
     expect(seasonal.length).toBeGreaterThan(0)
   })
 
-  it('기준 미리보기 — 주 2번 × 5만 = 10만, 한 달 약 43만 + 배달 13만', () => {
+  it('기준 미리보기 — 주 2번 × 5만 = 10만, 한 달 약 43만 + 외식 13만', () => {
     expect(budgetPreview(S)).toEqual({ trips: 2, shop: 100_000, fits: true, monthHome: 430_000, monthDelivery: 130_000, month: 560_000 })
     expect(budgetPreview({ ...S, tripBudget: 60_000 }).fits).toBe(false)
   })

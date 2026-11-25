@@ -72,7 +72,7 @@ export function Week({ p }: { p: Planner }) {
             </div>
             {s.deliveryDays.length > 0 && (
               <p className="mt-1 text-[12px] text-cap">
-                배달 {s.deliveryDays.length}번({wonShort(s.deliveryDays.length * s.deliveryCost)})은 따로예요
+                외식 {s.deliveryDays.length}번({wonShort(s.deliveryDays.length * s.deliveryCost)})은 따로예요
               </p>
             )}
           </div>
@@ -113,7 +113,7 @@ export function Week({ p }: { p: Planner }) {
                 ) : t < 0 ? (
                   <div className="flex items-center gap-3 rounded-2xl border border-dashed border-line px-4 py-3">
                     <span className="w-6 text-[15px] font-extrabold text-ink">{DAY_NAMES[d]}</span>
-                    <span className="text-[14px] text-sub">배달 먹는 날 · {wonShort(s.deliveryCost)}</span>
+                    <span className="text-[14px] text-sub">외식하는 날 · {wonShort(s.deliveryCost)}</span>
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-line px-4 py-3 text-[14px] text-sub">

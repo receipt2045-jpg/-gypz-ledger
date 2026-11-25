@@ -41,7 +41,7 @@ export function Setup({ p }: { p: Planner }) {
       <Row label="아이" hint="있으면 매운 메뉴는 빼고, 아기 식판 팁을 같이 보여 줘요">
         <Stepper value={s.kids} min={0} max={4} text={`${s.kids}명`} onChange={(v) => patch({ kids: v })} />
       </Row>
-      <Row label="한 주 집밥" hint="장 보는 돈만 — 배달은 아래에 따로">
+      <Row label="한 주 집밥" hint="장 보는 돈만 — 외식은 아래에 따로">
         <Stepper
           value={s.weekBudget}
           min={30_000}
@@ -72,7 +72,7 @@ export function Setup({ p }: { p: Planner }) {
         </div>
       </Block>
 
-      <Block label="배달 먹는 날" hint="고른 날은 식단에서 비워요">
+      <Block label="외식하는 날" hint="고른 날은 식단에서 비워요">
         <div className="flex flex-wrap gap-1.5">
           {DAY_NAMES.map((d, i) => (
             <Chip
@@ -89,7 +89,7 @@ export function Setup({ p }: { p: Planner }) {
         </div>
         {s.deliveryDays.length > 0 && (
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-[14px] text-sub">배달 한 번</span>
+            <span className="text-[14px] text-sub">외식 한 번</span>
             <Stepper
               value={s.deliveryCost}
               min={0}
@@ -166,7 +166,7 @@ export function Setup({ p }: { p: Planner }) {
         </p>
         <p className="text-ink">
           한 달이면 집밥 {man(pv.monthHome)}
-          {pv.monthDelivery ? ` + 배달 ${man(pv.monthDelivery)}` : ''} = <b>약 {man(pv.month)}원</b>
+          {pv.monthDelivery ? ` + 외식 ${man(pv.monthDelivery)}` : ''} = <b>약 {man(pv.month)}원</b>
         </p>
         {b && b.planned > 0 && (
           <p className="flex items-center gap-1 text-sub">
