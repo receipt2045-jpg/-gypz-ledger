@@ -64,27 +64,55 @@ async function search(keyword: string): Promise<SearchItem[]> {
 }
 
 // ── 상품 고르기 — src/lib/coupangPick.ts와 같은 규칙 ──
-const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase()
 
+/** 장보기 재료가 아닌 상품에 흔한 말 */
+const BLOCK_WORDS = [
+  '강아지', '고양이', '반려', '애견', '애묘', '펫', '사료', '간식', '트릿',
+  '분말', '가루', '후레이크', '플레이크', '건조', '말린', '즙', '엑기스', '추출',
+  '영양제', '캡슐', '씨앗', '모종', '장난감', '업소용',
+]
+
+/** 묶음을 이만큼 넘으면 고르지 않는다 */
+const MAX_BUNDLE = 2
+
+/** 용량 앞뒤에 붙은 묶음 수 — 없으면 1 */
 function bundleCount(name: string, sizeToken: string): number {
-  const n = norm(name);
-  const at = n.indexOf(norm(sizeToken));
-  if (at < 0) return 1;
-  const after = n.slice(at + norm(sizeToken).length);
-  const m = after.match(/^[,x×*]?(\d{1,2})(개입|개|팩|봉|입|병)/);
-  return m ? Math.max(1, Number(m[1])) : 1;
+  const n = norm(name)
+  const t = norm(sizeToken)
+  const at = n.indexOf(t)
+  if (at < 0) return 1
+  const after = n.slice(at + t.length).match(/^[,x×*)]?(\d{1,2})(개입|개|팩|봉|입|병|마리|박스)/)
+  const before = n.slice(0, at).match(/(\d{1,2})(개입|개|팩|봉|입|병|박스)[,x×*(]?$/)
+  return Math.max(1, after ? Number(after[1]) : 1, before ? Number(before[1]) : 1)
 }
 
-function pickProduct(items: SearchItem[], sizeToken: string, packAmount: number) {
-  const token = norm(sizeToken);
-  let best: { item: SearchItem; count: number; unitPrice: number } | null = null;
+/** 검색어 낱말(용량 빼고)이 다 들어 있고, 막는 말이 없나 */
+function looksRight(name: string, keyword: string, sizeToken: string): boolean {
+  const n = norm(name)
+  const k = norm(keyword)
+  const words = keyword.split(/\s+/).filter((w) => w && norm(w) !== norm(sizeToken))
+  if (!words.every((w) => n.includes(norm(w)))) return false
+  return !BLOCK_WORDS.some((b) => n.includes(b) && !k.includes(b))
+}
+
+function pickProduct(
+  items: SearchItem[],
+  sizeToken: string,
+  packAmount: number,
+  keyword = '',
+) {
+  const token = norm(sizeToken)
+  let best: { item: SearchItem; count: number; unitPrice: number } | null = null
   for (const item of items) {
-    if (!item.productPrice || !norm(item.productName).includes(token)) continue;
-    const count = bundleCount(item.productName, sizeToken);
-    const unitPrice = item.productPrice / (packAmount * count);
-    if (!best || unitPrice < best.unitPrice) best = { item, count, unitPrice };
+    if (!item.productPrice || !norm(item.productName).includes(token)) continue
+    if (keyword && !looksRight(item.productName, keyword, sizeToken)) continue
+    const count = bundleCount(item.productName, sizeToken)
+    if (count > MAX_BUNDLE) continue
+    const unitPrice = item.productPrice / (packAmount * count)
+    if (!best || unitPrice < best.unitPrice) best = { item, count, unitPrice }
   }
-  return best;
+  return best
 }
 
 Deno.serve(async (req) => {
@@ -112,11 +140,13 @@ Deno.serve(async (req) => {
   for (const r of rows ?? []) {
     const now = new Date().toISOString();
     try {
-      const picked = pickProduct(await search(r.keyword), r.size_token, Number(r.pack_amount));
+      const picked = pickProduct(await search(r.keyword), r.size_token, Number(r.pack_amount), r.keyword);
       if (!picked) {
-        // 맞는 용량이 없으면 예전 값은 그대로 두고, 찾아본 시각만 남긴다
-        await db.from("recipe_prices").update({ checked_at: now }).eq("ingredient", r.ingredient);
-        report[r.ingredient] = "맞는 용량 없음";
+        // 맞는 상품이 없으면 예전 값도 지운다 — 앱은 어림값으로 돌아간다 (11-26: 엉뚱한 상품이 남아 있었다)
+        await db.from("recipe_prices").update({
+          product_name: null, price: null, unit_price: null, product_url: null, checked_at: now,
+        }).eq("ingredient", r.ingredient);
+        report[r.ingredient] = "맞는 상품 없음";
         continue;
       }
       await db.from("recipe_prices").update({

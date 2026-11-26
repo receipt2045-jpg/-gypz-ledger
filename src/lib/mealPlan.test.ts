@@ -152,3 +152,14 @@ describe('집밥 플래너 (2026-11-26)', () => {
     expect(n.kcal).toBeLessThan(1100)
   })
 })
+
+describe('우리집 이름 (11-26)', () => {
+  it('비우면 우리집, 집밥이 두 번 붙지 않게, 이름만 바꾸면 식단은 그대로', async () => {
+    const m = await import('./mealPlan')
+    expect(m.houseName({ name: '' })).toBe('우리집')
+    expect(m.houseName({ name: ' 민지네 집밥 ' })).toBe('민지네')
+    expect(m.cleanSettings({ ...m.DEFAULT_SETTINGS, name: '아주아주긴이름입니다요' }).name.length).toBe(m.NAME_MAX)
+    expect(m.settingsKey({ ...m.DEFAULT_SETTINGS, name: '민지네' })).toBe(m.settingsKey(m.DEFAULT_SETTINGS))
+  })
+})
+

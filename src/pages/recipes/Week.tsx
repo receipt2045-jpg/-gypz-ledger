@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, ChevronRight, RefreshCw, SlidersHorizontal, Wallet } from 'lucide-react'
-import { DAY_NAMES, budgetPreview, portionsOf, tripDays, tripShopping, type Meal } from '../../lib/mealPlan'
+import { DAY_NAMES, budgetPreview, houseName, portionsOf, tripDays, tripShopping, type Meal } from '../../lib/mealPlan'
 import { INGREDIENTS, PROTEIN_NAME, amountText, recipeBySlug, type Recipe } from '../../lib/recipes'
 import { Back, Bar, Dish, Part, RoleTag, Tabs, man, won, wonShort } from './ui'
 import { mealPerAdult } from '../../lib/nutrition'
@@ -30,7 +30,7 @@ export function Week({ p }: { p: Planner }) {
     <>
       <Tabs at="week" />
       <div className="px-4 pb-6 pt-6">
-        <p className="text-[13px] font-bold text-brand">결영이네 집밥</p>
+        <p className="text-[13px] font-bold text-brand">{houseName(s)} 집밥</p>
         <div className="mt-1 flex items-start justify-between gap-3">
           <h1 className="text-[25px] font-extrabold leading-snug text-ink">이번 주 집밥</h1>
           <button

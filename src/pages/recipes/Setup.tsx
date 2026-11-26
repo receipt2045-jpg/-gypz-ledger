@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Minus, Plus, Wallet, X } from 'lucide-react'
-import { DAY_NAMES, EXCLUDE_CHIPS, budgetPreview, type MealSettings } from '../../lib/mealPlan'
+import { DAY_NAMES, EXCLUDE_CHIPS, NAME_MAX, budgetPreview, houseName, type MealSettings } from '../../lib/mealPlan'
 import { PROTEIN_NAME, type Protein } from '../../lib/recipes'
 import { Back, man } from './ui'
 import type { Planner } from './usePlanner'
@@ -35,6 +35,15 @@ export function Setup({ p }: { p: Planner }) {
       <h1 className="mt-3 text-[24px] font-extrabold text-ink">우리집 식비 기준</h1>
       <p className="mt-1 text-[14px] text-sub">정한 대로 식단과 장보기 목록을 짜요. 언제든 바꿀 수 있어요.</p>
 
+      <Block label="우리집 이름" hint={`맨 위에 「${houseName(s)} 집밥」으로 보여요`}>
+        <input
+          value={s.name}
+          onChange={(e) => patch({ name: e.target.value.slice(0, NAME_MAX) })}
+          placeholder="예) 민지네"
+          maxLength={NAME_MAX}
+          className="mt-1 w-full rounded-btn border border-line px-3 py-2.5 text-[15px] text-ink outline-none focus:border-brand"
+        />
+      </Block>
       <Row label="어른">
         <Stepper value={s.adults} min={1} max={6} text={`${s.adults}명`} onChange={(v) => patch({ adults: v })} />
       </Row>

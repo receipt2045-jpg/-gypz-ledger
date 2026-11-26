@@ -19,6 +19,8 @@ import {
  */
 
 export interface MealSettings {
+  /** 우리집 이름 — 「민지네」처럼. 비우면 「우리집」 (식단 짜기엔 안 씀) */
+  name: string
   /** 어른 몇 명 */
   adults: number
   /** 아이 몇 명 — 아이 1명은 어른 반 인분으로 셈하고, 있으면 매운 메뉴를 뺀다 */
@@ -40,6 +42,7 @@ export interface MealSettings {
 }
 
 export const DEFAULT_SETTINGS: MealSettings = {
+  name: '',
   adults: 2,
   kids: 1,
   weekBudget: 100_000,
@@ -74,6 +77,7 @@ export function cleanSettings(v: unknown): MealSettings {
     ? o.exclude.filter((x): x is string => typeof x === 'string' && !!x.trim()).map((x) => x.trim())
     : d.exclude
   return {
+    name: typeof o.name === 'string' ? o.name.trim().slice(0, NAME_MAX) : d.name,
     adults: isNum(o.adults, 1, 6) ? Math.round(o.adults as number) : d.adults,
     kids: isNum(o.kids, 0, 4) ? Math.round(o.kids as number) : d.kids,
     weekBudget: isNum(o.weekBudget, 10_000, 1_000_000) ? (o.weekBudget as number) : d.weekBudget,
@@ -84,6 +88,14 @@ export function cleanSettings(v: unknown): MealSettings {
     proteins: proteins.length ? proteins : d.proteins,
     exclude,
   }
+}
+
+export const NAME_MAX = 10
+
+/** 화면 맨 위 「○○ 집밥」의 ○○ — 「민지네 집밥」이라고 적어도 집밥이 두 번 붙지 않게 */
+export function houseName(s: Pick<MealSettings, 'name'>): string {
+  const n = s.name.trim().replace(/\s*집밥$/, '').trim()
+  return n || '우리집'
 }
 
 /** 레시피 양에 넣는 인원 — 아이는 반 인분 */
@@ -403,7 +415,7 @@ export function mondayKey(now = new Date()): string {
 }
 
 /** 기준이 같은지 — 바뀌면 식단을 새로 짠다 */
-export const settingsKey = (s: MealSettings) => JSON.stringify(s)
+export const settingsKey = ({ name: _name, ...rest }: MealSettings) => JSON.stringify(rest)
 
 /** 기준 화면 미리보기 — "장보기 주 2번 × 5만원 = 10만원" */
 export function budgetPreview(s: MealSettings) {
