@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Trash2 } from 'lucide-react'
 import {
   FilterHead,
@@ -45,6 +45,8 @@ export default function SheetTable<T>({
   empty,
   filter: filterProp,
   onFilter: onFilterProp,
+  footer,
+  editBelow = false,
 }: {
   rows: T[]
   cols: SheetCol<T>[]
@@ -69,6 +71,10 @@ export default function SheetTable<T>({
   empty?: ReactNode
   filter?: FilterState
   onFilter?: (st: FilterState) => void
+  /** 맨 아래 덧붙이는 줄(<tr>) — 예: 적으면 바로 새 항목이 되는 빈 줄 */
+  footer?: ReactNode
+  /** 고치는 칸을 줄 대신이 아니라 줄 아래에 펼친다 */
+  editBelow?: boolean
 }) {
   const [selfF, setSelfF] = useState<FilterState>({})
   // 고치는 줄은 표 폭이 아니라 보이는 폭만큼 — 폰에서 표가 옆으로 길면 고치기 칸이 화면 밖으로 밀렸다
@@ -163,17 +169,18 @@ export default function SheetTable<T>({
           <tbody>
             {shown.map((r) => {
               const k = rowKey(r)
-              if (editingKey === k && renderEdit)
-                return (
-                  <tr key={k}>
-                    <td colSpan={span} className="border-b border-line/80 px-1 py-1">
-                      <div className="sticky left-0" style={boxW ? { width: boxW - 8 } : undefined}>
-                        {renderEdit(r)}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              return (
+              const editing = editingKey === k && renderEdit
+              const editRow = editing && (
+                <tr key={editBelow ? k + ':edit' : k}>
+                  <td colSpan={span} className="border-b border-line/80 px-1 py-1">
+                    <div className="sticky left-0" style={boxW ? { width: boxW - 8 } : undefined}>
+                      {renderEdit(r)}
+                    </div>
+                  </td>
+                </tr>
+              )
+              if (editing && !editBelow) return editRow
+              const row = (
                 <tr
                   key={k}
                   onClick={onRowClick ? () => onRowClick(r) : undefined}
@@ -218,11 +225,20 @@ export default function SheetTable<T>({
                   )}
                 </tr>
               )
+              return editing ? (
+                <Fragment key={k}>
+                  {row}
+                  {editRow}
+                </Fragment>
+              ) : (
+                row
+              )
             })}
+            {footer}
           </tbody>
         </table>
       </div>
-      {rows.length === 0 && empty}
+      {rows.length === 0 && !footer && empty}
       {rows.length > 0 && shown.length === 0 && (
         <p className="py-1 text-[13px] text-sub">고른 조건에 맞는 기록이 없어요</p>
       )}

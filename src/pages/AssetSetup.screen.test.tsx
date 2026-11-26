@@ -75,7 +75,8 @@ describe('자산 화면 — 저장', () => {
         <AssetSetup />
       </MemoryRouter>,
     )
-    expect(container.querySelector('[data-focus]')).toHaveTextContent('아내 주거래')
+    // 2026-11-26 이름 칸이 바로 고치는 입력칸 — 표시된 줄의 이름 칸을 본다
+    expect(container.querySelector('[data-focus] input')).toHaveValue('아내 주거래')
   })
 })
 
@@ -93,8 +94,9 @@ describe('자산 탭에서 눌러서 왔을 때 (2026-11-17)', () => {
       </MemoryRouter>,
     )
     expect(screen.getByText(/2026년 8월 자산을 고쳐요/)).toBeInTheDocument()
-    expect(screen.getByText('아내 주거래')).toBeInTheDocument()
-    expect(container.querySelector('[data-focus]')).toHaveTextContent('아내 주거래')
+    expect(screen.getByDisplayValue('아내 주거래')).toBeInTheDocument()
+    // 2026-11-26 이름 칸이 바로 고치는 입력칸 — 표시된 줄의 이름 칸을 본다
+    expect(container.querySelector('[data-focus] input')).toHaveValue('아내 주거래')
   })
 })
 
