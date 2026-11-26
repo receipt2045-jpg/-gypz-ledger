@@ -73,7 +73,7 @@ describe('대출 상환 (2026-10-07 제보)', () => {
     await user.type(screen.getByPlaceholderText('예) 30'), '28')
     expect(screen.getByText(/다 갚는 달/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '추가' }))
-    expect(screen.getByText('보금자리')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('보금자리')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '보금자리 자세히' }))
     expect(screen.getByText(/갚아요/)).toBeInTheDocument()
   })
