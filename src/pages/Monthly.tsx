@@ -2,7 +2,7 @@ import PcColumns from '../components/PcColumns'
 import RecipeLink from '../components/RecipeLink'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronLeft, ChevronRight, Mic, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Mic, X } from 'lucide-react'
 import BudgetBars, { budgetCats } from '../components/BudgetBars'
 import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
 import FixedCostCheck from '../components/FixedCostCheck'
@@ -16,7 +16,6 @@ import { buildMonthlyCard } from '../lib/monthlyCard'
 import { openingYm, resolveLedger } from '../lib/carryover'
 import { currentYm, formatWon, formatYmKorean, periodLabel, shiftYm, ymOfDay } from '../lib/format'
 import { GROUP_LABEL, GROUP_ORDER, NO_SPEND, visibleCategories } from '../lib/constants'
-import EditRow from '../components/ConfessEditRow'
 import { FilterStrip, isFilterOn, type FilterState } from '../components/ExcelFilter'
 import ConfessTable, {
   confessCols,
@@ -25,7 +24,6 @@ import ConfessTable, {
 } from '../components/ConfessTable'
 import { confessSums, monthConfessions } from '../lib/confessLedger'
 import { noSpendDays } from '../lib/noSpend'
-import { memberStyle } from '../lib/memberColors'
 import type { CategoryGroup } from '../types'
 
 type MemberFilter = 0 | 1 | 2 // 0 = 함께
@@ -72,7 +70,6 @@ export default function Monthly() {
   const ledger = resolveLedger(ledgers, ym)
   const memberNames: [string, string] = [profile.member1Name, profile.member2Name]
   // 소비 기록 줄을 누르면 그 자리에서 고친다 (2026-11-24) — 아이 없는 집엔 아동수당 칸을 숨긴 목록으로
-  const [editingLog, setEditingLog] = useState<string | null>(null)
   const categories = useMemo(
     () => visibleCategories(allCategories, profile.childNames),
     [allCategories, profile.childNames],
@@ -181,74 +178,6 @@ export default function Monthly() {
       ))}
     </div>
   )
-
-  // 기록 한 줄 — 배우자 몫을 대신 적을 수 있으니 대신 지울 수도 있다
-  const logRow = (c: (typeof monthLog)[number]) => {
-    const d = new Date(c.createdAt)
-    const style = memberStyle(c.memberNo, profile)
-    if (editingLog === c.id)
-      return (
-        <EditRow
-          key={c.id}
-          c={c}
-          categories={categories}
-          memberNames={memberNames}
-          onSave={(patch) => {
-            updateConfession(c.id, patch)
-            setEditingLog(null)
-          }}
-          onCancel={() => setEditingLog(null)}
-        />
-      )
-    return (
-      <div key={c.id} className="flex items-center gap-2.5">
-        {/* 줄 전체를 누르면 그 자리에서 고친다 — 금액·종류·메모·날짜·누가 썼는지 (2026-11-24 요청) */}
-        <button
-          onClick={() => setEditingLog(c.id)}
-          aria-label={`${c.category} 기록 고치기`}
-          className="-my-1 flex min-w-0 flex-1 items-center gap-2.5 rounded-btn py-1 text-left active:bg-bg"
-        >
-          {logView === 'list' && (
-            <span className="tnum w-10 shrink-0 text-[12px] text-cap">
-              {d.getMonth() + 1}/{d.getDate()}
-            </span>
-          )}
-          <span
-            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-              c.shared ? 'bg-line text-sub' : style.badge
-            }`}
-          >
-            {c.shared ? '공동' : memberNames[c.memberNo - 1]}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] text-ink">{c.category}</span>
-            {c.note && (
-              <span className="mt-0.5 block break-words text-[12px] leading-snug text-sub">
-                {c.note}
-              </span>
-            )}
-          </span>
-          <span
-            className={`tnum shrink-0 text-[13.5px] font-bold ${c.kind === 'income' ? 'text-brand' : 'text-ink'}`}
-          >
-            {c.kind === 'income' ? '+' : ''}
-            {formatWon(c.amount)}
-          </span>
-        </button>
-        {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
-        <button
-          onClick={() => {
-            if (window.confirm(`${c.category} ${formatWon(c.amount)} 기록을 지울까요?`))
-              removeConfession(c.id)
-          }}
-          className="-m-2 shrink-0 p-2 text-cap active:text-danger"
-          aria-label="기록 삭제"
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
-    )
-  }
 
   /** 접어 두는 줄 — 누르면 아래로 펼친다 */
   const fold = (key: string, title: string, summary: string, body: ReactNode) => (
@@ -460,7 +389,21 @@ export default function Monthly() {
                     onRemove={removeConfession}
                   />
                 )}
-                {logView === 'calendar' && shownLog.map(logRow)}
+                {/* 달력에서 고른 날 기록도 같은 엑셀 표 — 칸에서 바로 고친다 (2026-11-26 결영 요청) */}
+                {logView === 'calendar' && shownLog.length > 0 && (
+                  <ConfessTable
+                    rows={shownLog}
+                    filter={logF}
+                    onFilter={setLogF}
+                    showSummary={false}
+                    today={todayKey}
+                    categories={categories}
+                    memberNames={memberNames}
+                    profile={profile}
+                    onUpdate={updateConfession}
+                    onRemove={removeConfession}
+                  />
+                )}
               </div>
             </div>
           </>

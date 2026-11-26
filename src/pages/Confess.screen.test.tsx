@@ -526,8 +526,13 @@ describe('고백 페이지 — 달력으로 보기 (2026-11-24)', () => {
       }),
     ).toBeInTheDocument()
     // 처음엔 오늘이 골라져 있어 오늘 기록이 보인다
-    expect(screen.getByText(/저녁/)).toBeInTheDocument()
+    expect(screen.getByDisplayValue(/저녁/)).toBeInTheDocument()
     expect(screen.getAllByLabelText('기록 삭제')).toHaveLength(2)
+    // 그날 기록도 엑셀 표 — 칸에서 바로 고친다 (2026-11-26)
+    const memo = screen.getByLabelText('식비 메모')
+    await user.clear(memo)
+    await user.type(memo, '저녁 외식{Enter}')
+    expect(useLedgerStore.getState().confessions.find((c) => c.id === 'k1')?.note).toBe('저녁 외식')
     await user.click(screen.getByRole('button', { name: '지난달 달력' }))
     expect(screen.queryByLabelText('기록 삭제')).toBeNull()
     localStorage.removeItem('moabuli.confess.view')

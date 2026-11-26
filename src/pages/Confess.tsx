@@ -39,7 +39,7 @@ import WeeklyCostCard from '../components/WeeklyCostCard'
 import MonthSpendCard from '../components/MonthSpendCard'
 import RecoCard from '../components/RecoCard'
 import MonthCalendar, { type DayMark } from '../components/MonthCalendar'
-import EditRow, { NOTE_MAX } from '../components/ConfessEditRow'
+import { NOTE_MAX } from '../components/ConfessEditRow'
 import ConfessTable from '../components/ConfessTable'
 import RecipeLink, { isFoodSpend } from '../components/RecipeLink'
 import type { FilterState } from '../components/ExcelFilter'
@@ -51,7 +51,6 @@ import { resolveLedger } from '../lib/carryover'
 import { useLedgerStore } from '../lib/store'
 import { pickReaction, streakOf, type Reaction } from '../lib/reactions'
 import { currentYm, formatComma, formatWon } from '../lib/format'
-import { memberStyle } from '../lib/memberColors'
 import { parseConfessionText, type ParsedEntry } from '../lib/confessParser'
 import { GROUP_LABEL, NO_SPEND, visibleCategories } from '../lib/constants'
 import type { CategoryGroup, Confession } from '../types'
@@ -267,9 +266,9 @@ export default function Confess() {
     confessions.some((c) => new Date(c.createdAt).getTime() < Date.now() - days * 86_400_000)
 
   // 고치는 중인 기록 — 한 번에 하나만
-  const [editing, setEditing] = useState<string | null>(null)
   // 우리집 기록 표 거르기 — 엑셀처럼 칸 이름 옆 ▾ (2026-11-25)
   const [recF, setRecF] = useState<FilterState>({})
+  const [calF, setCalF] = useState<FilterState>({}) // 달력에서 고른 날 표의 거르기
 
   /** '9월 1일' — 지난 날짜로 적는 중임을 알릴 때 */
   const logDateLabel = `${Number(logDate.slice(5, 7))}월 ${Number(logDate.slice(8, 10))}일`
@@ -322,69 +321,6 @@ export default function Confess() {
     // 적어두면 정산 수입 단계에 '이번 달 기록 합계'로 떠서 눌러 반영할 수 있다.
     { title: '수입 · 들어온 돈', kind: 'income', cats: categories.income },
   ]
-
-  // 기록 한 줄 — 누르면 고치기, 휴지통은 묻고 지우기 (목록·달력 같이 쓴다)
-  const renderRow = (c: Confession) =>
-    editing === c.id ? (
-      <EditRow
-        key={c.id}
-        c={c}
-        categories={categories}
-        memberNames={memberNames}
-        onSave={(patch) => {
-          updateConfession(c.id, patch)
-          setEditing(null)
-        }}
-        onCancel={() => setEditing(null)}
-      />
-    ) : (
-      <div key={c.id} className="flex items-center gap-2.5 py-2.5">
-        <button
-          onClick={() => setEditing(c.id)}
-          aria-label={`${c.category} 기록 고치기`}
-          className="flex min-w-0 flex-1 items-center gap-2.5 text-left active:opacity-60"
-        >
-          <span
-            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-              c.child
-                ? 'bg-amber-50 text-amber-700'
-                : c.shared
-                  ? 'bg-line text-sub'
-                  : memberStyle(c.memberNo, profile).badge
-            }`}
-          >
-            {c.child ? `🧒 ${c.child}` : c.shared ? '공동' : memberNames[c.memberNo - 1]}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[14px] text-ink">{c.category}</span>
-            {c.note && (
-              <span className="mt-0.5 block whitespace-pre-wrap break-words text-[12.5px] leading-snug text-sub">
-                {c.note}
-              </span>
-            )}
-          </span>
-          <span
-            className={`tnum shrink-0 text-[14px] font-bold ${
-              c.kind === 'income' ? 'text-brand' : 'text-ink'
-            }`}
-          >
-            {c.kind === 'income' ? '+' : ''}
-            {formatWon(c.amount)}
-          </span>
-        </button>
-        {/* 지우기 전에 묻고, 누르는 영역을 넓힌다 (2026-11-19 점검: 아이콘 크기 그대로라 잘못 눌렀다) */}
-        <button
-          onClick={() => {
-            if (window.confirm(`${c.category} ${formatWon(c.amount)} 기록을 지울까요?`))
-              removeConfession(c.id)
-          }}
-          aria-label="기록 삭제"
-          className="-m-2 shrink-0 p-2 text-cap active:text-danger"
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
-    )
 
   // ── 달력으로 보기 (2026-11-24 결영 요청: "지출 내역 달력으로도 볼 수 있으면") ──
   const [confView, setConfViewState] = useState<'list' | 'calendar'>(() => {
@@ -1226,7 +1162,18 @@ export default function Confess() {
                     {calDayList.length === 0 ? (
                       <p className="py-2 text-[13px] text-sub">이 날은 기록이 없어요</p>
                     ) : (
-                      <div className="divide-y divide-line/70">{calDayList.map(renderRow)}</div>
+                      // 그날 기록도 엑셀 표 — 칸에서 바로 고친다 (2026-11-26 결영 요청)
+                      <ConfessTable
+                        rows={calDayList}
+                        filter={calF}
+                        onFilter={setCalF}
+                        today={today}
+                        categories={categories}
+                        memberNames={memberNames}
+                        profile={profile}
+                        onUpdate={updateConfession}
+                        onRemove={removeConfession}
+                      />
                     )}
                   </div>
                 )}
