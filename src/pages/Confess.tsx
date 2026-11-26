@@ -1246,8 +1246,6 @@ export default function Confess() {
                     categories={categories}
                     memberNames={memberNames}
                     profile={profile}
-                    editing={editing}
-                    onEdit={setEditing}
                     onUpdate={updateConfession}
                     onRemove={removeConfession}
                   />

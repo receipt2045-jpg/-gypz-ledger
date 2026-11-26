@@ -47,9 +47,10 @@ describe('고백 페이지 — 우리집 기록 보기·삭제', () => {
     })
     const { user } = renderScreen(<Confess />)
 
-    expect(screen.getByText('식비')).toBeInTheDocument()
-    expect(screen.getByText('교통')).toBeInTheDocument()
-    expect(screen.getByText('카페/간식')).toBeInTheDocument()
+    // 2026-11-26 종류 칸이 바로 고르는 칸 — 고른 값으로 찾는다
+    expect(screen.getByDisplayValue('식비')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('교통')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('카페/간식')).toBeInTheDocument()
 
     const buttons = screen.getAllByLabelText('기록 삭제')
     expect(buttons).toHaveLength(3)
@@ -273,9 +274,8 @@ describe('소비 기록 — 남편 · 아내 · 공동', () => {
       ],
     })
     renderScreen(<Confess />)
-    const row = screen.getByText('식비').closest('div')!
-    expect(row.textContent).toContain('공동')
-    expect(row.textContent).not.toContain('아내')
+    // 2026-11-26 누가 칸이 고르는 칸 — 공동이 골라져 있다
+    expect(screen.getByLabelText('식비 누가')).toHaveDisplayValue('공동')
   })
 })
 
@@ -339,16 +339,14 @@ describe('소비 기록 — 고치기 (제보 4건)', () => {
       ],
     })
 
-  it('눌러서 금액·항목·메모를 고친다 — 누가 썼는지·날짜는 그대로', async () => {
+  it('칸에서 바로 금액·항목을 고친다 — 누가 썼는지·날짜는 그대로 (2026-11-26 엑셀처럼)', async () => {
     one()
     const { user } = renderScreen(<Confess />)
-    await user.click(screen.getByRole('button', { name: '식비 기록 고치기' }))
 
-    const amount = screen.getByLabelText('금액')
+    const amount = screen.getByLabelText('식비 금액')
     await user.clear(amount)
-    await user.type(amount, '12000')
-    await user.selectOptions(screen.getByLabelText('항목'), 'variable:카페')
-    await user.click(screen.getByRole('button', { name: '고치기' }))
+    await user.type(amount, '12000{Enter}')
+    await user.selectOptions(screen.getByLabelText('식비 종류'), 'variable:카페')
 
     const c = useLedgerStore.getState().confessions[0]
     expect(c.amount).toBe(12_000)
@@ -357,12 +355,17 @@ describe('소비 기록 — 고치기 (제보 4건)', () => {
     expect(useLedgerStore.getState().confessions).toHaveLength(1) // 새로 생기지 않는다
   })
 
-  it('그대로 두기를 누르면 안 바뀐다', async () => {
+  it('Esc를 누르면 안 바뀌고, 금액을 비우면 원래대로', async () => {
     one()
     const { user } = renderScreen(<Confess />)
-    await user.click(screen.getByRole('button', { name: '식비 기록 고치기' }))
-    await user.click(screen.getByRole('button', { name: '그대로 두기' }))
+    const amount = screen.getByLabelText('식비 금액')
+    await user.type(amount, '5{Escape}')
+    await user.tab()
     expect(useLedgerStore.getState().confessions[0].amount).toBe(9_000)
+    await user.clear(amount)
+    await user.tab()
+    expect(useLedgerStore.getState().confessions[0].amount).toBe(9_000)
+    expect(amount).toHaveValue('9,000')
   })
 })
 
@@ -410,11 +413,9 @@ describe('고백 페이지 — 현금 · 날짜 고치기', () => {
         },
       ],
     })
-    const { user } = renderScreen(<Confess />)
-    await user.click(screen.getByLabelText('식비 기록 고치기'))
+    renderScreen(<Confess />)
     const target = ymd(daysAgo(2))
-    fireEvent.change(screen.getByLabelText('날짜'), { target: { value: target } })
-    await user.click(screen.getByRole('button', { name: '고치기' }))
+    fireEvent.change(screen.getByLabelText('식비 날짜'), { target: { value: target } })
     const saved = useLedgerStore.getState().confessions[0]
     expect(new Date(saved.createdAt).toLocaleDateString('sv-SE')).toBe(target)
     expect(saved.amount).toBe(9_000)
@@ -435,10 +436,8 @@ describe('고백 페이지 — 현금 · 날짜 고치기', () => {
       ],
     })
     const { user } = renderScreen(<Confess />)
-    await user.click(screen.getByLabelText('식비 기록 고치기'))
-    await user.click(screen.getByRole('button', { name: '누가 쓴 돈: 공동' }))
-    await user.click(screen.getByRole('button', { name: '어떻게 냈나: 현금' }))
-    await user.click(screen.getByRole('button', { name: '고치기' }))
+    await user.selectOptions(screen.getByLabelText('식비 누가'), 'shared')
+    await user.selectOptions(screen.getByLabelText('식비 결제'), 'cash')
     let saved = useLedgerStore.getState().confessions[0]
     expect(saved.shared).toBe(true)
     expect(saved.cash).toBe(true)
@@ -446,9 +445,7 @@ describe('고백 페이지 — 현금 · 날짜 고치기', () => {
     expect(saved.memberNo).toBe(2)
 
     // 다시 남편 몫으로 — 공동 표시가 빠진다
-    await user.click(screen.getByLabelText('식비 기록 고치기'))
-    await user.click(screen.getByRole('button', { name: '누가 쓴 돈: 남편' }))
-    await user.click(screen.getByRole('button', { name: '고치기' }))
+    await user.selectOptions(screen.getByLabelText('식비 누가'), '1')
     saved = useLedgerStore.getState().confessions[0]
     expect(saved.shared).toBeUndefined()
     expect(saved.memberNo).toBe(1)
@@ -487,10 +484,11 @@ describe('지난 기록 더 보기 (2026-11-17 의견: "과거 기록을 일주�
       ],
     })
     const { user } = renderScreen(<Confess />)
-    expect(screen.getByText(/요즘/)).toBeInTheDocument()
-    expect(screen.queryByText(/예전/)).not.toBeInTheDocument()
+    // 메모는 칸에서 바로 고치는 입력칸 (2026-11-26)
+    expect(screen.getByDisplayValue(/요즘/)).toBeInTheDocument()
+    expect(screen.queryByDisplayValue(/예전/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /지난 기록 더 보기/ }))
-    expect(screen.getByText(/예전/)).toBeInTheDocument()
+    expect(screen.getByDisplayValue(/예전/)).toBeInTheDocument()
   })
 })
 
@@ -567,6 +565,6 @@ describe('기록마다 메모 (2026-11-24, 11-13 의견)', () => {
       ],
     })
     renderScreen(<Confess />)
-    expect(screen.getByText(long)).toBeInTheDocument()
+    expect(screen.getByDisplayValue(long)).toBeInTheDocument() // 메모 칸에 그대로 다 들어 있다
   })
 })

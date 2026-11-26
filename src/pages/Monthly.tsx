@@ -456,8 +456,6 @@ export default function Monthly() {
                     categories={categories}
                     memberNames={memberNames}
                     profile={profile}
-                    editing={editingLog}
-                    onEdit={setEditingLog}
                     onUpdate={updateConfession}
                     onRemove={removeConfession}
                   />

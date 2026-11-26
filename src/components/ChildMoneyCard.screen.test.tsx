@@ -189,33 +189,31 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
       return r
     }
 
-    it('금액과 증여 체크를 고쳐 저장한다', async () => {
+    // 2026-11-26 칸에서 바로 고친다 (엑셀처럼)
+    it('금액과 증여 표시를 칸에서 고친다', async () => {
       const { user } = seed()
-      await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
-      const amt = screen.getByLabelText('고칠 금액')
+      const amt = await screen.findByLabelText('용돈·선물 금액')
       await user.clear(amt)
-      await user.type(amt, '70000')
-      await user.click(screen.getByRole('checkbox', { name: '증여 기록에 더해요' }))
-      await user.click(screen.getByRole('button', { name: '저장' }))
+      await user.type(amt, '70000{Enter}')
+      await user.selectOptions(screen.getByLabelText('용돈·선물 표시'), 'gift')
       const c = useLedgerStore.getState().confessions.find((x) => x.id === 'c1')
-      expect(c).toMatchObject({ amount: 70_000, gift: true })
+      expect(c).toMatchObject({ amount: 70_000, gift: true, childKeep: true })
     })
 
-    it('연필이 아니라 줄 아무 데나 눌러도 고치기가 열린다 (2026-11-17)', async () => {
+    it('살림에 보탠 돈으로 바꾸면 증여에서 빠진다', async () => {
       const { user } = seed()
-      await user.click(await screen.findByText('+50,000')) // 표의 금액 칸 (2026-11-25 엑셀 표)
-      expect(screen.getByLabelText('고칠 금액')).toBeInTheDocument()
+      await user.selectOptions(await screen.findByLabelText('용돈·선물 표시'), 'house')
+      const c = useLedgerStore.getState().confessions.find((x) => x.id === 'c1')
+      expect(c).toMatchObject({ childKeep: false })
+      expect(c?.gift).toBeUndefined()
     })
 
-    it('취소하면 그대로', async () => {
+    it('Esc를 누르면 그대로', async () => {
       const { user } = seed()
-      await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
-      const amt = screen.getByLabelText('고칠 금액')
-      await user.clear(amt)
-      await user.type(amt, '1')
-      await user.click(screen.getByRole('button', { name: '취소' }))
+      const amt = await screen.findByLabelText('용돈·선물 금액')
+      await user.type(amt, '1{Escape}')
+      await user.tab()
       expect(useLedgerStore.getState().confessions[0].amount).toBe(50_000)
-      expect(screen.queryByLabelText('고칠 금액')).not.toBeInTheDocument()
     })
   })
 
@@ -248,11 +246,9 @@ describe('아이 통장 카드에서 들어온 돈 바로 적기 (2026-10-27)', 
       ],
     })
     expect(await screen.findByText('+5만원')).toBeInTheDocument()
-    await user.click(await screen.findByRole('button', { name: '용돈·선물 기록 고치기' }))
-    const amt = screen.getByLabelText('고칠 금액')
+    const amt = await screen.findByLabelText('용돈·선물 금액')
     await user.clear(amt)
-    await user.type(amt, '70000')
-    await user.click(screen.getByRole('button', { name: '저장' }))
+    await user.type(amt, '70000{Enter}')
     expect(await screen.findByText('+7만원')).toBeInTheDocument()
   })
 })

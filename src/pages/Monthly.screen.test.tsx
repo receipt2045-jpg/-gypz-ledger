@@ -72,7 +72,7 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     const prevYm = shiftYm(TEST_YM, -1)
     expect(savedOccasions()).toHaveLength(1)
     expect(savedOccasions()[0].date.startsWith(prevYm)).toBe(true)
-    expect(screen.getByText('부모님 생신')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('부모님 생신')).toBeInTheDocument()
   })
 
   it('보는 달의 비정기 지출만 목록에 보인다', () => {
@@ -91,8 +91,8 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     })
     renderScreen(<Monthly />)
 
-    expect(screen.getByText('어머니 생신')).toBeInTheDocument()
-    expect(screen.queryByText('자동차세')).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('어머니 생신')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('자동차세')).not.toBeInTheDocument()
   })
 
   it("다른 달 기록은 '올해 전체 보기'로 꺼내서 지울 수 있다", async () => {
@@ -105,15 +105,15 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     })
     const { user } = renderScreen(<Monthly />)
 
-    expect(screen.queryByText('자동차세')).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue('자동차세')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /올해 전체 보기/ }))
-    expect(screen.getByText('자동차세')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('자동차세')).toBeInTheDocument()
 
     await user.click(screen.getByLabelText('삭제'))
     expect(savedOccasions()).toHaveLength(0)
   })
 
-  it('비정기 지출 표 — 줄을 눌러 그 자리에서 고친다 (2026-11-25)', async () => {
+  it('비정기 지출 표 — 칸에서 바로 고친다 (2026-11-26)', async () => {
     seedWithLedger()
     useLedgerStore.setState({
       occasions: [
@@ -122,13 +122,16 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     })
     const { user } = renderScreen(<Monthly />)
     await user.click(screen.getByRole('button', { name: /올해 전체 보기/ }))
-    await user.click(screen.getByRole('button', { name: '자동차세 고치기' }))
-    const amount = screen.getByLabelText('금액')
+    const amount = screen.getByLabelText('자동차세 금액')
     await user.clear(amount)
-    await user.type(amount, '180000')
-    await user.click(screen.getByRole('button', { name: '고치기' }))
+    await user.type(amount, '180000{Enter}')
     expect(savedOccasions()[0]).toMatchObject({ id: 'o2', title: '자동차세', amount: 180_000 })
-    expect(screen.getByText('180,000')).toBeInTheDocument()
+    expect(amount).toHaveValue('180,000')
+    const title = screen.getByLabelText('자동차세 내용')
+    await user.clear(title)
+    await user.type(title, '자동차세 1년치{Enter}')
+    await user.selectOptions(screen.getByLabelText('자동차세 1년치 종류'), '자동차')
+    expect(savedOccasions()[0]).toMatchObject({ title: '자동차세 1년치', category: '자동차' })
   })
 })
 
@@ -302,23 +305,20 @@ describe('가계부 탭 — 고백 내역 삭제', () => {
     expect(left.map((c) => c.id)).toEqual(['c1'])
   })
 
-  it('가계부 탭 소비 기록 줄을 누르면 그 자리에서 금액·메모를 고친다 (2026-11-24 요청)', async () => {
+  it('가계부 탭 소비 기록은 칸에서 바로 금액·메모를 고친다 (2026-11-26 엑셀처럼)', async () => {
     seedConfessions()
     const { user } = renderScreen(<Monthly />)
     await user.click(screen.getByRole('tab', { name: '목록' }))
     localStorage.removeItem('moabuli.monthly.logView')
 
-    await user.click(screen.getByRole('button', { name: '카페/간식 기록 고치기' }))
-    const amount = screen.getByLabelText('금액')
+    const amount = screen.getByLabelText('카페/간식 금액')
     await user.clear(amount)
-    await user.type(amount, '6000')
-    await user.type(screen.getByLabelText('메모'), '설빙')
-    await user.click(screen.getByRole('button', { name: '고치기' }))
+    await user.type(amount, '6000{Enter}')
+    await user.type(screen.getByLabelText('카페/간식 메모'), '설빙{Enter}')
 
     const c2 = useLedgerStore.getState().confessions.find((c) => c.id === 'c2')!
     expect([c2.amount, c2.note]).toEqual([6_000, '설빙'])
     expect(useLedgerStore.getState().confessions).toHaveLength(2)
-    expect(screen.queryByLabelText('금액')).toBeNull() // 다 고치면 접힌다
   })
 
   it('소비 기록 엑셀처럼 거르기 — 누가 ▾에서 한 사람만 (2026-11-25)', async () => {
@@ -332,7 +332,7 @@ describe('가계부 탭 — 고백 내역 삭제', () => {
     await user.click(within(pop).getByRole('checkbox', { name: '식비' }))
     await user.click(within(pop).getByRole('button', { name: '확인' }))
     expect(screen.getAllByLabelText('기록 삭제')).toHaveLength(1)
-    expect(screen.getByRole('button', { name: '카페/간식 기록 고치기' })).toBeInTheDocument()
+    expect(screen.getByLabelText('카페/간식 금액')).toBeInTheDocument()
     expect(screen.getByText(/고른 기록/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '필터 모두 지우기' }))
     expect(screen.getAllByLabelText('기록 삭제')).toHaveLength(2)

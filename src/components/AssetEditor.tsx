@@ -6,6 +6,7 @@ import { dayString, type LoanInfo } from '../lib/loan'
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import AmountInput from './AmountInput'
 import SheetTable from './SheetTable'
+import { CELL_INPUT, TextCell } from './SheetCells'
 import { ASSET_GROUP_LABEL, ASSET_GROUP_ORDER } from '../lib/constants'
 import {
   CURRENCIES,
@@ -444,10 +445,6 @@ export default function AssetEditor({
   )
 }
 
-// 표 칸 안 입력 — 테두리 없이 칸처럼 보이다가 누르면 파란 테두리 (엑셀 셀)
-const CELL_INPUT =
-  'h-9 w-full min-w-0 rounded-[4px] bg-transparent px-1 text-[13px] outline-none focus:bg-brand/5 focus:ring-2 focus:ring-inset focus:ring-brand'
-
 /** '자세히'를 펼칠 거리 — 외화 원금 · 대출 · 적금 */
 const detailTag = (it: AssetItem, debt: boolean) =>
   (it.currency ?? 'KRW') !== 'KRW'
@@ -457,54 +454,6 @@ const detailTag = (it: AssetItem, debt: boolean) =>
       : it.group === 'cash' || it.saving
         ? '적금'
         : null
-
-/** 글자 칸 — 고치다가 칸을 벗어나거나 Enter를 누르면 저장 (글자마다 저장하지 않는다) */
-function TextCell({
-  label,
-  value,
-  placeholder,
-  required = false,
-  onCommit,
-  className = '',
-}: {
-  label: string
-  value: string
-  placeholder?: string
-  /** 비우면 원래대로 (이름) */
-  required?: boolean
-  onCommit: (v: string) => void
-  className?: string
-}) {
-  const [draft, setDraft] = useState(value)
-  const [editing, setEditing] = useState(false)
-  useEffect(() => {
-    if (!editing) setDraft(value)
-  }, [value, editing])
-  const commit = () => {
-    setEditing(false)
-    const v = draft.trim()
-    if (required && !v) return setDraft(value)
-    if (v !== value) onCommit(v)
-  }
-  return (
-    <input
-      aria-label={label}
-      value={draft}
-      placeholder={placeholder}
-      onFocus={() => setEditing(true)}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur()
-        if (e.key === 'Escape') {
-          setDraft(value)
-          setEditing(false)
-        }
-      }}
-      className={`${CELL_INPUT} truncate placeholder:text-cap/60 ${className}`}
-    />
-  )
-}
 
 /** 줄 아래로 펼치는 자세히 — 외화 원금 · 대출 정보 · 적금 자동 저축 */
 function AssetDetail({

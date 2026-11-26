@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { Trash2 } from 'lucide-react'
-import EditRow from './ConfessEditRow'
+import EditRow, { NOTE_MAX } from './ConfessEditRow'
+import { DateCell, NumberCell, SelectCell, TextCell, noonOf, type CellOption } from './SheetCells'
 import {
   FilterHead,
   isFilterOn,
@@ -17,7 +18,8 @@ import type { CategoryGroup, Confession, Profile } from '../types'
 /**
  * 소비 기록을 엑셀처럼 표로 (2026-11-25 결영 요청: "11월 소비 기록 목록 부분을 엑셀 형식으로",
  * 오늘의 소비 기록 '우리집 기록'도 "여기도").
- * 머리줄 칸 이름 옆 ▾ = 엑셀 거르기. 줄을 누르면 그 자리에서 고치고, 휴지통은 묻고 지운다.
+ * 머리줄 칸 이름 옆 ▾ = 엑셀 거르기. 칸을 눌러 바로 고치고 (2026-11-26 "다른 표들도 칸에서 바로"),
+ * 휴지통은 묻고 지운다.
  */
 
 const dayOf = (c: { createdAt: string }) => new Date(c.createdAt).toLocaleDateString('sv-SE')
@@ -98,6 +100,15 @@ export function FilterSummary({ rows, onClear }: { rows: Confession[]; onClear: 
   )
 }
 
+const GROUPS: CategoryGroup[] = ['variable', 'fixed', 'income', 'saving', 'investment']
+
+/** 배지 색에서 글자색만 */
+const textOf = (badge: string) =>
+  badge
+    .split(' ')
+    .filter((k) => k.startsWith('text-'))
+    .join(' ')
+
 const KIND_TONE: Partial<Record<CategoryGroup, string>> = {
   income: 'text-brand',
   fixed: 'text-sub',
@@ -112,8 +123,6 @@ export default function ConfessTable({
   categories,
   memberNames,
   profile,
-  editing,
-  onEdit,
   onUpdate,
   onRemove,
 }: {
@@ -128,9 +137,10 @@ export default function ConfessTable({
   categories: ComponentProps<typeof EditRow>['categories']
   memberNames: [string, string]
   profile: Profile
-  editing: string | null
-  onEdit: (id: string | null) => void
-  onUpdate: (id: string, patch: Parameters<ComponentProps<typeof EditRow>['onSave']>[0]) => void
+  onUpdate: (
+    id: string,
+    patch: Partial<Parameters<ComponentProps<typeof EditRow>['onSave']>[0]>,
+  ) => void
   onRemove: (id: string) => void
 }) {
   const cols = confessCols(rows, memberNames)
@@ -153,19 +163,20 @@ export default function ConfessTable({
     <div className="space-y-2">
       {showSummary && filtering && <FilterSummary rows={shown} onClear={() => onFilter({})} />}
       <div className="no-scrollbar -mx-4 overflow-x-auto px-4">
-        <table className="w-full min-w-[600px] table-fixed border-collapse">
+        <table className="w-full min-w-[710px] table-fixed border-collapse">
           <colgroup>
-            <col className="w-[64px]" />
+            <col className="w-[60px]" />
+            <col className="w-[76px]" />
+            <col className="w-[116px]" />
+            <col className="w-[100px]" />
             <col className="w-[84px]" />
-            <col className="w-[112px]" />
-            <col className="w-[96px]" />
-            <col className="w-[84px]" />
+            <col className="w-[88px]" />
             <col />
             <col className="w-[36px]" />
           </colgroup>
           <thead>
             <tr className="bg-bg text-left text-[11.5px] font-bold text-sub">
-              {['날짜', '구분', '종류', '금액', '누가', '메모', ''].map((h, i) => (
+              {['날짜', '구분', '종류', '금액', '누가', '결제', '메모', ''].map((h, i) => (
                 <th
                   key={i}
                   className="border-b border-r border-line/80 px-2 py-1.5 last:border-r-0"
@@ -177,83 +188,131 @@ export default function ConfessTable({
           </thead>
           <tbody>
             {shown.map((c) => {
-              if (editing === c.id)
-                return (
-                  <tr key={c.id}>
-                    <td colSpan={7} className="border-b border-line/80 px-1">
-                      <EditRow
-                        c={c}
-                        categories={categories}
-                        memberNames={memberNames}
-                        onSave={(patch) => {
-                          onUpdate(c.id, patch)
-                          onEdit(null)
-                        }}
-                        onCancel={() => onEdit(null)}
-                      />
-                    </td>
-                  </tr>
-                )
               const day = dayOf(c)
+              const spend = c.kind === 'variable' || c.kind === 'fixed'
+              const catOpts: CellOption[] = GROUPS.flatMap((g) =>
+                (g === c.kind && !categories[g].includes(c.category)
+                  ? [c.category, ...categories[g]]
+                  : categories[g]
+                ).map((cat) => ({ value: `${g}:${cat}`, label: cat, group: GROUP_LABEL[g] })),
+              )
+              const paid = c.cash ? 'cash' : c.cardOwner ? String(c.cardOwner) : ''
               return (
                 <tr
                   key={c.id}
-                  onClick={() => onEdit(c.id)}
-                  className={`h-10 cursor-pointer text-[13px] active:bg-bg ${
-                    c.kind === 'income' ? 'bg-brand/[0.03]' : ''
-                  }`}
+                  className={`h-10 text-[13px] ${c.kind === 'income' ? 'bg-brand/[0.03]' : ''}`}
                 >
-                  <td className={`${cell} tnum text-center text-sub`}>
-                    {day === today
-                      ? '오늘'
-                      : `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`}
+                  <td className={`${cell} px-0.5 text-center`}>
+                    <DateCell
+                      label={`${c.category} 날짜`}
+                      value={day}
+                      max={today}
+                      shown={
+                        <span className="tnum text-sub">
+                          {day === today
+                            ? '오늘'
+                            : `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`}
+                        </span>
+                      }
+                      onCommit={(d) => onUpdate(c.id, { createdAt: noonOf(d) })}
+                    />
                   </td>
                   <td
                     className={`${cell} truncate text-center font-semibold ${KIND_TONE[c.kind] ?? 'text-ink'}`}
                   >
                     {GROUP_LABEL[c.kind]}
                   </td>
-                  <td className={cell}>
-                    {/* 줄 어디를 눌러도 고치기 — 화면 읽기용 이름은 여기에 */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onEdit(c.id)
+                  <td className={`${cell} px-0.5`}>
+                    <SelectCell
+                      label={`${c.category} 종류`}
+                      value={`${c.kind}:${c.category}`}
+                      options={catOpts}
+                      onChange={(v) => {
+                        const i = v.indexOf(':')
+                        const kind = v.slice(0, i) as CategoryGroup
+                        const nowSpend = kind === 'variable' || kind === 'fixed'
+                        onUpdate(c.id, {
+                          kind,
+                          category: v.slice(i + 1),
+                          // 카드값이 아닌 것(저축·투자·수입)에는 카드 주인을 남기지 않는다
+                          ...(nowSpend ? {} : { cardOwner: undefined, cash: undefined }),
+                        })
                       }}
-                      aria-label={`${c.category} 기록 고치기`}
-                      className="block w-full truncate text-left text-ink"
-                    >
-                      {c.category}
-                    </button>
+                      className="text-ink"
+                    />
                   </td>
-                  <td
-                    className={`${cell} tnum text-right font-bold ${
-                      c.kind === 'income' ? 'text-brand' : 'text-ink'
-                    }`}
-                  >
-                    {c.kind === 'income' ? '+' : ''}
-                    {c.amount.toLocaleString('ko-KR')}
+                  <td className={`${cell} px-0.5`}>
+                    <NumberCell
+                      label={`${c.category} 금액`}
+                      value={c.amount}
+                      prefix={
+                        c.kind === 'income' ? <span className="font-bold text-brand">+</span> : null
+                      }
+                      onCommit={(v) => onUpdate(c.id, { amount: v })}
+                      className={`font-bold ${c.kind === 'income' ? 'text-brand' : 'text-ink'}`}
+                    />
                   </td>
-                  <td className={`${cell} text-center`}>
-                    <span
-                      className={`inline-block max-w-full truncate rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-                        c.child
-                          ? 'bg-amber-50 text-amber-700'
-                          : c.shared
-                            ? 'bg-line text-sub'
-                            : memberStyle(c.memberNo, profile).badge
-                      }`}
-                    >
-                      {c.child ? `🧒 ${c.child}` : c.shared ? '공동' : memberNames[c.memberNo - 1]}
-                    </span>
+                  <td className={`${cell} px-0.5 text-center`}>
+                    {c.child ? (
+                      <span className="inline-block max-w-full truncate rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
+                        🧒 {c.child}
+                      </span>
+                    ) : (
+                      <SelectCell
+                        label={`${c.category} 누가`}
+                        value={c.shared ? 'shared' : String(c.memberNo)}
+                        options={[
+                          { value: '1', label: memberNames[0] },
+                          { value: '2', label: memberNames[1] },
+                          { value: 'shared', label: '공동' },
+                        ]}
+                        // 공동은 memberNo(적은 사람)를 그대로 두고 표시만 — 새로 적을 때와 같은 규칙
+                        onChange={(v) =>
+                          onUpdate(
+                            c.id,
+                            v === 'shared'
+                              ? { shared: true, memberNo: c.memberNo }
+                              : { shared: undefined, memberNo: Number(v) as 1 | 2 },
+                          )
+                        }
+                        className={`text-center font-bold ${c.shared ? 'text-sub' : textOf(memberStyle(c.memberNo, profile).badge)}`}
+                      />
+                    )}
                   </td>
-                  <td className={`${cell} truncate text-sub`} title={c.note}>
-                    {c.note}
+                  <td className={`${cell} px-0.5`}>
+                    {spend && (
+                      <SelectCell
+                        label={`${c.category} 결제`}
+                        value={paid}
+                        options={[
+                          { value: '', label: '–' },
+                          { value: '1', label: `${memberNames[0]} 카드` },
+                          { value: '2', label: `${memberNames[1]} 카드` },
+                          { value: 'cash', label: '현금' },
+                        ]}
+                        onChange={(v) =>
+                          onUpdate(c.id, {
+                            cash: v === 'cash' ? true : undefined,
+                            cardOwner: v === '1' || v === '2' ? (Number(v) as 1 | 2) : undefined,
+                          })
+                        }
+                        className="text-sub"
+                      />
+                    )}
+                  </td>
+                  <td className={`${cell} px-0.5`}>
+                    <TextCell
+                      label={`${c.category} 메모`}
+                      value={c.note ?? ''}
+                      placeholder="메모"
+                      maxLength={NOTE_MAX}
+                      onCommit={(v) => onUpdate(c.id, { note: v || undefined })}
+                      className="text-sub"
+                    />
                   </td>
                   <td className="border-b border-line/80 p-0 text-center">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
+                      onClick={() => {
                         if (window.confirm(`${c.category} ${formatWon(c.amount)} 기록을 지울까요?`))
                           onRemove(c.id)
                       }}

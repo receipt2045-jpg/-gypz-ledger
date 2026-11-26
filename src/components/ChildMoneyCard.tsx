@@ -14,7 +14,7 @@ import {
   type GiftReportKind,
 } from '../lib/childMoney'
 import { abbreviateKRW, formatComma, formatWon } from '../lib/format'
-import { GIFT_INCOME, SUPPORT_INCOME } from '../lib/constants'
+import { CHILD_INCOME, GIFT_INCOME, SUPPORT_INCOME } from '../lib/constants'
 import { displayYm, genId, resolveSnapshot } from '../lib/carryover'
 import { BENEFIT_RULES } from '../lib/childBenefit'
 import {
@@ -28,6 +28,7 @@ import {
 import type { ChildRecurring, Confession } from '../types'
 import Toggle from './Toggle'
 import SheetTable, { md } from './SheetTable'
+import { DateCell, NumberCell, SelectCell, TextCell, noonOf } from './SheetCells'
 
 /**
  * 자산 탭 — 아이 통장 (2026-10-27).
@@ -41,7 +42,6 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
   const children = profile.childNames ?? []
   const [records, setRecords] = useState<ChildRecord[] | null>(null)
   const [writing, setWriting] = useState<string | null>(null)
-  const [editing, setEditing] = useState<string | null>(null)
   const [reports, setReports] = useState<GiftReport[]>([])
 
   // 아이 기록이 바뀐 걸 알아보는 표시 — 개수만 보면 고친 것(금액·증여)을 놓친다
@@ -130,6 +130,7 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
   }
 
   if (children.length === 0) return null
+  const today = new Date().toLocaleDateString('sv-SE')
   const dayOfRec = (c: Confession) => new Date(c.createdAt).toLocaleDateString('sv-SE')
   // 표의 '표시' 칸 — 자동(매달 저절로) · 증여 · 살림에(아이 통장에 안 남긴 돈)
   const tagsOf = (c: Confession) =>
@@ -216,7 +217,7 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
               부모급여·아동수당 앞으로 몇 달 더 받을까 <ChevronRight size={13} />
             </button>
             {/* {name} 통장 기록 (앱에 있는 최근 62일) — 엑셀처럼 표로 (2026-11-25 결영 요청).
-                예전엔 최근 4건만 줄로 보였다. 줄 어디를 눌러도 고치기 (2026-11-17 의견) */}
+                예전엔 최근 4건만 줄로 보였다. 칸을 눌러 바로 고친다 (2026-11-26 "다른 표들도 칸에서 바로") */}
             {confessions.some((c) => c.child === name) && (
               <div className="mt-3">
                 <p className="mb-1.5 text-[12.5px] font-bold text-sub">{name} 통장 기록</p>
@@ -224,62 +225,105 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
                   rows={confessions.filter((c) => c.child === name)}
                   rowKey={(c) => c.id}
                   bleed="-mx-4 px-4"
-                  minWidth={480}
+                  minWidth={540}
                   cols={[
                     {
                       key: 'date',
                       label: '날짜',
                       width: 62,
                       align: 'center',
-                      cell: (c) => md(dayOfRec(c)),
-                      tone: () => 'text-sub tnum',
+                      cell: (c) => (
+                        <DateCell
+                          label={`${c.category} 날짜`}
+                          value={dayOfRec(c)}
+                          max={today}
+                          shown={<span className="tnum text-sub">{md(dayOfRec(c))}</span>}
+                          onCommit={(d) => updateConfession(c.id, { createdAt: noonOf(d) })}
+                        />
+                      ),
                       filter: { get: dayOfRec, label: md },
                     },
                     {
                       key: 'category',
                       label: '종류',
-                      width: 104,
-                      cell: (c) => c.category,
+                      width: 116,
+                      cell: (c) => (
+                        <SelectCell
+                          label={`${c.category} 종류`}
+                          value={c.category}
+                          options={(CHILD_INCOME.includes(c.category)
+                            ? CHILD_INCOME
+                            : [c.category, ...CHILD_INCOME]
+                          ).map((k) => ({ value: k, label: k }))}
+                          onChange={(category) => updateConfession(c.id, { category })}
+                        />
+                      ),
                       filter: { get: (c) => c.category },
                     },
                     {
                       key: 'note',
                       label: '메모',
-                      cell: (c) => c.note ?? '',
-                      tone: () => 'text-sub',
+                      cell: (c) => (
+                        <TextCell
+                          label={`${c.category} 메모`}
+                          value={c.note ?? ''}
+                          placeholder="메모"
+                          maxLength={30}
+                          onCommit={(v) => updateConfession(c.id, { note: v || undefined })}
+                          className="text-sub"
+                        />
+                      ),
                       filter: { get: (c) => c.note ?? '', text: true },
                     },
                     {
                       key: 'tag',
                       label: '표시',
-                      width: 76,
+                      width: 104,
                       align: 'center',
-                      cell: (c) => tagsOf(c).join('·'),
-                      tone: () => 'text-[11.5px] font-bold text-amber-700',
+                      cell: (c) => (
+                        <span className="flex items-center gap-0.5">
+                          {tagsOf(c).includes('자동') && (
+                            <span className="shrink-0 text-[11px] font-bold text-amber-700">
+                              자동
+                            </span>
+                          )}
+                          {/* 아이 통장에 모아요 / 그중 증여 / 살림에 보탬 — 고치기 체크 두 개를 한 칸으로 */}
+                          <SelectCell
+                            label={`${c.category} 표시`}
+                            value={c.childKeep === false ? 'house' : c.gift ? 'gift' : 'keep'}
+                            options={[
+                              { value: 'keep', label: '통장에' },
+                              { value: 'gift', label: '증여' },
+                              { value: 'house', label: '살림에' },
+                            ]}
+                            onChange={(v) =>
+                              updateConfession(c.id, {
+                                childKeep: v !== 'house',
+                                gift: v === 'gift' ? true : undefined,
+                              })
+                            }
+                            className="text-[12px] font-bold text-amber-700"
+                          />
+                        </span>
+                      ),
                       filter: { get: (c) => tagsOf(c).join('·'), label: (v) => v || '(없음)' },
                     },
                     {
                       key: 'amount',
                       label: '금액',
-                      width: 92,
+                      width: 104,
                       align: 'right',
-                      cell: (c) => `+${c.amount.toLocaleString('ko-KR')}`,
-                      tone: () => 'font-bold text-brand tnum',
+                      cell: (c) => (
+                        <NumberCell
+                          label={`${c.category} 금액`}
+                          value={c.amount}
+                          prefix={<span className="font-bold text-brand">+</span>}
+                          onCommit={(amount) => updateConfession(c.id, { amount })}
+                          className="font-bold text-brand"
+                        />
+                      ),
                     },
                   ]}
-                  onRowClick={(c) => setEditing(c.id)}
-                  rowLabel={(c) => `${c.category} 기록 고치기`}
-                  editingKey={editing}
-                  renderEdit={(c) => (
-                    <ChildRecordEdit
-                      c={c}
-                      onSave={(patch) => {
-                        updateConfession(c.id, patch)
-                        setEditing(null)
-                      }}
-                      onCancel={() => setEditing(null)}
-                    />
-                  )}
                   onRemove={(c) => removeConfession(c.id)}
                   removeConfirm={(c) => `${c.category} ${formatWon(c.amount)} 기록을 지울까요?`}
                   removeLabel="기록 지우기"
@@ -965,123 +1009,6 @@ function GiftReportForm({
           className="h-9 flex-[2] rounded-btn bg-ink text-[13px] font-bold text-white disabled:opacity-40"
         >
           신고 기록 남기기
-        </button>
-      </div>
-    </div>
-  )
-}
-
-/** 최근 기록 한 줄 고치기 — 들어온 돈 적기와 같은 항목·규칙 (증여 체크는 통장에 모을 때만) */
-function ChildRecordEdit({
-  c,
-  onSave,
-  onCancel,
-}: {
-  c: Confession
-  onSave: (
-    patch: Pick<Confession, 'category' | 'amount' | 'note' | 'createdAt' | 'childKeep' | 'gift'>,
-  ) => void
-  onCancel: () => void
-}) {
-  const [category, setCategory] = useState(c.category)
-  const [amount, setAmount] = useState(c.amount)
-  const origDate = new Date(c.createdAt).toLocaleDateString('sv-SE')
-  const [date, setDate] = useState(origDate)
-  const [note, setNote] = useState(c.note ?? '')
-  const [keep, setKeep] = useState(c.childKeep !== false)
-  const [gift, setGift] = useState(!!c.gift)
-  const today = new Date().toLocaleDateString('sv-SE')
-
-  const save = () => {
-    if (amount <= 0) return
-    onSave({
-      category,
-      amount,
-      note: note.trim() || undefined,
-      // 날짜를 안 건드렸으면 원래 시각 그대로
-      createdAt: date === origDate ? c.createdAt : new Date(`${date}T12:00:00`).toISOString(),
-      childKeep: keep,
-      gift: keep && gift ? true : undefined,
-    })
-  }
-
-  return (
-    <div className="space-y-2 rounded-btn bg-amber-50/60 px-3 py-3">
-      <div className="flex gap-1.5">
-        {[SUPPORT_INCOME, GIFT_INCOME].map((k) => (
-          <button
-            key={k}
-            onClick={() => setCategory(k)}
-            aria-pressed={category === k}
-            className={`min-w-0 flex-1 truncate rounded-btn py-2 text-[12.5px] font-bold ${
-              category === k ? 'bg-amber-500 text-white' : 'bg-white text-sub'
-            }`}
-          >
-            {k}
-          </button>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          inputMode="numeric"
-          aria-label="고칠 금액"
-          value={amount ? formatComma(amount) : ''}
-          onChange={(e) =>
-            setAmount(Math.min(Number(e.target.value.replace(/\D/g, '')) || 0, 999_999_999))
-          }
-          className="tnum min-w-0 flex-1 rounded-btn border border-line bg-white px-3 py-2 text-right text-[15px] font-bold text-ink outline-none focus:border-amber-500"
-        />
-        <span className="text-[13px] text-sub">원</span>
-        <input
-          type="date"
-          value={date}
-          max={today}
-          onChange={(e) => setDate(e.target.value || origDate)}
-          aria-label="고칠 날짜"
-          className="tnum w-[132px] shrink-0 rounded-btn border border-line bg-white px-2 py-2 text-[12.5px] text-ink outline-none"
-        />
-      </div>
-      <input
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="메모 (선택)"
-        aria-label="고칠 메모"
-        maxLength={30}
-        className="w-full rounded-btn border border-line bg-white px-3 py-2 text-[13px] text-ink outline-none placeholder:text-cap"
-      />
-      <label className="flex items-center gap-2 text-[12.5px] text-sub">
-        <input
-          type="checkbox"
-          checked={keep}
-          onChange={(e) => setKeep(e.target.checked)}
-          className="h-4 w-4 accent-amber-500"
-        />
-        아이 통장에 모아요
-      </label>
-      {keep && (
-        <label className="flex items-center gap-2 text-[12.5px] text-sub">
-          <input
-            type="checkbox"
-            checked={gift}
-            onChange={(e) => setGift(e.target.checked)}
-            className="h-4 w-4 accent-amber-500"
-          />
-          증여 기록에 더해요
-        </label>
-      )}
-      <div className="flex gap-2">
-        <button
-          onClick={onCancel}
-          className="h-10 flex-1 rounded-btn bg-white text-[13px] font-bold text-sub"
-        >
-          취소
-        </button>
-        <button
-          onClick={save}
-          disabled={amount <= 0}
-          className="h-10 flex-[2] rounded-btn bg-amber-500 text-[13.5px] font-bold text-white disabled:opacity-40"
-        >
-          저장
         </button>
       </div>
     </div>
