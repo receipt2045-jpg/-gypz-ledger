@@ -19,14 +19,15 @@ describe('쿠팡 검색 결과에서 재료 고르기', () => {
     expect(pickProduct([item('맛있는 두부 한 모', 1500)], '300g', 300)).toBeNull()
   })
 
-  it('1g당 가장 싼 것 — 묶음이면 나눠서 비교', () => {
+  it('낱개가 있으면 낱개 먼저, 낱개끼리는 1g당 싼 것 — 묶음은 나눠서 1g 값', () => {
     const p = pickProduct(
-      [item('부침두부 300g', 2000), item('부침두부 300g x 2개', 3000)],
+      [item('부침두부 300g', 2400), item('부침두부 300g', 2000), item('부침두부 300g x 2개', 3000)],
       '300g',
       300,
     )
-    expect(p?.count).toBe(2)
-    expect(p?.unitPrice).toBe(5)
+    expect(p?.count).toBe(1)
+    expect(p?.item.productPrice).toBe(2000)
+    expect(pickProduct([item('부침두부 300g x 2개', 3000)], '300g', 300)?.unitPrice).toBe(5)
   })
 
   it('대소문자·띄어쓰기가 달라도 용량을 알아본다', () => {

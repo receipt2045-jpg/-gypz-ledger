@@ -7,7 +7,7 @@
  * 3. 강아지 간식·가루·건조품처럼 장보기 재료가 아닌 것은 뺀다 (검색어에 그 말이 있으면 괜찮다)
  * 4. '300g x 2개', '12개, 800g'처럼 묶음이면 그 수를 읽는다 — 2묶음 넘는 대용량은 고르지 않는다
  *    (11-26 결영: 고등어 400g×4개입 6만 원이 들어가 있었다)
- * 5. 그중 1g(ml·개)당 가장 싼 것
+ * 5. 낱개를 먼저, 그중 1g(ml·개)당 가장 싼 것
  */
 export interface SearchItem {
   productName: string
@@ -68,7 +68,8 @@ export function pickProduct(
     const count = bundleCount(item.productName, sizeToken)
     if (count > MAX_BUNDLE) continue
     const unitPrice = item.productPrice / (packAmount * count)
-    if (!best || unitPrice < best.unitPrice) best = { item, count, unitPrice }
+    // 낱개가 있으면 낱개 먼저 — 2묶음은 낱개가 없을 때만 (11-26: 소갈비 1kg×2 6만 원)
+    if (!best || count < best.count || (count === best.count && unitPrice < best.unitPrice)) best = { item, count, unitPrice }
   }
   return best
 }

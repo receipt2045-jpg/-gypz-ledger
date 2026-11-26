@@ -110,7 +110,8 @@ function pickProduct(
     const count = bundleCount(item.productName, sizeToken)
     if (count > MAX_BUNDLE) continue
     const unitPrice = item.productPrice / (packAmount * count)
-    if (!best || unitPrice < best.unitPrice) best = { item, count, unitPrice }
+    // 낱개가 있으면 낱개 먼저 — 2묶음은 낱개가 없을 때만 (11-26: 소갈비 1kg×2 6만 원)
+    if (!best || count < best.count || (count === best.count && unitPrice < best.unitPrice)) best = { item, count, unitPrice }
   }
   return best
 }
