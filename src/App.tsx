@@ -55,6 +55,7 @@ import Cofix from './pages/Cofix'
 import Survey from './pages/Survey'
 import Values from './pages/Values'
 import Toothpaste from './pages/Toothpaste'
+import Moraxella from './pages/Moraxella'
 import ShareDock from './components/ShareDock'
 import MoneyToon from './pages/MoneyToon'
 import Share from './pages/Share'
@@ -90,6 +91,7 @@ export default function App() {
         <Route path="/values" element={<Values />} />
         {/* 무불소 아기치약 10종 비교 + 양치 파우치 3종 (2026-11-21) — 인스타 링크로 들어오는 자리 */}
         <Route path="/toothpaste" element={<Toothpaste />} />
+        <Route path="/moraxella" element={<Moraxella />} />
         <Route path="/money" element={<MoneyToon />} />
         <Route path="/money/:slug" element={<MoneyToon />} />
         {/* 결영이네 자료 나눔 목록 (2026-10-24) — 단톡방 공지에 거는 링크 하나 */}

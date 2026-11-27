@@ -58,6 +58,12 @@ const OG_PAGES: OgPage[] = [
     image: 'https://moabuli.com/og-cofix.png?v=1',
   },
   {
+    dir: 'moraxella',
+    title: '결영이네 · 모락셀라균 세탁세제 6종 비교',
+    description: '수건 꿉꿉한 냄새의 원인 모락셀라균. 세제 6종을 개당·100ml당 단가와 향료·보존제로 비교했어요.',
+    image: 'https://moabuli.com/og-coupang.png?v=1',
+  },
+  {
     dir: 'toothpaste',
     title: '결영이네 · 무불소 아기치약 10종 비교',
     description: '어린이집에 보낼 치약 10종을 성분·뚜껑·10g당 가격으로 비교했어요. 어린이집 양치 파우치 3종과 비교표 PDF까지.',

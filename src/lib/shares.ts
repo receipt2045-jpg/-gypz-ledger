@@ -32,6 +32,17 @@ export const parseShareCategory = (v: string | null): ShareCategory | null =>
 
 export const SHARES: ShareItem[] = [
   {
+    slug: 'moraxella',
+    path: '/moraxella',
+    title: '수건 쉰내 잡는 모락셀라균 세제 6종 비교',
+    sub: '캡슐은 개당, 액체는 100ml당으로 나누고 향료·보존제까지 봤어요 — 아기 있는 집 체크리스트 5',
+    category: '짠테크',
+    date: '2026-11-27',
+    minutes: 3,
+    emoji: '🧺',
+    tint: 'bg-emerald-50',
+  },
+  {
     slug: 'recipes',
     path: '/recipes',
     title: '3살 아기 집, 일주일 10만원 집밥 식단',
