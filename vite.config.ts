@@ -140,6 +140,10 @@ export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
   plugins: [react(), ogPages()],
   build: {
+    // 옛 폰에서도 뜨게 (2026-11-27 제보: 카톡에서도 바깥 브라우저에서도 화면이 안 떴다).
+    // 기본값(크롬 87·사파리 14)은 ?. ?? 문법을 그대로 둬서, 업데이트가 멈춘 안드로이드(크롬·웹뷰 79 이하)·iOS 13에서
+    // 앱 파일 전체가 문법 오류로 멈췄다. 옛 문법으로 바꿔 내보내고, 없는 함수는 public/compat.js가 채운다.
+    target: ['es2019', 'chrome70', 'safari12.1', 'firefox68', 'edge79'],
     rollupOptions: {
       output: {
         manualChunks: {
