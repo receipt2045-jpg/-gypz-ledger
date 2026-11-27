@@ -22,6 +22,45 @@
     errors.push('rejection: ' + ((r && r.message) || r))
   })
 
+  // 어디까지 왔는지 (2026-11-27 제보 캡처: 최신 폰인데 오류 없이 '시간 초과'만 — 원인을 화면에서 바로 알 수 있게)
+  function secs(ms) {
+    return (Math.round(ms / 100) / 10).toFixed(1) + '초'
+  }
+  function diag() {
+    var now = window.performance && performance.now ? performance.now() : 0
+    var got = {}
+    try {
+      var list = performance.getEntriesByType('resource')
+      for (var i = 0; i < list.length; i++) {
+        var n = list[i].name
+        var key = /\/assets\/index-[^/]*\.js/.test(n)
+          ? 'main'
+          : /\/assets\/react-[^/]*\.js/.test(n)
+            ? 'react'
+            : /\/assets\/index-[^/]*\.css/.test(n)
+              ? 'css'
+              : /jsdelivr/.test(n)
+                ? 'font'
+                : /supabase\.co/.test(n)
+                  ? 'server'
+                  : null
+        if (key && !got[key]) got[key] = list[i]
+      }
+    } catch (e) {
+      /* 못 읽어도 나머지는 보여 준다 */
+    }
+    function line(label, key) {
+      var e = got[key]
+      return label + ' ' + (e ? '받음 ' + secs(e.responseEnd) : '아직')
+    }
+    return [
+      '지난 시간 ' + secs(now),
+      line('앱 파일', 'main') + ' · ' + line('기본', 'react'),
+      line('모양', 'css') + ' · ' + line('글꼴', 'font'),
+      '앱 시작 ' + (window.__mbStart ? '함' : '안 함') + ' · ' + line('서버', 'server'),
+    ].join('<br>')
+  }
+
   function rootEmpty() {
     var root = document.getElementById('root')
     return !root || root.children.length === 0
@@ -34,6 +73,10 @@
     var inApp = IN_APP.test(ua)
     var ios = /iphone|ipad|ipod/i.test(ua)
     var url = location.href
+    function title() {
+      if (!errors.length && performance.now && performance.now() < 10000) return '화면을 불러오는 중이에요'
+      return inApp ? '외부 브라우저로 열어 주세요' : '화면을 열지 못했어요'
+    }
     var box = document.createElement('div')
     box.id = 'boot-fallback'
     box.setAttribute(
@@ -44,8 +87,8 @@
       'display:block;width:100%;height:48px;border:0;border-radius:12px;font-size:15px;font-weight:700;margin-top:8px'
     box.innerHTML =
       '<div style="max-width:340px;width:100%;background:#fff;border-radius:18px;padding:24px;text-align:center">' +
-      '<p style="margin:0;font-size:17px;font-weight:700;color:#191F28">' +
-      (inApp ? '외부 브라우저로 열어 주세요' : '화면을 열지 못했어요') +
+      '<p id="boot-title" style="margin:0;font-size:17px;font-weight:700;color:#191F28">' +
+      title() +
       '</p>' +
       '<p style="margin:8px 0 16px;font-size:14px;line-height:1.6;color:#4E5968">' +
       (kakao
@@ -65,11 +108,8 @@
           '</p>'
         : '') +
       '<button id="boot-reload" style="' + btn + ';background:#F2F4F6;color:#4E5968">다시 열기</button>' +
-      '<p style="margin:16px 0 0;font-size:11px;line-height:1.5;color:#8B95A1;word-break:break-all">' +
-      (errors.length ? errors.slice(0, 3).join('<br>').replace(/</g, '&lt;').replace(/&lt;br>/g, '<br>') : '시간 초과') +
-      '<br>' +
-      ua.replace(/</g, '&lt;') +
-      '</p></div>'
+      '<p id="boot-diag" style="margin:16px 0 0;font-size:11px;line-height:1.5;color:#8B95A1;word-break:break-all"></p>' +
+      '</div>'
     document.body.appendChild(box)
     var ext = document.getElementById('boot-ext')
     if (ext)
@@ -79,13 +119,29 @@
     document.getElementById('boot-reload').onclick = function () {
       location.reload()
     }
-    // 늦게라도 앱이 뜨면 안내를 걷는다
+    var diagEl = document.getElementById('boot-diag')
+    var titleEl = document.getElementById('boot-title')
+    function paint() {
+      diagEl.innerHTML =
+        (errors.length
+          ? errors.slice(0, 3).join('<br>').replace(/</g, '&lt;').replace(/&lt;br>/g, '<br>')
+          : '오류 없음') +
+        '<br>' +
+        diag() +
+        '<br>' +
+        ua.replace(/</g, '&lt;')
+      titleEl.textContent = title()
+    }
+    paint()
+    // 늦게라도 앱이 뜨면 안내를 걷는다 · 그동안 받은 파일·시간을 1초마다 새로 적는다
     var iv = setInterval(function () {
       if (!rootEmpty()) {
         clearInterval(iv)
         if (box.parentNode) box.parentNode.removeChild(box)
+        return
       }
-    }, 500)
+      paint()
+    }, 1000)
   }
 
   // 카톡 같은 앱 안 브라우저는 3초(2026-11-19 요청), 그 밖은 오류가 나면 3초·아니면 12초 지나도 화면이 비어 있을 때만.

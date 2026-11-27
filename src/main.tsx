@@ -9,6 +9,9 @@ import { isNative } from './lib/native'
 import { installNativeShell } from './lib/nativeShell'
 import { installPush } from './lib/pushNative'
 
+// 앱 파일이 다 받아져 실행을 시작했다는 표시 — 못 뜰 때 안내(public/boot-check.js)가 어디서 멈췄는지 보여 준다
+;(window as unknown as { __mbStart?: number }).__mbStart = Date.now()
+
 // 링크 서비스가 #을 떼고 열어도(moabuli.com/leave, /%23/leave) 원래 화면으로 간다
 const fixed = hashFromPath(window.location.pathname, window.location.search, window.location.hash)
 if (fixed) window.history.replaceState(null, '', fixed)
