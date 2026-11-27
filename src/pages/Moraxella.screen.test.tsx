@@ -21,12 +21,13 @@ describe('모락셀라균 세탁세제 6종 비교 (2026-11-27)', () => {
     expect(screen.getByText('결영이네가 고른 것')).toBeInTheDocument()
   })
 
-  it('가격 기준일을 적고 구매 링크는 없다', () => {
+  it('가격 기준일, 쿠팡 링크는 4종에만 대가성 문구와 함께', () => {
     open()
     expect(screen.getByText(/2026년 11월 17일 기준/)).toBeInTheDocument()
     const coupang = screen
       .queryAllByRole('link')
-      .filter((a) => a.getAttribute('href')?.includes('coupang.com'))
-    expect(coupang).toHaveLength(0)
+      .filter((a) => a.getAttribute('href')?.startsWith('https://link.coupang.com/'))
+    expect(coupang).toHaveLength(4)
+    expect(screen.getAllByText(/쿠팡 파트너스 활동의 일환/).length).toBeGreaterThan(0)
   })
 })

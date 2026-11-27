@@ -4,11 +4,14 @@ import ShareArticle, {
   ShareSection,
 } from "../components/ShareArticle";
 
+const DISCLOSURE =
+  "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.";
+
 /**
  * 모락셀라균 세탁세제 6종 가격·성분 비교 (2026-11-27) — 로그인 없이 열리는 공개 페이지.
  * 원고: 노션 받은함 「[모아불리] 모락셀라균 세탁세제 6종 가격·성분 비교 자료」(피클, 11-17 쿠팡 기준).
  * 수건 냄새 릴스(11-28) 댓글 나눔용. 가격·성분은 원고 그대로, 공개 안 된 성분은 '미공개'로 두고 추측하지 않는다.
- * 구매 링크(쿠팡 파트너스)는 아직 없음 — 넣게 되면 대가성 문구를 같이.
+ * 쿠팡 파트너스 링크는 검색 API로 찾은 4종에만(피지 액체 2.1L·프로쉬 제로는 같은 상품이 안 나와 링크 없음). 대가성 문구 같이.
  */
 
 interface Item {
@@ -20,12 +23,15 @@ interface Item {
   ingr: string;
   note: string;
   pick?: boolean;
+  /** 쿠팡 파트너스 링크 (11-27 검색 API로 받음, 상품명 확인함) */
+  url?: string;
 }
 
 // 11-17 쿠팡 판매가 기준 — 캡슐은 개당, 액체는 100ml당으로 환산
 const CAPSULES: Item[] = [
   {
     name: "랩신 냄새제거 부스터 무향 캡슐",
+    url: "https://link.coupang.com/re/AFFSDP?lptag=AF0616599&subid=moabuli&pageKey=8812083389&itemId=25679476355&vendorItemId=92668851485&traceid=V0-153-6daa5bfb9dd864bb&requestid=20261127144627646249228251&token=31850C%7CMIXED&pt=0&slot=4",
     spec: "25개입",
     price: "12,350원",
     unit: "개당 494원",
@@ -36,6 +42,7 @@ const CAPSULES: Item[] = [
   },
   {
     name: "리큐 모락셀라 악취케어 캡슐",
+    url: "https://link.coupang.com/re/AFFSDP?lptag=AF0616599&subid=moabuli&pageKey=9726339807&itemId=29106390585&vendorItemId=92229485381&traceid=V0-153-397cecce61fa632c&requestid=20261127144639423082792860&token=31850C%7CMIXED&pt=0&slot=5",
     spec: "40개입",
     price: "12,590원",
     unit: "개당 약 315원",
@@ -45,6 +52,7 @@ const CAPSULES: Item[] = [
   },
   {
     name: "피지 모락셀라 부스터 캡슐",
+    url: "https://link.coupang.com/re/AFFSDP?lptag=AF0616599&subid=moabuli&pageKey=8770784219&itemId=25516487123&vendorItemId=92508392455&traceid=V0-153-d2688da1b7369eae&requestid=20261127144628009308350185&token=31850C%7CMIXED&pt=0&slot=4",
     spec: "26개입",
     price: "15,740원",
     unit: "개당 약 605원",
@@ -57,6 +65,7 @@ const CAPSULES: Item[] = [
 const LIQUIDS: Item[] = [
   {
     name: "랩신 항균 세탁세제 솔잎향",
+    url: "https://link.coupang.com/re/AFFSDP?lptag=AF0616599&subid=moabuli&pageKey=7196287533&itemId=20226616320&vendorItemId=92529429021&traceid=V0-153-6f43483ef3f38e36&requestid=20261127144628346228131996&token=31850C%7CMIXED&pt=0&slot=4",
     spec: "2L",
     price: "12,900원",
     unit: "100ml당 645원",
@@ -137,7 +146,7 @@ export default function Moraxella() {
           <p className="mt-3">
             가격은 수시로 바뀝니다. 랩신 무향 캡슐은 구매 당시 프로모션으로
             11,700원(개당 468원)에 샀지만, 본문은 정가 12,350원 기준으로
-            적었어요. 이 페이지에는 구매 링크가 없어요.
+            적었어요. 링크로 열리는 지금 가격·구성은 다를 수 있어요. {DISCLOSURE}
           </p>
         </>
       }
@@ -184,7 +193,10 @@ export default function Moraxella() {
       </ShareSection>
 
       <ShareSection no={3} title="캡슐 세제 3종 — 개당 단가">
-        <div className="space-y-3">
+        <p className="rounded-xl border border-[#FFD66B] bg-[#FFF8E1] px-4 py-3 text-[13px] font-semibold leading-relaxed text-ink">
+          {DISCLOSURE}
+        </p>
+        <div className="mt-3 space-y-3">
           {CAPSULES.map((it) => (
             <ItemCard key={it.name} it={it} />
           ))}
@@ -251,6 +263,16 @@ function ItemCard({ it }: { it: Item }) {
       <p className="mt-3 text-[14px] font-semibold leading-relaxed text-ink">
         → {it.note}
       </p>
+      {it.url && (
+        <a
+          href={it.url}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="mt-3 flex w-full items-center justify-center rounded-btn bg-brand py-3 text-[15px] font-bold text-white active:bg-brand-dark"
+        >
+          쿠팡에서 지금 가격 보기
+        </a>
+      )}
     </article>
   );
 }
