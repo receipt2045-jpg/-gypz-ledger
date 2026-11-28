@@ -55,7 +55,7 @@ const TONE = { cash: CASH, saved: SAVE, spent: SPENT } as const
 type Flow = 'in' | 'out'
 const flowOf = (k: SideKind): Flow => (k === 'spent' ? 'out' : 'in')
 const FLOW_LABEL: Record<Flow, string> = { in: '수입', out: '지출' }
-const FLOW_SUB: Record<Flow, string> = { in: '부수입·절약액', out: '부수입 때문에 나간 돈' }
+const FLOW_SUB: Record<Flow, string> = { in: '부수입·절약액', out: '부수입에서 나간 돈' }
 
 /**
  * 부수입 가계부 (2026-11-19) — 하단 '부수입' 탭.
@@ -308,7 +308,9 @@ export default function SideIncome() {
       ym={ym}
       settle={settled}
       onUndo={async () => {
-        if (!window.confirm(`${label} 부수입 마감을 풀까요? 보낸 돈을 자산·가계부에서 다시 빼요.`))
+        if (
+          !window.confirm(`${label} 부수입 마감을 취소할까요? 보낸 돈을 자산·가계부에서 다시 빼요.`)
+        )
           return
         await side.unsettle(ym)
       }}
@@ -607,7 +609,7 @@ export default function SideIncome() {
           {renameTo !== null && (
             <div className="mt-2.5 border-t border-line pt-2.5">
               <p className="text-[12px] font-semibold text-sub">
-                어떤 종류로 바꿀까요? 모든 달의 '{picked.category}' {pickedAll}건이 같이 바뀌어요
+                종류를 바꿀까요? 모든 달의 '{picked.category}' {pickedAll}건이 같이 바뀌어요
               </p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {SIDE_CATEGORIES[picked.kind]
@@ -985,10 +987,10 @@ function SideForm({
       </div>
       <p className="text-[12px] text-cap">
         {kind === 'cash'
-          ? '통장에 실제로 들어온 돈 — 정산 때 어디로 보낼지 정해요'
+          ? '통장에 들어온 돈 — 정산 때 어디로 보낼지 정해요'
           : kind === 'saved'
-            ? '체험단·포인트처럼 안 나간 돈 — 기록으로 모아요'
-            : '부수입 때문에 나간 돈 — 부수입에서 빼서 남은 돈을 보여 줘요'}
+            ? '체험단·포인트처럼 안 쓴 돈 — 기록으로 모아요'
+            : '부수입에서 나간 돈 — 남은 돈에서 빼요'}
       </p>
 
       <div>
@@ -1033,7 +1035,7 @@ function SideForm({
         <>
           <label className="block">
             <span className="mb-1.5 block text-[12.5px] font-bold text-sub">
-              얼마짜리였나요 <span className="font-medium text-cap">원래 냈어야 할 돈</span>
+              금액이 얼마였나요 <span className="font-medium text-cap">원래 냈어야 할 돈</span>
             </span>
             <AmountInput value={price} onChange={setPrice} />
           </label>
@@ -1058,7 +1060,7 @@ function SideForm({
             매달 {kind === 'spent' ? '나가요' : '들어와요'}
           </span>
           <span className="block text-[11.5px] text-cap">
-            켜 두면 다음 달 같은 날에 저절로 적어요 · 끄면 멈춰요
+            켜 두면 다음 달 같은 날 자동으로 적혀요 · 끄면 멈춰요
           </span>
         </span>
         <input

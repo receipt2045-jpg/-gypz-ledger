@@ -250,3 +250,19 @@ describe('경제 뉴스 글 → 기사 하나씩', () => {
     )
   })
 })
+
+describe('displayBody — 앱 화면에선 톡방 절 머리 이모지를 뗀다 (2026-11-28 문구 검수)', () => {
+  it('🔰💌💗📖📁 머리를 떼고, 추천 머리는 "오늘의 추천 기사"로', async () => {
+    const { displayBody } = await import('./posts')
+    const out = displayBody(
+      '🔰 오늘 딱 하나만 읽는다면\n부동산 1번 뉴스\n\n💌왜?\n금리 때문\n💗우리 부부 계좌는 어떻게?\n📖 오늘의 단어\n📁자세한 내용은 원문 참고',
+    )
+    expect(out).toBe(
+      '오늘의 추천 기사\n부동산 1번 뉴스\n\n왜?\n금리 때문\n우리 부부 계좌는 어떻게?\n오늘의 단어\n자세한 내용은 원문 참고',
+    )
+  })
+  it('문장 가운데 이모지는 건드리지 않는다', async () => {
+    const { displayBody } = await import('./posts')
+    expect(displayBody('코스피 🔰 상승')).toBe('코스피 🔰 상승')
+  })
+})

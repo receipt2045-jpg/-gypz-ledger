@@ -128,7 +128,7 @@ export default function Report() {
               left={
                 <>
                   <p className="text-[13.5px] leading-relaxed text-sub">
-                    결영이네가 <b className="text-ink">우리집 숫자를 직접 보고</b> 씁니다. 자동으로
+                    결영이네가 <b className="text-ink">우리집 숫자를 직접 보고</b> 써요. 자동으로
                     만드는 게 아니라 사람이 읽고 쓰는 리포트예요.
                   </p>
 
@@ -205,7 +205,7 @@ export default function Report() {
                         <h2 className="text-[15px] font-bold text-ink">데이터 공유 동의</h2>
                         <p className="mt-1.5 text-[13px] leading-relaxed text-sub">
                           리포트를 쓰려면 결영이네가 우리집 가계부를 열어봐야 해요. 보는 건
-                          이것뿐입니다.
+                          이것뿐이에요.
                         </p>
                         <ul className="mt-2.5 space-y-1.5">
                           {DATA_SCOPE.map((d) => (
@@ -289,7 +289,7 @@ export default function Report() {
                       <p className="px-1 text-[12px] leading-relaxed text-cap">
                         {PAYMENT_URL
                           ? '신청하신 뒤 결제하시면 순서대로 작성해 드려요.'
-                          : '신청하시면 결영이네가 메일로 연락드려요. 결제는 그때 안내해 드립니다.'}
+                          : '신청하시면 결영이네가 메일로 연락드려요. 결제는 그때 안내해 드려요.'}
                       </p>
                     </>
                   )}

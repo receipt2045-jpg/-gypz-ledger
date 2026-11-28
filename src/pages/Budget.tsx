@@ -268,7 +268,7 @@ export default function Budget() {
                   {left === 0 && income > 0
                     ? '0원 · 다 정했어요'
                     : left < 0
-                      ? `${short(-left)}원 넘쳐요`
+                      ? `${short(-left)}원 초과`
                       : `${short(left)}원`}
                 </p>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg">
@@ -281,7 +281,7 @@ export default function Budget() {
                 </div>
                 <p className="mt-1.5 text-[12px] text-cap">
                   {income > 0
-                    ? `우리집 들어오는 돈 ${short(income)} 중 ${short(Math.max(0, decided))} 정했어요 · 0원이 되면 계획 끝`
+                    ? `우리집 들어오는 돈 ${short(income)} 중 ${short(Math.max(0, decided))} 정했어요 · 0원이 되면 계획이 끝나요`
                     : '들어오는 돈(월급) 칸부터 눌러서 채워 주세요'}
                 </p>
               </div>
@@ -400,8 +400,8 @@ export default function Budget() {
                     <p className="text-[14.5px] font-bold text-ink">칸을 눌러 보세요</p>
                     <p className="mt-1">숫자 칸을 누르면 그 칸에 든 항목이 여기에 나와요.</p>
                     <p className="mt-1">
-                      관리비·식비처럼 같이 쓰는 돈은 항목 옆 이름표를 눌러 &lsquo;공동&rsquo;으로
-                      옮기면 공동통장에서 나가요.
+                      같이 쓰는 돈은 항목 이름표를 눌러 &lsquo;공동&rsquo;으로 옮기면 공동통장에서
+                      나가요.
                     </p>
                   </div>
                 ) : sel.row === 'con' ? (

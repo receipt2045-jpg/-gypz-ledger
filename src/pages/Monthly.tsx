@@ -206,9 +206,9 @@ export default function Monthly() {
       {showBanner && (
         <div className="flex items-start justify-between gap-3 rounded-card bg-brand/10 px-4 py-3">
           <div>
-            <p className="text-[14px] font-bold text-ink">매일은 소비 기록만, 월말엔 정산 ❗️</p>
+            <p className="text-[14px] font-bold text-ink">매일은 소비 기록, 월말은 정산</p>
             <p className="mt-0.5 text-[13px] text-sub">
-              쓴 돈은 그날그날 말로 남기고, 월말에 '정산하기'로 한 번에 정리해요
+              쓴 돈은 그날 기록하고, 월말에 '정산하기'로 정리해요
             </p>
           </div>
           <button onClick={closeBanner} className="shrink-0 pt-0.5 text-cap" aria-label="배너 닫기">
@@ -299,8 +299,8 @@ export default function Monthly() {
                   {ym !== currentYm()
                     ? '오늘 쓴 돈은 여기서 적어요'
                     : confessedToday
-                      ? '오늘 기록 끝 ✅ · 더 적을 게 있으면 눌러요'
-                      : '오늘 쓴 돈을 말해주세요'}
+                      ? '오늘 기록 끝 · 더 적을 게 있으면 눌러요'
+                      : '오늘 쓴 돈을 말하거나 적어 주세요'}
                 </span>
               </span>
               <span className="flex shrink-0 items-center text-[13px] font-bold text-brand">
@@ -470,7 +470,7 @@ export default function Monthly() {
               onUpdate={updateOccasion}
               open={occasionOpen}
               onOpenChange={setOccasionOpen}
-              emptyText={`${label}엔 아직 없어요 · 경조사·명절·자동차 같은 큰돈이 생기면 바로 적어두세요`}
+              emptyText={`${label}엔 없어요 · 생기면 바로 적어 두세요`}
             />
 
             {/* 결산이 끝난 달이면 성적표 — 정산 화면을 다시 안 열어도 여기서 공유할 수 있게 */}
@@ -498,7 +498,7 @@ export default function Monthly() {
                 }}
                 className="w-full py-1 text-center text-[12.5px] font-semibold text-cap active:opacity-60"
               >
-                잘못 정산했나요? 정산 취소하기
+                정산을 잘못했나요? 취소하기
               </button>
             )}
 
@@ -518,7 +518,7 @@ export default function Monthly() {
                 }}
                 className="w-full py-1 text-center text-[12.5px] font-semibold text-cap active:text-danger"
               >
-                {formatYmKorean(ym)} 기록 통째로 지우기
+                {formatYmKorean(ym)} 기록 전체 삭제
               </button>
             )}
           </>

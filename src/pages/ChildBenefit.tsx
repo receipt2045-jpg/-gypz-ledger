@@ -147,8 +147,8 @@ export default function ChildBenefit() {
           </ul>
           <p className="mt-3">
             {BENEFIT_RULES.updated.slice(0, 4)}년 {Number(BENEFIT_RULES.updated.slice(5, 7))}월{' '}
-            {Number(BENEFIT_RULES.updated.slice(8, 10))}일 기준 금액이 앞으로도 그대로라고 보고 계산한
-            참고용이에요. 소득·재산과 상관없이 받는 돈이지만, 해외에 오래 머물면 멈출 수
+            {Number(BENEFIT_RULES.updated.slice(8, 10))}일 기준 금액이 앞으로도 그대로라고 보고
+            계산한 참고용이에요. 소득·재산과 상관없이 받는 돈이지만, 해외에 오래 머물면 멈출 수
             있어요. 정확한 건 복지로나 주민센터에서 확인해 주세요.
           </p>
         </>
@@ -255,10 +255,10 @@ export default function ChildBenefit() {
           </Box>
           <Box name="첫만남이용권">
             첫째 <b>200만원</b>, 둘째부터 <b>300만원</b>. 국민행복카드 포인트로 받아요. 쓸 수 있는
-            기간이 정해져 있으니 복지로에서 꼭 확인하세요.
+            기간이 정해져 있으니 복지로에서 확인해 주세요.
           </Box>
           <Box name="가정양육수당">
-            부모급여가 끝난 두 돌(24개월)부터 어린이집·유치원에 안 다니면 86개월 전까지 월
+            부모급여가 끝난 두 돌(24개월)부터 어린이집·유치원에 안 다니면 만 86개월이 될 때까지 월
             10만원이에요.
           </Box>
         </div>

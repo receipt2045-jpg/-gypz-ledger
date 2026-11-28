@@ -26,14 +26,14 @@ export interface MonthlyCardData {
  * 그 경우를 먼저 거른다.
  */
 export function headlineOf(rate: number, surplus: number): string {
-  if (surplus < 0) return '번 것보다 쓴 게 많았어요. 다음 달에 다시 잡아봐요.'
+  if (surplus < 0) return '쓴 돈이 번 돈보다 많았어요. 다음 달 예산을 다시 잡아요.'
   const pct = Math.round(rate * 100)
-  if (pct >= 50) return `저축률 ${pct}%. 절반을 넘겼어요. 이대로면 목표가 당겨집니다.`
-  if (pct >= 40) return `저축률 ${pct}%. 아주 잘 지켰어요.`
+  if (pct >= 50) return `저축률 ${pct}%. 절반을 넘었어요. 이 속도면 목표가 앞당겨져요.`
+  if (pct >= 40) return `저축률 ${pct}%. 잘 지켰어요.`
   if (pct >= 30) return `저축률 ${pct}%. 기준선을 넘었어요.`
-  if (pct >= 20) return `저축률 ${pct}%. 나쁘지 않아요. 10%만 더 올려봐요.`
-  if (pct >= 10) return `저축률 ${pct}%. 고정지출부터 한 번 훑어볼 때예요.`
-  return '이번 달은 모은 게 적었어요. 다음 달 예산부터 다시 세워봐요.'
+  if (pct >= 20) return `저축률 ${pct}%. 10%만 더 올리면 좋아요.`
+  if (pct >= 10) return `저축률 ${pct}%. 고정지출부터 점검해 볼 때예요.`
+  return '이번 달 저축이 적었어요. 다음 달 예산부터 다시 세워요.'
 }
 
 /** 구성원별 저축·투자 합계 (결산 완료 기준이라 actual을 본다) */

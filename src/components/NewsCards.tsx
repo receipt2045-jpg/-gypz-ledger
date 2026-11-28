@@ -65,7 +65,7 @@ export function ArticleHero({
             />
             {article.pick && (
               <span className="absolute left-3 top-3 rounded-full bg-ink/85 px-2.5 py-1 text-[11px] font-bold text-white">
-                오늘 딱 하나만 읽는다면
+                오늘의 추천 기사
               </span>
             )}
           </div>
@@ -73,7 +73,7 @@ export function ArticleHero({
         <div className="px-4 pb-3 pt-3.5">
           {article.pick && !meta?.image && (
             <span className="mb-1.5 block text-[11.5px] font-bold text-brand">
-              오늘 딱 하나만 읽는다면
+              오늘의 추천 기사
             </span>
           )}
           <SectionTag section={article.section} />
@@ -118,9 +118,7 @@ export function ArticleRow({ article, meta }: { article: Article; meta?: NewsMet
           {article.headline}
         </span>
         {article.note && (
-          <span className="mt-0.5 line-clamp-1 block text-[12.5px] text-sub">
-            → {article.note}
-          </span>
+          <span className="mt-0.5 line-clamp-1 block text-[12.5px] text-sub">→ {article.note}</span>
         )}
         <Source article={article} meta={meta} />
       </span>
@@ -150,7 +148,11 @@ export function SectionChips({
   const sections = [...new Set(articles.map((a) => a.section))]
   const chips = [
     { key: 'all', label: '전체', n: articles.length },
-    ...sections.map((s) => ({ key: s, label: s, n: articles.filter((a) => a.section === s).length })),
+    ...sections.map((s) => ({
+      key: s,
+      label: s,
+      n: articles.filter((a) => a.section === s).length,
+    })),
   ]
   return (
     <div className="flex gap-1.5" role="group" aria-label="기사 분야">

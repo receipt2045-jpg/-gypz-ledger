@@ -108,7 +108,7 @@ export default function FixedCostCheck({
                   </p>
                 ))}
               <p className="pt-1 text-[11.5px] leading-relaxed text-cap">
-                널리 쓰이는 눈금이지 정답은 아니에요. 우리집 사정이 먼저입니다.
+                참고 기준일 뿐이에요. 우리집 사정이 먼저예요.
               </p>
             </div>
           )}

@@ -80,14 +80,14 @@ describe('돈 공부 탭 — 자료 나눔 · 오늘의 경제 · 계산기 · �
 
   it('계산기 칸에서도 육아휴직 계산기로 간다', () => {
     renderInfo()
-    fireEvent.click(screen.getByRole('button', { name: /쉬는 동안 한 달에 얼마/ }))
+    fireEvent.click(screen.getByRole('button', { name: /휴직 중 월 수령액/ }))
     expect(screen.getByText('계산기 화면')).toBeInTheDocument()
   })
 
   it('경제 뉴스는 기사 하나씩 — 그날의 픽이 큰 카드, 증시 정리 탭은 최근 하루치', async () => {
     renderInfo()
     expect(await screen.findByText('매물 고갈된 전세 시장')).toBeInTheDocument()
-    expect(screen.getByText('오늘 딱 하나만 읽는다면')).toBeInTheDocument()
+    expect(screen.getAllByText('오늘의 추천 기사')[0]).toBeInTheDocument()
     expect(screen.getByText('전세 매물이 말라요.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /나스닥 사상 최고치/ })).toHaveAttribute(
       'href',

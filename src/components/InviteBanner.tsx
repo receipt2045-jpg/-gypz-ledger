@@ -36,7 +36,7 @@ export default function InviteBanner() {
 
   const send = async () => {
     const r = await shareInvite(inviteCode)
-    if (r === 'copied') setToast('초대 메시지를 복사했어요. 붙여넣기 해주세요')
+    if (r === 'copied') setToast('초대 메시지를 복사했어요. 붙여넣어 주세요')
     else if (r === 'failed') setToast(`초대 코드는 ${inviteCode}예요`)
     if (r !== 'shared') setTimeout(() => setToast(''), 3000)
   }
@@ -55,9 +55,9 @@ export default function InviteBanner() {
       >
         <X size={15} />
       </button>
-      <p className="pr-6 text-[14px] font-bold text-ink">아직 혼자 쓰고 계세요</p>
+      <p className="pr-6 text-[14px] font-bold text-ink">아직 혼자 쓰고 있어요</p>
       <p className="mt-1 pr-6 text-[12.5px] leading-relaxed text-sub">
-        정산은 두 분 다 해야 끝나요. 배우자를 초대하면 같이 볼 수 있어요
+        정산은 두 사람 다 해야 끝나요. 배우자를 초대하면 같이 써요
       </p>
       <button
         onClick={send}

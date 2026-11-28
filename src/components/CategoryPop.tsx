@@ -93,7 +93,7 @@ export default function CategoryPop({
           </div>
         </div>
       ))}
-      <p className="px-1 pt-1 text-[11px] text-cap">목록에 없으면 칸에 바로 써요</p>
+      <p className="px-1 pt-1 text-[11px] text-cap">목록에 없으면 직접 입력해요</p>
     </div>,
     document.body,
   )

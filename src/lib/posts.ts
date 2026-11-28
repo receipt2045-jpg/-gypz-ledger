@@ -98,6 +98,17 @@ export function parsePasted(text: string, today: Date = new Date()): PostDraft {
 export type Segment = { type: 'text'; text: string } | { type: 'link'; href: string }
 
 /** 본문 속 기사 주소를 눌러지는 링크로 */
+/**
+ * 화면에 보여 줄 본문 — 톡방 양식의 절 머리 이모지(🔰💌💗📖📁💡)는 앱에선 뗀다 (2026-11-28 문구 검수).
+ * 원문(DB)은 그대로 두고 그릴 때만 바꾼다. 톡방 글과 지난 글 요약(postSummary)은 🔰를 기준으로 쓰기 때문.
+ */
+const HEAD_EMOJI = /^[ \t]*(?:🔰|💌|💗|📖|📁|💡)️?[ \t]*/gmu
+export function displayBody(text: string): string {
+  return text
+    .replace(HEAD_EMOJI, '')
+    .replace(/^오늘 딱 하나만 읽는다면[ \t]*$/gm, '오늘의 추천 기사')
+}
+
 export function linkify(text: string): Segment[] {
   const out: Segment[] = []
   const re = /https?:\/\/[^\s<>"')\]]+/g
@@ -326,7 +337,8 @@ export async function fetchNewsMeta(): Promise<Record<string, NewsMeta>> {
   const { data, error } = await supabase.from('news_meta').select('url,image,press').limit(5000)
   if (error) return {}
   const out: Record<string, NewsMeta> = {}
-  for (const r of data as ({ url: string } & NewsMeta)[]) out[r.url] = { image: r.image, press: r.press }
+  for (const r of data as ({ url: string } & NewsMeta)[])
+    out[r.url] = { image: r.image, press: r.press }
   return out
 }
 

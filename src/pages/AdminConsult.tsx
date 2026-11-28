@@ -75,7 +75,7 @@ export default function AdminConsult() {
                     ['쓸 수 있는 현금', won(r.details.cash)],
                     ['대출 포함 최대', won(r.details.maxBudget)],
                     ['월 실수령(합산)', won(r.details.monthlyIncome)],
-                    ['월 이자 최고', won(r.details.maxInterest)],
+                    ['한 달에 낼 수 있는 이자(최고)', won(r.details.maxInterest)],
                     ['가진 자산', r.details.assets || '—'],
                     ['자녀 계획', r.details.kids],
                     ['양가 위치', r.details.parents],

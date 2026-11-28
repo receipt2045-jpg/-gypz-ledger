@@ -267,7 +267,7 @@ export default function Home() {
                   </p>
                   <p className="mt-1.5 text-[14px] font-medium text-sub">
                     {s.surplus === 0
-                      ? '완벽해요 👏 한 푼도 남김없이 계획됐어요'
+                      ? '한 푼도 남김없이 계획됐어요'
                       : s.surplus > 0
                         ? `아직 ${formatWon(s.surplus)}이 계획되지 않았어요`
                         : `${formatWon(-s.surplus)}만큼 초과 지출됐어요`}
@@ -277,12 +277,12 @@ export default function Home() {
                 <>
                   <div className="flex items-center justify-between">
                     <p className="text-[15px] font-bold text-ink">
-                      아직 {formatMonthKorean(ym)} 정산 전입니다
+                      아직 {formatMonthKorean(ym)} 정산 전이에요
                     </p>
                     <ChevronRight size={18} className="shrink-0 text-cap" />
                   </div>
                   <p className="mt-1.5 text-[14px] font-medium text-sub">
-                    가계부 탭에서 예산을 세우고 정산해 보세요 🤍
+                    가계부 탭에서 예산을 세우고 정산해요
                   </p>
                 </>
               )}
@@ -337,14 +337,12 @@ export default function Home() {
                   </b>{' '}
                   남았어요.{' '}
                   {reachYm
-                    ? `지금 속도면 ${formatYmKorean(reachYm)} 도착이에요`
-                    : '로드맵에서 길을 그려 보세요'}
+                    ? `지금 속도면 ${formatYmKorean(reachYm)}이에요`
+                    : '로드맵에서 목표를 정해 보세요'}
                 </p>
               )}
               {profile.targetNetWorth > 0 && netWorth >= profile.targetNetWorth && (
-                <p className="mt-2 text-[13px] font-bold text-brand">
-                  🎉 10년 목표를 달성했어요! 대단해요
-                </p>
+                <p className="mt-2 text-[13px] font-bold text-brand">10년 목표에 닿았어요</p>
               )}
             </Card>
           </>

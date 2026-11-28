@@ -154,8 +154,8 @@ export function pickIssues(s: ReportStats): DraftIssue[] {
   if (s.surplus < 0) {
     out.push({
       key: 'deficit',
-      title: '매달 적자입니다',
-      body: `최근 ${s.months}개월 평균으로 매달 ${formatWon(Math.abs(s.surplus))}씩 모자랍니다. 저축을 늘리기 전에 이것부터 막아야 해요.`,
+      title: '매달 적자예요',
+      body: `최근 ${s.months}개월 평균으로 매달 ${formatWon(Math.abs(s.surplus))}씩 모자라요. 저축을 늘리기 전에 이것부터 막아야 해요.`,
       action: `변동지출 1위인 ${s.topVariable[0]?.category ?? '식비'}부터 한 달 예산을 정해두세요.`,
     })
   }
@@ -163,8 +163,8 @@ export function pickIssues(s: ReportStats): DraftIssue[] {
   if (s.emergencyMonths < 3) {
     out.push({
       key: 'emergency',
-      title: '비상금이 얇습니다',
-      body: `현금성 자산이 생활비 ${s.emergencyMonths.toFixed(1)}개월치예요. 아프거나 일이 끊기면 바로 빚으로 갑니다.`,
+      title: '비상금이 3개월치보다 적어요',
+      body: `현금성 자산이 생활비 ${s.emergencyMonths.toFixed(1)}개월치예요. 아프거나 일이 끊기면 바로 빚으로 가요.`,
       action: `월 지출 3개월치(${formatWon(s.avgExpense * 3)})가 모일 때까지 비상금 통장을 따로 두세요.`,
     })
   }
@@ -172,8 +172,8 @@ export function pickIssues(s: ReportStats): DraftIssue[] {
   if (s.debtRatio > 0.5) {
     out.push({
       key: 'debt',
-      title: '부채 비중이 높습니다',
-      body: `자산 대비 부채가 ${Math.round(s.debtRatio * 100)}%예요. 투자보다 상환이 먼저입니다.`,
+      title: `부채가 자산의 ${Math.round(s.debtRatio * 100)}%예요`,
+      body: `자산 대비 부채가 ${Math.round(s.debtRatio * 100)}%예요. 투자보다 상환이 먼저예요.`,
       action: '금리가 높은 대출부터 순서를 정해 갚아 나가세요.',
     })
   }
@@ -181,8 +181,8 @@ export function pickIssues(s: ReportStats): DraftIssue[] {
   if (s.savingRate < 0.2 && s.surplus >= 0) {
     out.push({
       key: 'saving',
-      title: '저축률이 낮습니다',
-      body: `수입의 ${Math.round(s.savingRate * 100)}%만 모으고 있어요. 이 속도로는 목표가 계속 멀어집니다.`,
+      title: `저축률이 ${Math.round(s.savingRate * 100)}%예요`,
+      body: `수입의 ${Math.round(s.savingRate * 100)}%만 모으고 있어요. 이 속도로는 목표가 계속 멀어져요.`,
       action: '월급날 저축부터 자동이체로 빼두고 남은 돈으로 사세요.',
     })
   }
@@ -190,8 +190,8 @@ export function pickIssues(s: ReportStats): DraftIssue[] {
   if (s.fixedRatio > 0.5) {
     out.push({
       key: 'fixed',
-      title: '고정지출이 무겁습니다',
-      body: `수입의 ${Math.round(s.fixedRatio * 100)}%가 매달 자동으로 나갑니다. 한 번 줄이면 계속 남아요.`,
+      title: `고정지출이 수입의 ${Math.round(s.fixedRatio * 100)}%예요`,
+      body: `수입의 ${Math.round(s.fixedRatio * 100)}%가 매달 자동으로 나가요. 한 번 줄이면 계속 남아요.`,
       action: '보험·통신·구독 세 가지를 이번 달에 한 번씩 열어보세요.',
     })
   }
@@ -199,8 +199,8 @@ export function pickIssues(s: ReportStats): DraftIssue[] {
   if (!s.hasHousingSubscription) {
     out.push({
       key: 'subscription',
-      title: '주택청약이 없습니다',
-      body: '내집마련이 목표라면 청약통장은 가장 싼 준비물이에요. 월 2만원이면 시작합니다.',
+      title: '주택청약이 없어요',
+      body: '내집마련이 목표라면 청약통장은 가장 싼 준비물이에요. 월 2만원이면 시작해요.',
       action: '두 분 각자 청약통장을 만들고 자동이체를 걸어두세요.',
     })
   }
@@ -208,8 +208,8 @@ export function pickIssues(s: ReportStats): DraftIssue[] {
   if (s.occasionMonthly > s.avgIncome * 0.05 && s.avgIncome > 0) {
     out.push({
       key: 'occasion',
-      title: '비정기 지출이 예산을 흔듭니다',
-      body: `경조사·명절 같은 지출이 월 ${formatWon(s.occasionMonthly)} 꼴로 나갑니다. 예산에 없으면 매번 저축이 밀려요.`,
+      title: '비정기 지출이 예산을 흔들어요',
+      body: `경조사·명절 같은 지출이 월 ${formatWon(s.occasionMonthly)} 꼴로 나가요. 예산에 없으면 매번 저축이 밀려요.`,
       action: `연간비 통장을 만들고 매달 ${formatWon(Math.round(s.occasionMonthly / 10000) * 10000)}씩 미리 넣어두세요.`,
     })
   }
@@ -220,9 +220,10 @@ export function pickIssues(s: ReportStats): DraftIssue[] {
 /** 우리집 위치 한 줄 */
 export function positionLine(s: ReportStats): string {
   if (s.percentile == null) return ''
-  if (s.percentile <= 30) return `모아불리를 쓰는 가구 중 상위 ${s.percentile}%예요. 잘하고 계십니다.`
-  if (s.percentile <= 70) return `모아불리를 쓰는 가구 중 상위 ${s.percentile}% 언저리예요. 딱 중간입니다.`
-  return `모아불리를 쓰는 가구 중 상위 ${s.percentile}%예요. 지금부터 올리면 됩니다.`
+  if (s.percentile <= 30) return `모아불리를 쓰는 가구 중 상위 ${s.percentile}%예요.`
+  if (s.percentile <= 70)
+    return `모아불리를 쓰는 가구 중 상위 ${s.percentile}% 언저리예요. 딱 중간이에요.`
+  return `모아불리를 쓰는 가구 중 상위 ${s.percentile}%예요. 지금부터 올리면 돼요.`
 }
 
 /** 초안 본문 (운영자가 고쳐 쓰는 원고) */
@@ -232,7 +233,7 @@ export function buildReportDraft(d: HouseholdData, bench?: Benchmark): string {
 
   if (s.months === 0) {
     return [
-      `${n1}·${n2} 님 안녕하세요, 결영이네입니다.`,
+      `${n1}·${n2} 님 안녕하세요, 결영이네예요.`,
       '',
       '아직 정산을 마친 달이 없어서 숫자를 볼 수 없었어요.',
       '한 달만 정산해 주시면 바로 리포트를 만들어 보내드릴게요.',
@@ -245,14 +246,14 @@ export function buildReportDraft(d: HouseholdData, bench?: Benchmark): string {
   const rate = Math.round(s.savingRate * 100)
 
   const L: string[] = []
-  L.push(`${n1}·${n2} 님, 결영이네입니다.`)
+  L.push(`${n1}·${n2} 님, 결영이네예요.`)
   L.push('')
-  L.push(`최근 ${s.months}개월 숫자를 봤어요. 한 줄로 말씀드리면 —`)
+  L.push(`최근 ${s.months}개월 숫자를 봤어요.`)
   L.push('')
   L.push(
     top
       ? `**${top.title}.** ${top.body}`
-      : `**잘 굴러가고 있습니다.** 저축률 ${rate}%로 꾸준히 모으고 계세요.`,
+      : `**잘 되고 있어요.** 저축률 ${rate}%로 꾸준히 모으고 계세요.`,
   )
   L.push('')
 
@@ -261,7 +262,9 @@ export function buildReportDraft(d: HouseholdData, bench?: Benchmark): string {
   L.push(`- 월 평균 수입: ${formatWon(s.avgIncome)}`)
   L.push(`- 월 평균 지출: ${formatWon(s.avgExpense)}`)
   L.push(`- 월 평균 저축·투자: ${formatWon(s.avgSavingInvest)} (저축률 ${rate}%)`)
-  L.push(`- 순자산: ${abbreviateKRW(s.netWorth)} (자산 ${abbreviateKRW(s.assets)} − 부채 ${abbreviateKRW(s.debts)})`)
+  L.push(
+    `- 순자산: ${abbreviateKRW(s.netWorth)} (자산 ${abbreviateKRW(s.assets)} − 부채 ${abbreviateKRW(s.debts)})`,
+  )
   L.push(`- 비상금: 생활비 ${s.emergencyMonths.toFixed(1)}개월치`)
   if (s.topVariable.length) {
     L.push(
@@ -272,15 +275,19 @@ export function buildReportDraft(d: HouseholdData, bench?: Benchmark): string {
 
   L.push('## 10년 목표까지')
   L.push('')
-  L.push(`목표는 ${abbreviateKRW(d.profile.targetNetWorth)}, 지금은 ${abbreviateKRW(s.netWorth)}입니다.`)
+  L.push(
+    `목표는 ${abbreviateKRW(d.profile.targetNetWorth)}, 지금은 ${abbreviateKRW(s.netWorth)}이에요.`,
+  )
   if (s.yearsToTarget === 0) {
-    L.push('이미 목표를 넘기셨어요. 다음 목표를 새로 잡을 때입니다.')
+    L.push('이미 목표를 넘기셨어요. 다음 목표를 새로 잡을 때예요.')
   } else if (s.yearsToTarget == null) {
-    L.push('지금 저축 속도로는 도달 시점을 계산할 수 없어요. 저축부터 다시 시작해야 합니다.')
+    L.push('지금 저축 속도로는 도달 시점을 계산할 수 없어요. 저축부터 다시 시작해야 해요.')
   } else {
     L.push(
-      `지금 속도(월 ${formatWon(s.avgSavingInvest)})로는 **약 ${s.yearsToTarget.toFixed(1)}년** 걸립니다.` +
-        (s.yearsToTarget > 10 ? ' 10년 안에 넣으려면 저축을 더 올려야 해요.' : ' 10년 안에 들어옵니다.'),
+      `지금 속도(월 ${formatWon(s.avgSavingInvest)})로는 **약 ${s.yearsToTarget.toFixed(1)}년** 걸려요.` +
+        (s.yearsToTarget > 10
+          ? ' 10년 안에 넣으려면 저축을 더 올려야 해요.'
+          : ' 10년 안에 들어와요.'),
     )
   }
   const pos = positionLine(s)
@@ -299,7 +306,7 @@ export function buildReportDraft(d: HouseholdData, bench?: Benchmark): string {
     L.push('')
     L.push(`→ ${top.action}`)
   } else {
-    L.push('급한 문제는 없습니다. 지금 흐름을 유지하세요.')
+    L.push('지금 급한 건 없어요. 이 흐름을 유지하면 돼요.')
   }
   L.push('')
 
@@ -317,7 +324,9 @@ export function buildReportDraft(d: HouseholdData, bench?: Benchmark): string {
   L.push('## 점검표')
   L.push('')
   L.push(`- 통장 쪼개기: ${s.emergencyMonths >= 3 ? '비상금 확보됨 ✓' : '비상금 통장 분리 필요'}`)
-  L.push(`- 보험: 고정지출 비중 ${Math.round(s.fixedRatio * 100)}%${s.fixedRatio > 0.5 ? ' — 점검 필요' : ' — 무난함 ✓'}`)
+  L.push(
+    `- 보험: 고정지출 비중 ${Math.round(s.fixedRatio * 100)}%${s.fixedRatio > 0.5 ? ' — 점검 필요' : ' — 무난함 ✓'}`,
+  )
   L.push(`- 청약: ${s.hasHousingSubscription ? '있음 ✓' : '없음 — 개설 권장'}`)
   L.push('')
   L.push('---')
@@ -328,9 +337,9 @@ export function buildReportDraft(d: HouseholdData, bench?: Benchmark): string {
     "이 숫자를 놓고 '그래서 우리집은 언제 집 사?'까지 가고 싶으시면 1:1 내집마련 상담에서 이어서 봐요.",
   )
   L.push('')
-  L.push('다음 달에도 잘 모아봐요 🤍')
+  L.push('다음 달도 이 속도로 가면 돼요.')
   L.push('')
-  L.push('결영이네 드림')
+  L.push('결영이네')
 
   return L.join('\n')
 }

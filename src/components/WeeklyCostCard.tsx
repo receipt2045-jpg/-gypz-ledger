@@ -15,13 +15,13 @@ export default function WeeklyCostCard({ confessions }: { confessions: Confessio
     <div className="rounded-card bg-ink px-5 py-4 text-white shadow-card">
       <div className="mb-1 flex items-center gap-1.5">
         <PiggyBank size={16} className="text-white/70" />
-        <p className="text-[13px] font-semibold text-white/70">이번 주 줄일 수 있었던 돈 👀</p>
+        <p className="text-[13px] font-semibold text-white/70">이번 주 줄일 수 있었던 돈</p>
       </div>
       <p className="tnum text-[26px] font-extrabold">{formatWon(weekSum)}</p>
       <p className="mt-1.5 text-[13px] leading-relaxed text-white/80">
-        기록 {count}번 모아보니 이만큼이에요. 매주 이 돈을 적금하면{' '}
-        <b className="text-white">1년에 {abbreviateKRW(perYear)}</b>,{' '}
-        <b className="text-white">10년이면 {abbreviateKRW(tenYears)}</b> 🤍
+        기록 {count}번 합계예요. 매주 적금하면{' '}
+        <b className="text-white">1년 {abbreviateKRW(perYear)}</b>,{' '}
+        <b className="text-white">10년 {abbreviateKRW(tenYears)}</b>
       </p>
     </div>
   )

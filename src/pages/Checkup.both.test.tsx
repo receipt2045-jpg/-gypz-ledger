@@ -77,7 +77,7 @@ describe('정산 — 혼자서도 완주하기', () => {
 
     expect(settled().sort()).toEqual([1, 2])
     expect(isClosed()).toBe(true)
-    expect(screen.getByText(/정산 완료 🎉/)).toBeInTheDocument()
+    expect(screen.getByText(/월 정산 완료$/)).toBeInTheDocument()
   })
 
   it('둘 다 입력이어도 두 사람 항목이 그대로 저장된다', async () => {

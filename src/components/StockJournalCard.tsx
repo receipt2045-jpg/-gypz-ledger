@@ -30,7 +30,7 @@ export default function StockJournalCard() {
         </span>
         <span className="mt-0.5 block text-[12.5px] text-sub">
           {stocks.length > 0
-            ? `${stocks.length}종목 · 왜 샀는지, 얼마에 팔지 부부가 같이`
+            ? `${stocks.length}종목 · 왜 샀는지, 얼마에 팔지 같이 적어 둬요`
             : '캡처 한 장이면 우리집 주식이 정리돼요'}
         </span>
       </span>

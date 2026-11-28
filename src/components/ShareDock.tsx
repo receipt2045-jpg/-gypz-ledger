@@ -49,14 +49,14 @@ export default function ShareDock() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
         <div className="mx-auto flex max-w-app items-center gap-3 px-5 py-3 lg:max-w-[720px]">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-bold text-ink">도움 됐다면 나눠 주세요</p>
+            <p className="truncate text-[14px] font-bold text-ink">도움 됐다면 공유해 주세요</p>
             <p className="flex items-center gap-1 text-[12px] text-cap">
               {label ? (
                 <>
                   <Eye size={13} /> {label}이 봤어요
                 </>
               ) : (
-                '카톡·인스타로 바로 보낼 수 있어요'
+                '카톡·인스타로 바로 보내요'
               )}
             </p>
           </div>

@@ -62,7 +62,9 @@ export default function Share() {
   // 제목 아래 따라오는 분류 줄
   // (Tailwind는 이어 붙인 클래스 이름을 못 읽는다 — 폰·PC 여백을 통째로 적는다)
   const chipBar = (edge: '-mx-5 px-5' | '-mx-10 px-10') => (
-    <div className={`no-scrollbar sticky top-0 z-10 overflow-x-auto bg-white/95 py-3 backdrop-blur ${edge}`}>
+    <div
+      className={`no-scrollbar sticky top-0 z-10 overflow-x-auto bg-white/95 py-3 backdrop-blur ${edge}`}
+    >
       {chips}
     </div>
   )
@@ -90,7 +92,7 @@ export default function Share() {
           {back}
           <header className="pt-8">
             <h1 className="text-[34px] font-extrabold text-ink">결영이네 자료 나눔</h1>
-            <p className="mt-2 text-[17px] text-sub">단톡방에서 나눈 자료, 여기 다 모아뒀어요</p>
+            <p className="mt-2 text-[17px] text-sub">단톡방에서 나눈 자료를 모아 뒀어요</p>
           </header>
           <div className="mt-6">{chipBar('-mx-10 px-10')}</div>
 
@@ -174,7 +176,7 @@ export default function Share() {
 
           <header className="pt-6 text-center">
             <h1 className="text-[26px] font-extrabold text-ink">결영이네 자료 나눔</h1>
-            <p className="mt-1.5 text-[15px] text-sub">단톡방에서 나눈 자료, 여기 다 모아뒀어요</p>
+            <p className="mt-1.5 text-[15px] text-sub">단톡방에서 나눈 자료를 모아 뒀어요</p>
           </header>
           <div className="mt-6">{chipBar('-mx-5 px-5')}</div>
 

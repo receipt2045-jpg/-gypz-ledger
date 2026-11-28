@@ -576,9 +576,9 @@ function CaptureAdd({
       const reason = err instanceof CaptureError ? err.reason : 'failed'
       setError(
         reason === 'limit'
-          ? '오늘은 캡처를 많이 읽었어요. 내일 다시 올려 주세요'
+          ? '오늘 캡처 읽기 횟수를 다 썼어요. 내일 다시 올려 주세요'
           : reason === 'login'
-            ? '로그인하고 쓸 수 있어요'
+            ? '로그인하면 쓸 수 있어요'
             : '읽지 못했어요. 잠시 뒤 다시 올려 주세요',
       )
       setState('pick')

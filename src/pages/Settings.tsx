@@ -99,7 +99,7 @@ export default function Settings() {
       await deleteMyAccount()
       // 계정이 이미 지워져 서버 로그아웃은 실패한다 — 이 기기의 로그인만 지운다
       await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined)
-      alert('탈퇴가 완료됐어요. 그동안 함께해 주셔서 고마웠어요 🤍')
+      alert('탈퇴가 완료됐어요. 그동안 고마웠어요.')
     } catch (err) {
       setDeleting(false)
       alert(`탈퇴에 실패했어요: ${err instanceof Error ? err.message : String(err)}`)
@@ -223,7 +223,7 @@ export default function Settings() {
   const handleReset = () => {
     if (confirm('모든 가계부 기록을 삭제할까요? 되돌릴 수 없어요.')) {
       resetData()
-      alert('초기화되었어요.')
+      alert('초기화했어요.')
     }
   }
 
@@ -308,7 +308,7 @@ export default function Settings() {
                   aria-expanded={swapOpen}
                   className="w-full rounded-btn bg-bg py-2.5 text-[13px] font-bold text-sub active:bg-line"
                 >
-                  ⇄ (나) 표시가 배우자 이름에 붙어 있어요
+                  배우자 이름에 ⇄(나) 표시가 붙어 있어요
                 </button>
                 {swapOpen && (
                   <div className="space-y-2 rounded-btn border border-line p-3">
@@ -339,7 +339,7 @@ export default function Settings() {
                       className="w-full rounded-btn bg-brand px-3 py-2.5 text-left text-white disabled:opacity-60"
                     >
                       <span className="block text-[13.5px] font-bold">
-                        {swapping ? '바꾸는 중…' : '기록도 이름 따라 옮기기 (추천)'}
+                        {swapping ? '바꾸는 중…' : '기록도 이름 따라 옮기기'}
                       </span>
                       <span className="block text-[11.5px] text-white/85">
                         {profile.member1Name} 이름으로 적은 예산·정산·소비 기록은 계속{' '}
@@ -650,7 +650,7 @@ function MarketingToggle() {
     try {
       await setMarketingConsent(next)
       setOn(next)
-      setMsg(next ? '이제 소식을 보내드릴게요 🤍' : '수신을 껐어요. 광고성 메일은 안 보내요')
+      setMsg(next ? '이제 소식을 보내드려요' : '수신을 껐어요. 광고성 메일은 안 보내요')
     } catch {
       setMsg('바꾸지 못했어요. 잠시 후 다시 시도해 주세요')
     }
@@ -725,8 +725,8 @@ function PasswordForm() {
     } else {
       setMsg({
         text: email
-          ? `✅ 비밀번호를 정했어요. 이제 ${email} + 이 비밀번호로도 로그인할 수 있어요.`
-          : '✅ 비밀번호를 정했어요. 이제 이메일 + 이 비밀번호로도 로그인할 수 있어요.',
+          ? `비밀번호를 정했어요. 이제 ${email} + 이 비밀번호로도 로그인할 수 있어요.`
+          : '비밀번호를 정했어요. 이제 이메일 + 이 비밀번호로도 로그인할 수 있어요.',
         ok: true,
       })
       setPw('')

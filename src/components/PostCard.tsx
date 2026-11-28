@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import Card from './Card'
-import { POST_KIND_LABEL, linkify, type Post } from '../lib/posts'
+import { POST_KIND_LABEL, displayBody, linkify, type Post } from '../lib/posts'
 
 /** 목록에서 보이는 앞부분 줄 수 — 나머지는 '자세히 보기'에서 (2026-10-06: 글이 너무 길었다) */
 const PREVIEW_LINES = 3
@@ -28,7 +28,7 @@ export function PostMeta({ post }: { post: Post }) {
 export function PostBody({ text }: { text: string }) {
   return (
     <p className="whitespace-pre-wrap break-words text-[14.5px] leading-relaxed text-sub">
-      {linkify(text).map((s, i) =>
+      {linkify(displayBody(text)).map((s, i) =>
         s.type === 'link' ? (
           <a
             key={i}

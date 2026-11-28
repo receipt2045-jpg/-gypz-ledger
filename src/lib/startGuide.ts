@@ -9,7 +9,7 @@ export const START_STEPS: { key: StartStepKey; label: string; hint: string; cta:
   {
     key: 'assets',
     label: '우리집 자산 넣기',
-    hint: '통장·주식·집·대출을 넣으면 순자산이 보여요. 대략이어도 괜찮아요',
+    hint: '통장·주식·집·대출을 넣으면 순자산이 나와요. 대략이어도 돼요',
     cta: '자산 넣기',
   },
   {
@@ -27,7 +27,7 @@ export const START_STEPS: { key: StartStepKey; label: string; hint: string; cta:
   {
     key: 'yearEnd',
     label: '연말정산 계산기 보기',
-    hint: '누구 카드를 써야 환급이 더 많은지 알려드려요',
+    hint: '카드별 공제액을 계산해 비교해요',
     cta: '계산해 보기',
   },
   {

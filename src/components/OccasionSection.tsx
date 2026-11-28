@@ -20,7 +20,7 @@ export default function OccasionSection({
   onAdd,
   onRemove,
   onUpdate,
-  emptyText = '아직 기록이 없어요 · 예산이 무너지는 1위가 비정기 지출이에요',
+  emptyText = '아직 기록이 없어요 · 예산이 무너지는 건 대개 비정기 지출이에요',
   open: openProp,
   onOpenChange,
 }: {
@@ -81,14 +81,11 @@ export default function OccasionSection({
         )}
       </div>
       <p className="mb-2 text-[12px] text-cap">
-        경조사·명절·자동차·세금처럼 <b className="font-semibold">가끔 오는 큰돈</b> · 공동 카드
-        지출도 여기에 · 올해 합계{' '}
-        <span className="tnum font-semibold text-sub">{formatWon(yearTotal)}</span>
+        경조사·명절·자동차·세금처럼 <b className="font-semibold">가끔 나가는 큰돈</b> · 공동 카드도
+        여기 · 올해 <span className="tnum font-semibold text-sub">{formatWon(yearTotal)}</span>
       </p>
       {!onAdd && (
-        <p className="mb-2 text-[12px] text-cap">
-          기록은 가계부 탭에서 해요 · 여기선 한눈에 봅니다
-        </p>
+        <p className="mb-2 text-[12px] text-cap">기록은 가계부 탭에서 하고, 여기선 모아 봐요</p>
       )}
 
       {onAdd && open && (

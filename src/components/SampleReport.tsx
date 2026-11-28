@@ -20,10 +20,15 @@ export default function SampleReport() {
 
   return (
     <div className="rounded-card bg-card px-5 py-4 shadow-card">
-      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between"
+      >
         <span className="flex items-center gap-2">
           <span className="text-[15px] font-bold text-ink">실제로 이렇게 받아요</span>
-          <span className="rounded-full bg-line px-2 py-0.5 text-[10.5px] font-bold text-cap">예시</span>
+          <span className="rounded-full bg-line px-2 py-0.5 text-[10.5px] font-bold text-cap">
+            예시
+          </span>
         </span>
         <ChevronDown
           size={18}
@@ -37,11 +42,11 @@ export default function SampleReport() {
             가상의 부부 예시예요. 실제 리포트는 우리집 숫자로 만들어져요.
           </p>
 
-          <p className="mt-4 text-ink">민준·다은 님, 결영이네입니다.</p>
-          <p className="mt-2">최근 6개월 숫자를 봤어요. 한 줄로 말씀드리면 —</p>
+          <p className="mt-4 text-ink">민준·다은 님, 결영이네예요.</p>
+          <p className="mt-2">최근 6개월 숫자를 봤어요.</p>
           <p className="mt-2">
             <b className="text-ink">비상금이 얇아요.</b> 지금 통장에 있는 현금이 생활비
-            1.2개월치예요. 둘 중 한 명만 수입이 끊겨도 바로 빚으로 갑니다.
+            1.2개월치예요. 둘 중 한 명만 수입이 끊겨도 바로 빚으로 가요.
           </p>
 
           <H>우리집 숫자</H>
@@ -61,8 +66,8 @@ export default function SampleReport() {
           <p>목표는 4억, 지금은 9,400만원이에요.</p>
           <p className="mt-1.5">
             지금 속도(월 105만원)로는 <b className="text-ink">약 24년</b> 걸려요. 10년 안에
-            들어오려면 매달 255만원이 필요한데요. 무리하란 말이 아니라, 새는 돈 76만원만
-            잡아도 월 180만원까지 올라가요. 반은 온 거예요.
+            들어오려면 매달 255만원이 필요한데요. 무리하란 말이 아니라, 새는 돈 76만원만 잡아도 월
+            180만원까지 올라가요. 절반은 채운 셈이에요.
           </p>
 
           <H>지금 제일 급한 것</H>
@@ -70,9 +75,9 @@ export default function SampleReport() {
             <b className="text-ink">비상금 통장 만들기.</b>
           </p>
           <p className="mt-1.5">
-            저축을 늘리기 전에 이것부터예요. 월 지출 3개월치, 1,200만원이 모일 때까지는 투자
-            말고 파킹통장에 넣으세요. 저희도 이거 없이 투자부터 했다가 급전 필요할 때 주식
-            팔아서 손해 봤어요.
+            저축을 늘리기 전에 이것부터예요. 월 지출 3개월치, 1,200만원이 모일 때까지는 투자 말고
+            파킹통장에 넣으세요. 저희도 이거 없이 투자부터 했다가 급전 필요할 때 주식 팔아서 손해
+            봤어요.
           </p>
 
           <H>통장 쪼개기, 이렇게</H>
@@ -84,24 +89,23 @@ export default function SampleReport() {
             <li>· 나머지 348만원이 생활비 — 이 통장 하나로만 쓰세요</li>
           </ul>
           <p className="mt-1.5">
-            새는 돈 76만원은 잡으려고 애쓰는 게 아니라, 갈래를 나누면 저절로 잡혀요. 남는
-            돈이 눈에 보이는 통장은 하나뿐이니까요.
+            새는 돈 76만원은 잡으려고 애쓰는 게 아니라, 갈래를 나누면 잡혀요. 남는 돈이 눈에 보이는
+            통장은 하나뿐이니까요.
           </p>
 
           <H>보험 · 청약 점검</H>
           <p>
-            보험은 둘이 합쳐 월 38만원, 수입의 6.5%라 무난해요. 실비가 옛날 세대인지만 한번
-            확인해 보세요.
+            보험은 둘이 합쳐 월 38만원, 수입의 6.5%라 무난해요. 실비가 옛날 세대인지만 한번 확인해
+            보세요.
           </p>
           <p className="mt-1.5">
-            청약은 두 분 다 있어요. 민준 님 통장이 8년 차예요. 점수가 아까우니 절대 깨지
-            마세요.
+            청약은 두 분 다 있어요. 민준 님 통장이 8년 차예요. 점수가 아까우니 절대 깨지 마세요.
           </p>
 
           <H>부수입 이야기</H>
           <p>
-            다은 님 스마트스토어가 석 달 평균 25만원이에요. 이 돈이 저축률을 4%p 올려주고
-            있어요. 우리집은 지출을 더 쥐어짜는 것보다 이쪽을 키우는 게 빠를 수 있어요.
+            다은 님 스마트스토어가 석 달 평균 25만원이에요. 이 돈이 저축률을 4%p 올려주고 있어요.
+            우리집은 지출을 더 쥐어짜는 것보다 이쪽을 키우는 게 빠를 수 있어요.
           </p>
 
           <H>다음 3개월에 할 일</H>
@@ -117,8 +121,8 @@ export default function SampleReport() {
               이 숫자를 놓고 '그래서 우리집은 언제 집 사?'까지 가고 싶으시면{' '}
               <b className="text-ink">1:1 내집마련 상담</b>에서 이어서 봐요.
             </p>
-            <p className="mt-3">다음 달에도 잘 모아봐요 🤍</p>
-            <p className="mt-1.5 text-ink">결영이네 드림</p>
+            <p className="mt-3">다음 달도 이 속도로 가면 돼요.</p>
+            <p className="mt-1.5 text-ink">결영이네</p>
           </div>
         </div>
       )}

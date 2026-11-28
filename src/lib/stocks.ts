@@ -70,7 +70,7 @@ export const PLAN_KEPT: { key: PlanKept; label: string }[] = [
 ]
 
 /** 배우자 빠른 반응 — 한 줄(comment)로 남는다 */
-export const QUICK_REACTIONS = ['👍 좋아', '🤔 왜?', '🙏 목표 지키기', '😱 너무 많이 샀어']
+export const QUICK_REACTIONS = ['좋아요', '이유가 있나요?', '목표 지키기', '너무 많이 샀어요']
 
 // ── 보유 계산 ─────────────────────────────────
 

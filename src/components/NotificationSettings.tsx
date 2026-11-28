@@ -1,7 +1,13 @@
 import { useEffect, useId, useState } from 'react'
 import Toggle from './Toggle'
 import { isNative } from '../lib/native'
-import { askPushPermission, pushPermission, pushSupported, startPush, type PushPermission } from '../lib/pushNative'
+import {
+  askPushPermission,
+  pushPermission,
+  pushSupported,
+  startPush,
+  type PushPermission,
+} from '../lib/pushNative'
 import {
   TIME_SLOTS,
   consentNotice,
@@ -21,8 +27,9 @@ const FAIL = '바꾸지 못했어요. 잠시 후 다시 해 주세요'
  * 웹은 안내 한 줄. 앱은 종류별 스위치 + 리마인더 시각. 광고 스위치는 바꾸는 즉시 처리 결과를 알린다(정보통신망법).
  */
 export default function NotificationSettings() {
-  if (!isNative()) return <p className="text-[13.5px] text-sub">알림은 모아불리 앱에서 받을 수 있어요</p>
-  if (!pushSupported()) return <p className="text-[13.5px] text-sub">앱을 업데이트하면 알림을 받을 수 있어요</p>
+  if (!isNative()) return <p className="text-[13.5px] text-sub">알림은 모아불리 앱에서 받아요</p>
+  if (!pushSupported())
+    return <p className="text-[13.5px] text-sub">앱을 업데이트하면 알림을 받을 수 있어요</p>
   return <AppNotificationSettings />
 }
 
@@ -57,7 +64,11 @@ function AppNotificationSettings() {
 
   if (!loaded) return null
   if (loadFailed) {
-    return <p className="text-[13.5px] font-medium text-danger">알림 설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</p>
+    return (
+      <p className="text-[13.5px] font-medium text-danger">
+        알림 설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요.
+      </p>
+    )
   }
 
   const enable = async () => {
@@ -111,7 +122,11 @@ function AppNotificationSettings() {
   const changePromo = async (on: boolean) => {
     const before = prefs
     const now = new Date()
-    setPrefs({ ...prefs, promoOn: on, promoConsentAt: on ? now.toISOString() : prefs.promoConsentAt })
+    setPrefs({
+      ...prefs,
+      promoOn: on,
+      promoConsentAt: on ? now.toISOString() : prefs.promoConsentAt,
+    })
     setMsg('')
     try {
       await setPromo(on, now)
@@ -150,9 +165,24 @@ function AppNotificationSettings() {
           </select>
         </div>
       </div>
-      <SwitchRow label="월말 정산" desc="정산일 저녁 8시" checked={prefs.settleOn} onChange={(v) => change({ settleOn: v })} />
-      <SwitchRow label="오늘의 경제·공지" desc="매일 아침 8시" checked={prefs.newsOn} onChange={(v) => change({ newsOn: v })} />
-      <SwitchRow label="결영이네 소식·혜택" desc="광고성 알림 · 동의한 분께만" checked={prefs.promoOn} onChange={changePromo} />
+      <SwitchRow
+        label="월말 정산"
+        desc="정산일 저녁 8시"
+        checked={prefs.settleOn}
+        onChange={(v) => change({ settleOn: v })}
+      />
+      <SwitchRow
+        label="오늘의 경제·공지"
+        desc="매일 아침 8시"
+        checked={prefs.newsOn}
+        onChange={(v) => change({ newsOn: v })}
+      />
+      <SwitchRow
+        label="결영이네 소식·혜택"
+        desc="광고성 알림 · 동의한 분께만"
+        checked={prefs.promoOn}
+        onChange={changePromo}
+      />
       {msg && <p className="pl-1 text-[12.5px] font-medium text-brand">{msg}</p>}
     </div>
   )

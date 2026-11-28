@@ -107,7 +107,7 @@ export const NO_SPEND = '무지출'
 
 // 용어 툴팁 문구 (개선브리프 5장 최종본 그대로)
 export const TERM_TIP = {
-  netWorth: '자산에서 부채를 뺀, 진짜 내 재산입니다',
+  netWorth: '자산에서 부채를 뺀 금액이에요',
   surplus: '수입에서 저축·투자·지출을 빼고 남은 돈이에요',
   savingRate: '번 돈 중 저축·투자로 간 비율입니다',
   purposeSaving: '여행·비상금처럼 목적을 정해 모으는 돈이에요',

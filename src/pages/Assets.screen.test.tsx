@@ -138,7 +138,7 @@ describe('자산 탭 — 2026-11-17 의견', () => {
       ],
     })
     const { user } = renderScreen(<Assets />)
-    expect(screen.getByText('점을 누르면 그 달 자산을 볼 수 있어요')).toBeInTheDocument()
+    expect(screen.getByText('점을 누르면 그 달 자산이 보여요')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '2026년 9월 자산 보기' }))
     expect(screen.getByText(/2026년 9월 전체 자산/)).toBeInTheDocument()
     // 홈 맨 위 순자산과 헷갈리지 않게 — 빚 빼기 전이라고 밝히고 순자산도 같이 (2026-11-19)

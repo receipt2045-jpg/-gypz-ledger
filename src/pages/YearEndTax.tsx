@@ -110,7 +110,7 @@ export default function YearEndTax() {
                       <div className="space-y-3 rounded-card bg-card px-5 py-4 shadow-card">
                         <h2 className="text-[15px] font-bold text-ink">올해 각자 카드로 쓴 돈</h2>
                         <p className="-mt-1.5 text-[12px] text-cap">
-                          아직 모르시면 비워두세요. 넣으면 더 정확해져요.
+                          아직 모르면 비워 두세요. 넣으면 더 정확해져요.
                         </p>
                         {([0, 1] as const).map((i) => (
                           <div key={i} className="flex items-center gap-2.5">
@@ -173,7 +173,7 @@ export default function YearEndTax() {
                             <Row label="공제가 시작되는 금액" value={formatWon(s.threshold)} />
                             {s.cleared ? (
                               <>
-                                <Row label="문턱" value="넘었어요 ✅" good />
+                                <Row label="문턱" value="넘었어요" good />
                                 <Row
                                   label="예상 공제액 (신용카드 기준)"
                                   value={formatWon(s.estimatedDeduction)}
@@ -225,7 +225,7 @@ export default function YearEndTax() {
 
                   {!ready && (
                     <p className="py-6 text-center text-[13px] text-cap">
-                      두 분의 연봉을 넣으면 바로 알려드려요
+                      두 분의 연봉을 넣으면 바로 나와요
                     </p>
                   )}
                 </>

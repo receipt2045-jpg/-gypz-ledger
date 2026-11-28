@@ -10,7 +10,7 @@ describe('2026-09-30 탭 개편 — 소비 기록은 가계부 안, 목표는 �
     seedStore({ confessions: [] })
     renderScreen(<Monthly />)
     expect(screen.getByRole('button', { name: /오늘의 소비 기록/ })).toBeInTheDocument()
-    expect(screen.getByText('오늘 쓴 돈을 말해주세요')).toBeInTheDocument()
+    expect(screen.getByText('오늘 쓴 돈을 말하거나 적어 주세요')).toBeInTheDocument()
   })
 
   it('목표를 세워 둔 집은 홈에서 한 줄로 본다', () => {

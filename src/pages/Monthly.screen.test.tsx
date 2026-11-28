@@ -52,7 +52,7 @@ describe('가계부 탭 — 비정기 지출 기록', () => {
     await user.click(tile)
     expect(tile).toHaveAttribute('aria-expanded', 'true')
     // 예산을 아직 안 세운 집 — 펼치면 예산 세우기 안내
-    expect(screen.getByText(/한눈에 볼 수 있어요/)).toBeInTheDocument()
+    expect(screen.getByText(/얼마 썼는지 보여요/)).toBeInTheDocument()
     await user.click(tile)
     expect(tile).toHaveAttribute('aria-expanded', 'false')
   })
@@ -162,13 +162,13 @@ describe('가계부 탭 — 정산 취소', () => {
     // 예전엔 부부 둘 다 끝낸 달(closed)에만 보여서 되돌릴 방법이 없었다
     seedSettled([2], false)
     renderScreen(<Monthly />)
-    expect(screen.getByRole('button', { name: /정산 취소하기/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /정산을 잘못했나요/ })).toBeInTheDocument()
   })
 
   it('정산을 안 했으면 취소 버튼이 없다', () => {
     seedSettled([], false)
     renderScreen(<Monthly />)
-    expect(screen.queryByRole('button', { name: /정산 취소하기/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /정산을 잘못했나요/ })).not.toBeInTheDocument()
   })
 
   it('취소하면 내 정산만 풀리고 배우자 것은 남는다', async () => {
@@ -178,7 +178,7 @@ describe('가계부 탭 — 정산 취소', () => {
 
     // 부부 둘 다 끝낸 달은 화면이 다음 달로 넘어가 있다 — 그 달로 돌아가야 보인다
     await user.click(screen.getByRole('button', { name: '이전 달' }))
-    await user.click(screen.getByRole('button', { name: /정산 취소하기/ }))
+    await user.click(screen.getByRole('button', { name: /정산을 잘못했나요/ }))
 
     const saved = useLedgerStore.getState().ledgers.find((l) => l.ym === TEST_YM)
     expect(saved?.closed).toBe(false)
@@ -236,7 +236,7 @@ describe('가계부 탭 — 한 달 통째로 지우기', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const { user } = renderScreen(<Monthly />)
 
-    await user.click(screen.getByRole('button', { name: /기록 통째로 지우기/ }))
+    await user.click(screen.getByRole('button', { name: /기록 전체 삭제/ }))
 
     const s = useLedgerStore.getState()
     expect(s.ledgers.map((l) => l.ym)).toEqual([shiftYm(TEST_YM, -1)])
@@ -248,7 +248,7 @@ describe('가계부 탭 — 한 달 통째로 지우기', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     const { user } = renderScreen(<Monthly />)
 
-    await user.click(screen.getByRole('button', { name: /기록 통째로 지우기/ }))
+    await user.click(screen.getByRole('button', { name: /기록 전체 삭제/ }))
 
     expect(useLedgerStore.getState().ledgers).toHaveLength(2)
   })
@@ -259,7 +259,7 @@ describe('가계부 탭 — 한 달 통째로 지우기', () => {
 
     // 다음 달은 이전 달에서 만들어 보여줄 뿐, 저장된 기록은 없다
     await user.click(screen.getByRole('button', { name: '다음 달' }))
-    expect(screen.queryByRole('button', { name: /기록 통째로 지우기/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /기록 전체 삭제/ })).not.toBeInTheDocument()
   })
 })
 

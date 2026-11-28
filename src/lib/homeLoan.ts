@@ -438,7 +438,7 @@ function evaluate(i: LoanFinderInput, withPlans: boolean): { need: number; all: 
         (i.mortgageInsurance && !ins ? ' · MCI·MCG로 방공제 없음' : ''),
       blockers: [],
       rate: rt.rate,
-      rateNote: '최저 금리 어림 — 은행·시기마다 달라요',
+      rateNote: '최저 금리 기준 · 은행·시기마다 달라요',
       years: 30,
       method: 'ann',
       deduction: deductionLimit(i, ins || type === 'cycle', 30),

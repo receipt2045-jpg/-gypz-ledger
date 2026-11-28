@@ -890,7 +890,7 @@ function EntryCard({
           onClick={() => setReplying(true)}
           className="mt-2 text-[12px] font-bold text-cap active:text-sub"
         >
-          💬 한 줄 남기기
+          한 줄 남기기
         </button>
       )}
     </article>

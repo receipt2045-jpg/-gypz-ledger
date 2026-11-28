@@ -173,7 +173,7 @@ function Together({
         <Card>
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-[12.5px] font-medium text-cap">누구 이름으로</p>
-            {onEdit && <span className="text-[11.5px] text-cap">이름을 누르면 고쳐요</span>}
+            {onEdit && <span className="text-[11.5px] text-cap">이름을 눌러 고쳐요</span>}
           </div>
           <div className="flex h-3.5 overflow-hidden rounded-md">
             {byOwner.map((o) => (
@@ -370,9 +370,7 @@ export function AssetTrend({
           onEdit={onEdit}
         />
       ) : (
-        <p className="mt-1 text-center text-[11.5px] text-cap">
-          점을 누르면 그 달 자산을 볼 수 있어요
-        </p>
+        <p className="mt-1 text-center text-[11.5px] text-cap">점을 누르면 그 달 자산이 보여요</p>
       )}
     </Card>
   )
@@ -427,7 +425,8 @@ function MonthBrief({
       <div className="flex items-baseline justify-between gap-2">
         {/* 홈 맨 위는 순자산이라, 빚 빼기 전 금액인 걸 밝히고 순자산도 같이 (2026-11-19 점검) */}
         <p className="text-[13px] font-bold text-ink">
-          {formatYmKorean(p.ym)} 전체 자산 <span className="font-medium text-cap">· 빚 빼기 전</span>
+          {formatYmKorean(p.ym)} 전체 자산{' '}
+          <span className="font-medium text-cap">· 빚 빼기 전</span>
         </p>
         <p className="text-[11.5px] text-cap">단위 만원</p>
       </div>
@@ -465,9 +464,7 @@ function MonthBrief({
           {line(c.net, 'bg-[#F7F8FA] font-bold text-ink')}
         </tbody>
       </table>
-      {!prev && (
-        <p className="mt-1.5 text-[11.5px] text-cap">처음 기록한 달이라 견줄 지난달이 없어요</p>
-      )}
+      {!prev && <p className="mt-1.5 text-[11.5px] text-cap">첫 달이라 견줄 지난달이 없어요</p>}
       {changed.length > 0 && (
         <div className="mt-2.5">
           <p className="text-[12px] font-bold text-sub">지난달보다 바뀐 항목</p>
@@ -501,7 +498,7 @@ function MonthBrief({
         </div>
       )}
       {prev && c.changed.length === 0 && (
-        <p className="mt-2 text-[11.5px] text-cap">지난달과 금액이 같아요</p>
+        <p className="mt-2 text-[11.5px] text-cap">지난달과 같아요</p>
       )}
       {onEdit && (
         <button

@@ -543,7 +543,7 @@ describe('기록마다 메모 (2026-11-24, 11-13 의견)', () => {
   it('줄글로 적을 때 확인 화면에서 메모를 고쳐 남기고, 목록에 메모가 다 보인다', async () => {
     seedStore({ memberNo: 1, confessions: [] })
     const { user } = renderScreen(<Confess />)
-    await user.type(screen.getByPlaceholderText(/이라고 말해보세요/), '점심 9000원')
+    await user.type(screen.getByPlaceholderText(/이라고 말해 보세요/), '점심 9000원')
     await user.click(screen.getByRole('button', { name: '확인하기' }))
     const memo = screen.getByLabelText(/메모$/)
     await user.clear(memo)

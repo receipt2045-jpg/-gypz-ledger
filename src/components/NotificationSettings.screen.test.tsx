@@ -55,7 +55,7 @@ describe('설정 > 알림', () => {
   it('웹에선 안내 한 줄만', () => {
     h.native = false
     render(<NotificationSettings />)
-    expect(screen.getByText('알림은 모아불리 앱에서 받을 수 있어요')).toBeInTheDocument()
+    expect(screen.getByText('알림은 모아불리 앱에서 받아요')).toBeInTheDocument()
     expect(h.perm).not.toHaveBeenCalled()
   })
 
@@ -71,7 +71,9 @@ describe('설정 > 알림', () => {
     render(<NotificationSettings />)
     expect(await screen.findByText('폰 설정에서 알림이 꺼져 있어요')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '알림 켜기' }))
-    expect(await screen.findByText('폰 설정 > 애플리케이션 > 모아불리 > 알림에서 켜 주세요')).toBeInTheDocument()
+    expect(
+      await screen.findByText('폰 설정 > 애플리케이션 > 모아불리 > 알림에서 켜 주세요'),
+    ).toBeInTheDocument()
   })
 
   it('아직 안 켠 사람은 [알림 켜기]로 기본값을 만들고 스위치가 보인다', async () => {
@@ -81,15 +83,27 @@ describe('설정 > 알림', () => {
     await userEvent.click(await screen.findByRole('button', { name: '알림 켜기' }))
     expect(h.createPrefs).toHaveBeenCalledWith(false, expect.any(Date))
     expect(h.start).toHaveBeenCalled()
-    expect(await screen.findByRole('switch', { name: '기록 리마인더' })).toHaveAttribute('aria-checked', 'true')
+    expect(await screen.findByRole('switch', { name: '기록 리마인더' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
   })
 
   it('종류별 스위치와 리마인더 시각(30분 단위)', async () => {
     render(<NotificationSettings />)
     const reminder = await screen.findByRole('switch', { name: '기록 리마인더' })
-    expect(screen.getByRole('switch', { name: '월말 정산' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('switch', { name: '오늘의 경제·공지' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('switch', { name: '결영이네 소식·혜택' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch', { name: '월말 정산' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: '오늘의 경제·공지' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: '결영이네 소식·혜택' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '리마인더 시각' }), '07:30')
     expect(h.updatePrefs).toHaveBeenCalledWith({ reminderTime: '07:30' })
@@ -113,7 +127,9 @@ describe('설정 > 알림', () => {
     const promo = await screen.findByRole('switch', { name: '결영이네 소식·혜택' })
     await userEvent.click(promo)
     expect(h.setPromo).toHaveBeenCalledWith(true, expect.any(Date))
-    expect(await screen.findByText(/^\d{4}년 \d+월 \d+일 수신 동의가 처리됐어요$/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/^\d{4}년 \d+월 \d+일 수신 동의가 처리됐어요$/),
+    ).toBeInTheDocument()
     await userEvent.click(promo)
     expect(h.setPromo).toHaveBeenLastCalledWith(false, expect.any(Date))
     expect(await screen.findByText(/수신 거부가 처리됐어요$/)).toBeInTheDocument()
@@ -122,14 +138,20 @@ describe('설정 > 알림', () => {
   it('설정을 못 읽으면 켜기 카드 대신 오류를 보여 준다 (있는 설정을 덮어쓰지 않게)', async () => {
     h.fetchPrefs.mockRejectedValue(new Error('network'))
     render(<NotificationSettings />)
-    expect(await screen.findByText('알림 설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('알림 설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요.'),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '알림 켜기' })).not.toBeInTheDocument()
     expect(h.createPrefs).not.toHaveBeenCalled()
   })
 
   it('설정이 있는데 폰 알림이 꺼져 있어도 광고 동의 스위치로 철회할 수 있다', async () => {
     h.perm.mockResolvedValue('denied')
-    h.fetchPrefs.mockResolvedValue({ ...PREFS, promoOn: true, promoConsentAt: '2026-11-04T01:00:00.000Z' })
+    h.fetchPrefs.mockResolvedValue({
+      ...PREFS,
+      promoOn: true,
+      promoConsentAt: '2026-11-04T01:00:00.000Z',
+    })
     render(<NotificationSettings />)
     expect(await screen.findByText('폰 설정에서 알림이 꺼져 있어요')).toBeInTheDocument()
     const promo = screen.getByRole('switch', { name: '결영이네 소식·혜택' })

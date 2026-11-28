@@ -78,7 +78,7 @@ export function pickConfessReco(
         id: 'oneteam-over',
         tag: '결영이네 추천',
         title: `${cat} 예산을\n${abbreviateKRW(spent - planned)} 넘었어요`,
-        body: '비슷한 고민을 하는 다른 부부들과 같이 줄여 봐요',
+        body: '같은 고민을 하는 부부들과 함께 줄여 봐요',
         cta: '원팀프로젝트 보러가기',
         href: ONETEAM_URL,
       })
@@ -98,7 +98,7 @@ export function settleReco(surplus: number): RecoCard {
       surplus >= 0
         ? `남은 ${amount}, 어디에 둘지\n부부가 같이 정해 볼까요?`
         : `이번 달 ${amount} 모자랐어요.\n다음 달엔 어디서 줄일지 같이 정해요`,
-    body: '비슷한 고민을 하는 다른 부부들과 함께 돈 공부해 봐요',
+    body: '같은 고민을 하는 부부들과 함께 공부해요',
     cta: '원팀프로젝트 알아보기',
     href: ONETEAM_URL,
     sub: { label: '우리집 숫자로 1:1 상담 받기', to: '/consult' },

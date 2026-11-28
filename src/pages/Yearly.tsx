@@ -127,11 +127,11 @@ export default function Yearly() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[15px] font-bold text-ink">
-                    💳 연말정산 미리보기 — 누구 카드로 쓸까?
+                    연말정산 미리보기 — 누구 카드로 쓸까
                   </p>
                   <p className="mt-1 text-[13.5px] leading-relaxed text-sub">
-                    부부 카드값은 합쳐지지 않아요. 연봉만 넣으면 지금 누구 카드가 유리한지
-                    알려드려요.
+                    부부 카드값은 합쳐지지 않아요. 연봉만 넣으면 지금 누구 카드가 유리한지 보여
+                    줘요.
                   </p>
                 </div>
                 <ChevronRight size={20} className="shrink-0 text-cap" />

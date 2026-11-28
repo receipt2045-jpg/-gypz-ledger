@@ -86,7 +86,7 @@ export default function Roadmap() {
             <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start gap-5 px-5 pt-3">
               <div>
                 <Box>
-                  <h2 className="mb-4 text-[15px] font-bold text-ink">우리집이 가는 길</h2>
+                  <h2 className="mb-4 text-[15px] font-bold text-ink">앞으로의 계획</h2>
                   {rows.map((row, i) => (
                     <Step
                       key={row.kind === 'year' ? row.year : `q${row.from}`}
@@ -102,7 +102,7 @@ export default function Roadmap() {
                     onClick={() => setSheet(newEvent('house', nowYm))}
                     className="mt-1 flex w-full items-center justify-center gap-1 rounded-btn border-[1.5px] border-dashed border-line py-3 text-[13px] font-bold text-brand active:bg-bg"
                   >
-                    <Plus size={15} /> 길에 계획 넣기
+                    <Plus size={15} /> 계획 추가
                   </button>
                 </Box>
               </div>
@@ -129,8 +129,8 @@ export default function Roadmap() {
                   <ChevronRight size={18} className="shrink-0 text-cap" />
                 </button>
                 <p className="px-1 pt-1 text-center text-[11.5px] leading-relaxed text-cap">
-                  방향을 잡기 위한 예상이에요. 집을 사면 취득세·중개비 3%와 대출 이자(연 4%)를,
-                  아이는 양육비에서 부모급여·아동수당을 뺀 만큼을 반영해요.
+                  예상 계산이에요. 집은 취득세·중개비 3%와 대출 이자(연 4%), 아이는 양육비에서
+                  부모급여·아동수당을 뺀 금액을 넣었어요.
                 </p>
               </aside>
             </div>
@@ -144,7 +144,7 @@ export default function Roadmap() {
                 onSetup={() => setSettingsOpen(true)}
               />
               <Box>
-                <h2 className="mb-4 text-[15px] font-bold text-ink">우리집이 가는 길</h2>
+                <h2 className="mb-4 text-[15px] font-bold text-ink">앞으로의 계획</h2>
                 {rows.map((row, i) => (
                   <Step
                     key={row.kind === 'year' ? row.year : `q${row.from}`}
@@ -160,7 +160,7 @@ export default function Roadmap() {
                   onClick={() => setSheet(newEvent('house', nowYm))}
                   className="mt-1 flex w-full items-center justify-center gap-1 rounded-btn border-[1.5px] border-dashed border-line py-3 text-[13px] font-bold text-brand active:bg-bg"
                 >
-                  <Plus size={15} /> 길에 계획 넣기
+                  <Plus size={15} /> 계획 추가
                 </button>
               </Box>
               <button
@@ -178,8 +178,8 @@ export default function Roadmap() {
                 <ChevronRight size={18} className="shrink-0 text-cap" />
               </button>
               <p className="px-1 pt-1 text-center text-[11.5px] leading-relaxed text-cap">
-                방향을 잡기 위한 예상이에요. 집을 사면 취득세·중개비 3%와 대출 이자(연 4%)를, 아이는
-                양육비에서 부모급여·아동수당을 뺀 만큼을 반영해요.
+                예상 계산이에요. 집은 취득세·중개비 3%와 대출 이자(연 4%), 아이는 양육비에서
+                부모급여·아동수당을 뺀 금액을 넣었어요.
               </p>
             </div>
           )}
@@ -281,7 +281,7 @@ export default function Roadmap() {
               onClick={() => setSettingsOpen(false)}
               className="mt-5 w-full rounded-btn bg-brand py-3.5 text-[15px] font-bold text-white active:bg-brand-dark"
             >
-              다 됐어요
+              완료
             </button>
           </Sheet>
         )}
@@ -312,7 +312,7 @@ function NextGoal({
       className="mb-3 flex w-full items-center justify-between gap-2 rounded-btn bg-brand/10 px-3.5 py-2.5 text-left"
     >
       <span className="text-[12.5px] leading-snug text-brand">
-        예시예요. 한 달 {short(EXAMPLE_SAVING)} 원씩 모은다고 하고 그렸어요.
+        예시예요. 한 달 {short(EXAMPLE_SAVING)} 원씩 모으는 걸로 계산했어요.
       </span>
       <span className="flex shrink-0 items-center text-[12.5px] font-bold text-brand">
         우리집 숫자로 <ChevronRight size={14} />
@@ -325,7 +325,7 @@ function NextGoal({
       <Box>
         {example}
         <p className="text-[20px] font-extrabold text-ink">
-          <span className="text-brand">{short(target)}</span>, 이미 도착했어요 🎉
+          <span className="text-brand">{short(target)}</span>, 이미 넘었어요
         </p>
         <p className="mt-1 text-[13px] text-sub">계산 기준에서 다음 목표를 올려 보세요.</p>
       </Box>
@@ -344,9 +344,9 @@ function NextGoal({
       <p className="mt-1 text-[22px] font-extrabold leading-snug text-ink">
         <span className="text-brand">{short(next.amount)}</span>
         {months === null
-          ? '까지는 아직 멀어요'
+          ? '까지는 지금 속도로 닿지 않아요'
           : months <= 0
-            ? ', 이번 달 도착'
+            ? ', 이번 달에 닿아요'
             : `까지 ${spanText(months)}`}
       </p>
       <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-bg">
@@ -361,13 +361,13 @@ function NextGoal({
       </div>
       {!isFinal && (
         <p className="mt-3 border-t border-line pt-3 text-[13px] text-sub">
-          큰 목표 <b className="text-ink">{short(target)}</b>은{' '}
+          큰 목표 <b className="text-ink">{short(target)}</b>까지{' '}
           {result.reachYm ? (
             <>
-              이 속도면 <b className="text-ink">{result.reachYm.slice(0, 4)}년</b>쯤이에요
+              이 속도면 <b className="text-ink">{result.reachYm.slice(0, 4)}년</b>이에요
             </>
           ) : (
-            '지금 속도로는 40년 넘게 걸려요'
+            '지금 속도면 40년이 넘어요'
           )}
         </p>
       )}
@@ -401,8 +401,8 @@ function Step({
           <p className="tnum text-[13px] font-bold text-cap">{label}</p>
           <p className="mt-0.5 text-[12.5px] text-cap">
             {row.perYear >= 0
-              ? `조용히 모으는 해 · 1년에 ${compactKRW(row.perYear)}씩`
-              : `나가는 돈이 많은 해 · 1년에 ${compactKRW(-row.perYear)}씩 줄어요`}
+              ? `1년에 ${compactKRW(row.perYear)}씩 모여요`
+              : `1년에 ${compactKRW(-row.perYear)}씩 줄어요`}
           </p>
         </div>
       </div>
@@ -445,19 +445,19 @@ function Step({
                 key={m}
                 className="rounded-[10px] bg-brand/10 px-2.5 py-1.5 text-[12.5px] font-bold text-brand"
               >
-                🎉 {short(m)} 달성
+                {short(m)} 달성
               </span>
             ))}
             {row.reached && (
               <span className="rounded-[10px] bg-brand px-2.5 py-1.5 text-[12.5px] font-bold text-white">
-                🎉 {short(target)} 도착
+                {short(target)} 달성
               </span>
             )}
           </div>
         )}
         {row.isTarget && row.value < target && extraNeeded > 0 && (
           <p className="mt-1.5 text-[12.5px] text-sub">
-            매달 <b className="text-brand">{short(extraNeeded)} 원</b> 더 모으면 딱 맞아요
+            매달 <b className="text-brand">{short(extraNeeded)} 원</b> 더 모으면 목표에 닿아요
           </p>
         )}
       </div>

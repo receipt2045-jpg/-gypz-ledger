@@ -127,9 +127,7 @@ export default function AdminReports() {
     } catch {
       flash('복사에 실패했어요. 본문을 직접 선택해 복사해 주세요')
     }
-    const subject = encodeURIComponent(
-      `[모아불리] ${selected.householdName} 님 맞춤 리포트`,
-    )
+    const subject = encodeURIComponent(`[모아불리] ${selected.householdName} 님 맞춤 리포트`)
     window.location.href = `mailto:${selected.email ?? ''}?subject=${subject}`
     flash('본문을 복사했어요. 메일에 붙여넣어 주세요')
   }
@@ -141,7 +139,7 @@ export default function AdminReports() {
       await markStatus(selected.id, status)
       await load()
       setSelected({ ...selected, status })
-      flash(`'${STATUS_LABEL[status]}'로 바꿨어요`)
+      flash(`'${STATUS_LABEL[status]}' 상태로 바꿨어요`)
     } catch (err) {
       setError(err instanceof Error ? err.message : '바꾸지 못했어요.')
     } finally {
@@ -244,7 +242,9 @@ export default function AdminReports() {
                     onClick={() => mark(st)}
                     disabled={busy || selected.status === st}
                     className={`rounded-full px-3 py-1.5 text-[12px] font-bold disabled:opacity-40 ${
-                      selected.status === st ? 'bg-brand text-white' : 'bg-bg text-sub active:bg-line'
+                      selected.status === st
+                        ? 'bg-brand text-white'
+                        : 'bg-bg text-sub active:bg-line'
                     }`}
                   >
                     {STATUS_LABEL[st]}
@@ -274,7 +274,7 @@ export default function AdminReports() {
                       className="flex items-center gap-1 text-[12px] font-bold text-brand active:opacity-60 disabled:opacity-40"
                     >
                       <Sparkles size={13} />
-                      {polishing ? '다듬는 중…' : '결영 말투로 다듬기'}
+                      {polishing ? '다듬는 중…' : '말투 다듬기(결영 톤)'}
                     </button>
                   </div>
                 </div>
@@ -303,7 +303,8 @@ export default function AdminReports() {
                   </button>
                 </div>
                 <p className="px-1 text-[12px] leading-relaxed text-cap">
-                  메일 앱이 열리면 붙여넣기(Ctrl+V) 후 보내세요. 보낸 뒤 위에서 '보냄'을 눌러주세요.
+                  메일 앱이 열리면 붙여넣기(Ctrl+V) 후 보내세요. 보낸 뒤 위에서 '보냄'을 눌러
+                  주세요.
                 </p>
               </>
             )}

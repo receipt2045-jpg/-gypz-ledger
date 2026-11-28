@@ -60,6 +60,6 @@ describe('이번 달 쓴 돈 카드 (10/23 제보: 내 기록 총액 · 남은 �
     seedStore({ memberNo: 1, confessions: [conf('a', 1, 5_000)] })
     renderScreen(<MonthSpendCard />)
     expect(screen.getByText('5,000원')).toBeInTheDocument()
-    expect(screen.getByText(/예산을 넣으면 남은 돈도 보여요/)).toBeInTheDocument()
+    expect(screen.getByText(/예산을 넣으면 남은 돈이 나와요/)).toBeInTheDocument()
   })
 })

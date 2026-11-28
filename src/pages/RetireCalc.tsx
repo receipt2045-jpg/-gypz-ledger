@@ -54,7 +54,7 @@ export default function RetireCalc() {
   return (
     <CalcShell
       title="노후 준비"
-      lead="지금 모으는 돈이 노후에 매달 얼마가 되는지, 거꾸로 노후에 쓰고 싶은 돈을 위해 지금 얼마씩 모아야 하는지 봐요."
+      lead="노후에 매달 얼마가 되는지, 반대로 노후에 쓸 돈을 위해 지금 얼마씩 모아야 하는지 계산해요."
       cta="노후 계획, 결영이네와 같이"
     >
       <div className="flex gap-1.5" role="tablist">
@@ -216,8 +216,8 @@ export default function RetireCalc() {
       )}
 
       <p className="px-1 text-[12px] leading-relaxed text-cap">
-        물가는 넣지 않았어요. 30년 뒤 200만원은 지금 돈 가치로 그보다 적어요. 수익률은 매년 같다고
-        보고 계산해요.
+        물가는 반영하지 않았어요. 30년 뒤 200만원은 지금 가치로 더 적어요. 수익률은 매년 같다고 보고
+        계산해요.
       </p>
     </CalcShell>
   )

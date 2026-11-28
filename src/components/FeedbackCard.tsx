@@ -32,9 +32,9 @@ export default function FeedbackCard({ screen }: { screen?: string }) {
   if (done) {
     return (
       <Card>
-        <h2 className="text-[15px] font-bold text-ink">의견 고맙습니다 🤍</h2>
+        <h2 className="text-[15px] font-bold text-ink">의견 고마워요</h2>
         <p className="mt-1.5 text-[13px] leading-relaxed text-sub">
-          보내주신 이야기는 결영이네가 직접 읽어요. 다음 업데이트에 반영할게요.
+          결영이네가 직접 읽고 다음 업데이트에 반영할게요.
         </p>
         <button
           onClick={() => {
@@ -54,7 +54,7 @@ export default function FeedbackCard({ screen }: { screen?: string }) {
     <Card>
       <h2 className="text-[15px] font-bold text-ink">의견 보내기</h2>
       <p className="mt-1 text-[13px] leading-relaxed text-sub">
-        불편한 점, 있으면 좋겠는 기능 뭐든 좋아요. 결영이네가 직접 읽습니다.
+        불편한 점이나 있으면 좋겠는 기능을 알려 주세요. 결영이네가 직접 읽어요.
       </p>
 
       {/* 별점 (선택) */}
@@ -73,7 +73,9 @@ export default function FeedbackCard({ screen }: { screen?: string }) {
             />
           </button>
         ))}
-        <span className="ml-1 text-[12px] text-cap">{rating > 0 ? `${rating}점` : '별점 (선택)'}</span>
+        <span className="ml-1 text-[12px] text-cap">
+          {rating > 0 ? `${rating}점` : '별점 (선택)'}
+        </span>
       </div>
 
       <textarea

@@ -12,7 +12,7 @@ describe('SampleReport 화면', () => {
 
     await userEvent.click(screen.getByText('실제로 이렇게 받아요'))
 
-    expect(screen.getByText(/민준·다은 님, 결영이네입니다/)).toBeInTheDocument()
+    expect(screen.getByText(/민준·다은 님, 결영이네예요/)).toBeInTheDocument()
     expect(screen.getByText('우리집 숫자')).toBeInTheDocument()
     expect(screen.getByText(/가상의 부부 예시예요/)).toBeInTheDocument()
   })

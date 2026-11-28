@@ -112,9 +112,7 @@ export default function BudgetBars({
   if (cats.length === 0) {
     return (
       <p className="py-2 text-[13px] leading-relaxed text-sub">
-        '예산 세우기'로 이번 달 지출 예산을 정하면,
-        <br />
-        여기서 예산 대비 얼마 썼는지 한눈에 볼 수 있어요.
+        '예산 세우기'로 이번 달 예산을 정하면 <br /> 여기서 얼마 썼는지 보여요.
       </p>
     )
   }

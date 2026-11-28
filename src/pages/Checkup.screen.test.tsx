@@ -136,7 +136,7 @@ describe('정산 화면 — 스텝 이동', () => {
 
     await user.click(screen.getByRole('button', { name: '다음' }))
 
-    expect(screen.getByText(/금액을 입력해 주세요/)).toBeInTheDocument()
+    expect(screen.getByText(/금액을 넣어 주세요/)).toBeInTheDocument()
     expect(screen.getByText('수입')).toBeInTheDocument() // 여전히 수입 스텝
   })
 })

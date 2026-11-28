@@ -27,10 +27,12 @@ export interface ValuesMatch {
 }
 
 export function matchLabel(percent: number): { label: string; line: string } {
-  if (percent >= 90) return { label: '찰떡 부부', line: '돈 이야기, 눈빛만 봐도 통해요' }
-  if (percent >= 75) return { label: '잘 맞는 부부', line: '큰 방향은 같아요. 다른 몇 개만 맞춰 보세요' }
-  if (percent >= 60) return { label: '맞춰 가는 부부', line: '다른 게 꽤 있어요. 하나씩 이야기하면 돼요' }
-  return { label: '이야기가 필요한 부부', line: '생각이 많이 달라요. 지금 알아서 다행이에요' }
+  if (percent >= 90) return { label: '찰떡 부부', line: '돈 얘기가 잘 통해요' }
+  if (percent >= 75)
+    return { label: '잘 맞는 부부', line: '큰 방향은 같아요. 다른 몇 개만 맞춰 보세요' }
+  if (percent >= 60)
+    return { label: '맞춰 가는 부부', line: '다른 게 꽤 있어요. 하나씩 이야기하면 돼요' }
+  return { label: '이야기가 필요한 부부', line: '생각이 많이 달라요. 지금 맞춰 두면 돼요' }
 }
 
 export const gap = (a: number, b: number) => Math.abs(a - b)

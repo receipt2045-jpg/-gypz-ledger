@@ -571,7 +571,7 @@ export default function Checkup() {
               <PartyPopper size={40} className="text-brand" />
             </div>
             <h1 className="text-[24px] font-extrabold text-ink">
-              {formatMonthKorean(ym)} 예산 완료 📝
+              {formatMonthKorean(ym)} 예산 완료
             </h1>
             <p className="mt-2 text-[14px] text-sub">
               월말에 정산하면 계획과 실제를 비교해 볼 수 있어요.
@@ -614,11 +614,11 @@ export default function Checkup() {
             <PartyPopper size={40} className="text-brand" />
           </div>
           <h1 className="text-[24px] font-extrabold text-ink">
-            {bothDone ? `${formatMonthKorean(ym)} 정산 완료 🎉` : `${memberName} 정산 완료 🙌`}
+            {bothDone ? `${formatMonthKorean(ym)} 정산 완료` : `${memberName} 정산 완료`}
           </h1>
           <p className="mt-2 text-[14px] text-sub">
             {bothDone
-              ? '한 달 수고했어요. 이번 달 성적표예요.'
+              ? '이번 달 정산 결과예요.'
               : `${partnerName}님이 정산하면 ${formatMonthKorean(ym)} 결산이 확정돼요.`}
           </p>
 
@@ -1105,7 +1105,7 @@ function MoneyStep({
             onClick={onFillPreset}
             className="mt-1 inline-flex h-11 items-center justify-center gap-1.5 rounded-btn bg-white px-4 text-[13.5px] font-bold text-brand shadow-card active:bg-line"
           >
-            ✨ 보통 이렇게 씁니다 (2인 가구)
+            보통 이렇게 써요 (2인 가구)
           </button>
           <p className="text-[11.5px] text-cap">채워진 금액은 우리집에 맞게 고치면 돼요</p>
         </div>
@@ -1316,7 +1316,7 @@ function MoneyStep({
             )}
             {invalid && (
               <p className="mt-1.5 text-right text-[12px] font-medium text-danger">
-                금액을 입력해 주세요 ❗️ 없는 항목이면 X로 지워요
+                금액을 넣어 주세요 · 없는 항목은 X로 지워요
               </p>
             )}
             {(() => {

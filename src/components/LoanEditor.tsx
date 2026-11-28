@@ -214,7 +214,7 @@ export function LoanForm({
           </span>
         </label>
         <label className="text-[11.5px] text-cap">
-          그리고 몇 개월 더 (2년 6개월이면 6)
+          몇 개월 더 <span className="text-cap/70">(2년 6개월이면 6)</span>
           <span className={box}>
             <input
               inputMode="numeric"

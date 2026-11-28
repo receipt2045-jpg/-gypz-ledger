@@ -286,7 +286,7 @@ function QnaNew() {
           value={body}
           onChange={(e) => setBody(e.target.value.slice(0, 2000))}
           rows={cat ? 13 : 7}
-          placeholder="분류를 고르면 적을 형식이 채워져요. 우리집 상황을 적어 주면 더 정확히 답할 수 있어요"
+          placeholder="분류를 고르면 형식이 채워져요. 상황을 자세히 적을수록 답이 정확해요"
           aria-label="내용"
           className="w-full resize-none rounded-btn border border-line px-3.5 py-3 text-[14.5px] leading-relaxed text-ink outline-none focus:border-brand placeholder:text-cap"
         />
@@ -301,7 +301,7 @@ function QnaNew() {
               형식 다시 넣기
             </button>
           ) : (
-            <span>빈칸만 채우면 돼요. 모르는 줄은 지워도 괜찮아요</span>
+            <span>빈칸만 채우면 돼요. 모르는 줄은 지워도 돼요</span>
           )}
           <span>{body.length} / 2000</span>
         </div>
@@ -309,7 +309,7 @@ function QnaNew() {
 
       {/* 콘텐츠 활용 안내 — 체크해야 올릴 수 있다 (2026-10-21 결영 요청). 체크한 시각을 함께 저장한다 */}
       <div className="rounded-card bg-[#FFF9DB] p-4">
-        <p className="text-[14px] font-bold text-[#5C3B00]">📢 질문은 콘텐츠로 쓰일 수 있어요</p>
+        <p className="text-[14px] font-bold text-[#5C3B00]">질문은 콘텐츠로 쓰일 수 있어요</p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-[#5C3B00]">
           남겨 주신 질문과 답변은 결영이네 유튜브·인스타 콘텐츠로 소개될 수 있어요. 이름과 닉네임은
           가려요.
@@ -373,7 +373,7 @@ function QnaDetail({ id }: { id: string }) {
       <div className="space-y-3">
         <Back to="/qna" label="묻고 답하기" />
         <p className="rounded-card bg-white px-4 py-8 text-center text-[14px] text-sub shadow-card">
-          아직 답이 달리지 않았거나 없는 질문이에요.
+          아직 답이 없는 질문이에요.
         </p>
       </div>
     )

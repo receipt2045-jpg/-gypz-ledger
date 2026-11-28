@@ -66,7 +66,7 @@ describe('로그인 없이 보는 오늘의 경제 (카톡 링크)', () => {
   it('경제 뉴스 — 기사 하나씩, 그날의 픽은 사진·언론사와 큰 카드 → 결영이네 정리 전체', async () => {
     renderAt('/news')
     expect(await screen.findByText('매물 고갈된 전세 시장')).toBeInTheDocument()
-    expect(screen.getByText('지금까지 기사 2개를 모아 뒀어요')).toBeInTheDocument()
+    expect(screen.getByText('뉴스 2건')).toBeInTheDocument()
     expect(screen.getByText(/뉴시스 ·/)).toBeInTheDocument()
     expect(document.querySelector('img[src*="type=w647"]')).not.toBeNull()
     expect(screen.getByRole('link', { name: '모아불리 시작하기' })).toHaveAttribute('href', '#/')

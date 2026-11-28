@@ -24,7 +24,7 @@ export default function MonthlyGlance({ ledger }: { ledger: MonthlyLedger }) {
               s.surplus < 0 ? 'text-danger' : 'text-brand'
             }`}
           >
-            {s.surplus < 0 ? `${shortWon(-s.surplus)}원 넘쳐요` : `${shortWon(s.surplus)}원`}
+            {s.surplus < 0 ? `${shortWon(-s.surplus)}원 초과` : `${shortWon(s.surplus)}원`}
           </p>
         </div>
         <span className="mt-1 shrink-0 rounded-full bg-bg px-2.5 py-1 text-[11.5px] font-medium text-sub">

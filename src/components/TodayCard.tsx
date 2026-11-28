@@ -86,10 +86,10 @@ export default function TodayCard({ ym }: { ym?: string } = {}) {
           {streak > 0 ? `🔥 ${streak}일 연속` : '🎙️ 오늘의 소비 기록'}
           <span className={`ml-1.5 font-semibold ${confessedToday ? 'text-brand' : 'text-sub'}`}>
             {confessedToday
-              ? '· 오늘 기록 끝 ✅'
+              ? '· 오늘 기록 끝'
               : streak > 0
                 ? '· 오늘 기록 아직이에요'
-                : '오늘 쓴 돈을 말해주세요'}
+                : '오늘 쓴 돈을 말하거나 적어 주세요'}
           </span>
         </span>
         <span className="flex shrink-0 items-center text-[13px] font-bold text-brand">
@@ -120,7 +120,7 @@ export default function TodayCard({ ym }: { ym?: string } = {}) {
             </div>
             <p className="mt-1.5 text-[11.5px] text-cap">
               {over
-                ? `예산보다 ${abbreviateKRW(confessed - budget)} 넘었어요 · 모아가 할 말이 있대요`
+                ? `예산보다 ${abbreviateKRW(confessed - budget)} 넘었어요`
                 : isNow
                   ? `기록한 만큼 채워져요 · ${abbreviateKRW(budget - confessed)} 남음`
                   : thisYm > nowYm
@@ -134,7 +134,7 @@ export default function TodayCard({ ym }: { ym?: string } = {}) {
             className="flex w-full items-center justify-between text-left"
           >
             <span className="text-[13px] font-medium text-sub">
-              이번 달 예산부터 세워볼까요? 기록이 게이지로 쌓여요
+              이번 달 예산을 먼저 세워 보세요. 기록이 게이지로 쌓여요
             </span>
             <ChevronRight size={15} className="shrink-0 text-cap" />
           </button>
@@ -160,10 +160,10 @@ export default function TodayCard({ ym }: { ym?: string } = {}) {
             {/* 할 일(연봉 입력)을 앞세우지 않는다. 궁금한 것부터 묻고 방법은 아래 줄에 */}
             <span className="min-w-0">
               <span className="block text-[14px] font-bold text-ink">
-                💳 {profile.member1Name} 카드 쓸까, {profile.member2Name} 카드 쓸까?
+                {profile.member1Name} 카드 vs {profile.member2Name} 카드
               </span>
               <span className="mt-0.5 block text-[12px] text-cap">
-                연말정산 대비 · 연봉 두 개만 넣으면 알려드려요
+                연말정산 대비 · 연봉 두 개만 넣으면 유리한 쪽이 나와요
               </span>
             </span>
             <ChevronRight size={15} className="shrink-0 text-cap" />

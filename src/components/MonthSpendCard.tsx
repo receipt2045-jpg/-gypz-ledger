@@ -84,7 +84,7 @@ export default function MonthSpendCard({ initial }: { initial?: SpendWho }) {
           onClick={() => navigate('/budget', { state: { ym } })}
           className="mt-1 flex w-full items-center justify-between text-left text-[12.5px] text-sub active:opacity-60"
         >
-          {label(who)} 생활비·용돈 예산을 넣으면 남은 돈도 보여요
+          {label(who)} 생활비·용돈 예산을 넣으면 남은 돈이 나와요
           <ChevronRight size={15} className="shrink-0 text-cap" />
         </button>
       )}

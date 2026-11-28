@@ -46,9 +46,9 @@ describe('주식 일지 (2026-10-25)', () => {
     expect(await screen.findByText(/20주 · 평균 210,000원/)).toBeInTheDocument()
     expect(screen.getByText('10주 샀어요')).toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('button', { name: '💬 한 줄 남기기' })[0])
-    await user.click(screen.getByRole('button', { name: '🙏 목표 지키기' }))
-    expect(await screen.findByText('🙏 목표 지키기')).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: '한 줄 남기기' })[0])
+    await user.click(screen.getByRole('button', { name: '목표 지키기' }))
+    expect(await screen.findByText('목표 지키기')).toBeInTheDocument()
   })
 
   it('갖고 있는 것보다 많이 팔 수는 없다', async () => {

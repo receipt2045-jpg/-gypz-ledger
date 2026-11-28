@@ -103,7 +103,7 @@ function NewsTimeline({
   const visible = byPost.slice(0, days)
   return (
     <div className="space-y-3">
-      <p className="px-1 text-[13px] text-sub">지금까지 기사 {all.length}개를 모아 뒀어요</p>
+      <p className="px-1 text-[13px] text-sub">뉴스 {all.length}건</p>
       <SectionChips articles={all} value={section} onChange={setSection} />
       {visible.map(({ post, articles }, i) => {
         const shown = articles.filter((a) => section === 'all' || a.section === section)
@@ -111,7 +111,8 @@ function NewsTimeline({
         const hero = shown.find((a) => a.pick) ?? shown[0]
         const rest = shown.filter((a) => a !== hero)
         const [y, m] = post.postDate.split('-').map(Number)
-        const newMonth = i === 0 || visible[i - 1].post.postDate.slice(0, 7) !== post.postDate.slice(0, 7)
+        const newMonth =
+          i === 0 || visible[i - 1].post.postDate.slice(0, 7) !== post.postDate.slice(0, 7)
         return (
           <Fragment key={post.id}>
             {newMonth && (
@@ -163,7 +164,7 @@ function MarketMonths({ posts, basePath }: { posts: Post[]; basePath: string }) 
 
   return (
     <div className="space-y-2.5">
-      <p className="px-1 text-[13px] text-sub">지금까지 증시 정리 {posts.length}개를 모아 뒀어요</p>
+      <p className="px-1 text-[13px] text-sub">증시 정리 {posts.length}편</p>
       {months.map((g, i) => {
         const opened = isOpen(g.ym, i)
         const days = expanded[g.ym] ? g.days : g.days.slice(0, FIRST_DAYS)
@@ -179,8 +180,7 @@ function MarketMonths({ posts, basePath }: { posts: Post[]; basePath: string }) 
             >
               <span className="text-[16px] font-bold text-ink">{g.label}</span>
               <span className="flex items-center gap-0.5 text-[12.5px] text-cap">
-                {g.posts.length}개
-                {opened ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                {g.posts.length}개{opened ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
               </span>
             </button>
             {opened && (

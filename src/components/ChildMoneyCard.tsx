@@ -188,8 +188,8 @@ export default function ChildMoneyCard({ childAssets }: { childAssets: Record<st
                 />
               </div>
               <p className="mt-1.5 text-[11px] leading-relaxed text-cap">
-                미성년 자녀는 10년간 합쳐 2,000만원까지 증여세가 없어요. '부모·조부모가 준 돈'으로
-                체크한 기록만 더했어요 · 참고용이에요
+                미성년 자녀는 10년간 2,000만원까지 증여세가 없어요. '부모·조부모가 준 돈'으로 체크한
+                기록만 더했어요 · 참고용이에요
               </p>
               <GiftReports
                 name={name}
@@ -752,7 +752,7 @@ function RecurringList({ name }: { name: string }) {
                   ? '멈췄어요'
                   : ended
                     ? '받는 기간이 끝났어요'
-                    : `다음은 ${next.date.getMonth() + 1}월 ${next.date.getDate()}일에 자동으로 적어요`}
+                    : `다음은 ${next.date.getMonth() + 1}월 ${next.date.getDate()}일에 자동으로 적혀요`}
               </p>
               {editing === r.id ? (
                 <div className="mt-1.5 flex items-center gap-1.5">

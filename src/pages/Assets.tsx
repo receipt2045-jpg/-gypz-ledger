@@ -79,7 +79,7 @@ export default function Assets() {
           우리집 자산
           {savedMsg && (
             <span role="status" className="ml-2 text-[12.5px] font-semibold text-brand">
-              ✓ 저장했어요
+              저장했어요
             </span>
           )}
         </h1>
@@ -94,9 +94,7 @@ export default function Assets() {
       {items.length === 0 && (
         <Card onClick={() => navigate('/asset-setup')}>
           <p className="text-[15px] font-bold text-ink">아직 등록된 자산이 없어요</p>
-          <p className="mt-1 text-[13px] text-sub">
-            어떤 통장에 얼마 있는지 남편·아내 각자 등록해 보세요
-          </p>
+          <p className="mt-1 text-[13px] text-sub">통장별 금액을 남편·아내 각자 넣어 주세요</p>
         </Card>
       )}
 
@@ -141,9 +139,9 @@ export default function Assets() {
           <span className="mt-0.5 block text-[12.5px] text-sub">
             {profile.targetNetWorth > 0
               ? `목표 ${abbreviateKRW(profile.targetNetWorth)}${
-                  reachYm ? ` · 지금 속도면 ${formatYmKorean(reachYm)} 도착` : ''
+                  reachYm ? ` · 지금 속도면 ${formatYmKorean(reachYm)}` : ''
                 }`
-              : '목표를 정하면 언제 닿는지 연도별로 그려 드려요'}
+              : '목표를 정하면 연도별 도달 시점을 보여 줘요'}
           </span>
         </span>
         <ChevronRight size={18} className="shrink-0 text-cap" />

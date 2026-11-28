@@ -124,9 +124,7 @@ export default function Consult() {
             <CheckCircle2 size={40} className="mx-auto text-brand" />
             <p className="mt-3 text-[18px] font-bold text-ink">신청 받았어요</p>
             <p className="mt-1.5 text-[14px] leading-relaxed text-sub">
-              결영이네가 읽고 적어 주신 연락처로
-              <br />
-              일정과 결제 방법을 안내드릴게요.
+              결영이네가 확인하고 연락처로 <br /> 일정과 결제 방법을 안내드려요.
             </p>
           </div>
         ) : (
@@ -135,14 +133,12 @@ export default function Consult() {
               <p className="text-[12.5px] font-bold text-brand">결영이네</p>
               <h1 className="text-[22px] font-bold text-ink">1:1 상담 신청</h1>
               <p className="mt-1 text-[13.5px] leading-relaxed text-sub">
-                우리집 상황을 자세히 적어 주실수록 상담이 알차져요. 일정을 맞춰 연락드려요.
+                자세히 적어 주실수록 상담이 정확해요. 일정을 맞춰 연락드려요.
               </p>
             </header>
 
             <div className="rounded-card bg-[#FFF9DB] px-4 py-3 text-[13px] leading-relaxed text-[#5C3B00]">
-              1. 상담 내용은 참고만 해 주세요.
-              <br />
-              2. 투자의 책임은 본인에게 있습니다.
+              · 상담 내용은 참고만 해 주세요. <br /> · 투자 판단과 결과의 책임은 본인에게 있어요.
             </div>
 
             <Section title="상담 종류">

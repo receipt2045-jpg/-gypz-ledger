@@ -179,7 +179,7 @@ describe('buildReportDraft — 초안 원고', () => {
     const d = healthy()
     d.snapshots = [{ ym: '2026-08', items: [asset('비상금', 500_000)] }]
     const text = buildReportDraft(d)
-    expect(text).toContain('비상금이 얇습니다')
+    expect(text).toContain('비상금이 3개월치보다 적어요')
   })
 
   it('표본이 충분하면 우리집 위치를 넣는다', () => {

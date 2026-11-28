@@ -72,21 +72,21 @@ export default function Coupang() {
       <ShareSection no={1} title="한눈에 보기">
         <div className="space-y-2.5">
           <Level
-            badge="🥉 하수"
+            badge="하수"
             name="폴센트"
             icon="icon-fallcent"
             what="담아두면 최저가일 때 알림"
             back="싸게 사서 아끼는 돈"
           />
           <Level
-            badge="🥈 중수"
+            badge="중수"
             name="스탬플리"
             icon="icon-stamply"
             what="거쳐서 사면 3만 원마다 스탬프"
             back="기프티콘"
           />
           <Level
-            badge="🥇 고수"
+            badge="고수"
             name="키움증권"
             icon="icon-kiwoom"
             what="거쳐서 사면 결제금액 2% 적립"
@@ -95,8 +95,7 @@ export default function Coupang() {
           />
         </div>
         <p className="mt-3 rounded-xl bg-bg px-4 py-3 text-[14px] leading-relaxed text-sub">
-          💡 폴센트로 싸게 살 때를 알고, 살 때는 적립되는 곳 한 군데를 거쳐서
-          들어가요.
+          싸게 살 때를 폴센트로 보고, 살 때는 적립되는 곳 한 군데를 거쳐 들어가요.
         </p>
       </ShareSection>
 

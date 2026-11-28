@@ -175,7 +175,7 @@ export default function Gold() {
           <p className="text-[22px] font-extrabold text-brand">{man(r.buySaving)}만 원 덜 들어요</p>
         </div>
         <p className="mt-3 rounded-xl bg-bg px-4 py-3 text-[14px] leading-relaxed text-sub">
-          ⚠️ 이미 받은 돌반지는 앱에서 팔 수 없어요. 앱에서 산 금만 앱에서 팔아요.
+          이미 받은 돌반지는 앱에서 팔 수 없어요. 앱에서 산 금만 앱에서 팔아요.
         </p>
 
         <details className="mt-4 rounded-xl border border-line px-4 py-3">
@@ -236,7 +236,7 @@ export default function Gold() {
           </Step>
         </ol>
         <p className="mt-4 rounded-xl bg-bg px-4 py-3 text-[14px] leading-relaxed text-sub">
-          🕘 평일 오전 9시 ~ 오후 3시 30분에만 사고팔 수 있어요.
+          평일 오전 9시~오후 3시 30분에만 사고팔 수 있어요.
         </p>
       </ShareSection>
 

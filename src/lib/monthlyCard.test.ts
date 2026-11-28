@@ -26,11 +26,11 @@ const item = (
 describe('headlineOf — 한 줄 평', () => {
   it('잉여현금이 마이너스면 저축률이 높아도 축하하지 않는다', () => {
     // 빚내서 저축한 셈이라 "잘했다"고 하면 안 된다
-    expect(headlineOf(0.6, -500_000)).toContain('쓴 게 많았어요')
+    expect(headlineOf(0.6, -500_000)).toContain('번 돈보다 많았어요')
   })
 
   it('저축률 구간마다 다른 말이 나온다', () => {
-    expect(headlineOf(0.55, 100)).toContain('절반을 넘겼어요')
+    expect(headlineOf(0.55, 100)).toContain('절반을 넘었어요')
     expect(headlineOf(0.42, 100)).toContain('42%')
     expect(headlineOf(0.05, 100)).toContain('적었어요')
   })

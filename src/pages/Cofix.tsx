@@ -87,8 +87,7 @@ export default function Cofix() {
               {COFIX.change === 0 ? '그대로예요' : `${pp(COFIX.change)} ${verb}`}.
               <br />
               남은 대출금과 지금 금리만 넣으면
-              <br />
-              한 달에 얼마 달라지는지 바로 보여줘요.
+              <br />한 달에 얼마 달라지는지 바로 보여줘요.
             </>
           }
         />
@@ -140,7 +139,12 @@ export default function Cofix() {
             />
             {v.repay === 'amortized' && (
               <Field label="남은 기간">
-                <NumberBox value={v.years} step={1} suffix="년" onChange={(years) => set({ years })} />
+                <NumberBox
+                  value={v.years}
+                  step={1}
+                  suffix="년"
+                  onChange={(years) => set({ years })}
+                />
               </Field>
             )}
           </div>
@@ -178,7 +182,9 @@ export default function Cofix() {
               {r.diff > 0 ? '+' : r.diff < 0 ? '−' : ''}
               {man(Math.abs(r.diff))}만원
             </p>
-            <p className="tnum mt-1 text-[13.5px] text-sub">1년이면 {man(Math.abs(r.diffYear))}만원</p>
+            <p className="tnum mt-1 text-[13.5px] text-sub">
+              1년이면 {man(Math.abs(r.diffYear))}만원
+            </p>
             {fixed && (
               <p className="mt-2 text-[12.5px] leading-relaxed text-sub">
                 이미 받은 고정형은 5년 동안 그대로예요.
@@ -189,11 +195,7 @@ export default function Cofix() {
           </div>
         }
         <div className="mt-3 space-y-2">
-          <Row
-            name="지금"
-            sub={`연 ${v.rate.toFixed(2)}%`}
-            value={`월 ${man(r.before)}만원`}
-          />
+          <Row name="지금" sub={`연 ${v.rate.toFixed(2)}%`} value={`월 ${man(r.before)}만원`} />
           <Row
             name={fixed ? '다시 정하면' : '금리변경일 뒤'}
             sub={`연 ${(v.rate + rise).toFixed(2)}%`}
@@ -209,7 +211,7 @@ export default function Cofix() {
       </ShareSection>
 
       {/* ── 3. 오르는 폭마다 */}
-      <ShareSection no={3} title="금리가 오르는 만큼 한 달에 더">
+      <ShareSection no={3} title="금리가 오르면 한 달에 더 내는 돈">
         <Table
           head={['오르는 만큼', '한 달', '1년']}
           rows={riseSteps(rise).map((step) => {
@@ -225,7 +227,8 @@ export default function Cofix() {
           head={['남은 대출금', '한 달', '1년']}
           rows={BALANCE_STEPS.map((b) => {
             const d =
-              monthlyPay(b, v.rate + rise, v.years, v.repay) - monthlyPay(b, v.rate, v.years, v.repay)
+              monthlyPay(b, v.rate + rise, v.years, v.repay) -
+              monthlyPay(b, v.rate, v.years, v.repay)
             return [eok(b), `${man(d)}만`, `${man(d * 12)}만`, false]
           })}
         />
@@ -246,22 +249,34 @@ export default function Cofix() {
         <div className="mt-4 rounded-2xl bg-bg p-4 text-[14px] leading-relaxed text-sub [&_b]:font-bold [&_b]:text-ink">
           <b>내 대출 금리 = 지표 금리 + 가산 금리 − 우대 금리</b>
           <br />
-          지표 금리가 코픽스냐 금융채냐에 따라 따라가는 숫자가 달라요. 가산·우대 금리는 사람·은행마다
-          달라요.
+          지표 금리가 코픽스냐 금융채냐에 따라 따라가는 숫자가 달라요. 가산·우대 금리는
+          사람·은행마다 달라요.
         </div>
       </ShareSection>
     </ShareArticle>
   )
 }
 
-function Row({ name, sub, value, strong = false }: { name: string; sub: string; value: string; strong?: boolean }) {
+function Row({
+  name,
+  sub,
+  value,
+  strong = false,
+}: {
+  name: string
+  sub: string
+  value: string
+  strong?: boolean
+}) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl bg-bg px-4 py-3.5">
       <span className="text-[15px] font-bold text-ink">
         {name}
         <span className="tnum mt-0.5 block text-[12px] font-normal text-cap">{sub}</span>
       </span>
-      <span className={`tnum text-[17px] font-extrabold ${strong ? 'text-brand' : 'text-ink'}`}>{value}</span>
+      <span className={`tnum text-[17px] font-extrabold ${strong ? 'text-brand' : 'text-ink'}`}>
+        {value}
+      </span>
     </div>
   )
 }
@@ -280,7 +295,10 @@ function Table({ head, rows }: { head: string[]; rows: [string, string, string, 
       </thead>
       <tbody>
         {rows.map(([a, b, c, on]) => (
-          <tr key={a} className={`border-t border-line ${on ? 'bg-[#F2F7FF] font-bold text-brand' : 'text-ink'}`}>
+          <tr
+            key={a}
+            className={`border-t border-line ${on ? 'bg-[#F2F7FF] font-bold text-brand' : 'text-ink'}`}
+          >
             <td className="py-2.5 pl-1 font-bold">{a}</td>
             <td className="py-2.5 text-right">{b}</td>
             <td className="py-2.5 pr-1 text-right">{c}</td>
@@ -348,7 +366,11 @@ function Chips<T extends string | number>({
     <div>
       <p className="text-[14px] font-semibold text-ink">{label}</p>
       {hint && <p className="mt-0.5 text-[12.5px] leading-relaxed text-cap">{hint}</p>}
-      <div className={`mt-1.5 ${wrap ? 'grid grid-cols-2' : 'flex'} gap-1.5`} role="group" aria-label={label}>
+      <div
+        className={`mt-1.5 ${wrap ? 'grid grid-cols-2' : 'flex'} gap-1.5`}
+        role="group"
+        aria-label={label}
+      >
         {options.map(([k, text]) => (
           <button
             key={String(k)}

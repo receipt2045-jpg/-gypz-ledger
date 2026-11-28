@@ -50,7 +50,7 @@ describe('고정비 점검 카드', () => {
   it('다 괜찮으면 줄일 여지 안내를 띄우지 않는다', () => {
     renderWithRouter(<FixedCostCheck items={[...income500, item('fixed', '통신', 150_000)]} closed />)
     expect(screen.queryByText(/줄일 여지/)).not.toBeInTheDocument()
-    expect(screen.getByText(/잘 잡혀 있습니다/)).toBeInTheDocument()
+    expect(screen.getByText(/잘 잡혔어요/)).toBeInTheDocument()
   })
 
   it('수입이 없으면 판단 대신 안내를 보여준다', () => {
@@ -66,7 +66,7 @@ describe('고정비 점검 카드', () => {
     expect(screen.queryByText(/주거비 30% 법칙/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /기준이 궁금하다면/ }))
     expect(screen.getByText(/주거비 30% 법칙/)).toBeInTheDocument()
-    expect(screen.getByText(/정답은 아니에요/)).toBeInTheDocument()
+    expect(screen.getByText(/참고 기준일 뿐이에요/)).toBeInTheDocument()
   })
 
   it('맞춤 리포트로 가는 입구는 닫아 뒀다', () => {

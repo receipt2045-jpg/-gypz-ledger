@@ -40,7 +40,7 @@ export default function MoneyToon() {
       }
       sources={
         <>
-          <p className="font-semibold text-sub">알려 드려요</p>
+          <p className="font-semibold text-sub">알아 둘 것</p>
           <ul className="mt-1.5 space-y-1">
             <li>
               · 머니그랩(결영이네 남편)이 원팀 카페에 쓴{' '}
@@ -128,7 +128,10 @@ function Block({ b, store }: { b: MtBlock; store: string }) {
 }
 
 function Checklist({ items, store }: { items: string[]; store: string }) {
-  const [on, setOn] = useSaved<boolean[]>(store, items.map(() => false))
+  const [on, setOn] = useSaved<boolean[]>(
+    store,
+    items.map(() => false),
+  )
   return (
     <ul className="space-y-2">
       {items.map((t, i) => (
@@ -156,7 +159,10 @@ function Checklist({ items, store }: { items: string[]; store: string }) {
 
 function Table({ b, store }: { b: Extract<MtBlock, { type: 'table' }>; store: string }) {
   const blank = b.blank ?? 0
-  const [cells, setCells] = useSaved<string[][]>(store, Array.from({ length: blank }, () => b.head.map(() => '')))
+  const [cells, setCells] = useSaved<string[][]>(
+    store,
+    Array.from({ length: blank }, () => b.head.map(() => '')),
+  )
   const set = (r: number, c: number, v: string) =>
     setCells(cells.map((row, i) => (i === r ? row.map((x, k) => (k === c ? v : x)) : row)))
   return (
@@ -176,7 +182,10 @@ function Table({ b, store }: { b: Extract<MtBlock, { type: 'table' }>; store: st
             {b.rows.map((r, i) => (
               <tr key={`r${i}`}>
                 {r.map((x, k) => (
-                  <td key={k} className="rounded-lg bg-orange-50 px-2 py-2 text-center leading-snug text-ink">
+                  <td
+                    key={k}
+                    className="rounded-lg bg-orange-50 px-2 py-2 text-center leading-snug text-ink"
+                  >
                     {x}
                   </td>
                 ))}
@@ -223,7 +232,10 @@ function MoneyToonList() {
         <ul className="space-y-2">
           {MONEYTOONS.map((m) => (
             <li key={m.slug}>
-              <Link to={`/money/${m.slug}`} className="flex items-center gap-3 rounded-2xl bg-bg px-4 py-3.5">
+              <Link
+                to={`/money/${m.slug}`}
+                className="flex items-center gap-3 rounded-2xl bg-bg px-4 py-3.5"
+              >
                 <span className="text-[24px]">{m.emoji}</span>
                 <span className="min-w-0 flex-1">
                   <b className="block text-[16px] text-ink">{m.title}</b>

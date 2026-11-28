@@ -203,7 +203,7 @@ export default function LoanFinderCalc() {
     <CalcShell
       wide
       title="내집마련 대출 찾기"
-      lead="우리 조건을 고르면 받을 수 있는 대출을 유리한 순서로 보여 줘요. 감당 가능한 대출부터 정해요."
+      lead="우리 조건을 고르면 받을 수 있는 대출을 유리한 순서로 보여 줘요. 감당 가능한 금액부터 정해요."
     >
       {/* PC (2026-10-20): 왼쪽 입력, 오른쪽 결과 */}
       <div className="space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
@@ -213,7 +213,7 @@ export default function LoanFinderCalc() {
               <AmountInput man value={input.monthly} onChange={(n) => set({ monthly: n })} />
             </CalcRow>
             <p className="mt-1 text-[12px] leading-relaxed text-cap">
-              이 돈이 없어도 생활에 부담 없고, 하락장에도 버틸 수 있는 금액이요.
+              생활에 부담 없고 하락장에도 버틸 수 있는 금액이에요.
             </p>
             <div className="mt-2 rounded-btn bg-bg px-3 py-2.5 text-[13px] text-sub">
               월 {short(input.monthly)}이면 약{' '}
@@ -228,10 +228,16 @@ export default function LoanFinderCalc() {
           </Step>
 
           <Step no={2} title="우리 조건">
-            <CalcRow label={`${names[0]} 연소득 (세전)`} auto={prefill.income1 ? '가계부' : undefined}>
+            <CalcRow
+              label={`${names[0]} 연소득 (세전)`}
+              auto={prefill.income1 ? '가계부' : undefined}
+            >
               <AmountInput man value={input.income1} onChange={(n) => set({ income1: n })} />
             </CalcRow>
-            <CalcRow label={`${names[1]} 연소득 (세전)`} auto={prefill.income2 ? '가계부' : undefined}>
+            <CalcRow
+              label={`${names[1]} 연소득 (세전)`}
+              auto={prefill.income2 ? '가계부' : undefined}
+            >
               <AmountInput man value={input.income2} onChange={(n) => set({ income2: n })} />
             </CalcRow>
             {/* 가계부 수입은 실수령이라 세전보다 적다 — 대출 소득 기준·한도는 세전 기준 (2026-11-19 점검) */}
@@ -458,7 +464,8 @@ export default function LoanFinderCalc() {
               적용돼요.
             </Check>
             <Check title="주거래 은행보다 대출상담사">
-              여러 은행을 비교하고 비대면도 돼요. 상담비를 달라거나 특정 금융사만 권하면 손절하세요.
+              여러 은행을 비교하고 비대면도 돼요. 상담비를 달라거나 특정 금융사만 권하면 다른 곳을
+              찾으세요.
               <br />
               <Go to="consultant" />
             </Check>
@@ -529,7 +536,7 @@ function LoanCard({
           <p className="text-[16px] font-bold text-ink">
             {best && (
               <span className="mr-1.5 rounded-md bg-brand px-1.5 py-0.5 align-middle text-[11px] text-white">
-                우리집에 유리
+                유리
               </span>
             )}
             {l.name}
@@ -555,7 +562,7 @@ function LoanCard({
         <Fact label="금리 (어림)" value={`${l.rate.toFixed(2)}%`} />
         <Fact label="기간 · 방식" value={`${l.years}년 · ${METHOD_LABEL[l.method]}`} />
       </div>
-      <p className="mt-2 text-[11.5px] leading-relaxed text-cap">금리: {l.rateNote}</p>
+      <p className="mt-2 text-[11.5px] leading-relaxed text-cap">금리(어림): {l.rateNote}</p>
       {l.deduction > 0 && (
         <p className="mt-2 text-[12px] text-cap">
           연말정산 주담대 이자 소득공제 최대{' '}

@@ -88,7 +88,7 @@ export default function Info() {
       <span className="min-w-0 flex-1">
         <span className="block text-[14px] font-bold">원팀프로젝트</span>
         <span className="block text-[12px] text-white/65">
-          비슷한 고민을 하는 부부들과 함께 돈 공부해요
+          같은 고민을 하는 부부들과 함께 공부해요
         </span>
       </span>
       <ChevronRight size={18} className="shrink-0 text-white/60" />
@@ -141,15 +141,15 @@ export default function Info() {
 }
 
 const CALCS: { icon: string; title: string; sub: string; to: string | null }[] = [
-  { icon: '🍼', title: '육아휴직', sub: '쉬는 동안 한 달에 얼마', to: '/leave' },
+  { icon: '🍼', title: '육아휴직', sub: '휴직 중 월 수령액', to: '/leave' },
   {
     icon: '🔑',
     title: '내집마련 대출 찾기',
-    sub: '우리 조건에 유리한 대출',
+    sub: '조건에 맞는 대출 비교',
     to: '/calc/home-loan',
   },
-  { icon: '🏠', title: '집 살 때 드는 돈', sub: '집값 말고 잔금날 더', to: '/calc/home-cost' },
-  { icon: '🌱', title: '노후 준비', sub: '지금 모으면 노후에 얼마', to: '/calc/retire' },
+  { icon: '🏠', title: '집 살 때 드는 돈', sub: '잔금날 부대비용', to: '/calc/home-cost' },
+  { icon: '🌱', title: '노후 준비', sub: '노후 자금 계산', to: '/calc/retire' },
   { icon: '🏦', title: '대출 이자', sub: '매달 갚는 돈 · 총 이자', to: '/calc/loan' },
 ]
 

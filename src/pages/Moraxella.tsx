@@ -127,7 +127,7 @@ export default function Moraxella() {
               수건 꿉꿉한 냄새 잡으려고,
               <br />
               <b className="font-bold text-[#FFD66B]">6종</b>을 성분·개당
-              단가로 비교했습니다.
+              단가로 비교했어요.
             </>
           }
         />
@@ -144,7 +144,7 @@ export default function Moraxella() {
             </li>
           </ul>
           <p className="mt-3">
-            가격은 수시로 바뀝니다. 랩신 무향 캡슐은 구매 당시 프로모션으로
+            가격은 자주 바뀌어요. 랩신 무향 캡슐은 구매 당시 프로모션으로
             11,700원(개당 468원)에 샀지만, 본문은 정가 12,350원 기준으로
             적었어요. 링크로 열리는 지금 가격·구성은 다를 수 있어요. {DISCLOSURE}
           </p>

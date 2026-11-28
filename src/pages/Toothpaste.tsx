@@ -218,16 +218,15 @@ const POUCH: PouchItem[] = [
     review: "후기 206개 · 4.5점 (최고 84%)",
     body: (
       <>
-        뚜껑이 그대로 양치컵이 되는 2-in-1 제품입니다. 칫솔을 통 안에 넣고
+        뚜껑이 그대로 양치컵이 되는 2-in-1 제품이에요. 칫솔을 통 안에 넣고
         뚜껑을 컵으로 쓰면 되니까, 등원 가방에 칫솔과 컵을 따로 챙길 필요가
         없어요. KC 어린이제품 인증(공급자적합성확인)을 받았고, 통이 투명해서
-        물기가 남았는지 한눈에 보입니다. 방수 파우치까지 같이 옵니다.
+        물기가 남았는지 한눈에 보여요. 방수 파우치까지 같이 와요.
         <br />
         <br />
         후기를 보면 &ldquo;어린이집 양치컵으로 샀는데 컵 따로 안 챙겨도 돼서
-        편하다&rdquo;는 이야기가 많고, 간혹 &ldquo;생각보다 커요&rdquo;라는 평도
-        있습니다. 두 돌 아이가 혼자 들기에는 조금 큰 편이라 집에서 먼저 열고
-        닫는 연습을 시키면 좋습니다.
+        편하다&rdquo;는 이야기가 많고, 간혹 &ldquo;생각보다 커요&rdquo;라는 평도 있어요. 두 돌 아이가 혼자 들기에는 조금 큰 편이라 집에서 먼저 열고
+        닫는 연습을 시키면 좋아요.
       </>
     ),
     img: "pouch-cup",
@@ -243,9 +242,9 @@ const POUCH: PouchItem[] = [
     review: "후기 11,369개 · 4.5점",
     body: (
       <>
-        책처럼 접히는 슬림형이라 파우치에 눕혀 넣습니다. 자외선 살균 + USB
+        책처럼 접히는 슬림형이라 파우치에 눕혀 넣어요. 자외선 살균 + USB
         충전식이고, 한 달에 600명 이상이 사가는 제품이에요. 금요일에 집에
-        가져와 충전하고 월요일에 다시 넣는 식으로 쓰면 됩니다.
+        가져와 충전하고 월요일에 다시 넣는 식으로 쓰면 돼요.
       </>
     ),
     img: "pouch-sterilizer",
@@ -281,7 +280,7 @@ export default function Toothpaste() {
               어린이집에 보낼 치약을 고르다가,
               <br />
               <b className="font-bold text-[#FFD66B]">10종</b>을 성분·뚜껑·가격으로
-              비교했습니다.
+              비교했어요.
             </>
           }
         />
@@ -298,7 +297,7 @@ export default function Toothpaste() {
             </li>
           </ul>
           <p className="mt-3">
-            제품가는 표기 시점 기준이며 변동될 수 있습니다. {DISCLOSURE}
+            제품가는 표기 시점 기준이고, 값은 바뀔 수 있어요. {DISCLOSURE}
           </p>
         </>
       }
@@ -318,12 +317,11 @@ export default function Toothpaste() {
         <div className="mt-3 space-y-2.5">
           <Point title="갈리는 건 성분보다 뚜껑과 점도">
             10종 중 8종이 원터치 캡이지만, 돌려 여는 스크류 캡은 바쁜 등원
-            시간에 밀립니다. 겔이 너무 묽으면 뚜껑 주변에 흘러내려 관리가
+            시간에 밀려요. 겔이 너무 묽으면 뚜껑 주변에 흘러내려 관리가
             힘들어요.
           </Point>
           <Point title="10g당 520원~1,700원, 3배 넘게 차이">
-            100g 대용량과 40~60g 제품을 10g당으로 환산해야 실제 부담이
-            보입니다.
+            100g 대용량과 40~60g 제품을 10g당으로 환산해야 실제 부담이 보여요.
           </Point>
         </div>
       </ShareSection>
@@ -332,7 +330,7 @@ export default function Toothpaste() {
       <ShareSection no={2} title="무불소 아기치약 10종, 한 줄 정리">
         <p className="text-[14px] leading-relaxed text-sub">
           10g당 가격으로 맞춰 적었어요. 성분란의 &lsquo;확인 필요&rsquo;는
-          제조사가 전성분을 공개하지 않아 확인할 수 없는 항목입니다(추측 기재
+          제조사가 전성분을 공개하지 않아 확인할 수 없는 항목이에요(추측 기재
           없음).
         </p>
         <div className="mt-4 space-y-3">
@@ -342,7 +340,7 @@ export default function Toothpaste() {
         </div>
         <p className="mt-3 text-[13px] leading-relaxed text-cap">
           ※ 의약외품 치약은 화장품법상 전성분 표시 의무가 없어 브랜드마다 공개
-          범위가 다릅니다.
+          범위가 달라요.
         </p>
         <details className="mt-3 rounded-2xl bg-bg px-4 py-3">
           <summary className="cursor-pointer text-[15px] font-bold text-ink">
@@ -370,23 +368,23 @@ export default function Toothpaste() {
           <Pick
             where="어린이집 등원"
             what="닥터대디스 · 몽디에스"
-            why="원터치 캡 + 안 흐르는 점도. 선생님이 연속으로 닦이는 자리에서 흘림이 없어야 합니다."
+            why="원터치 캡 + 안 흐르는 점도. 선생님이 연속으로 닦이는 자리에서 흘림이 없어야 해요."
             best
           />
           <Pick
             where="가격 우선"
             what="예꼬맘 · 네네덴트 · 비앤비"
-            why="10g당 520~790원. 자주 사서 자주 버리는 어린이집용에 부담이 적습니다."
+            why="10g당 520~790원. 자주 사서 자주 버리는 어린이집용에 부담이 적어요."
           />
           <Pick
             where="성분 최소"
             what="벨레다 · 궁중비책"
-            why="벨레다는 전성분 9종, 궁중비책은 계면활성제·연마제까지 배제. 대신 캡·세정력은 아쉽습니다."
+            why="벨레다는 전성분 9종, 궁중비책은 계면활성제·연마제까지 배제. 대신 캡·세정력은 아쉬워요."
           />
           <Pick
             where="한 학기 넉넉히"
             what="몽디에스 100g"
-            why="1+1에 12,580원, 전성분 전체 공개. 파우치에 한 통 넣어두면 학기 내내 갑니다."
+            why="1+1에 12,580원, 전성분 전체 공개. 파우치에 한 통 넣어두면 학기 내내 가요."
           />
         </div>
       </ShareSection>
@@ -394,24 +392,23 @@ export default function Toothpaste() {
       {/* ── 4. 알아둘 것 */}
       <ShareSection no={4} title="사기 전에 알아둘 4가지">
         <div className="space-y-3">
-          <Point title="무불소는 충치 예방 효과가 없습니다">
+          <Point title="무불소는 충치 예방 효과가 없어요">
             무불소는 &lsquo;삼켜도 부담이 적은 치약&rsquo;이라는 뜻이에요.
             집에서 아침·저녁 불소 치약(만 3세 전 쌀알만큼, 3세 이후 완두콩만큼)을
-            따로 챙기는 게 전제입니다.
+            따로 챙기는 게 전제예요.
           </Point>
           <Point title="가격은 2026년 11월 20일 기준">
-            쿠팡·공식몰 최저가입니다. 로켓배송·기획전에 따라 10g당 단가가
+            쿠팡·공식몰 최저가예요. 로켓배송·기획전에 따라 10g당 단가가
             20~30% 흔들리니, 사기 직전 10g당으로 다시 계산해 보세요.
           </Point>
           <Point title="향과 멘톨을 확인하세요">
             예꼬맘 1단계에는 L-멘톨이 소량 들어 있어 살짝 시원한 편이고,
-            네네덴트는 멘톨·페퍼민트오일을 넣지 않아 가장 순한 맛입니다. 민트를
-            싫어하는 아이는 후자를 권합니다.
+            네네덴트는 멘톨·페퍼민트오일을 넣지 않아 가장 순한 맛이에요. 민트를
+            싫어하는 아이는 후자를 권해요.
           </Point>
-          <Point title="'확인 필요'는 비어 있는 정보입니다">
-            제조사가 공개하지 않은 항목이라 임의로 채우지 않았습니다. 해당
-            제품을 고르실 때는 고객센터에 전성분을 한 번 물어보는 게 가장
-            확실합니다.
+          <Point title="'확인 필요'는 비어 있는 정보예요">
+            제조사가 공개하지 않은 항목이라 임의로 채우지 않았어요. 해당
+            제품을 고르실 때는 고객센터에 전성분을 한 번 물어보는 게 가장 확실해요.
           </Point>
         </div>
       </ShareSection>
@@ -435,9 +432,9 @@ export default function Toothpaste() {
       {/* ── 6. 양치 파우치 */}
       <ShareSection no={6} title="어린이집 양치 파우치, 이 3개면 끝">
         <p className="text-[15px] leading-relaxed text-sub">
-          치약은 의약외품이라 쿠팡 파트너스 링크가 막혀 있습니다. 그래서
-          파우치에 같이 들어가는 용품 3종을 골라 링크를 붙였습니다. 가격·후기는
-          2026년 11월 21일 새벽 기준입니다.
+          치약은 의약외품이라 쿠팡 파트너스 링크가 막혀 있어요. 그래서
+          파우치에 같이 들어가는 용품 3종을 골라 링크를 붙였어요. 가격·후기는
+          2026년 11월 21일 새벽 기준이에요.
         </p>
         <p className="mt-3 rounded-xl border border-[#FFD66B] bg-[#FFF8E1] px-4 py-3 text-[14px] font-semibold leading-relaxed text-ink">
           {DISCLOSURE}
@@ -450,7 +447,7 @@ export default function Toothpaste() {
 
         <div className="mt-5 rounded-2xl bg-bg px-4 py-4">
           <p className="text-[16px] font-extrabold text-ink">
-            파우치 구성, 이렇게 넣었습니다
+            파우치 구성, 이렇게 넣었어요
           </p>
           <ul className="mt-2.5 space-y-2 text-[14px] leading-relaxed text-sub">
             <li>

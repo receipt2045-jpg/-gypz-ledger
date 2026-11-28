@@ -81,7 +81,7 @@ export default function HomeCostCalc() {
   return (
     <CalcShell
       title="집 살 때 드는 돈"
-      lead="계약서 금액 말고 잔금날 함께 나가는 돈이에요. 세금, 복비, 법무사, 채권까지 한 번에 봐요."
+      lead="집값 말고 잔금 때 함께 나가는 돈이에요. 세금, 복비, 법무사, 채권까지 한 번에 봐요."
       cta="이 집, 사도 될지 결영이네와 같이"
     >
       <Card>
@@ -243,7 +243,7 @@ export default function HomeCostCalc() {
         </div>
         {r.bankPays.length > 0 && (
           <p className="mt-3 rounded-btn bg-bg px-3 py-2 text-[12px] leading-relaxed text-sub">
-            은행이 내는 돈(합계에 안 넣음): {r.bankPays.join(' · ')}
+            은행이 내는 돈(합계 제외): {r.bankPays.join(' · ')}
           </p>
         )}
       </Card>
@@ -264,8 +264,8 @@ export default function HomeCostCalc() {
 
       <p className="px-1 text-[12px] leading-relaxed text-cap">
         {HOME_COST_BASE_DATE} 기준 세율·요율로 계산한 어림값이에요. 복비·법무사비는 협의 금액이라
-        보통 이보다 적게 나오고, 채권 할인율은 매일 바뀌어요. 계약 전 구청 세무과와 법무사에게 꼭
-        확인하세요.
+        보통 이보다 적게 나오고, 채권 할인율은 매일 바뀌어요. 계약 전 구청 세무과와 법무사에게
+        확인해 주세요.
       </p>
     </CalcShell>
   )

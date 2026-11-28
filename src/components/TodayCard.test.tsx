@@ -10,7 +10,7 @@ describe('오늘 카드 — 연말정산 줄', () => {
   it('연봉을 아직 안 넣었으면 두 사람 이름으로 물어본다', () => {
     seedStore({})
     renderScreen(<TodayCard />)
-    expect(screen.getByText(/남편 카드 쓸까, 아내 카드 쓸까\?/)).toBeInTheDocument()
+    expect(screen.getByText(/남편 카드 vs 아내 카드/)).toBeInTheDocument()
     expect(screen.getByText(/연말정산 대비/)).toBeInTheDocument()
   })
 
@@ -22,6 +22,6 @@ describe('오늘 카드 — 연말정산 줄', () => {
     seedStore({})
     renderScreen(<TodayCard />)
     expect(screen.getByText(/오늘 긁을 땐/)).toBeInTheDocument()
-    expect(screen.queryByText(/카드 쓸까/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/카드 vs/)).not.toBeInTheDocument()
   })
 })

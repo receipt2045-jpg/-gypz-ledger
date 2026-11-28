@@ -171,9 +171,8 @@ export default function OneTeamCard({
           variant === 'lines' ? 'text-center' : ''
         }`}
       >
-        이런 고민 하고 있다면,{' '}
-        <b className="font-bold text-white">비슷한 고민을 하는 다른 부부들과 함께</b> 돈 공부해
-        봐요.
+        이런 고민이라면, <b className="font-bold text-white">같은 고민을 하는 부부들과 함께</b>{' '}
+        공부해요.
       </p>
       <a
         href={ONETEAM_URL}

@@ -61,7 +61,9 @@ describe('관리자 > 알림 보내기', () => {
     expect(opts).not.toContain('07:30')
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '종류' }), '공지')
-    const all = Array.from((screen.getByRole('combobox', { name: '시각' }) as HTMLSelectElement).options).map((o) => o.value)
+    const all = Array.from(
+      (screen.getByRole('combobox', { name: '시각' }) as HTMLSelectElement).options,
+    ).map((o) => o.value)
     expect(all).toContain('21:00')
   })
 
@@ -74,15 +76,20 @@ describe('관리자 > 알림 보내기', () => {
     expect(pushAdmin.audienceCount).toHaveBeenCalledWith('notice')
     expect(confirm).toHaveBeenCalledWith('3명에게 보내요. 보낼까요?')
     expect(pushAdmin.createCampaign).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'notice', title: '새 기능', body: '정산이 쉬워졌어요', path: '/monthly' }),
+      expect.objectContaining({
+        kind: 'notice',
+        title: '새 기능',
+        body: '정산이 쉬워졌어요',
+        path: '/monthly',
+      }),
     )
     expect(await screen.findByText(/보내져요|예약했어요/)).toBeInTheDocument()
   })
 
   it.each([
     ['2026-11-04T20:54:00+09:00', '5분 안에 보내져요.'],
-    ['2026-11-04T20:55:00+09:00', '광고 알림은 아침 8시에 보내져요.'],
-    ['2026-11-04T22:10:00+09:00', '광고 알림은 아침 8시에 보내져요.'],
+    ['2026-11-04T20:55:00+09:00', '광고 알림은 오전 8시에 보내져요.'],
+    ['2026-11-04T22:10:00+09:00', '광고 알림은 오전 8시에 보내져요.'],
   ])('홍보를 지금 보내면 %s에는 "%s"라고 알려 준다', async (at, expected) => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(at))

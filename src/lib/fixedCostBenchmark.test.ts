@@ -108,7 +108,7 @@ describe('headlineOf — 겁주지 않고 방향만', () => {
 
   it('다 괜찮으면 칭찬한다', () => {
     const r = buildFixedCostReport([...income500, item('fixed', '통신', 150_000)], true)
-    expect(headlineOf(r)).toContain('잘 잡혀 있습니다')
+    expect(headlineOf(r)).toContain('잘 잡혔어요')
   })
 })
 

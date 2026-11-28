@@ -1,8 +1,5 @@
-import { useState, type ReactNode } from "react";
-import ShareArticle, {
-  ShareHero,
-  ShareSection,
-} from "../components/ShareArticle";
+import { useState, type ReactNode } from 'react'
+import ShareArticle, { ShareHero, ShareSection } from '../components/ShareArticle'
 
 /**
  * AI 비서로 기프티콘 설문 자동 응모 (2026-11-19) — 로그인 없이 열리는 공개 페이지.
@@ -10,7 +7,7 @@ import ShareArticle, {
  * 피클(결영이네 초대 링크) 깔기 → 명령어 복사·붙여넣기 → 응모할 사람 정보만 바꾸기.
  * 숫자(2주·261건·이마트 1만 원 당첨)는 결영이네 실제 화면 그대로.
  */
-const INVITE = "https://pickle.com/i/LFBVRKG5";
+const INVITE = 'https://pickle.com/i/LFBVRKG5'
 
 const COMMAND = `앞으로 매일 오전 10시, 오후 2시(하루 2번)마다 기프티콘·상품권 주는 온라인 설문조사랑 퀴즈 이벤트 찾아서 대리 응모해 줘.
 
@@ -29,18 +26,18 @@ const COMMAND = `앞으로 매일 오전 10시, 오후 2시(하루 2번)마다 �
 • 거주지 제한 없는 전국민/온라인 대상이거나 내 거주 지역에 맞는 것만 참여
 • 여러 명 넣을 땐 만족도 점수나 주관식 개선의견을 조금씩 다르게 성의 있게 작성
 • 이미 응모한 설문은 따로 기록해 두고 중복 참여하지 않기
-• 새로 응모 완료한 것만 설문명, 경품, 발표일, 응모 인원으로 정리해서 보고해 줘`;
+• 새로 응모 완료한 것만 설문명, 경품, 발표일, 응모 인원으로 정리해서 보고해 줘`
 
 export default function Survey() {
   return (
     <ShareArticle
       kind="guide"
       toc={[
-        { no: 1, title: "한눈에 보기" },
-        { no: 2, title: "피클 앱 깔기" },
-        { no: 3, title: "명령어 복사해서 붙여넣기" },
-        { no: 4, title: "응모할 사람 정보 바꾸기" },
-        { no: 5, title: "알아두면 좋은 것" },
+        { no: 1, title: '한눈에 보기' },
+        { no: 2, title: '피클 앱 깔기' },
+        { no: 3, title: '명령어 복사해서 붙여넣기' },
+        { no: 4, title: '응모할 사람 정보 바꾸기' },
+        { no: 5, title: '알아두면 좋은 것' },
       ]}
       hero={
         <ShareHero
@@ -54,32 +51,27 @@ export default function Survey() {
           }
           lead={
             <>
-              기프티콘 주는 설문, 하루 2번 AI가 찾아서{" "}
+              기프티콘 주는 설문, 하루 2번 AI가 찾아서{' '}
               <b className="font-bold text-[#FFD66B]">대신 응모</b>해요.
-              <br />
-              한 번만 세팅하면 끝이에요.
+              <br />한 번만 세팅하면 끝이에요.
             </>
           }
         />
       }
       sources={
         <>
-          <p className="font-semibold text-sub">알려 드려요</p>
+          <p className="font-semibold text-sub">알아 둘 것</p>
           <ul className="mt-1.5 space-y-1">
             <li>
               · 피클 링크는 결영이네 <b className="text-ink">초대 링크</b>
-              예요. 앱스토어에서 &lsquo;피클&rsquo;을 찾아 깔아도 똑같이 쓸 수
-              있어요.
+              예요. 앱스토어에서 &lsquo;피클&rsquo;을 찾아 깔아도 똑같이 쓸 수 있어요.
             </li>
             <li>
-              · 2주·누적 261건·이마트 1만 원권 당첨은 결영이네 AI 비서 화면
-              그대로예요(11월 기준). 설문 이벤트는 추첨이라 응모한 만큼 다
-              당첨되지는 않아요.
+              · 2주·누적 261건·이마트 1만 원권 당첨은 결영이네 AI 비서 화면 그대로예요(11월 기준).
+              설문 이벤트는 추첨이라 응모한 만큼 다 당첨되지는 않아요.
             </li>
           </ul>
-          <p className="mt-3">
-            11월 19일 기준이에요. 설문 이벤트는 주최하는 곳마다 조건이 달라요.
-          </p>
+          <p className="mt-3">11월 19일 기준이에요. 설문 이벤트는 주최하는 곳마다 조건이 달라요.</p>
         </>
       }
     >
@@ -90,9 +82,7 @@ export default function Survey() {
           <Stat big="2주" small="세팅하고 지난 시간" />
           <Stat big="261건" small="누적 응모" best />
         </div>
-        <p className="mt-4 text-[14px] font-bold text-ink">
-          결영이네 AI 비서 화면
-        </p>
+        <p className="mt-4 text-[14px] font-bold text-ink">결영이네 AI 비서 화면</p>
         <div className="mt-2 space-y-3">
           <Shot
             file="chat-request"
@@ -115,8 +105,7 @@ export default function Survey() {
             내가 한 건 0개, AI가 벌어온 쿠폰들
           </p>
           <p className="mt-1.5 text-[14px] leading-relaxed text-white/75">
-            이마트 1만 원권에 메가커피까지 쌓이고 있어요. 안 먹는 건 되팔아서
-            현금으로 바꿔도 돼요.
+            이마트 1만 원권에 메가커피까지 쌓이고 있어요. 안 먹는 건 되팔아서 현금으로 바꿔도 돼요.
           </p>
           <img
             src="/share/survey/wallet.webp"
@@ -134,8 +123,7 @@ export default function Survey() {
             결영이네 초대 링크예요. 폰에서 누르면 앱 설치 화면으로 넘어가요.
           </Step>
           <Step n={2} title="가입하고 AI 비서 대화창 열기">
-            앱에서 AI 비서한테 말 거는 대화창을 열어 두세요. 여기에 3번 명령어를
-            붙여넣을 거예요.
+            앱에서 AI 비서한테 말 거는 대화창을 열어 두세요. 여기에 3번 명령어를 붙여넣을 거예요.
           </Step>
         </ol>
         <a
@@ -152,9 +140,8 @@ export default function Survey() {
       {/* ── 3. 명령어 */}
       <ShareSection no={3} title="명령어 복사해서 붙여넣기">
         <p className="text-[15px] leading-relaxed text-sub">
-          결영이네가 실제로 쓰는 명령어 그대로예요. 복사해서 AI 비서 대화창에
-          붙여넣고, <b className="text-ink">[응모할 사람 정보]</b> 줄만 내
-          정보로 바꿔서 보내면 끝이에요.
+          결영이네가 실제로 쓰는 명령어 그대로예요. 복사해서 AI 비서 대화창에 붙여넣고,{' '}
+          <b className="text-ink">[응모할 사람 정보]</b> 줄만 내 정보로 바꿔서 보내면 끝이에요.
         </p>
         <CopyBox text={COMMAND} />
       </ShareSection>
@@ -169,12 +156,12 @@ export default function Survey() {
         </div>
         <div className="mt-3 space-y-3">
           <Tip title="거주 지역은 꼭 적기">
-            지자체 설문은 그 지역 사람만 참여할 수 있어요. 시·군·구까지 적어야
-            AI가 맞는 것만 골라요.
+            지자체 설문은 그 지역 사람만 참여할 수 있어요. 시·군·구까지 적어야 AI가 맞는 것만
+            골라요.
           </Tip>
           <Tip title="가족도 넣을 땐 동의 먼저">
-            남편·부모님 이름으로도 응모할 수 있어요. 같은 형식으로 2, 3번에
-            적되, 이름과 번호를 넣기 전에 꼭 물어보고 넣어요.
+            남편·부모님 이름으로도 응모할 수 있어요. 같은 형식으로 2, 3번에 적되, 이름과 번호를 넣기
+            전에 꼭 물어보고 넣어요.
           </Tip>
         </div>
       </ShareSection>
@@ -183,34 +170,32 @@ export default function Survey() {
       <ShareSection no={5} title="알아두면 좋은 것">
         <div className="space-y-3">
           <Tip title="당첨은 문자로 와요">
-            기프티콘은 응모할 때 적은 번호로 와요. 모르는 번호 문자도 한 번씩
-            확인해요.
+            기프티콘은 응모할 때 적은 번호로 와요. 모르는 번호 문자도 한 번씩 확인해요.
           </Tip>
           <Tip title="추첨이라 다 되진 않아요">
-            응모를 많이 할수록 당첨도 늘어요. 금액이 작아도 다 넣는 게 명령어에
-            들어 있는 이유예요.
+            응모를 많이 할수록 당첨도 늘어요. 금액이 작아도 다 넣는 게 명령어에 들어 있는 이유예요.
           </Tip>
           <Tip title="이름·번호는 설문 주최하는 곳으로 가요">
-            로그인 필요한 곳과 SNS 미션은 빼라고 명령어에 넣어 뒀어요. 보고
-            온 설문명이 낯설면 한 번 찾아봐요.
+            로그인 필요한 곳과 SNS 미션은 빼라고 명령어에 넣어 뒀어요. 보고 온 설문명이 낯설면 한 번
+            찾아봐요.
           </Tip>
         </div>
       </ShareSection>
     </ShareArticle>
-  );
+  )
 }
 
 function CopyBox({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false)
   const copy = () => {
     navigator.clipboard
       ?.writeText(text)
       .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
       })
-      .catch(() => undefined);
-  };
+      .catch(() => undefined)
+  }
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-line">
       <div className="flex items-center justify-between bg-bg px-4 py-2.5">
@@ -220,10 +205,13 @@ function CopyBox({ text }: { text: string }) {
           onClick={copy}
           className="rounded-full bg-brand px-3.5 py-1.5 text-[13px] font-bold text-white"
         >
-          {copied ? "복사했어요 ✓" : "복사하기"}
+          {copied ? '복사했어요 ✓' : '복사하기'}
         </button>
       </div>
-      <pre style={{ fontFamily: "inherit" }} className="max-h-[420px] overflow-auto whitespace-pre-wrap break-keep bg-white px-4 py-3.5 text-[13.5px] leading-relaxed text-ink">
+      <pre
+        style={{ fontFamily: 'inherit' }}
+        className="max-h-[420px] overflow-auto whitespace-pre-wrap break-keep bg-white px-4 py-3.5 text-[13.5px] leading-relaxed text-ink"
+      >
         {text}
       </pre>
       <button
@@ -231,43 +219,23 @@ function CopyBox({ text }: { text: string }) {
         onClick={copy}
         className="w-full border-t border-line bg-white py-3 text-[15px] font-extrabold text-brand"
       >
-        {copied ? "복사했어요 ✓ 대화창에 붙여넣으세요" : "명령어 전체 복사하기"}
+        {copied ? '복사했어요 ✓ 대화창에 붙여넣으세요' : '명령어 전체 복사하기'}
       </button>
     </div>
-  );
+  )
 }
 
-function Stat({
-  big,
-  small,
-  best = false,
-}: {
-  big: string;
-  small: string;
-  best?: boolean;
-}) {
+function Stat({ big, small, best = false }: { big: string; small: string; best?: boolean }) {
   return (
-    <div className={`rounded-2xl px-2 py-3.5 ${best ? "bg-[#F2F7FF]" : "bg-bg"}`}>
-      <p
-        className={`text-[19px] font-extrabold ${best ? "text-brand" : "text-ink"}`}
-      >
-        {big}
-      </p>
+    <div className={`rounded-2xl px-2 py-3.5 ${best ? 'bg-[#F2F7FF]' : 'bg-bg'}`}>
+      <p className={`text-[19px] font-extrabold ${best ? 'text-brand' : 'text-ink'}`}>{big}</p>
       <p className="mt-0.5 text-[12px] leading-snug text-sub">{small}</p>
     </div>
-  );
+  )
 }
 
 /** 결영이네 실제 화면 (이름은 흐리게 했다) */
-function Shot({
-  file,
-  alt,
-  caption,
-}: {
-  file: string;
-  alt: string;
-  caption: string;
-}) {
+function Shot({ file, alt, caption }: { file: string; alt: string; caption: string }) {
   return (
     <figure>
       <img
@@ -280,18 +248,10 @@ function Shot({
         {caption}
       </figcaption>
     </figure>
-  );
+  )
 }
 
-function Step({
-  n,
-  title,
-  children,
-}: {
-  n: number;
-  title: string;
-  children: ReactNode;
-}) {
+function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
     <li className="flex gap-3 rounded-2xl bg-bg p-4">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-[14px] font-extrabold text-brand">
@@ -299,12 +259,10 @@ function Step({
       </span>
       <div>
         <p className="text-[16px] font-bold text-ink">{title}</p>
-        <p className="mt-0.5 text-[14px] leading-relaxed text-sub">
-          {children}
-        </p>
+        <p className="mt-0.5 text-[14px] leading-relaxed text-sub">{children}</p>
       </div>
     </li>
-  );
+  )
 }
 
 function Tip({ title, children }: { title: string; children: ReactNode }) {
@@ -313,5 +271,5 @@ function Tip({ title, children }: { title: string; children: ReactNode }) {
       <p className="text-[16px] font-extrabold text-ink">{title}</p>
       <p className="mt-1 text-[15px] leading-relaxed text-sub">{children}</p>
     </div>
-  );
+  )
 }

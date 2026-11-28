@@ -444,7 +444,7 @@ export default function Confess() {
   const runParse = () => {
     const r = parseConfessionText(draft, categories, aliases)
     if (r.entries.length === 0) {
-      setParseMsg('금액을 찾지 못했어요. "커피 5천원, 점심 9,000원"처럼 적어주세요.')
+      setParseMsg('금액을 찾지 못했어요. "커피 5천원, 점심 9,000원"처럼 적어 주세요.')
       return
     }
     setParseMsg(null)
@@ -485,7 +485,7 @@ export default function Confess() {
         reason === 'login'
           ? '캡처로 적기는 로그인하면 쓸 수 있어요'
           : reason === 'limit'
-            ? '오늘은 캡처를 많이 읽었어요. 내일 다시 해 주세요'
+            ? '오늘 캡처 읽기 횟수를 다 썼어요. 내일 다시 해 주세요'
             : '캡처를 읽지 못했어요. 잠시 뒤 다시 해 주세요',
       )
     } finally {
@@ -778,8 +778,8 @@ export default function Confess() {
                 )}
                 {!d.matched && (
                   <p className="mt-1.5 text-[12px] text-amber-600">
-                    어디에 쓴 건지 몰라서 우선 '{d.category}'에 두었어요. 맞는 종류로 고쳐 주시면
-                    다음부턴 기억할게요.
+                    어디에 쓴 건지 몰라 '{d.category}'에 넣었어요. 종류를 고쳐 주시면 다음부터
+                    기억해요.
                   </p>
                 )}
               </div>
@@ -878,11 +878,7 @@ export default function Confess() {
   if (mode === 'picker') {
     return (
       <Frame>
-        <Top
-          onBack={() => setMode('text')}
-          title="무엇에 썼나요?"
-          subtitle="기록하면 모아·불리가 바로 반응해요"
-        />
+        <Top onBack={() => setMode('text')} title="무엇에 썼나요?" />
         {pastDateBanner}
         <div className="flex-1 space-y-5 px-5 pb-10 pt-1">
           <WeeklyCostCard confessions={confessions} />
@@ -922,7 +918,7 @@ export default function Confess() {
       <Top
         onBack={() => navigate('/')}
         title="오늘 뭐에 썼나요?"
-        subtitle="쓴 것들을 한 번에 적어주세요. 나눠서 기록해 드려요"
+        subtitle="쓴 것들을 한 번에 적어 주세요. 항목별로 나눠 기록해요"
       />
       <div className="flex-1 space-y-4 px-5 pb-10 pt-1">
         <WeeklyCostCard confessions={confessions} />
@@ -998,7 +994,7 @@ export default function Confess() {
             {spender === 'shared'
               ? '공동 지출로 적혀요. 정산할 땐 적은 사람 항목으로 들어가요'
               : spender === memberNo
-                ? '연말정산 카드 공제는 명의자별로 계산돼요. 쌓이면 누구 카드를 쓸지 알려드려요'
+                ? '연말정산 카드 공제는 명의자별로 계산해요. 쌓이면 유리한 카드가 나와요'
                 : `${spenderLabel} 지출로 적혀요. 대신 적어주셔도 괜찮아요`}
           </p>
         </div>
@@ -1011,7 +1007,7 @@ export default function Confess() {
               if (parseMsg) setParseMsg(null)
             }}
             rows={4}
-            placeholder={'"점심 9천원, 커피 5,500원"\n이라고 말해보세요'}
+            placeholder={'"점심 9천원, 커피 5,500원"\n이라고 말해 보세요'}
             className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none placeholder:text-cap"
           />
           <div className="mt-1 flex items-center gap-4">
@@ -1058,7 +1054,7 @@ export default function Confess() {
 
         {listening && (
           <p className="text-center text-[13px] font-bold text-red-500">
-            듣고 있어요… 말이 끝나면 자동으로 받아 적어요
+            듣고 있어요… 말이 끝나면 자동으로 적어요
           </p>
         )}
         {capturing && (
@@ -1080,7 +1076,7 @@ export default function Confess() {
               </span>
               {/* 이름 뒤에 조사를 붙이면 받침에 따라 틀린다 — 이름만 두고 뗀다 */}
               <span className="mt-0.5 block text-[12px] text-sub">
-                0원도 기록이에요. {spenderLabel} 연속 일수가 안 끊겨요
+                0원도 기록이에요. {spenderLabel} 연속 일수는 이어져요
               </span>
             </span>
             <ChevronRight size={18} className="shrink-0 text-cap" />

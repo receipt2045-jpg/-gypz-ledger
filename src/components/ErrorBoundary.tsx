@@ -29,8 +29,7 @@ export default class ErrorBoundary extends Component<
         <div className="w-full max-w-[360px] rounded-card bg-card p-6 text-center shadow-card">
           <p className="text-[17px] font-bold text-ink">화면을 여는 중에 문제가 생겼어요</p>
           <p className="mt-2 text-[13.5px] leading-relaxed text-sub">
-            다시 열면 대부분 바로 보여요. 계속 이러면 알려 주세요 — 어떤 문제였는지는 저절로
-            전해졌어요.
+            다시 열면 대부분 해결돼요. 계속되면 알려 주세요. 오류 내용은 자동으로 전송됐어요.
           </p>
           <button
             onClick={() => window.location.reload()}

@@ -200,25 +200,31 @@ export function recommendCard(m1: MemberInput, m2: MemberInput): CardAdvice {
 
   // 1) 한도를 다 채웠으면 더 써도 공제가 안 늘어난다
   if (a.limitReached && b.limitReached) {
-    return pick('none', '두 분 다 공제 한도를 채웠어요. 이제부턴 카드 혜택이 좋은 쪽으로 쓰셔도 돼요.')
+    return pick('none', '두 분 다 공제 한도를 채웠어요. 이제부터는 혜택이 좋은 카드로 쓰세요.')
   }
-  if (a.limitReached) return pick(2, '한 분은 공제 한도를 이미 채웠어요. 남은 쪽으로 쓰는 게 이득이에요.')
-  if (b.limitReached) return pick(1, '한 분은 공제 한도를 이미 채웠어요. 남은 쪽으로 쓰는 게 이득이에요.')
+  if (a.limitReached)
+    return pick(2, '한 분은 공제 한도를 이미 채웠어요. 남은 쪽으로 쓰는 게 이득이에요.')
+  if (b.limitReached)
+    return pick(1, '한 분은 공제 한도를 이미 채웠어요. 남은 쪽으로 쓰는 게 이득이에요.')
 
   // 2) 한 명만 문턱을 넘었으면, 넘은 사람은 쓰는 족족 공제된다
-  if (a.cleared && !b.cleared) return pick(1, '이미 문턱을 넘어서, 여기서 쓰는 금액은 바로 공제로 이어져요.')
-  if (b.cleared && !a.cleared) return pick(2, '이미 문턱을 넘어서, 여기서 쓰는 금액은 바로 공제로 이어져요.')
+  if (a.cleared && !b.cleared) return pick(1, '문턱을 넘었으니 여기서 쓰는 금액은 바로 공제돼요.')
+  if (b.cleared && !a.cleared) return pick(2, '문턱을 넘었으니 여기서 쓰는 금액은 바로 공제돼요.')
 
   // 3) 둘 다 넘었으면 세율이 높은 쪽이 같은 공제액으로 더 많이 아낀다
   if (a.cleared && b.cleared) {
-    if (a.rate > b.rate) return pick(1, '두 분 다 문턱을 넘었어요. 이럴 땐 세율이 높은 쪽이 더 많이 돌려받아요.')
-    if (b.rate > a.rate) return pick(2, '두 분 다 문턱을 넘었어요. 이럴 땐 세율이 높은 쪽이 더 많이 돌려받아요.')
+    if (a.rate > b.rate)
+      return pick(1, '두 분 다 문턱을 넘었어요. 이럴 땐 세율이 높은 쪽이 더 많이 돌려받아요.')
+    if (b.rate > a.rate)
+      return pick(2, '두 분 다 문턱을 넘었어요. 이럴 땐 세율이 높은 쪽이 더 많이 돌려받아요.')
     return pick('either', '두 분 다 문턱을 넘었고 세율도 같아요. 어느 쪽으로 쓰셔도 비슷해요.')
   }
 
   // 4) 둘 다 못 넘었으면 문턱이 가까운 쪽부터 넘기는 게 빠르다
-  if (a.remaining < b.remaining) return pick(1, '문턱까지 남은 금액이 더 적어요. 먼저 넘겨두면 그 뒤부터 공제가 시작돼요.')
-  if (b.remaining < a.remaining) return pick(2, '문턱까지 남은 금액이 더 적어요. 먼저 넘겨두면 그 뒤부터 공제가 시작돼요.')
+  if (a.remaining < b.remaining)
+    return pick(1, '문턱까지 남은 금액이 더 적어요. 먼저 넘겨두면 그 뒤부터 공제가 시작돼요.')
+  if (b.remaining < a.remaining)
+    return pick(2, '문턱까지 남은 금액이 더 적어요. 먼저 넘겨두면 그 뒤부터 공제가 시작돼요.')
   return pick('either', '두 분의 조건이 같아요. 어느 쪽으로 쓰셔도 비슷해요.')
 }
 

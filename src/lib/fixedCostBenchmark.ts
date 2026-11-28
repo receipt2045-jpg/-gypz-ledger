@@ -122,8 +122,7 @@ export function buildFixedCostReport(items: BudgetItem[], closed: boolean): Fixe
     income,
     totalFixed,
     totalRatio,
-    totalStatus:
-      income <= 0 ? 'unknown' : totalRatio > TOTAL_FIXED_MAX ? 'over' : 'ok',
+    totalStatus: income <= 0 ? 'unknown' : totalRatio > TOTAL_FIXED_MAX ? 'over' : 'ok',
     categories,
     totalOverBy,
     tenYearTotal: tenYearOf(totalOverBy),
@@ -135,10 +134,10 @@ export function headlineOf(r: FixedCostReport): string {
   if (r.totalStatus === 'unknown') return '수입을 넣으면 우리집 고정비를 견줘 볼 수 있어요'
   const pct = Math.round(r.totalRatio * 100)
   if (r.totalStatus === 'over') {
-    return `고정비가 수입의 ${pct}%예요. 절반을 넘으면 모으기 어려워집니다.`
+    return `고정비가 수입의 ${pct}%예요. 절반을 넘으면 모으기 어려워요.`
   }
   if (r.totalOverBy > 0) {
     return `고정비는 수입의 ${pct}%로 무난해요. 다만 줄일 여지가 남아 있어요.`
   }
-  return `고정비가 수입의 ${pct}%예요. 잘 잡혀 있습니다.`
+  return `고정비가 수입의 ${pct}%예요. 잘 잡혔어요.`
 }

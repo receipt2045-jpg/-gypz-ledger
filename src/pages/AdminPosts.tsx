@@ -59,7 +59,7 @@ export default function AdminPosts() {
     } catch (err) {
       setMsg(
         err instanceof Error && /relation|does not exist/.test(err.message)
-          ? '글 저장 칸이 아직 없어요. Supabase에서 posts.sql을 먼저 실행해 주세요.'
+          ? '저장소 연결이 안 됐어요. 결영이네에 알려 주세요.'
           : '올리지 못했어요. 운영자 계정으로 로그인했는지 확인해 주세요.',
       )
     } finally {

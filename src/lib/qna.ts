@@ -235,7 +235,7 @@ export type ConsultPlan = 'basic' | 'premium' | 'undecided'
 export const CONSULT_PLANS: { key: ConsultPlan; title: string; desc: string }[] = [
   { key: 'basic', title: '기본 상담', desc: '30만원 · 1시간 온라인' },
   { key: 'premium', title: '프리미엄 상담', desc: '100만원 · 3개월, 계약할 때까지 함께' },
-  { key: 'undecided', title: '아직 모르겠어요', desc: '이야기 나눠 보고 정할게요' },
+  { key: 'undecided', title: '아직 모르겠어요', desc: '상담하며 정할게요' },
 ]
 
 export const CONSULT_REGIONS = [

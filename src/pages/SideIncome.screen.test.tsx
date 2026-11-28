@@ -61,7 +61,7 @@ describe('부수입 가계부 (2026-11-19)', () => {
     await screen.findByText('473,000원')
     await user.click(screen.getByRole('button', { name: /부수입 적기/ }))
     await user.click(screen.getByRole('tab', { name: '절약액' }))
-    await user.type(screen.getByLabelText(/얼마짜리였나요/), '60000')
+    await user.type(screen.getByLabelText(/금액이 얼마였나요/), '60000')
     await user.type(screen.getByLabelText(/내가 낸 돈/), '10000')
     expect(screen.getByText('절약액 50,000원으로 적어요')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '적기' }))

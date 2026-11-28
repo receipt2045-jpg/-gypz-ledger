@@ -22,7 +22,7 @@ import {
 /** push-dispatch는 5분마다 돈다 — 20:55 이후에 적은 홍보는 다음 실행이 21:00 이후라 08:00으로 미뤄진다 */
 const DISPATCH_LAG_MS = 5 * 60 * 1000
 
-const field ='mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-[14px] text-ink'
+const field = 'mt-1 w-full rounded-btn border border-line bg-white px-3 py-2 text-[14px] text-ink'
 
 /**
  * 관리자 > 알림 보내기 (2026-11-04, 푸시 2단계). /admin/posts의 두 번째 탭.
@@ -88,12 +88,12 @@ export default function AdminPush() {
         when === 'later'
           ? '예약했어요.'
           : kind === 'promo' && !promoHourOk(new Date(now.getTime() + DISPATCH_LAG_MS))
-            ? '광고 알림은 아침 8시에 보내져요.'
+            ? '광고 알림은 오전 8시에 보내져요.'
             : '5분 안에 보내져요.',
       )
       await reload()
     } catch {
-      setMsg('보내지 못했어요. push.sql을 실행했는지 확인해 주세요.')
+      setMsg('보내지 못했어요. 잠시 뒤 다시 시도해 주세요.')
     } finally {
       setBusy(false)
     }
@@ -126,7 +126,13 @@ export default function AdminPush() {
           </label>
           <label className="block text-[12.5px] text-sub">
             제목
-            <input aria-label="제목" maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} className={field} />
+            <input
+              aria-label="제목"
+              maxLength={60}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={field}
+            />
           </label>
           <label className="block text-[12.5px] text-sub">
             내용
@@ -141,7 +147,12 @@ export default function AdminPush() {
           </label>
           <label className="block text-[12.5px] text-sub">
             열릴 화면
-            <select aria-label="열릴 화면" value={path} onChange={(e) => setPath(e.target.value)} className={field}>
+            <select
+              aria-label="열릴 화면"
+              value={path}
+              onChange={(e) => setPath(e.target.value)}
+              className={field}
+            >
               {PATH_OPTIONS.map((o) => (
                 <option key={o.path} value={o.path}>
                   {o.label}
@@ -157,18 +168,39 @@ export default function AdminPush() {
 
           <div className="flex gap-4 pt-1 text-[14px] text-ink">
             <label className="flex items-center gap-1.5">
-              <input type="radio" name="when" checked={when === 'now'} onChange={() => setWhen('now')} />
+              <input
+                type="radio"
+                name="when"
+                checked={when === 'now'}
+                onChange={() => setWhen('now')}
+              />
               지금 보내기
             </label>
             <label className="flex items-center gap-1.5">
-              <input type="radio" name="when" checked={when === 'later'} onChange={() => setWhen('later')} />
+              <input
+                type="radio"
+                name="when"
+                checked={when === 'later'}
+                onChange={() => setWhen('later')}
+              />
               예약
             </label>
           </div>
           {when === 'later' && (
             <div className="grid grid-cols-2 gap-2">
-              <input aria-label="예약 날짜" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
-              <select aria-label="시각" value={time} onChange={(e) => setTime(e.target.value)} className={field}>
+              <input
+                aria-label="예약 날짜"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={field}
+              />
+              <select
+                aria-label="시각"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className={field}
+              >
                 <option value="">시각</option>
                 {slots.map((t) => (
                   <option key={t} value={t}>
@@ -178,7 +210,9 @@ export default function AdminPush() {
               </select>
             </div>
           )}
-          {kind === 'promo' && <p className="text-[12px] text-cap">광고 알림은 아침 8시부터 저녁 9시 전까지만 보내요.</p>}
+          {kind === 'promo' && (
+            <p className="text-[12px] text-cap">광고 알림은 오전 8시~오후 9시에만 보내요.</p>
+          )}
 
           <p className="pt-1 text-[12.5px] font-medium text-sub">폰에 이렇게 보여요</p>
           <div className="rounded-card bg-bg px-4 py-3">
@@ -201,7 +235,10 @@ export default function AdminPush() {
         <section className="space-y-2">
           <p className="px-1 text-[13px] font-bold text-sub">보낸·예약한 알림</p>
           {list.map((c) => (
-            <div key={c.id} className="flex items-center justify-between rounded-card bg-white px-4 py-3">
+            <div
+              key={c.id}
+              className="flex items-center justify-between rounded-card bg-white px-4 py-3"
+            >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13.5px] text-ink">
                   {sendAtLabel(c.sendAt)} · {CAMPAIGN_KIND_LABEL[c.kind]} · {c.title}
